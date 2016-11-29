@@ -36,6 +36,29 @@ class Model(object):
   Load parameters into object
   Inputs:
    params: [dict] model parameters
+  Modifiable Parameters:
+    model_type     [str] Type of model
+                         Can be "MLP", "karklin_lewicki"
+    model_name     [str] Name for model
+    output_dir     [str] Base directory where output will be directed
+    version        [str] Model version for output
+    optimizer      [str] Which optimization algorithm to use
+                         Can be "annealed_sgd" or "adam"
+    stats_display  [int] How often to send updates to stdout
+    generate_plots [int] How often to generate plots
+    display_plots  [bool] If set, display plots
+    save_plots     [bool] If set, save plots to file
+    cp_int         [int] How often to checkpoint
+    val_on_cp      [bool] If set, compute validation performance on checkpoint
+    cp_load        [bool] if set, load from checkpoint
+    cp_load_name   [str] checkpoint model name to load
+    cp_load_val    [int] checkpoint time step to load
+    cp_load_ver    [str] checkpoint version to load
+    cp_load_var    [list of str] which variables to load
+                         if None or empty list, the model load all weights
+    eps            [float] Small value to avoid division by zero
+    device         [str] Which device to run on
+    rand_seed      [int] Random seed
   """
   def load_params(self, params):
     # Meta-parameters
@@ -47,39 +70,16 @@ class Model(object):
       self.num_unlabeled = str(params["num_unlabeled"])
     self.version = str(params["version"])
     self.optimizer = str(params["optimizer"])
-    if "rectify_a" in params.keys():
-      self.rectify_a = bool(params["rectify_a"])
-    self.norm_a = bool(params["norm_a"])
-    self.norm_weights = bool(params["norm_weights"])
-    if "one_hot_labels" in params.keys():
-      self.one_hot_labels = bool(params["one_hot_labels"])
-    else:
-      self.one_hot_labels = False
-      print("Warning: One-hot labels are not supported for supervised models.")
-    # Hyper-parameters
-    self.batch_size = int(params["batch_size"])
-    self.num_pixels = int(params["num_pixels"])
-    self.num_neurons = int(params["num_neurons"])
-    if "num_classes" in params.keys():
-      self.num_classes = int(params["num_classes"])
-    else:
-      self.num_classes = 0
-    if "num_val" in params.keys():
-      self.num_val = int(params["num_val"])
-    else:
-      self.num_val = 0
-    self.phi_shape = [self.num_pixels, self.num_neurons]
-    self.w_shape = [self.num_classes, self.num_neurons]
     # Output generation
     self.stats_display = int(params["stats_display"])
+    self.gen_plots = int(params["generate_plots"])
+    self.disp_plots = bool(params["display_plots"])
+    self.save_plots = bool(params["save_plots"])
+    # Checkpointing
     if "val_on_cp" in params.keys():
       self.val_on_cp = bool(params["val_on_cp"])
     else:
       self.val_on_cp = False
-    self.gen_plots = int(params["generate_plots"])
-    self.disp_plots = bool(params["display_plots"])
-    self.save_plots = bool(params["save_plots"])
-    # Checkpoints
     self.cp_int = int(params["cp_int"])
     self.cp_load = bool(params["cp_load"])
     self.cp_load_name = str(params["cp_load_name"])
@@ -285,14 +285,15 @@ class Model(object):
     input_label: label to be placed in self.y
   """
   def get_feed_dict(self, input_data, input_label=None):
+    skip_num = 2 if input_label is not None else 1
     placeholders = [op.name
       for op
       in self.graph.get_operations()
-      if "placeholders" in op.name][2:]
+      if "placeholders" in op.name][skip_num:]
     if input_label is not None:
-      feed_dict = {self.s:input_data, self.y:input_label}
+      feed_dict = {self.x:input_data, self.y:input_label}
     else:
-      feed_dict = {self.s:input_data}
+      feed_dict = {self.x:input_data}
     for placeholder in placeholders:
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
         self.get_sched(placeholder.split('/')[1]))
