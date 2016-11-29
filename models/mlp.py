@@ -1,12 +1,48 @@
 import numpy as np
+import logging
 import tensorflow as tf
-from models.base_model import Model 
+from models.base_model import Model
 
 class MLP(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
     self.build_graph()
     Model.setup_graph(self, self.graph)
+
+  """
+  Load parameters into object
+  Inputs:
+   params: [dict] model parameters
+  Modifiable Parameters:
+    rectify_a      [bool] If set, rectify layer 1 activity
+    norm_a         [bool] If set, l2 normalize layer 1 activity
+    norm_weights   [bool] If set, l2 normalize weights after updates
+    batch_size     [int] Number of images in a training batch
+    num_pixels     [int] Number of pixels
+    num_neurons    [int] Number of layer 1 elements (# basis vectors)
+    num_classes    [int] Number of layer 2 elements (# categories)
+    num_val        [int] Number of validation images
+  """
+  def load_params(self, params):
+    Model.load_params(self, params)
+    if "rectify_a" in params.keys():
+      self.rectify_a = bool(params["rectify_a"])
+    self.norm_a = bool(params["norm_a"])
+    self.norm_weights = bool(params["norm_weights"])
+    # Hyper-parameters
+    self.batch_size = int(params["batch_size"])
+    self.num_pixels = int(params["num_pixels"])
+    self.num_neurons = int(params["num_neurons"])
+    if "num_classes" in params.keys():
+      self.num_classes = int(params["num_classes"])
+    else:
+      self.num_classes = 0
+    if "num_val" in params.keys():
+      self.num_val = int(params["num_val"])
+    else:
+      self.num_val = 0
+    self.phi_shape = [self.num_pixels, self.num_neurons]
+    self.w_shape = [self.num_classes, self.num_neurons]
 
   """
   Build an MLP TensorFlow Graph.
@@ -16,7 +52,7 @@ class MLP(Model):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
-          self.s = tf.placeholder(tf.float32,
+          self.x = tf.placeholder(tf.float32,
             shape=[self.num_pixels, None], name="input_data")
           self.y = tf.placeholder(tf.float32,
             shape=[self.num_classes, None], name="input_label")
@@ -53,9 +89,9 @@ class MLP(Model):
         with tf.name_scope("hidden_variables") as scope:
           if self.rectify_a:
             self.a = tf.nn.relu(tf.add(tf.matmul(tf.transpose(self.phi),
-              self.s), self.bias1), name="activity")
+              self.x), self.bias1), name="activity")
           else:
-            self.a = tf.add(tf.matmul(tf.transpose(self.phi), self.s),
+            self.a = tf.add(tf.matmul(tf.transpose(self.phi), self.x),
               self.bias1, name="activity")
 
           if self.norm_a:
