@@ -12,7 +12,7 @@ params = {
   "version": "0.0",
   "optimizer": "annealed_sgd",
   #"rectify_a": True,
-  "rectify_u": True,
+  "rectify_u": False,
   "rectify_v": False,
   "norm_images": False,
   "norm_a": False,
@@ -37,7 +37,7 @@ params = {
   "cp_load_val": 150000,
   "cp_load_ver": "0.0",
   "cp_load_var": ["phi", "bias", "w"],
-  "stats_display": 10,
+  "stats_display": 1,
   "generate_plots": 50000,
   "display_plots": False,
   "save_plots": True,
@@ -48,12 +48,12 @@ params = {
 schedule = [
   {"weights": ["a", "b"],
   "recon_mult": 1.0,
-  "sparse_mult": 0.10,
-  "weight_lr": [0.1, 0.1],
+  "sparse_mult": 0.50,
+  "weight_lr": [0.1, 0.08],
   "decay_steps": [30000]*2,
   "decay_rate": [0.8]*2,
   "staircase": [True]*2,
-  "num_batches": 100}]
+  "num_batches": 10}]
 
 ## Get data
 np_rand_state = np.random.RandomState(params["rand_seed"])
@@ -86,6 +86,23 @@ with tf.Session(graph=model.graph) as sess:
       if params["norm_weights"]:
         sess.run(model.normalize_weights)
 
+      ## Clear activity from previous batch
+      sess.run(model.clear_u, feed_dict)
+      sess.run(model.clear_v, feed_dict)
+
+      ## Run inference
+      _, u_t, v_t, current_loss, du, dv = sess.run([model.do_inference, model.u_t, model.v_t, model.current_loss, model.du, model.dv], feed_dict)
+      #print(np.max(u_t))
+      #print("\n")
+      #print(np.max(v_t))
+      #print("\n")
+      #print(du)
+      #print("\n")
+      #print(dv)
+      #print("\n")
+      #print(current_loss)
+      #print("\n")
+
       ## Update weights
       for w_idx in range(len(model.get_sched("weights"))):
         sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
@@ -95,5 +112,10 @@ with tf.Session(graph=model.graph) as sess:
       if (current_step % model.stats_display == 0
         and model.stats_display > 0):
         model.print_update(input_images, None, b_step+1)
+
+      ## Checkpoint
+      if (current_step % model.cp_int == 0
+        and model.cp_int > 0):
+        save_dir = model.write_checkpoint(sess)
 
   import IPython; IPython.embed()

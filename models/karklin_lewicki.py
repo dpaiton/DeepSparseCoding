@@ -23,8 +23,8 @@ class karklin_lewicki(Model):
     num_u          [int] Number of layer 1 elements
     num_v          [int] Number of layer 2 elements
     num_steps      [int] Number of inference steps
-    u_step_size    [int] Multiplier for gradient descent inference process
-    v_step_size    [int] Multiplier for gradient descent inference process
+    u_step_size    [float] Multiplier for gradient descent inference process
+    v_step_size    [float] Multiplier for gradient descent inference process
   """
   def load_params(self, params):
     Model.load_params(self, params)
@@ -42,8 +42,25 @@ class karklin_lewicki(Model):
     self.b_shape = [self.num_u, self.num_v]
     # Hyper Parameters
     self.num_steps = int(params["num_steps"])
-    self.u_step_size = int(params["u_step_size"])
-    self.v_step_size = int(params["v_step_size"])
+    self.u_step_size = float(params["u_step_size"])
+    self.v_step_size = float(params["v_step_size"])
+
+  def compute_loss(self, input_data, u_state, v_state):
+    with tf.variable_scope("weights", reuse=True) as scope:
+      a = tf.get_variable(name="a")
+      b = tf.get_variable(name="b")
+    x_ = tf.matmul(a, u_state)
+    sigma = tf.exp(-tf.matmul(b, v_state))
+    recon_loss = self.recon_mult * tf.reduce_mean(0.5 *
+      tf.reduce_sum(tf.pow(tf.sub(input_data, x_), 2.0),
+      reduction_indices=[0]))
+    feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
+      tf.div(u_state, sigma), tf.log(sigma)),
+      reduction_indices=[0]))
+    sparse_loss = self.sparse_mult * tf.reduce_mean(
+      tf.reduce_sum(tf.abs(v_state), reduction_indices=[0]))
+    total_loss = (recon_loss + feedback_loss + sparse_loss)
+    return total_loss
 
   """
   Build the nework described in:
@@ -69,12 +86,6 @@ class karklin_lewicki(Model):
           self.v_zeros = tf.zeros(
             shape=tf.pack([self.num_v, tf.shape(self.x)[1]]),
             dtype=tf.float32, name="v_zeros")
-          self.u_t_zeros = tf.zeros(
-            shape=tf.pack([self.num_steps, self.num_u, tf.shape(self.x)[1]]),
-            dtype=tf.float32, name="u_t_zeros")
-          self.v_t_zeros = tf.zeros(
-            shape=tf.pack([self.num_steps, self.num_v, tf.shape(self.x)[1]]),
-            dtype=tf.float32, name="v_t_zeros")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False,
@@ -95,55 +106,57 @@ class karklin_lewicki(Model):
             dim=1, epsilon=self.eps, name="col_l2_norm"))
           self.normalize_weights = tf.group(self.norm_a, self.norm_b,
             name="do_normalization")
-
-        with tf.name_scope("layers") as scope:
-          self.u = tf.Variable(self.u_zeros, trainable=False,
-            validate_shape=False, name="u")
-          self.v = tf.Variable(self.v_zeros, trainable=False,
-            validate_shape=False, name="v")
-          self.clear_u = tf.group(self.u.assign(self.u_zeros))
-          self.clear_v = tf.group(self.v.assign(self.v_zeros))
-          self.sigma = tf.exp(-tf.matmul(self.b, self.v, name="sigma"))
+        
+        with tf.variable_scope("layers") as scope:
+          self.u = tf.get_variable(name="u", dtype=tf.float32,
+            initializer=self.u_zeros, trainable=False, validate_shape=False)
+          self.v = tf.get_variable(name="v", dtype=tf.float32,
+            initializer=self.v_zeros, trainable=False, validate_shape=False)
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
             self.x_ = tf.matmul(self.a, self.u, name="reconstruction")
+          with tf.name_scope("l1_prior"):
+            self.sigma = tf.exp(-tf.matmul(self.b, self.v, name="sigma"))
 
         with tf.name_scope("loss") as scope:
           with tf.name_scope("unsupervised"):
             self.recon_loss = self.recon_mult * tf.reduce_mean(0.5 *
               tf.reduce_sum(tf.pow(tf.sub(self.x, self.x_), 2.0),
               reduction_indices=[0]))
-            self.sparse_loss = self.sparse_mult * tf.reduce_mean(
-              tf.reduce_sum(tf.abs(self.v), reduction_indices=[0]))
             self.feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
               tf.div(self.u, self.sigma), tf.log(self.sigma)),
               reduction_indices=[0]))
+            self.sparse_loss = self.sparse_mult * tf.reduce_mean(
+              tf.reduce_sum(tf.abs(self.v), reduction_indices=[0]))
           self.total_loss = (self.recon_loss + self.feedback_loss +
             self.sparse_loss)
 
         with tf.name_scope("inference") as scope:
-          self.u_t = [tf.Variable(self.u_zeros, trainable=False,
-            validate_shape=False, name="u_t")
-            for _ in np.arange(self.num_steps)]
-          self.v_t = [tf.Variable(self.v_zeros, trainable=False,
-            validate_shape=False, name="v_t")
-            for _ in np.arange(self.num_steps)]
-          self.du = -tf.gradients(self.total_loss, self.u)[0]
-          self.dv = -tf.gradients(self.total_loss, self.v)[0]
-          for step in np.arange(1, self.num_steps, dtype=np.int32):
-            self.u_t[step] = (self.u_t[step-1]
-              + self.u_step_size * self.du)
-            self.v_t[step] = (self.v_t[step-1]
-              + self.v_step_size * self.dv)
+          self.clear_u = tf.group(self.u.assign(self.u_zeros))
+          self.clear_v = tf.group(self.v.assign(self.v_zeros))
+          self.current_loss = []
+          self.u_t = [self.u_zeros]
+          self.v_t = [self.v_zeros]
+          for step in range(self.num_steps):
+            # compute loss for current sate
+            # take gradient of loss wrt current state
+            # compute new state = current state + eta * gradient
+            self.current_loss.append(self.compute_loss(self.x, self.u_t[step], self.v_t[step]))
+            self.du = -tf.gradients(self.current_loss[step], self.u_t[step])[0]
+            self.dv = -tf.gradients(self.current_loss[step], self.v_t[step])[0]
+            self.u_t.append(self.u_t[step] + self.u_step_size * self.du)
+            self.v_t.append(self.v_t[step] + self.v_step_size * self.dv)
           if self.rectify_u:
-            self.u = tf.abs(self.u_t[-1])
+            new_u = tf.abs(self.u_t[-1])
           else:
-            self.u = self.u_t[-1]
+            new_u = self.u_t[-1]
           if self.rectify_v:
-            self.v = tf.abs(self.v_t[-1])
+            new_v = tf.abs(self.v_t[-1])
           else:
-            self.v = self.v_t[-1]
+            new_v = self.v_t[-1]
+          self.do_inference = tf.group(self.u.assign(new_u),
+            self.v.assign(new_v), name="do_inference")
 
     self.graph_built = True
 
@@ -162,14 +175,14 @@ class karklin_lewicki(Model):
     logging.info("Global batch index is %g"%(current_step))
     logging.info("Finished step %g out of %g for schedule %g"%(batch_step,
       self.get_sched("num_batches"), self.sched_idx))
-    logging.info("\tloss:\t%g"%(
+    logging.info("\ttotal loss:\t\t%g"%(
       self.total_loss.eval(feed_dict)))
     logging.info("\tmax val of u:\t\t%g"%(u_vals.max()))
     logging.info("\tmax val of v:\t\t%g"%(v_vals.max()))
-    logging.info("\tl1 percent active:\t\t%0.2f%%"%(
+    logging.info("\tl1 percent active:\t%0.2f%%"%(
       100.0 * np.count_nonzero(u_vals)
       / float(self.num_u * self.batch_size)))
-    logging.info("\tl2 percent active:\t\t%0.2f%%"%(
+    logging.info("\tl2 percent active:\t%0.2f%%"%(
       100.0 * np.count_nonzero(v_vals)
       / float(self.num_v * self.batch_size)))
 
