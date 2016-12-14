@@ -44,8 +44,8 @@ class Model(object):
     version        [str] Model version for output
     optimizer      [str] Which optimization algorithm to use
                          Can be "annealed_sgd" or "adam"
-    stats_display  [int] How often to send updates to stdout
-    generate_plots [int] How often to generate plots
+    log_int        [int] How often to send updates to stdout
+    gen_plot_int   [int] How often to generate plots
     display_plots  [bool] If set, display plots
     save_plots     [bool] If set, save plots to file
     cp_int         [int] How often to checkpoint
@@ -71,8 +71,8 @@ class Model(object):
     self.version = str(params["version"])
     self.optimizer = str(params["optimizer"])
     # Output generation
-    self.stats_display = int(params["stats_display"])
-    self.gen_plots = int(params["generate_plots"])
+    self.log_int = int(params["log_int"])
+    self.gen_plot_int = int(params["gen_plot_int"])
     self.disp_plots = bool(params["display_plots"])
     self.save_plots = bool(params["save_plots"])
     # Checkpointing
@@ -102,6 +102,25 @@ class Model(object):
     self.eps = float(params["eps"])
     self.device = str(params["device"])
     self.rand_seed = int(params["rand_seed"])
+
+  """
+  Get param value from model
+    equivalent to self.param_name
+  """
+  def get_param(self, param_name):
+    assert hasattr(self, param_name)
+    return getattr(self, param_name)
+
+  """
+  Modifies a model parameter
+  Inputs:
+    param_name: [str] parameter name, must already exist
+    new_value: [] new parameter value, must be the same type as old param value
+  """
+  def set_param(self, param_name, new_value):
+    assert hasattr(self, param_name)
+    assert type(getattr(self, param_name)) == type(new_value)
+    setattr(self, param_name, new_value)
 
   """Logging to std:err to track run duration"""
   def init_logging(self):
