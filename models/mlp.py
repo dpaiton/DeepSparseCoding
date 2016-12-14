@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import tensorflow as tf
+import utils.plot_functions as pf
 from models.base_model import Model
 
 class MLP(Model):
