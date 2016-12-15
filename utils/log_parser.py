@@ -1,5 +1,5 @@
 import re
-import json
+from json import loads
 import numpy as np
 
 """
@@ -23,9 +23,6 @@ Inputs:
   log_text: [str] text to find values in
 """
 def extract_vals(token, log_text):
-  print(token)
-  #if 'decay_rate' in token:
-  #  import IPython; IPython.embed()
   val_match = re.search(token+" = ([^\t\n\r\f\v<]+)", log_text)
   val = log_text[val_match.start():val_match.end()].split(" = ")[1].strip()
   type_match  = re.search((token+" = "+re.escape(val)+" (\S+ \S+)"), log_text)
@@ -35,7 +32,7 @@ def extract_vals(token, log_text):
     val_str = log_text[val_match.start():val_match.end()].split(" = ")[1]
     if 'True' or 'False' in val_str:
       val_str = val_str.lower()
-    output_val = json.loads(val_str.replace("'",'"'))
+    output_val = loads(val_str.replace("'",'"'))
   else:
     output_val = eval(val_type)(val)
   return output_val
