@@ -1,5 +1,6 @@
 import numpy as np
 import logging
+import json as js
 import tensorflow as tf
 import utils.plot_functions as pf
 from models.base_model import Model 
@@ -175,39 +176,40 @@ class karklin_lewicki(Model):
     input_data: data object containing the current image batch
     input_label: data object containing the current label batch
     batch_step: current batch number within the schedule
+  NOTE: Casting tf.eval output to an np.array and then to a list is required to
+    ensure that the data type is valid for js.dumps(). An alternative would be
+    to write an np function that converts numpy types to their corresponding
+    python types.
   """
   def print_update(self, input_data, input_label=None, batch_step=0):
-  # TODO: Why did I have to get defult session for u/v and not loss?
+    # TODO: Why did I have to get defult session for u/v and not loss?
     Model.print_update(self, input_data, input_label, batch_step)
-    current_step = self.global_step.eval()
     feed_dict = self.get_feed_dict(input_data, input_label)
-    logging.info("Global batch index is %g"%(current_step))
-    logging.info("Finished step %g out of %g for schedule %g"%(batch_step,
-      self.get_sched("num_batches"), self.sched_idx))
-    recon_loss = self.recon_loss.eval(feed_dict)
-    logging.info("stat: recon_loss =\t\t%g %s"%(
-      recon_loss, str(type(recon_loss))))
-    feedback_loss = self.feedback_loss.eval(feed_dict)
-    logging.info("stat: feedback_loss =\t\t%g %s"%(
-      feedback_loss, str(type(feedback_loss))))
-    sparse_loss = self.sparse_loss.eval(feed_dict)
-    logging.info("stat: sparse_loss =\t\t%g %s"%(
-      sparse_loss, str(type(sparse_loss))))
-    total_loss = self.total_loss.eval(feed_dict)
-    logging.info("stat: total_loss =\t\t%g %s"%(total_loss, str(type(total_loss))))
+    current_step = np.array(self.global_step.eval()).tolist()
+    recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
+    feedback_loss = np.array(self.feedback_loss.eval(feed_dict)).tolist()
+    sparse_loss = np.array(self.sparse_loss.eval(feed_dict)).tolist()
+    total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
     u_vals = tf.get_default_session().run(self.u, feed_dict)
+    u_vals_max = np.array(u_vals.max()).tolist()
     v_vals = tf.get_default_session().run(self.v, feed_dict)
-    logging.info("stat: max_val_of_u =\t\t%g %s"%(
-      u_vals.max(), str(type(u_vals.max()))))
-    logging.info("stat: max_val_of_v =\t\t%g %s"%(
-      v_vals.max(), str(type(v_vals.max()))))
-    l1_frac_act = np.count_nonzero(u_vals) / float(self.num_u * self.batch_size)
-    logging.info("stat: l1_fraction_active =\t%0.2g %s"%(
-      l1_frac_act, str(type(l1_frac_act))))
-    l2_frac_act = np.count_nonzero(v_vals) / float(self.num_v * self.batch_size)
-    logging.info("stat: l2_fraction_active =\t%0.2g %s"%(
-      l2_frac_act, str(type(l2_frac_act))))
-    import IPython; IPython.embed() # USE .item() on numpy types?
+    v_vals_max = np.array(u_vals.max()).tolist()
+    l1_frac_act = np.array(np.count_nonzero(u_vals) / float(self.num_u * self.batch_size)).tolist()
+    l2_frac_act = np.array(np.count_nonzero(v_vals) / float(self.num_v * self.batch_size)).tolist()
+    stat_dict = {"Global batch index":current_step,
+      "Batch step":batch_step,
+      "Number of batch steps":self.get_sched("num_batches"),
+      "Schedule index":self.sched_idx,
+      "recon_loss":recon_loss,
+      "feedback_loss":feedback_loss,
+      "sparse_loss":sparse_loss,
+      "total_loss":total_loss,
+      "max_val_of_u":u_vals_max,
+      "max_val_of_v":v_vals_max,
+      "l1_fraction_active":l1_frac_act,
+      "l2_fraction_active":l2_frac_act}
+    js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+    logging.info("<stats>"+js_str+"</stats>")
 
   """
   Plot weights, reconstruction, and gradients
