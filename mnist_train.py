@@ -97,7 +97,7 @@ with tf.Session(graph=model.graph) as sess:
 
   for sch_idx, sch in enumerate(schedule):
     model.sched_idx = sch_idx
-    model.log_current_schedule()
+    model.log_info("Beginning schedule "+str(sch_idx))
     for b_step in range(model.get_sched("num_batches")):
       mnist_batch = data["train"].next_batch(model.batch_size)
       input_images = mnist_batch[0].T
