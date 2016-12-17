@@ -48,7 +48,7 @@ class karklin_lewicki(Model):
   Outputs:
     total_loss [float32] loss from Karklin & Lewicki
   Inputs:
-    input_data [] 
+    input_data []
     u_state []
     v_state []
     a []
@@ -178,35 +178,45 @@ class karklin_lewicki(Model):
   """
   def print_update(self, input_data, input_label=None, batch_step=0):
   # TODO: Why did I have to get defult session for u/v and not loss?
+    Model.print_update(self, input_data, input_label, batch_step)
     current_step = self.global_step.eval()
     feed_dict = self.get_feed_dict(input_data, input_label)
-    u_vals = tf.get_default_session().run(self.u, feed_dict)
-    v_vals = tf.get_default_session().run(self.v, feed_dict)
     logging.info("Global batch index is %g"%(current_step))
     logging.info("Finished step %g out of %g for schedule %g"%(batch_step,
       self.get_sched("num_batches"), self.sched_idx))
-    logging.info("\trecon loss:\t\t%g"%(
-      self.recon_loss.eval(feed_dict)))
-    logging.info("\tfeedback loss:\t\t%g"%(
-      self.feedback_loss.eval(feed_dict)))
-    logging.info("\tsparse loss:\t\t%g"%(
-      self.sparse_loss.eval(feed_dict)))
-    logging.info("\ttotal loss:\t\t%g"%(
-      self.total_loss.eval(feed_dict)))
-    logging.info("\tmax val of u:\t\t%g"%(u_vals.max()))
-    logging.info("\tmax val of v:\t\t%g"%(v_vals.max()))
-    logging.info("\tl1 percent active:\t%0.2f%%"%(
-      100.0 * np.count_nonzero(u_vals)
-      / float(self.num_u * self.batch_size)))
-    logging.info("\tl2 percent active:\t%0.2f%%"%(
-      100.0 * np.count_nonzero(v_vals)
-      / float(self.num_v * self.batch_size)))
+    recon_loss = self.recon_loss.eval(feed_dict)
+    logging.info("stat: recon_loss =\t\t%g %s"%(
+      recon_loss, str(type(recon_loss))))
+    feedback_loss = self.feedback_loss.eval(feed_dict)
+    logging.info("stat: feedback_loss =\t\t%g %s"%(
+      feedback_loss, str(type(feedback_loss))))
+    sparse_loss = self.sparse_loss.eval(feed_dict)
+    logging.info("stat: sparse_loss =\t\t%g %s"%(
+      sparse_loss, str(type(sparse_loss))))
+    total_loss = self.total_loss.eval(feed_dict)
+    logging.info("stat: total_loss =\t\t%g %s"%(total_loss, str(type(total_loss))))
+    u_vals = tf.get_default_session().run(self.u, feed_dict)
+    v_vals = tf.get_default_session().run(self.v, feed_dict)
+    logging.info("stat: max_val_of_u =\t\t%g %s"%(
+      u_vals.max(), str(type(u_vals.max()))))
+    logging.info("stat: max_val_of_v =\t\t%g %s"%(
+      v_vals.max(), str(type(v_vals.max()))))
+    l1_frac_act = np.count_nonzero(u_vals) / float(self.num_u * self.batch_size)
+    logging.info("stat: l1_fraction_active =\t%0.2g %s"%(
+      l1_frac_act, str(type(l1_frac_act))))
+    l2_frac_act = np.count_nonzero(v_vals) / float(self.num_v * self.batch_size)
+    logging.info("stat: l2_fraction_active =\t%0.2g %s"%(
+      l2_frac_act, str(type(l2_frac_act))))
+    import IPython; IPython.embed() # USE .item() on numpy types?
 
   """
   Plot weights, reconstruction, and gradients
-  Inputs: input_data and input_label used for the session
+  Inputs:
+    input_data: data object containing the current image batch
+    input_label: data object containing the current label batch
   """
   def generate_plots(self, input_data, input_label=None):
+    Model.generate_plots(self, input_data, input_label)
     feed_dict = self.get_feed_dict(input_data, input_label)
     current_step = str(self.global_step.eval())
     pf.save_data_tiled(
