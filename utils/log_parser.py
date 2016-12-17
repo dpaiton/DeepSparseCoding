@@ -1,5 +1,5 @@
 import re
-from json import loads
+import json as js
 import numpy as np
 
 """
@@ -15,76 +15,63 @@ def load_file(log_file):
   return log_text
 
 """
-Extract values from input text using preceding token
-Outputs:
-  output_val: [...] output value casted to appropriate type
+Read js string encased by tokens and convert to python object
+Outpus:
+  output: converted python object
 Inputs:
-  token: [str] prefix token for searching for values
-  log_text: [str] text to find values in
+  tokens: [list] of length 2 with [0] entry indicating start token and [1]
+    entry indicating end token
+  text: [str] containing text to parse, can be obtained by calling load_file()
 """
-def extract_vals(token, log_text):
-  val_match = re.search(token+" =\s+([^\t\n\r\f\v<]+)", log_text)
-  val = log_text[val_match.start():val_match.end()].split(" = ")[1].strip()
-  type_match  = re.search((token+" = "+re.escape(val)+" (\S+ \S+)"), log_text)
-  log_text_segment = log_text[type_match.start():type_match.end()]
-  val_type = log_text_segment.split("<")[1].split("'")[1]
-  if val_type == "list":
-    val_str = log_text[val_match.start():val_match.end()].split(" = ")[1]
-    if 'True' or 'False' in val_str:
-      val_str = val_str.lower()
-    output_val = loads(val_str.replace("'",'"'))
+def read_js(tokens, text):
+  assert type(tokens) == list, ("Input variable tokens must be a list")
+  assert len(tokens) == 2, ("Input variable tokens must be a list of "
+    +"length 2")
+  matches = re.findall(re.escape(tokens[0])+"([\s\S]*?)"+re.escape(tokens[1]),
+    text)
+  if len(matches) > 1:
+    js_matches = [js.loads(match) for match in matches]
   else:
-    output_val = eval(val_type)(val)
-  return output_val
+    js_matches = js.loads(matches[0])
+  return js_matches
 
 """
-Generate dictionary of model parameters
+Read params from text file and return as a dictionary
 Outpus:
-  params: [dict] containing model parameters
+  params: converted python object
 Inputs:
-  log_text: [str] containing log text, can be obtained by calling load_file()
+  text: [str] containing text to parse, can be obtained by calling load_file()
 """
-def read_params(log_text):
-  params = {}
-  keys = re.findall("param: (\S+) =", log_text)
-  for key in keys:
-    params[key] = extract_vals("param: "+key, log_text)
-  return params
+def read_params(text):
+  tokens = ["<params>", "</params>"]
+  return read_js(tokens, text)
 
 """
-Generate lis of dictionariies for the model schedule
+Read schedule from text file and return as a list of dictionaries
 Outpus:
-  params: [list] containing model schedule dictionary
+  schedule: converted python object
 Inputs:
-  log_text: [str] containing log text, can be obtained by calling load_file()
+  text: [str] containing text to parse, can be obtained by calling load_file()
 """
-def read_schedule(log_text):
-  schedule = []
-  sched_indices = re.findall("sched_(\d+)", log_text)
-  for sched_idx_str in sorted(set(sched_indices)):
-    sched_idx = int(sched_idx_str)
-    schedule.append({})
-    keys = re.findall("sched_"+sched_idx_str+": (\S+) =", log_text)
-    for key in keys:
-      schedule[sched_idx][key] = extract_vals("sched_"+sched_idx_str+": "+key,
-        log_text)
-  return schedule
-
+def read_schedule(text):
+  tokens = ["<schedule>", "</schedule>"]
+  return read_js(tokens, text)
 
 """
-Generate dictionary of arrays that have stats from log text
+Generate dictionary of lists that contain stats from log text
 Outpus:
   stats: [dict] containing run statistics
 Inputs:
-  log_text: [str] containing log text, can be obtained by calling load_file()
+  text: [str] containing text to parse, can be obtained by calling load_file()
 """
-def read_stats(log_text):
+def read_stats(text):
+  tokens = ["<stats>", "</stats>"]
+  js_matches = read_js(tokens, text)
   stats = {}
-  keys = list(set(re.findall("stat: (\S+) =", log_text)))
-  for key in keys:
-    vals = re.findall("stat: "+key+" =\s+([^\t\n\r\f\v<]+)", log_text)
-    type_match  = re.search(("stat: "+key+" =\s+[^\t\n\r\f\v<]+ (\S+ \S+)"),
-      log_text)
-    log_text_segment = log_text[type_match.start():type_match.end()]
-    val_type = log_text_segment.split("<")[1].split("'")[1]
-    stats[key] = [np.fromstring(val, dtype=val_type) for val in vals]
+  for js_match in js_matches:
+    for key in js_match.keys():
+      if key in stats:
+        stats[key].append(js_match[key])
+      else:
+        stats[key] = [js_match[key]]
+  return stats

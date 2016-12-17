@@ -22,10 +22,9 @@ analysis_params = {
 log_file_loc = os.path.expanduser("~")+"/Work/Projects/test/logfiles/test_v0.0.log"
 
 log_text = log_parser.load_file(log_file_loc)
-
 model_params = log_parser.read_params(log_text)
-
 model_schedule = log_parser.read_schedule(log_text)
+model_stats = log_parser.read_stats(log_text)
 
-import IPython; IPython.embed()
+import IPython; IPython.embed(); raise SystemExit
 
