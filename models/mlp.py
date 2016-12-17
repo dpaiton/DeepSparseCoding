@@ -136,7 +136,8 @@ class MLP(Model):
     input_label: load_MNIST data object containing the current label batch
     batch_step: current batch number within the schedule
   """
-  def print_update(self, input_data, input_label, batch_step):
+  def print_update(self, input_data, input_label=None, batch_step=0):
+    Model.print_update(self, input_data, input_label, batch_step)
     current_step = self.global_step.eval()
     feed_dict = self.get_feed_dict(input_data, input_label)
     a_vals = tf.get_default_session().run(self.a, feed_dict)
@@ -157,7 +158,8 @@ class MLP(Model):
   Plot weights, reconstruction, and gradients
   Inputs: input_data and input_label used for the session
   """
-  def generate_plots(self, input_image, input_label):
+  def generate_plots(self, input_image, input_label=None):
+    Model.generate_plots(self, input_data, input_label)
     feed_dict = self.get_feed_dict(input_image, input_label)
     current_step = str(self.global_step.eval())
     pf.save_data_tiled(
