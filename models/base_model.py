@@ -1,5 +1,6 @@
 import os
 import logging
+import json as js
 import numpy as np
 import tensorflow as tf
 
@@ -12,7 +13,8 @@ class Model(object):
     self.load_params(params)
     self.make_dirs()
     self.init_logging()
-    self.log_params(params)
+    self.log_params()
+    self.log_schedule()
 
   def setup_graph(self, graph):
     self.graph = graph
@@ -63,6 +65,7 @@ class Model(object):
     rand_seed      [int] Random seed
   """
   def load_params(self, params):
+    self.params = params
     # Meta-parameters
     self.model_name = str(params["model_name"])
     self.model_type = str(params["model_type"])
@@ -155,17 +158,18 @@ class Model(object):
         level=logging.INFO)
 
   """Use logging to write model params"""
-  def log_params(self, params):
-    for key in sorted(params.keys()):
-     logging.info("param: "+key+" = "+str(params[key])+" "
-       +str(type(params[key])))
+  def log_params(self, params=None):
+    if params is not None:
+      dump_obj = params
+    else:
+      dump_obj = self.params
+    js_str = js.dumps(dump_obj, sort_keys=True, indent=2)
+    logging.info("<params>"+js_str+"</params>")
 
   """Use logging to write current schedule, as specified by self.sched_idx"""
-  def log_current_schedule(self):
-    current_schedule = self.sched[self.sched_idx]
-    for key in sorted(current_schedule.keys()):
-     logging.info("sched_"+str(self.sched_idx)+": "+key+" = "
-       +str(current_schedule[key])+" "+str(type(current_schedule[key])))
+  def log_schedule(self):
+    js_str = js.dumps(self.sched, sort_keys=True, indent=2)
+    logging.info("<schedule>"+js_str+"</schedule>")
 
   """Use logging to print input string to stderr"""
   def log_info(self, string):
@@ -346,6 +350,10 @@ class Model(object):
     input_data: data object containing the current image batch
     input_label: data object containing the current label batch
     batch_step: current batch number within the schedule
+  NOTE: For the analysis code to parse update statistics, the js.dumps() call
+    must receive a dict object. Additionally, the js.dumps() output must be
+    logged with <stats> </stats> tags.
+    For example: logging.info("<stats>"+js.dumps(output_dictionary)+"</stats>")
   """
   def print_update(self, input_data, input_label=None, batch_step=0):
     pass
