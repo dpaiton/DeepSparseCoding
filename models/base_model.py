@@ -10,8 +10,9 @@ class Model(object):
     self.load_schedule(schedule)
     self.sched_idx = 0
     self.load_params(params)
-    self.init_logging()
     self.make_dirs()
+    self.init_logging()
+    self.log_params(params)
 
   def setup_graph(self, graph):
     self.graph = graph
@@ -45,6 +46,7 @@ class Model(object):
     optimizer      [str] Which optimization algorithm to use
                          Can be "annealed_sgd" or "adam"
     log_int        [int] How often to send updates to stdout
+    log_to_file    [bool] If set, log to file, else log to stderr
     gen_plot_int   [int] How often to generate plots
     display_plots  [bool] If set, display plots
     save_plots     [bool] If set, save plots to file
@@ -72,6 +74,7 @@ class Model(object):
     self.optimizer = str(params["optimizer"])
     # Output generation
     self.log_int = int(params["log_int"])
+    self.log_to_file = bool(params["log_to_file"])
     self.gen_plot_int = int(params["gen_plot_int"])
     self.disp_plots = bool(params["display_plots"])
     self.save_plots = bool(params["save_plots"])
@@ -122,14 +125,6 @@ class Model(object):
     assert type(getattr(self, param_name)) == type(new_value)
     setattr(self, param_name, new_value)
 
-  """Logging to std:err to track run duration"""
-  def init_logging(self):
-    logging_level = logging.INFO
-    log_format = ("%(asctime)s.%(msecs)03d"
-      +" -- %(message)s")
-    logging.basicConfig(format=log_format, datefmt="%H:%M:%S",
-      level=logging.INFO)
-
   """Make output directories"""
   def make_dirs(self):
     if not os.path.exists(self.out_dir):
@@ -145,6 +140,37 @@ class Model(object):
     if not os.path.exists(self.analysis_dir):
       os.makedirs(self.analysis_dir)
 
+  """Logging to track run statistics"""
+  def init_logging(self):
+    logging_level = logging.INFO
+    log_format = ("%(asctime)s.%(msecs)03d"
+      +" -- %(message)s")
+    date_format = "%m-%d-%Y %H:%M:%S"
+    if self.log_to_file:
+      log_filename = self.log_dir+self.model_name+"_v"+self.version+".log"
+      logging.basicConfig(filename=log_filename, format=log_format,
+        datefmt=date_format, filemode="w", level=logging.INFO)
+    else:
+      logging.basicConfig(format=log_format, datefmt=date_format, filemode="w",
+        level=logging.INFO)
+
+  """Use logging to write model params"""
+  def log_params(self, params):
+    for key in sorted(params.keys()):
+     logging.info("param: "+key+" = "+str(params[key])+" "
+       +str(type(params[key])))
+
+  """Use logging to write current schedule, as specified by self.sched_idx"""
+  def log_current_schedule(self):
+    current_schedule = self.sched[self.sched_idx]
+    for key in sorted(current_schedule.keys()):
+     logging.info("sched_"+str(self.sched_idx)+": "+key+" = "
+       +str(current_schedule[key])+" "+str(type(current_schedule[key])))
+
+  """Use logging to print input string to stderr"""
+  def log_info(self, string):
+    logging.info(str(string))
+
   """
   Add optimizers to graph
   Creates member variables grads_and_vars and apply_grads for each weight
@@ -157,7 +183,7 @@ class Model(object):
       with tf.name_scope("optimizers") as scope:
         self.grads_and_vars = list()
         self.apply_grads = list()
-        for sch_idx, sch in enumerate(self.sched):
+        for schedule_idx, sch in enumerate(self.sched):
           sch_grads_and_vars = list()
           sch_apply_grads = list()
           for w_idx, weight in enumerate(sch["weights"]):
@@ -293,10 +319,6 @@ class Model(object):
   def load_model(self, session, model_dir):
     self.full_saver.restore(session, model_dir)
 
-  """Use logging to print input string to stderr"""
-  def log_info(self, string):
-    logging.info(str(string))
-
   """
   Return dictionary containing all placeholders
   Inputs:
@@ -317,3 +339,22 @@ class Model(object):
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
         self.get_sched(placeholder.split('/')[1]))
     return feed_dict
+
+  """
+  Log train progress information
+  Inputs:
+    input_data: data object containing the current image batch
+    input_label: data object containing the current label batch
+    batch_step: current batch number within the schedule
+  """
+  def print_update(self, input_data, input_label=None, batch_step=0):
+    pass
+
+  """
+  Plot weights, reconstruction, gradients, etc
+  Inputs:
+    input_data: data object containing the current image batch
+    input_label: data object containing the current label batch
+  """
+  def generate_plots(self, input_data, input_label=None):
+    pass
