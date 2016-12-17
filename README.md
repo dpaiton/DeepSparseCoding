@@ -1,2 +1,2 @@
 # DeepSparseCoding
-Hierarchical Sparse Coding Model
+Code for testing hierarchical Sparse Coding models
