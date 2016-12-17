@@ -23,7 +23,7 @@ Inputs:
   log_text: [str] text to find values in
 """
 def extract_vals(token, log_text):
-  val_match = re.search(token+" = ([^\t\n\r\f\v<]+)", log_text)
+  val_match = re.search(token+" =\s+([^\t\n\r\f\v<]+)", log_text)
   val = log_text[val_match.start():val_match.end()].split(" = ")[1].strip()
   type_match  = re.search((token+" = "+re.escape(val)+" (\S+ \S+)"), log_text)
   log_text_segment = log_text[type_match.start():type_match.end()]
@@ -69,3 +69,22 @@ def read_schedule(log_text):
       schedule[sched_idx][key] = extract_vals("sched_"+sched_idx_str+": "+key,
         log_text)
   return schedule
+
+
+"""
+Generate dictionary of arrays that have stats from log text
+Outpus:
+  stats: [dict] containing run statistics
+Inputs:
+  log_text: [str] containing log text, can be obtained by calling load_file()
+"""
+def read_stats(log_text):
+  stats = {}
+  keys = list(set(re.findall("stat: (\S+) =", log_text)))
+  for key in keys:
+    vals = re.findall("stat: "+key+" =\s+([^\t\n\r\f\v<]+)", log_text)
+    type_match  = re.search(("stat: "+key+" =\s+[^\t\n\r\f\v<]+ (\S+ \S+)"),
+      log_text)
+    log_text_segment = log_text[type_match.start():type_match.end()]
+    val_type = log_text_segment.split("<")[1].split("'")[1]
+    stats[key] = [np.fromstring(val, dtype=val_type) for val in vals]
