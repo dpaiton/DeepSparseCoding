@@ -3,80 +3,21 @@ matplotlib.use("Agg")
 
 ## TODO:
 ##  why is db always the same?
-##  setup pretrain schedule
+##  check on importants of normalization method
+##    K&L use different method for density components
 ##  add q & c variables from paper?
 ##  specify parameter that allows you to load in "phi" and set it for "a"
 ##    also fix error message when cp_load=True and var stuff isn't set up
 ##  when expanding to have more layers, make sure all layers have even sqrt
 
-import os
 import numpy as np
 import tensorflow as tf
 import models.model_picker as mp
 from data.MNIST import load_MNIST
 
-params = {
-  "model_type": "karklin_lewicki",
-  "model_name": "test",
-  "output_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/MNIST/",
-  "version": "0.0",
-  "optimizer": "annealed_sgd",
-  #"rectify_a": True,
-  "rectify_u": False,
-  "rectify_v": False,
-  "norm_images": False,
-  "norm_a": False,
-  "norm_weights": True,
-  "batch_size": 100,
-  "num_pixels": 784,
-  #"num_neurons": 400,
-  "num_u": 400, ##TODO: add assertion that this number has an even sqrt
-  "num_v": 100,
-  #"num_val": 0,
-  #"num_labeled": 60000,
-  "num_steps": 20,
-  #TODO: The files don't stick around? Only ever have last few.
-  # max to keep: https://www.tensorflow.org/versions/r0.11/api_docs/python/state_ops.html#Saver
-  # set as param? Or just restructure checkpointing.
-  "cp_int": 15000,
-  #"val_on_cp": True,
-  "cp_load": False,
-  "cp_load_name": "pretrain",
-  "cp_load_val": 150000,
-  "cp_load_ver": "0.0",
-  "cp_load_var": ["phi"],
-  "log_int": 1,
-  "log_to_file": True,
-  "gen_plot_int": 100,
-  "display_plots": False,
-  "save_plots": True,
-  "eps": 1e-12,
-  "device": "/cpu:0",
-  "rand_seed": 1234567890}
-
-schedule = [
-  {"weights": ["a"],
-  "recon_mult": 1.0,
-  "sparse_mult": 1.0,
-  "u_step_size": 0.1,
-  "v_step_size":0.001,
-  "weight_lr": [0.1],
-  "decay_steps": [30000],
-  "decay_rate": [0.8],
-  "staircase": [True],
-  "num_batches": 5},
-
-  {"weights": ["a", "b"],
-  "recon_mult": 1.0,
-  "sparse_mult": 1.0,
-  "u_step_size": 0.1,
-  "v_step_size": 0.001,
-  "weight_lr": [0.1, 0.01],
-  "decay_steps": [30000]*2,
-  "decay_rate": [0.8]*2,
-  "staircase": [True]*2,
-  "num_batches": 5}]
+## Import parameters & schedules
+#from mlp_params import params, schedule
+from karklin_params import params, schedule
 
 ## Get data
 np_rand_state = np.random.RandomState(params["rand_seed"])
