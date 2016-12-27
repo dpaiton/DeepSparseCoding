@@ -44,6 +44,11 @@ class karklin_lewicki(Model):
     # Hyper Parameters
     self.num_steps = int(params["num_steps"])
 
+  def check_params(self):
+    Model.check_params(self)
+    assert np.sqrt(self.num_u) == np.floor(np.sqrt(self.num_u)), (
+      "The parameter `num_u` must have an even square-root.")
+
   """
   Returns total loss function for given input
   Outputs:
@@ -162,8 +167,8 @@ class karklin_lewicki(Model):
             current_loss.append(self.compute_loss(self.x, self.u_t[step],
               self.v_t[step])[0])
             du = -tf.gradients(current_loss[step], self.u_t[step])[0]
-            dv = -tf.gradients(current_loss[step], self.v_t[step])[0]
             self.u_t.append(self.u_t[step] + self.u_step_size * du)
+            dv = -tf.gradients(current_loss[step], self.v_t[step])[0]
             self.v_t.append(self.v_t[step] + self.v_step_size * dv)
           self.do_inference = tf.group(self.u.assign(self.u_t[-1]),
             self.v.assign(self.v_t[-1]), name="do_inference")
@@ -182,7 +187,7 @@ class karklin_lewicki(Model):
     python types.
   """
   def print_update(self, input_data, input_label=None, batch_step=0):
-    # TODO: Why did I have to get defult session for u/v and not loss?
+    # TODO: When is it required to get defult session?
     Model.print_update(self, input_data, input_label, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_label)
     current_step = np.array(self.global_step.eval()).tolist()
@@ -194,8 +199,8 @@ class karklin_lewicki(Model):
     u_vals_max = np.array(u_vals.max()).tolist()
     v_vals = tf.get_default_session().run(self.v, feed_dict)
     v_vals_max = np.array(u_vals.max()).tolist()
-    l1_frac_act = np.array(np.count_nonzero(u_vals) / float(self.num_u * self.batch_size)).tolist()
-    l2_frac_act = np.array(np.count_nonzero(v_vals) / float(self.num_v * self.batch_size)).tolist()
+    u_frac_act = np.array(np.count_nonzero(u_vals) / float(self.num_u * self.batch_size)).tolist()
+    v_frac_act = np.array(np.count_nonzero(v_vals) / float(self.num_v * self.batch_size)).tolist()
     stat_dict = {"Global batch index":current_step,
       "Batch step":batch_step,
       "Number of batch steps":self.get_sched("num_batches"),
@@ -206,8 +211,8 @@ class karklin_lewicki(Model):
       "total_loss":total_loss,
       "max_val_of_u":u_vals_max,
       "max_val_of_v":v_vals_max,
-      "l1_fraction_active":l1_frac_act,
-      "l2_fraction_active":l2_frac_act}
+      "u_fraction_active":u_frac_act,
+      "v_fraction_active":v_frac_act}
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     logging.info("<stats>"+js_str+"</stats>")
 
