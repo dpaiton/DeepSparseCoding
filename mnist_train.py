@@ -3,12 +3,10 @@ matplotlib.use("Agg")
 
 ## TODO:
 ##  why is db always the same?
-##  check on importants of normalization method
-##    K&L use different method for density components
-##  add q & c variables from paper?
+##  Estimate kurtosis (q in K&L paper) from layer 1 activity using EM
 ##  specify parameter that allows you to load in "phi" and set it for "a"
-##    also fix error message when cp_load=True and var stuff isn't set up
-##  when expanding to have more layers, make sure all layers have even sqrt
+##   Will probably require you to load in the original model, eval "phi",
+##   then assign it to a constant for "a"
 
 import numpy as np
 import tensorflow as tf
@@ -54,14 +52,6 @@ with tf.Session(graph=model.graph) as sess:
       sess.run(model.clear_v, feed_dict)
 
       ## Run inference
-      ## TODO: Move these run calls to analysis functions
-      #_, u_t, v_t, = sess.run([model.do_inference,
-      #  model.u_t, model.v_t,],
-      #  feed_dict)
-      #print(np.max(u_t))
-      #print("\n")
-      #print(np.max(v_t))
-      #print("\n")
       sess.run([model.do_inference], feed_dict)
 
       ## Update weights
