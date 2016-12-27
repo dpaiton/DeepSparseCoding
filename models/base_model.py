@@ -11,6 +11,7 @@ class Model(object):
     self.load_schedule(schedule)
     self.sched_idx = 0
     self.load_params(params)
+    self.check_params()
     self.make_dirs()
     self.init_logging()
     self.log_params()
@@ -53,6 +54,7 @@ class Model(object):
     display_plots  [bool] If set, display plots
     save_plots     [bool] If set, save plots to file
     cp_int         [int] How often to checkpoint
+    max_cp_to_keep [int] How many checkpoints to keep. See max_to_keep tf arg
     val_on_cp      [bool] If set, compute validation performance on checkpoint
     cp_load        [bool] if set, load from checkpoint
     cp_load_name   [str] checkpoint model name to load
@@ -87,6 +89,7 @@ class Model(object):
     else:
       self.val_on_cp = False
     self.cp_int = int(params["cp_int"])
+    self.max_cp_to_keep = int(params["max_cp_to_keep"])
     self.cp_load = bool(params["cp_load"])
     self.cp_load_name = str(params["cp_load_name"])
     self.cp_load_val = int(params["cp_load_val"])
@@ -108,6 +111,12 @@ class Model(object):
     self.eps = float(params["eps"])
     self.device = str(params["device"])
     self.rand_seed = int(params["rand_seed"])
+
+  """
+  Check parameters with assertions
+  """
+  def check_params(self):
+    pass
 
   """
   Get param value from model
@@ -233,13 +242,16 @@ class Model(object):
 
   """Get variables for loading"""
   def get_load_vars(self):
-    v = tf.all_variables()
+    v = tf.global_variables()
     if len(self.cp_load_var) > 0:
-      v = [var
+      load_v = [var
         for var in v
         for weight in self.cp_load_var
         if weight in var.name]
-    return v
+      assert len(load_v) > 0, ("Weights specified by cp_load_var not found.")
+    else:
+      load_v = v
+    return load_v
 
   """Add savers to graph"""
   def construct_savers(self):
@@ -281,10 +293,11 @@ class Model(object):
   def write_checkpoint(self, session):
     base_save_path = self.cp_save_dir+self.model_name+"_v"+self.version
     full_save_path = self.full_saver.save(session,
-      save_path=base_save_path+"_full", global_step=self.global_step)
+      max_to_keep=self.max_cp_to_keep, save_path=base_save_path+"_full",
+      global_step=self.global_step)
     logging.info("Full model saved in file %s"%full_save_path)
     weight_save_path = self.weight_saver.save(session,
-      save_path=base_save_path+"_weights",
+      max_to_keep=self.max_cp_to_keep, save_path=base_save_path+"_weights",
       global_step=self.global_step)
     logging.info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
