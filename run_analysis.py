@@ -26,7 +26,7 @@ analysis_params = {
 
 log_file_loc = (os.path.expanduser("~")
   +"/Work/Projects/"+analysis_params["model_name"]+"/logfiles/"
-  +analysis_params["model_name"]+"_v"+analysis_param["version"]+".log")
+  +analysis_params["model_name"]+"_v"+analysis_params["version"]+".log")
 
 log_text = log_parser.load_file(log_file_loc)
 model_params = log_parser.read_params(log_text)
