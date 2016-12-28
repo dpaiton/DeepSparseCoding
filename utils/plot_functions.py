@@ -73,3 +73,34 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
     save_filename = "./output.ps"
   fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad_inches=0.01)
   plt.close(fig)
+
+"""
+Generate time-series plots of stats specified by keys
+Outputs:
+  fig: [int] corresponding to the figure number
+Inputs:
+  data: [dict] containing data to be plotted. len of all values should be equal
+        data must have the key "batch_step"
+  labels: [list of str] optional list of labels, should be same len as
+          data.keys(). If nothing is given, data.keys() will be used as labels
+  out_filename: [str] containing the complete output filename.
+"""
+def save_losses(data, labels=None, out_filename='./Fig.pdf'):
+  data_keys = list(data.keys())
+  data_keys.remove("batch_step")
+  if labels is None:
+    labels = data_keys
+  num_keys = len(data_keys)
+  fig, sub_axes = plt.subplots(num_keys)
+  axis_image = [None]*num_keys
+  for key_idx, key in enumerate(data_keys):
+    axis_image[key_idx] = sub_axes[key_idx].plot(data["batch_step"], data[key])
+    sub_axes[key_idx].get_xaxis().set_ticklabels([])
+    sub_axes[key_idx].locator_params(axis="y", nbins=5)
+    sub_axes[key_idx].set_ylabel(labels[key_idx])
+    ylabel_xpos = -0.1
+    sub_axes[key_idx].yaxis.set_label_coords(ylabel_xpos, 0.5)
+  sub_axes[-1].set_xlabel("Batch Number")
+  fig.suptitle("Average Losses per Batch", y=1.0, x=0.5)
+  fig.savefig(out_filename, transparent=True)
+  plt.close(fig)
