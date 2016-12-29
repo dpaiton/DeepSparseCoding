@@ -44,7 +44,7 @@ class Model(object):
     model_type     [str] Type of model
                          Can be "MLP", "karklin_lewicki"
     model_name     [str] Name for model
-    output_dir     [str] Base directory where output will be directed
+    out_dir        [str] Base directory where output will be directed
     version        [str] Model version for output
     optimizer      [str] Which optimization algorithm to use
                          Can be "annealed_sgd" or "adam"
@@ -57,9 +57,9 @@ class Model(object):
     max_cp_to_keep [int] How many checkpoints to keep. See max_to_keep tf arg
     val_on_cp      [bool] If set, compute validation performance on checkpoint
     cp_load        [bool] if set, load from checkpoint
-    cp_load_name   [str] checkpoint model name to load
-    cp_load_val    [int] checkpoint time step to load
-    cp_load_ver    [str] checkpoint version to load
+    cp_load_name   [str] Checkpoint model name to load
+    cp_load_val    [int] Checkpoint time step to load
+    cp_load_ver    [str] Checkpoint version to load
     cp_load_var    [list of str] which variables to load
                          if None or empty list, the model load all weights
     eps            [float] Small value to avoid division by zero
@@ -99,14 +99,13 @@ class Model(object):
     else:
       self.cp_load_var = []
     # Directories
-    self.out_dir = str(params["output_dir"]) + self.model_name
+    self.out_dir = str(params["out_dir"]) + self.model_name
     self.cp_save_dir = self.out_dir + "/checkpoints/"
-    self.cp_load_dir = (str(params["output_dir"]) + self.cp_load_name
+    self.cp_load_dir = (str(params["out_dir"]) + self.cp_load_name
       + "/checkpoints/")
     self.log_dir = self.out_dir + "/logfiles/"
     self.save_dir = self.out_dir + "/savefiles/"
     self.disp_dir = self.out_dir + "/vis/"
-    self.analysis_dir = self.out_dir + "/analysis/"
     # Other
     self.eps = float(params["eps"])
     self.device = str(params["device"])
@@ -120,11 +119,14 @@ class Model(object):
 
   """
   Get param value from model
-    equivalent to self.param_name
+    This is equivalent to self.param_name, except that it will return None if
+    the param does not exist.
   """
   def get_param(self, param_name):
-    assert hasattr(self, param_name)
-    return getattr(self, param_name)
+    if hasattr(self, param_name):
+      return getattr(self, param_name)
+    else:
+      return None
 
   """
   Modifies a model parameter
@@ -149,8 +151,6 @@ class Model(object):
       os.makedirs(self.save_dir)
     if not os.path.exists(self.disp_dir):
       os.makedirs(self.disp_dir)
-    if not os.path.exists(self.analysis_dir):
-      os.makedirs(self.analysis_dir)
 
   """Logging to track run statistics"""
   def init_logging(self):
@@ -180,7 +180,7 @@ class Model(object):
     js_str = js.dumps(self.sched, sort_keys=True, indent=2)
     logging.info("<schedule>"+js_str+"</schedule>")
 
-  """Use logging to print input string to stderr"""
+  """Log input string"""
   def log_info(self, string):
     logging.info(str(string))
 
@@ -230,7 +230,8 @@ class Model(object):
           self.apply_grads.append(sch_apply_grads)
     self.optimizers_added = True
 
-  """Add initializer to the graph
+  """
+  Add initializer to the graph
   This must be done after optimizers have been added
   """
   def add_initializer_to_graph(self):
@@ -242,15 +243,15 @@ class Model(object):
 
   """Get variables for loading"""
   def get_load_vars(self):
-    v = tf.global_variables()
+    all_vars = tf.global_variables()
     if len(self.cp_load_var) > 0:
       load_v = [var
-        for var in v
+        for var in all_vars
         for weight in self.cp_load_var
         if weight in var.name]
       assert len(load_v) > 0, ("Weights specified by cp_load_var not found.")
     else:
-      load_v = v
+      load_v = all_vars
     return load_v
 
   """Add savers to graph"""
