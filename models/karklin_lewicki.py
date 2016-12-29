@@ -27,7 +27,6 @@ class karklin_lewicki(Model):
     num_steps      [int] Number of inference steps
   """
   def load_params(self, params):
-  #TODO: Add rectify_u and rectify_v
     Model.load_params(self, params)
     # Meta parameters
     self.rectify_u = bool(params["rectify_u"])
@@ -72,13 +71,13 @@ class karklin_lewicki(Model):
         a = tf.get_variable(name="a")
       if b is None:
         b = tf.get_variable(name="b")
-    x_ = tf.matmul(a, u_state)
-    sigma = tf.exp(-tf.matmul(b, v_state))
+    temp_sigma = tf.exp(-tf.matmul(b, v_state))
+    temp_x_ = tf.matmul(a, u_state)
     recon_loss = self.recon_mult * tf.reduce_mean(0.5 *
-      tf.reduce_sum(tf.pow(tf.sub(input_data, x_), 2.0),
+      tf.reduce_sum(tf.pow(tf.sub(input_data, temp_x_), 2.0),
       reduction_indices=[0]))
     feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
-      tf.abs(tf.div(u_state, sigma)), tf.log(sigma)),
+      tf.abs(tf.div(u_state, temp_sigma)), tf.log(temp_sigma)),
       reduction_indices=[0]))
     sparse_loss = self.sparse_mult * tf.reduce_mean(
       tf.reduce_sum(tf.abs(v_state), reduction_indices=[0]))
@@ -161,15 +160,23 @@ class karklin_lewicki(Model):
           self.clear_u = tf.group(self.u.assign(self.u_zeros))
           self.clear_v = tf.group(self.v.assign(self.v_zeros))
           current_loss = []
-          self.u_t = [self.u_zeros]
-          self.v_t = [self.v_zeros]
-          for step in range(self.num_steps):
+          self.u_t = [self.u_zeros] # init to zeros
+          self.v_t = [self.v_zeros] # init to zeros
+          for step in range(self.num_steps-1): # loop doesn't include init
             current_loss.append(self.compute_loss(self.x, self.u_t[step],
               self.v_t[step])[0])
             du = -tf.gradients(current_loss[step], self.u_t[step])[0]
-            self.u_t.append(self.u_t[step] + self.u_step_size * du)
+            if self.rectify_u:
+              new_u = tf.nn.relu(self.u_t[step] + self.u_step_size * du)
+            else:
+              new_u = self.u_t[step] + self.u_step_size * du
+            self.u_t.append(new_u)
             dv = -tf.gradients(current_loss[step], self.v_t[step])[0]
-            self.v_t.append(self.v_t[step] + self.v_step_size * dv)
+            if self.rectify_v:
+              new_v = tf.nn.relu(self.v_t[step] + self.v_step_size * dv)
+            else:
+              new_v = self.v_t[step] + self.v_step_size * dv
+            self.v_t.append(new_v)
           self.do_inference = tf.group(self.u.assign(self.u_t[-1]),
             self.v.assign(self.v_t[-1]), name="do_inference")
 
@@ -198,21 +205,26 @@ class karklin_lewicki(Model):
     u_vals = tf.get_default_session().run(self.u, feed_dict)
     u_vals_max = np.array(u_vals.max()).tolist()
     v_vals = tf.get_default_session().run(self.v, feed_dict)
-    v_vals_max = np.array(u_vals.max()).tolist()
+    v_vals_max = np.array(v_vals.max()).tolist()
     u_frac_act = np.array(np.count_nonzero(u_vals) / float(self.num_u * self.batch_size)).tolist()
     v_frac_act = np.array(np.count_nonzero(v_vals) / float(self.num_v * self.batch_size)).tolist()
-    stat_dict = {"Global batch index":current_step,
-      "Batch step":batch_step,
-      "Number of batch steps":self.get_sched("num_batches"),
-      "Schedule index":self.sched_idx,
+    stat_dict = {"global_batch_index":current_step,
+      "batch_step":batch_step,
+      "number_of_batch_steps":self.get_sched("num_batches"),
+      "schedule_index":self.sched_idx,
       "recon_loss":recon_loss,
       "feedback_loss":feedback_loss,
       "sparse_loss":sparse_loss,
       "total_loss":total_loss,
-      "max_val_of_u":u_vals_max,
-      "max_val_of_v":v_vals_max,
+      "u_max":u_vals_max,
+      "v_max":v_vals_max,
       "u_fraction_active":u_frac_act,
       "v_fraction_active":v_frac_act}
+    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+      grad = weight_grad_var[0][0].eval(feed_dict)
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      stat_dict[name+"_max_grad"] = np.array(grad.max()).tolist()
+      stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     logging.info("<stats>"+js_str+"</stats>")
 
