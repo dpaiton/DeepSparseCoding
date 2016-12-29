@@ -2,7 +2,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 ## TODO:
-##  why is db always the same?
+##  why is db always the same shape?
 ##  Estimate kurtosis (q in K&L paper) from layer 1 activity using EM
 ##  specify parameter that allows you to load in "phi" and set it for "a"
 ##   Will probably require you to load in the original model, eval "phi",
@@ -19,8 +19,7 @@ from karklin_params import params, schedule
 
 ## Get data
 np_rand_state = np.random.RandomState(params["rand_seed"])
-data = load_MNIST(params["data_dir"],
-  normalize_imgs=params["norm_images"],
+data = load_MNIST(params["data_dir"], normalize_imgs=params["norm_images"],
   rand_state=np_rand_state)
 
 model = mp.get_model(params, schedule)
@@ -48,17 +47,17 @@ with tf.Session(graph=model.graph) as sess:
         sess.run(model.normalize_weights)
 
       ## Clear activity from previous batch
-      sess.run(model.clear_u, feed_dict)
-      sess.run(model.clear_v, feed_dict)
+      sess.run([model.clear_u, model.clear_v], feed_dict)
 
       ## Run inference
-      sess.run([model.do_inference], feed_dict)
+      if hasattr(model, "do_inference"):
+        sess.run([model.do_inference], feed_dict)
 
       ## Update weights
       for w_idx in range(len(model.get_sched("weights"))):
         sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
 
-      ### Generate logs
+      ## Generate logs
       current_step = sess.run(model.global_step)
       if (current_step % model.log_int == 0
         and model.log_int > 0):
