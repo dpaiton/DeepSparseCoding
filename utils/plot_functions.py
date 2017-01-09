@@ -95,7 +95,8 @@ def save_losses(data, labels=None, out_filename='./Fig.pdf'):
   axis_image = [None]*num_keys
   for key_idx, key in enumerate(data_keys):
     axis_image[key_idx] = sub_axes[key_idx].plot(data["batch_step"], data[key])
-    sub_axes[key_idx].get_xaxis().set_ticklabels([])
+    if key_idx < len(data_keys)-1:
+      sub_axes[key_idx].get_xaxis().set_ticklabels([])
     sub_axes[key_idx].locator_params(axis="y", nbins=5)
     sub_axes[key_idx].set_ylabel(labels[key_idx])
     ylabel_xpos = -0.1
