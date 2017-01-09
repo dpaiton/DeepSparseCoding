@@ -146,6 +146,10 @@ class karklin_lewicki(Model):
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
             self.x_ = tf.matmul(self.a, self.u, name="reconstruction")
+            MSE = tf.reduce_mean(tf.pow(tf.sub(self.x, self.x_), 2.0),
+              name="mean_squared_error")
+            self.pSNRdB = tf.mul(10.0, tf.log(tf.div(tf.pow(1.0, 2.0), MSE)),
+              name="recon_quality")
           with tf.name_scope("l1_prior"):
             self.sigma = tf.exp(-tf.matmul(self.b, self.v, name="sigma"))
 

@@ -262,8 +262,9 @@ class Model(object):
       with tf.variable_scope("weights", reuse=True) as scope:
         weights = [weight for weight in tf.all_variables()
           if weight.name.startswith(scope.name)]
-      self.weight_saver = tf.train.Saver(var_list=weights)
-      self.full_saver = tf.train.Saver()
+      self.weight_saver = tf.train.Saver(var_list=weights,
+        max_to_keep=self.max_cp_to_keep)
+      self.full_saver = tf.train.Saver(max_to_keep=self.max_cp_to_keep)
       if self.cp_load and len(self.cp_load_var) > 0:
         self.loader = tf.train.Saver(var_list=self.get_load_vars())
     self.savers_constructed = True
@@ -294,11 +295,11 @@ class Model(object):
   def write_checkpoint(self, session):
     base_save_path = self.cp_save_dir+self.model_name+"_v"+self.version
     full_save_path = self.full_saver.save(session,
-      max_to_keep=self.max_cp_to_keep, save_path=base_save_path+"_full",
+      save_path=base_save_path+"_full",
       global_step=self.global_step)
     logging.info("Full model saved in file %s"%full_save_path)
     weight_save_path = self.weight_saver.save(session,
-      max_to_keep=self.max_cp_to_keep, save_path=base_save_path+"_weights",
+      save_path=base_save_path+"_weights",
       global_step=self.global_step)
     logging.info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
@@ -349,7 +350,7 @@ class Model(object):
       for op
       in self.graph.get_operations()
       if "placeholders" in op.name][skip_num:]
-    if input_label is not None:
+    if input_label is not None and hasattr(self, "y"):
       feed_dict = {self.x:input_data, self.y:input_label}
     else:
       feed_dict = {self.x:input_data}
