@@ -111,9 +111,7 @@ class Model(object):
     self.device = str(params["device"])
     self.rand_seed = int(params["rand_seed"])
 
-  """
-  Check parameters with assertions
-  """
+  """Check parameters with assertions"""
   def check_params(self):
     pass
 
@@ -218,14 +216,10 @@ class Model(object):
               weight_var = [tf.get_variable(weight)]
             sch_grads_and_vars.append(
               optimizer.compute_gradients(self.total_loss, var_list=weight_var))
-            if w_idx == 0: # Only want to update global step once
-              sch_apply_grads.append(
-                optimizer.apply_gradients(sch_grads_and_vars[w_idx],
-                global_step=self.global_step))
-            else:
-              sch_apply_grads.append(
-                optimizer.apply_gradients(sch_grads_and_vars[w_idx],
-                global_step=None))
+            gstep = self.global_step if w_idx == 0 else None # Only update once
+            sch_apply_grads.append(
+              optimizer.apply_gradients(sch_grads_and_vars[w_idx],
+              global_step=gstep))
           self.grads_and_vars.append(sch_grads_and_vars)
           self.apply_grads.append(sch_apply_grads)
     self.optimizers_added = True
