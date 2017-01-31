@@ -80,5 +80,5 @@ with tf.Session(graph=model.graph) as sess:
       #  old_size = model.get_sched("v_step_size")
       #  model.set_sched("v_step_size", old_size * 10)
 
-
+  save_dir = model.write_checkpoint(sess)
   import IPython; IPython.embed()
