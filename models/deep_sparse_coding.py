@@ -43,6 +43,7 @@ class karklin_lewicki(Model):
     # Hyper Parameters
     self.num_steps = int(params["num_steps"])
 
+  """Check parameters with assertions"""
   def check_params(self):
     Model.check_params(self)
     assert np.sqrt(self.num_u) == np.floor(np.sqrt(self.num_u)), (
@@ -51,7 +52,7 @@ class karklin_lewicki(Model):
   """
   Returns total loss function for given input
   Outputs:
-    total_loss [float32] loss from Karklin & Lewicki
+    total_loss [float32] loss adapted from Karklin & Lewicki
   Inputs:
     input_data []
     u_state []
@@ -71,13 +72,13 @@ class karklin_lewicki(Model):
         a = tf.get_variable(name="a")
       if b is None:
         b = tf.get_variable(name="b")
-    temp_sigma = tf.exp(-tf.matmul(b, v_state))
+    temp_sigma = tf.exp(tf.matmul(b, v_state))
     temp_x_ = tf.matmul(a, u_state)
     recon_loss = self.recon_mult * tf.reduce_mean(0.5 *
       tf.reduce_sum(tf.pow(tf.sub(input_data, temp_x_), 2.0),
       reduction_indices=[0]))
     feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
-      tf.abs(tf.div(u_state, temp_sigma)), tf.log(temp_sigma)),
+      tf.div(u_state, temp_sigma), tf.log(temp_sigma)),
       reduction_indices=[0]))
     sparse_loss = self.sparse_mult * tf.reduce_mean(
       tf.reduce_sum(tf.abs(v_state), reduction_indices=[0]))
@@ -133,10 +134,10 @@ class karklin_lewicki(Model):
           self.norm_a = self.a.assign(tf.nn.l2_normalize(self.a,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
           self.norm_b = self.b.assign(tf.nn.l2_normalize(self.b,
-            dim=1, epsilon=self.eps, name="col_l2_norm"))
+            dim=0, epsilon=self.eps, name="row_l2_norm"))
           self.normalize_weights = tf.group(self.norm_a, self.norm_b,
             name="do_normalization")
-        
+
         with tf.variable_scope("layers") as scope:
           self.u = tf.get_variable(name="u", dtype=tf.float32,
             initializer=self.u_zeros, trainable=False, validate_shape=False)
@@ -243,7 +244,7 @@ class karklin_lewicki(Model):
     feed_dict = self.get_feed_dict(input_data, input_label)
     current_step = str(self.global_step.eval())
     pf.save_data_tiled(
-      tf.transpose(self.b).eval().reshape(self.num_v,
+      tf.transpose(self.b).eval().T.reshape(self.num_v,
       int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
       normalize=True, title="Density weights matrix at step number "
       +current_step, save_filename=(self.disp_dir+"b_v"+self.version+"-"
@@ -265,7 +266,7 @@ class karklin_lewicki(Model):
           save_filename=(self.disp_dir+"da_v"+self.version+"_"
           +current_step.zfill(5)+".pdf"))
       elif name == "b":
-        pf.save_data_tiled(grad.reshape(self.num_v,
+        pf.save_data_tiled(grad.T.reshape(self.num_v,
           int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
           normalize=True, title="Gradient for b at step "+current_step,
           save_filename=(self.disp_dir+"db_v"+self.version+"_"
