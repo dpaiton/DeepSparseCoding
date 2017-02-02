@@ -306,7 +306,7 @@ class Model(object):
   def get_sched(self, key=None):
     if key:
       assert key in self.sched[self.sched_idx].keys(), (
-        key+" must be in the schedule.")
+        key+" was not found in the schedule.")
       return self.sched[self.sched_idx][key]
     return self.sched[self.sched_idx]
 
@@ -336,16 +336,16 @@ class Model(object):
   Return dictionary containing all placeholders
   Inputs:
     input_data: data to be placed in self.s
-    input_label: label to be placed in self.y
+    input_labels: label to be placed in self.y
   """
-  def get_feed_dict(self, input_data, input_label=None):
-    skip_num = 2 if input_label is not None else 1
+  def get_feed_dict(self, input_data, input_labels=None):
+    skip_num = 2 if input_labels is not None else 1
     placeholders = [op.name
       for op
       in self.graph.get_operations()
       if "placeholders" in op.name][skip_num:]
-    if input_label is not None and hasattr(self, "y"):
-      feed_dict = {self.x:input_data, self.y:input_label}
+    if input_labels is not None and hasattr(self, "y"):
+      feed_dict = {self.x:input_data, self.y:input_labels}
     else:
       feed_dict = {self.x:input_data}
     for placeholder in placeholders:
@@ -357,21 +357,21 @@ class Model(object):
   Log train progress information
   Inputs:
     input_data: data object containing the current image batch
-    input_label: data object containing the current label batch
+    input_labels: data object containing the current label batch
     batch_step: current batch number within the schedule
   NOTE: For the analysis code to parse update statistics, the js.dumps() call
     must receive a dict object. Additionally, the js.dumps() output must be
     logged with <stats> </stats> tags.
     For example: logging.info("<stats>"+js.dumps(output_dictionary)+"</stats>")
   """
-  def print_update(self, input_data, input_label=None, batch_step=0):
+  def print_update(self, input_data, input_labels=None, batch_step=0):
     pass
 
   """
   Plot weights, reconstruction, gradients, etc
   Inputs:
     input_data: data object containing the current image batch
-    input_label: data object containing the current label batch
+    input_labels: data object containing the current label batch
   """
-  def generate_plots(self, input_data, input_label=None):
+  def generate_plots(self, input_data, input_labels=None):
     pass

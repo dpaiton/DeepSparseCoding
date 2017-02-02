@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import tensorflow as tf
+import json as js
 import utils.plot_functions as pf
 from models.base_model import Model
 
@@ -56,9 +57,7 @@ class MLP(Model):
           self.x = tf.placeholder(tf.float32,
             shape=[self.num_pixels, None], name="input_data")
           self.y = tf.placeholder(tf.float32,
-            shape=[self.num_classes, None], name="input_label")
-          self.sup_mult = tf.placeholder(
-            tf.float32, shape=(), name="sup_mult")
+            shape=[self.num_classes, None], name="input_labels")
 
         with tf.name_scope("constants") as scope:
           self.label_mult = tf.reduce_sum(self.y, reduction_indices=[0])
@@ -114,9 +113,9 @@ class MLP(Model):
                 * -tf.reduce_sum(tf.mul(self.y, tf.log(tf.clip_by_value(
                 self.y_, self.eps, 1.0))), reduction_indices=[0]))
               label_count = tf.reduce_sum(self.label_mult)
-              self.mean_cross_entropy_loss = (self.sup_mult
-                * tf.reduce_sum(self.cross_entropy_loss) /
-                (label_count + self.eps))
+              self.mean_cross_entropy_loss = (
+                tf.reduce_sum(self.cross_entropy_loss)
+                / (label_count + self.eps))
             self.supervised_loss = self.mean_cross_entropy_loss
           self.total_loss = self.supervised_loss
 
@@ -133,34 +132,37 @@ class MLP(Model):
   Log train progress information
   Inputs:
     input_data: load_MNIST data object containing the current image batch
-    input_label: load_MNIST data object containing the current label batch
+    input_labels: load_MNIST data object containing the current label batch
     batch_step: current batch number within the schedule
   """
-  def print_update(self, input_data, input_label=None, batch_step=0):
-    Model.print_update(self, input_data, input_label, batch_step)
-    current_step = self.global_step.eval()
-    feed_dict = self.get_feed_dict(input_data, input_label)
+  def print_update(self, input_data, input_labels=None, batch_step=0):
+    Model.print_update(self, input_data, input_labels, batch_step)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
+    current_step = np.array(self.global_step.eval()).tolist()
+    total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
     a_vals = tf.get_default_session().run(self.a, feed_dict)
-    logging.info("Global batch index is %g"%(current_step))
-    logging.info("Finished step %g out of %g for schedule %g"%(batch_step,
-      self.get_sched("num_batches"), self.sched_idx))
-    logging.info("\tloss:\t%g"%(
-      self.total_loss.eval(feed_dict)))
-    logging.info("\tmax val of a:\t\t%g"%(a_vals.max()))
-    logging.info("\tpercent active:\t\t%0.2f%%"%(
-      100.0 * np.count_nonzero(a_vals)
-      / float(self.num_neurons * self.batch_size)))
-    logging.info("\ttrain accuracy:\t\t%g"%(self.accuracy.eval(feed_dict)))
-    logging.info("\tnum labeled data:\t%g"%(
-      self.num_labeled_ex.eval(feed_dict)))
+    a_vals_max = np.array(a_vals.max()).tolist()
+    a_frac_act = np.array(np.count_nonzero(a_vals)
+      / float(self.num_neurons * self.batch_size)).tolist()
+    accuracy = np.array(self.accuracy.eval(feed_dict)).tolist()
+    stat_dict = {"global_batch_index":current_step,
+      "batch_step":batch_step,
+      "number_of_batch_steps":self.get_sched("num_batches"),
+      "schedule_index":self.sched_idx,
+      "total_loss":total_loss,
+      "a_max":a_vals_max,
+      "a_frac_active":a_frac_act,
+      "train_accuracy":accuracy}
+    js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+    self.log_info("<stats>"+js_str+"</stats>")
 
   """
   Plot weights, reconstruction, and gradients
-  Inputs: input_data and input_label used for the session
+  Inputs: input_data and input_labels used for the session
   """
-  def generate_plots(self, input_image, input_label=None):
-    Model.generate_plots(self, input_data, input_label)
-    feed_dict = self.get_feed_dict(input_image, input_label)
+  def generate_plots(self, input_data, input_labels=None):
+    Model.generate_plots(self, input_data, input_labels)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     pf.save_data_tiled(
       self.w.eval().reshape(self.num_classes,

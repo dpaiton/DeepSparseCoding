@@ -5,7 +5,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 from models.base_model import Model 
 
-class karklin_lewicki(Model):
+class deep_sparse_coding(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
     self.build_graph()
@@ -18,7 +18,6 @@ class karklin_lewicki(Model):
   Modifiable Parameters:
     rectify_u      [bool] If set, rectify layer 1 activity
     rectify_v      [bool] If set, rectify layer 2 activity
-    norm_a         [bool] If set, l2 normalize layer 1 activity
     norm_weights   [bool] If set, l2 normalize weights after updates
     batch_size     [int] Number of images in a training batch
     num_pixels     [int] Number of pixels
@@ -31,7 +30,6 @@ class karklin_lewicki(Model):
     # Meta parameters
     self.rectify_u = bool(params["rectify_u"])
     self.rectify_v = bool(params["rectify_v"])
-    self.norm_a = bool(params["norm_a"])
     self.norm_weights = bool(params["norm_weights"])
     # Network Size
     self.batch_size = int(params["batch_size"])
@@ -162,8 +160,10 @@ class karklin_lewicki(Model):
             self.sparse_loss) = self.compute_loss(self.x)
 
         with tf.name_scope("inference") as scope:
-          self.clear_u = tf.group(self.u.assign(self.u_zeros))
-          self.clear_v = tf.group(self.v.assign(self.v_zeros))
+          self.clear_u = self.u.assign(self.u_zeros)
+          self.clear_v = self.v.assign(self.v_zeros)
+          self.clear_activity = tf.group(self.clear_u, self.clear_v,
+            name="do_clear_activity")
           current_loss = []
           self.u_t = [self.u_zeros] # init to zeros
           self.v_t = [self.v_zeros] # init to zeros
@@ -191,17 +191,17 @@ class karklin_lewicki(Model):
   Log train progress information
   Inputs:
     input_data: data object containing the current image batch
-    input_label: data object containing the current label batch
+    input_labels: data object containing the current label batch
     batch_step: current batch number within the schedule
   NOTE: Casting tf.eval output to an np.array and then to a list is required to
     ensure that the data type is valid for js.dumps(). An alternative would be
     to write an np function that converts numpy types to their corresponding
     python types.
   """
-  def print_update(self, input_data, input_label=None, batch_step=0):
+  def print_update(self, input_data, input_labels=None, batch_step=0):
     # TODO: When is it required to get defult session?
-    Model.print_update(self, input_data, input_label, batch_step)
-    feed_dict = self.get_feed_dict(input_data, input_label)
+    Model.print_update(self, input_data, input_labels, batch_step)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
     feedback_loss = np.array(self.feedback_loss.eval(feed_dict)).tolist()
@@ -211,8 +211,10 @@ class karklin_lewicki(Model):
     u_vals_max = np.array(u_vals.max()).tolist()
     v_vals = tf.get_default_session().run(self.v, feed_dict)
     v_vals_max = np.array(v_vals.max()).tolist()
-    u_frac_act = np.array(np.count_nonzero(u_vals) / float(self.num_u * self.batch_size)).tolist()
-    v_frac_act = np.array(np.count_nonzero(v_vals) / float(self.num_v * self.batch_size)).tolist()
+    u_frac_act = np.array(np.count_nonzero(u_vals)
+      / float(self.num_u * self.batch_size)).tolist()
+    v_frac_act = np.array(np.count_nonzero(v_vals)
+      / float(self.num_v * self.batch_size)).tolist()
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "number_of_batch_steps":self.get_sched("num_batches"),
@@ -231,17 +233,17 @@ class karklin_lewicki(Model):
       stat_dict[name+"_max_grad"] = np.array(grad.max()).tolist()
       stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
-    logging.info("<stats>"+js_str+"</stats>")
+    self.log_info("<stats>"+js_str+"</stats>")
 
   """
   Plot weights, reconstruction, and gradients
   Inputs:
     input_data: data object containing the current image batch
-    input_label: data object containing the current label batch
+    input_labels: data object containing the current label batch
   """
-  def generate_plots(self, input_data, input_label=None):
-    Model.generate_plots(self, input_data, input_label)
-    feed_dict = self.get_feed_dict(input_data, input_label)
+  def generate_plots(self, input_data, input_labels=None):
+    Model.generate_plots(self, input_data, input_labels)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     pf.save_data_tiled(
       tf.transpose(self.b).eval().T.reshape(self.num_v,

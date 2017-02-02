@@ -1,6 +1,6 @@
 import os
 params = {
-  "model_type": "karklin_lewicki",
+  "model_type": "deep_sparse_coding",
   "model_name": "test",
   "out_dir": os.path.expanduser("~")+"/Work/Projects/",
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/MNIST/",
@@ -9,7 +9,6 @@ params = {
   "rectify_u": True,
   "rectify_v": True,
   "norm_images": False,
-  "norm_a": False,
   "norm_weights": False,
   "batch_size": 500,
   "num_pixels": 784,

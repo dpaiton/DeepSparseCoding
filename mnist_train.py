@@ -14,8 +14,9 @@ import models.model_picker as mp
 from data.MNIST import load_MNIST
 
 ## Import parameters & schedules
-#from mlp_params import params, schedule
-from karklin_params import params, schedule
+from mlp_params import params, schedule
+#from dsc_params import params, schedule
+#from lca_params import params, schedule
 
 ## Get data
 np_rand_state = np.random.RandomState(params["rand_seed"])
@@ -39,15 +40,17 @@ with tf.Session(graph=model.graph) as sess:
     for b_step in range(model.get_sched("num_batches")):
       mnist_batch = data["train"].next_batch(model.batch_size)
       input_images = mnist_batch[0].T
+      input_labels = None#mnist_batch[1].T
 
-      feed_dict = model.get_feed_dict(input_images)
+      feed_dict = model.get_feed_dict(input_images, input_labels)
 
       ## Normalize weights
       if params["norm_weights"]:
         sess.run(model.normalize_weights)
 
       ## Clear activity from previous batch
-      sess.run([model.clear_u, model.clear_v], feed_dict)
+      if hasattr(model, "clear_activity"):
+        sess.run([model.clear_activity], feed_dict)
 
       ## Run inference
       if hasattr(model, "do_inference"):
@@ -61,13 +64,13 @@ with tf.Session(graph=model.graph) as sess:
       current_step = sess.run(model.global_step)
       if (current_step % model.log_int == 0
         and model.log_int > 0):
-        model.print_update(input_data=input_images, input_label=None,
+        model.print_update(input_data=input_images, input_labels=input_labels,
           batch_step=b_step+1)
 
       ## Plot weights & gradients
       if (current_step % model.gen_plot_int == 0
         and model.gen_plot_int > 0):
-        model.generate_plots(input_data=input_images)
+        model.generate_plots(input_data=input_images, input_labels=input_labels)
 
       ## Checkpoint
       if (current_step % model.cp_int == 0
