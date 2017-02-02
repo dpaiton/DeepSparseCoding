@@ -14,9 +14,9 @@ import models.model_picker as mp
 from data.MNIST import load_MNIST
 
 ## Import parameters & schedules
-from mlp_params import params, schedule
-#from dsc_params import params, schedule
-#from lca_params import params, schedule
+from params.mlp_params import params, schedule
+#from params.dsc_params import params, schedule
+#from params.lca_params import params, schedule
 
 ## Get data
 np_rand_state = np.random.RandomState(params["rand_seed"])
