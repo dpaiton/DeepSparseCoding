@@ -1,5 +1,4 @@
 import os
-
 params = {
   "model_type": "MLP",
   "model_name": "test",
@@ -14,11 +13,10 @@ params = {
   "batch_size": 100,
   "num_pixels": 784,
   "num_classes": 10,
-  "num_neurons": 400,
+  "num_hidden": 400,
   "num_val": 10000,
   "num_labeled": 50000,
-  "num_steps": 20,
-  "cp_int": 1000,
+  "cp_int": 2000,
   "max_cp_to_keep": 5,
   "val_on_cp": True,
   "cp_load": False,
@@ -37,9 +35,8 @@ params = {
 
 schedule = [
   {"weights": ["phi", "w", "bias1", "bias2"],
-  "recon_mult": 1.0,
-  "weight_lr": [0.1]*4,
-  "decay_steps": [500]*4,
+  "weight_lr": [0.01, 0.001, 0.01, 0.001],
+  "decay_steps": [2000]*4,
   "decay_rate": [0.8]*4,
   "staircase": [True]*4,
-  "num_batches": 1000}]
+  "num_batches": 4000}]

@@ -55,7 +55,6 @@ class Model(object):
     save_plots     [bool] If set, save plots to file
     cp_int         [int] How often to checkpoint
     max_cp_to_keep [int] How many checkpoints to keep. See max_to_keep tf arg
-    val_on_cp      [bool] If set, compute validation performance on checkpoint
     cp_load        [bool] if set, load from checkpoint
     cp_load_name   [str] Checkpoint model name to load
     cp_load_val    [int] Checkpoint time step to load
@@ -84,10 +83,6 @@ class Model(object):
     self.disp_plots = bool(params["display_plots"])
     self.save_plots = bool(params["save_plots"])
     # Checkpointing
-    if "val_on_cp" in params.keys():
-      self.val_on_cp = bool(params["val_on_cp"])
-    else:
-      self.val_on_cp = False
     self.cp_int = int(params["cp_int"])
     self.max_cp_to_keep = int(params["max_cp_to_keep"])
     self.cp_load = bool(params["cp_load"])
@@ -335,11 +330,15 @@ class Model(object):
   """
   Return dictionary containing all placeholders
   Inputs:
-    input_data: data to be placed in self.s
+    input_data: data to be placed in self.x
     input_labels: label to be placed in self.y
   """
   def get_feed_dict(self, input_data, input_labels=None):
-    skip_num = 2 if input_labels is not None else 1
+    if hasattr(self, "y") and input_labels is not None:
+      skip_num = 2
+    else:
+      skip_num = 1
+      input_labels = None
     placeholders = [op.name
       for op
       in self.graph.get_operations()

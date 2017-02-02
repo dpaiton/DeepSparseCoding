@@ -82,7 +82,7 @@ class LCA(Model):
           self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
           self.normalize_weights = tf.group(self.norm_phi,
-            name="do_normalization")
+            name="l2_normalization")
 
         with tf.name_scope("inference") as scope:
           self.u = tf.Variable(self.u_zeros, trainable=False,
@@ -130,10 +130,10 @@ class LCA(Model):
           self.lca_explain_away = tf.matmul(self.lca_g, self.a,
             name="explaining_away")
           self.du = self.lca_b - self.lca_explain_away - self.u
-          self.do_inference = tf.group(self.u.assign_add(self.eta * self.du),
-            name="do_update_u")
+          self.step_inference = tf.group(self.u.assign_add(self.eta * self.du),
+            name="step_inference")
           self.clear_activity = tf.group(self.u.assign(self.u_zeros),
-            name="do_clear_activity")
+            name="clear_activity")
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -197,7 +197,7 @@ class LCA(Model):
       tf.transpose(self.phi).eval().reshape(self.num_neurons,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
       normalize=True, title="Dictionary at step "+current_step,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"-"
+      save_filename=(self.disp_dir+"phi_v"+self.version+"_"
       +current_step.zfill(5)+".pdf"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
@@ -205,6 +205,6 @@ class LCA(Model):
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
       pf.save_data_tiled(grad.T.reshape(self.num_neurons,
         int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-        normalize=True, title="Gradient for a at step "+current_step,
-        save_filename=(self.disp_dir+"phi_v"+self.version+"_"
+        normalize=True, title="Gradient for phi at step "+current_step,
+        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"
         +current_step.zfill(5)+".pdf"))

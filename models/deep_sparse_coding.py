@@ -134,7 +134,7 @@ class deep_sparse_coding(Model):
           self.norm_b = self.b.assign(tf.nn.l2_normalize(self.b,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
           self.normalize_weights = tf.group(self.norm_a, self.norm_b,
-            name="do_normalization")
+            name="l2_normalization")
 
         with tf.variable_scope("layers") as scope:
           self.u = tf.get_variable(name="u", dtype=tf.float32,
@@ -163,7 +163,7 @@ class deep_sparse_coding(Model):
           self.clear_u = self.u.assign(self.u_zeros)
           self.clear_v = self.v.assign(self.v_zeros)
           self.clear_activity = tf.group(self.clear_u, self.clear_v,
-            name="do_clear_activity")
+            name="clear_activity")
           current_loss = []
           self.u_t = [self.u_zeros] # init to zeros
           self.v_t = [self.v_zeros] # init to zeros
@@ -182,8 +182,8 @@ class deep_sparse_coding(Model):
             else:
               new_v = self.v_t[step] + self.v_step_size * dv
             self.v_t.append(new_v)
-          self.do_inference = tf.group(self.u.assign(self.u_t[-1]),
-            self.v.assign(self.v_t[-1]), name="do_inference")
+          self.full_inference = tf.group(self.u.assign(self.u_t[-1]),
+            self.v.assign(self.v_t[-1]), name="full_inference")
 
     self.graph_built = True
 
