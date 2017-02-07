@@ -5,7 +5,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 from models.base_model import Model 
 
-class karklin_lewicki(Model):
+class deep_sparse_coding(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
     self.build_graph()
@@ -18,7 +18,6 @@ class karklin_lewicki(Model):
   Modifiable Parameters:
     rectify_u      [bool] If set, rectify layer 1 activity
     rectify_v      [bool] If set, rectify layer 2 activity
-    norm_a         [bool] If set, l2 normalize layer 1 activity
     norm_weights   [bool] If set, l2 normalize weights after updates
     batch_size     [int] Number of images in a training batch
     num_pixels     [int] Number of pixels
@@ -31,7 +30,6 @@ class karklin_lewicki(Model):
     # Meta parameters
     self.rectify_u = bool(params["rectify_u"])
     self.rectify_v = bool(params["rectify_v"])
-    self.norm_a = bool(params["norm_a"])
     self.norm_weights = bool(params["norm_weights"])
     # Network Size
     self.batch_size = int(params["batch_size"])
@@ -43,6 +41,7 @@ class karklin_lewicki(Model):
     # Hyper Parameters
     self.num_steps = int(params["num_steps"])
 
+  """Check parameters with assertions"""
   def check_params(self):
     Model.check_params(self)
     assert np.sqrt(self.num_u) == np.floor(np.sqrt(self.num_u)), (
@@ -51,7 +50,7 @@ class karklin_lewicki(Model):
   """
   Returns total loss function for given input
   Outputs:
-    total_loss [float32] loss from Karklin & Lewicki
+    total_loss [float32] loss adapted from Karklin & Lewicki
   Inputs:
     input_data []
     u_state []
@@ -71,13 +70,13 @@ class karklin_lewicki(Model):
         a = tf.get_variable(name="a")
       if b is None:
         b = tf.get_variable(name="b")
-    temp_sigma = tf.exp(-tf.matmul(b, v_state))
+    temp_sigma = tf.exp(tf.matmul(b, v_state))
     temp_x_ = tf.matmul(a, u_state)
     recon_loss = self.recon_mult * tf.reduce_mean(0.5 *
       tf.reduce_sum(tf.pow(tf.sub(input_data, temp_x_), 2.0),
       reduction_indices=[0]))
     feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
-      tf.abs(tf.div(u_state, temp_sigma)), tf.log(temp_sigma)),
+      tf.div(u_state, temp_sigma), tf.log(temp_sigma)),
       reduction_indices=[0]))
     sparse_loss = self.sparse_mult * tf.reduce_mean(
       tf.reduce_sum(tf.abs(v_state), reduction_indices=[0]))
@@ -133,10 +132,10 @@ class karklin_lewicki(Model):
           self.norm_a = self.a.assign(tf.nn.l2_normalize(self.a,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
           self.norm_b = self.b.assign(tf.nn.l2_normalize(self.b,
-            dim=1, epsilon=self.eps, name="col_l2_norm"))
+            dim=0, epsilon=self.eps, name="row_l2_norm"))
           self.normalize_weights = tf.group(self.norm_a, self.norm_b,
-            name="do_normalization")
-        
+            name="l2_normalization")
+
         with tf.variable_scope("layers") as scope:
           self.u = tf.get_variable(name="u", dtype=tf.float32,
             initializer=self.u_zeros, trainable=False, validate_shape=False)
@@ -161,8 +160,10 @@ class karklin_lewicki(Model):
             self.sparse_loss) = self.compute_loss(self.x)
 
         with tf.name_scope("inference") as scope:
-          self.clear_u = tf.group(self.u.assign(self.u_zeros))
-          self.clear_v = tf.group(self.v.assign(self.v_zeros))
+          self.clear_u = self.u.assign(self.u_zeros)
+          self.clear_v = self.v.assign(self.v_zeros)
+          self.clear_activity = tf.group(self.clear_u, self.clear_v,
+            name="clear_activity")
           current_loss = []
           self.u_t = [self.u_zeros] # init to zeros
           self.v_t = [self.v_zeros] # init to zeros
@@ -181,8 +182,8 @@ class karklin_lewicki(Model):
             else:
               new_v = self.v_t[step] + self.v_step_size * dv
             self.v_t.append(new_v)
-          self.do_inference = tf.group(self.u.assign(self.u_t[-1]),
-            self.v.assign(self.v_t[-1]), name="do_inference")
+          self.full_inference = tf.group(self.u.assign(self.u_t[-1]),
+            self.v.assign(self.v_t[-1]), name="full_inference")
 
     self.graph_built = True
 
@@ -190,17 +191,17 @@ class karklin_lewicki(Model):
   Log train progress information
   Inputs:
     input_data: data object containing the current image batch
-    input_label: data object containing the current label batch
+    input_labels: data object containing the current label batch
     batch_step: current batch number within the schedule
   NOTE: Casting tf.eval output to an np.array and then to a list is required to
     ensure that the data type is valid for js.dumps(). An alternative would be
     to write an np function that converts numpy types to their corresponding
     python types.
   """
-  def print_update(self, input_data, input_label=None, batch_step=0):
+  def print_update(self, input_data, input_labels=None, batch_step=0):
     # TODO: When is it required to get defult session?
-    Model.print_update(self, input_data, input_label, batch_step)
-    feed_dict = self.get_feed_dict(input_data, input_label)
+    Model.print_update(self, input_data, input_labels, batch_step)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
     feedback_loss = np.array(self.feedback_loss.eval(feed_dict)).tolist()
@@ -210,8 +211,10 @@ class karklin_lewicki(Model):
     u_vals_max = np.array(u_vals.max()).tolist()
     v_vals = tf.get_default_session().run(self.v, feed_dict)
     v_vals_max = np.array(v_vals.max()).tolist()
-    u_frac_act = np.array(np.count_nonzero(u_vals) / float(self.num_u * self.batch_size)).tolist()
-    v_frac_act = np.array(np.count_nonzero(v_vals) / float(self.num_v * self.batch_size)).tolist()
+    u_frac_act = np.array(np.count_nonzero(u_vals)
+      / float(self.num_u * self.batch_size)).tolist()
+    v_frac_act = np.array(np.count_nonzero(v_vals)
+      / float(self.num_v * self.batch_size)).tolist()
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "number_of_batch_steps":self.get_sched("num_batches"),
@@ -230,20 +233,20 @@ class karklin_lewicki(Model):
       stat_dict[name+"_max_grad"] = np.array(grad.max()).tolist()
       stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
-    logging.info("<stats>"+js_str+"</stats>")
+    self.log_info("<stats>"+js_str+"</stats>")
 
   """
   Plot weights, reconstruction, and gradients
   Inputs:
     input_data: data object containing the current image batch
-    input_label: data object containing the current label batch
+    input_labels: data object containing the current label batch
   """
-  def generate_plots(self, input_data, input_label=None):
-    Model.generate_plots(self, input_data, input_label)
-    feed_dict = self.get_feed_dict(input_data, input_label)
+  def generate_plots(self, input_data, input_labels=None):
+    Model.generate_plots(self, input_data, input_labels)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     pf.save_data_tiled(
-      tf.transpose(self.b).eval().reshape(self.num_v,
+      tf.transpose(self.b).eval().T.reshape(self.num_v,
       int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
       normalize=True, title="Density weights matrix at step number "
       +current_step, save_filename=(self.disp_dir+"b_v"+self.version+"-"
@@ -265,7 +268,7 @@ class karklin_lewicki(Model):
           save_filename=(self.disp_dir+"da_v"+self.version+"_"
           +current_step.zfill(5)+".pdf"))
       elif name == "b":
-        pf.save_data_tiled(grad.reshape(self.num_v,
+        pf.save_data_tiled(grad.T.reshape(self.num_v,
           int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
           normalize=True, title="Gradient for b at step "+current_step,
           save_filename=(self.disp_dir+"db_v"+self.version+"_"

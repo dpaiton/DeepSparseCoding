@@ -13,8 +13,9 @@ import utils.log_parser as log_parser
 analysis_params = {
   "version": "0.0",
   "model_name": "kl_run",
-  "out_dir": os.path.expanduser("~")+"/Work/Analysis/",
+  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/MNIST/",
+  "log_to_file": False,
   #"batch_index": 500,
   "eval_train": True,
   "eval_test": True,
@@ -36,6 +37,7 @@ log_text = log_parser.load_file(log_file)
 model_params = log_parser.read_params(log_text)
 model_params["out_dir"] = analysis_params["out_dir"]
 model_params["data_dir"] = analysis_params["data_dir"]
+model_params["log_to_file"] = analysis_params["log_to_file"]
 
 np_rand_state = np.random.RandomState(model_params["rand_seed"])
 
@@ -57,8 +59,6 @@ stats_fig = analyzer.plot_stats(model_stats)
 cp_loc = (model_dir+"/checkpoints/"+analysis_params["model_name"]+"_v"
   +analysis_params["version"]+"_full-"+str(analysis_params["batch_index"]))
 
-model_params["log_to_file"] = False
-model_params["out_dir"] = analysis_params["out_dir"]
 model = mp.get_model(model_params, model_schedule)
 model.log_info("Analysis params:\n%s\n"%(str(analysis_params)))
 

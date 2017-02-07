@@ -55,7 +55,6 @@ class Model(object):
     save_plots     [bool] If set, save plots to file
     cp_int         [int] How often to checkpoint
     max_cp_to_keep [int] How many checkpoints to keep. See max_to_keep tf arg
-    val_on_cp      [bool] If set, compute validation performance on checkpoint
     cp_load        [bool] if set, load from checkpoint
     cp_load_name   [str] Checkpoint model name to load
     cp_load_val    [int] Checkpoint time step to load
@@ -84,10 +83,6 @@ class Model(object):
     self.disp_plots = bool(params["display_plots"])
     self.save_plots = bool(params["save_plots"])
     # Checkpointing
-    if "val_on_cp" in params.keys():
-      self.val_on_cp = bool(params["val_on_cp"])
-    else:
-      self.val_on_cp = False
     self.cp_int = int(params["cp_int"])
     self.max_cp_to_keep = int(params["max_cp_to_keep"])
     self.cp_load = bool(params["cp_load"])
@@ -111,9 +106,7 @@ class Model(object):
     self.device = str(params["device"])
     self.rand_seed = int(params["rand_seed"])
 
-  """
-  Check parameters with assertions
-  """
+  """Check parameters with assertions"""
   def check_params(self):
     pass
 
@@ -218,14 +211,10 @@ class Model(object):
               weight_var = [tf.get_variable(weight)]
             sch_grads_and_vars.append(
               optimizer.compute_gradients(self.total_loss, var_list=weight_var))
-            if w_idx == 0: # Only want to update global step once
-              sch_apply_grads.append(
-                optimizer.apply_gradients(sch_grads_and_vars[w_idx],
-                global_step=self.global_step))
-            else:
-              sch_apply_grads.append(
-                optimizer.apply_gradients(sch_grads_and_vars[w_idx],
-                global_step=None))
+            gstep = self.global_step if w_idx == 0 else None # Only update once
+            sch_apply_grads.append(
+              optimizer.apply_gradients(sch_grads_and_vars[w_idx],
+              global_step=gstep))
           self.grads_and_vars.append(sch_grads_and_vars)
           self.apply_grads.append(sch_apply_grads)
     self.optimizers_added = True
@@ -312,7 +301,7 @@ class Model(object):
   def get_sched(self, key=None):
     if key:
       assert key in self.sched[self.sched_idx].keys(), (
-        key+" must be in the schedule.")
+        key+" was not found in the schedule.")
       return self.sched[self.sched_idx][key]
     return self.sched[self.sched_idx]
 
@@ -341,17 +330,21 @@ class Model(object):
   """
   Return dictionary containing all placeholders
   Inputs:
-    input_data: data to be placed in self.s
-    input_label: label to be placed in self.y
+    input_data: data to be placed in self.x
+    input_labels: label to be placed in self.y
   """
-  def get_feed_dict(self, input_data, input_label=None):
-    skip_num = 2 if input_label is not None else 1
+  def get_feed_dict(self, input_data, input_labels=None):
+    if hasattr(self, "y") and input_labels is not None:
+      skip_num = 2
+    else:
+      skip_num = 1
+      input_labels = None
     placeholders = [op.name
       for op
       in self.graph.get_operations()
       if "placeholders" in op.name][skip_num:]
-    if input_label is not None and hasattr(self, "y"):
-      feed_dict = {self.x:input_data, self.y:input_label}
+    if input_labels is not None and hasattr(self, "y"):
+      feed_dict = {self.x:input_data, self.y:input_labels}
     else:
       feed_dict = {self.x:input_data}
     for placeholder in placeholders:
@@ -363,21 +356,21 @@ class Model(object):
   Log train progress information
   Inputs:
     input_data: data object containing the current image batch
-    input_label: data object containing the current label batch
+    input_labels: data object containing the current label batch
     batch_step: current batch number within the schedule
   NOTE: For the analysis code to parse update statistics, the js.dumps() call
     must receive a dict object. Additionally, the js.dumps() output must be
     logged with <stats> </stats> tags.
     For example: logging.info("<stats>"+js.dumps(output_dictionary)+"</stats>")
   """
-  def print_update(self, input_data, input_label=None, batch_step=0):
+  def print_update(self, input_data, input_labels=None, batch_step=0):
     pass
 
   """
   Plot weights, reconstruction, gradients, etc
   Inputs:
     input_data: data object containing the current image batch
-    input_label: data object containing the current label batch
+    input_labels: data object containing the current label batch
   """
-  def generate_plots(self, input_data, input_label=None):
+  def generate_plots(self, input_data, input_labels=None):
     pass

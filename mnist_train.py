@@ -2,7 +2,6 @@ import matplotlib
 matplotlib.use("Agg")
 
 ## TODO:
-##  why is db always the same shape?
 ##  Estimate kurtosis (q in K&L paper) from layer 1 activity using EM
 ##  specify parameter that allows you to load in "phi" and set it for "a"
 ##   Will probably require you to load in the original model, eval "phi",
@@ -10,12 +9,14 @@ matplotlib.use("Agg")
 
 import numpy as np
 import tensorflow as tf
+import json as js
 import models.model_picker as mp
 from data.MNIST import load_MNIST
 
 ## Import parameters & schedules
-#from mlp_params import params, schedule
-from karklin_params import params, schedule
+from params.mlp_params import params, schedule
+#from params.dsc_params import params, schedule
+#from params.lca_params import params, schedule
 
 ## Get data
 np_rand_state = np.random.RandomState(params["rand_seed"])
@@ -39,19 +40,24 @@ with tf.Session(graph=model.graph) as sess:
     for b_step in range(model.get_sched("num_batches")):
       mnist_batch = data["train"].next_batch(model.batch_size)
       input_images = mnist_batch[0].T
+      input_labels = mnist_batch[1].T
 
-      feed_dict = model.get_feed_dict(input_images)
+      feed_dict = model.get_feed_dict(input_images, input_labels)
 
       ## Normalize weights
       if params["norm_weights"]:
         sess.run(model.normalize_weights)
 
       ## Clear activity from previous batch
-      sess.run([model.clear_u, model.clear_v], feed_dict)
+      if hasattr(model, "clear_activity"):
+        sess.run([model.clear_activity], feed_dict)
 
       ## Run inference
-      if hasattr(model, "do_inference"):
-        sess.run([model.do_inference], feed_dict)
+      if hasattr(model, "full_inference"): # all steps in a single op
+        sess.run([model.full_inference], feed_dict)
+      if hasattr(model, "step_inference"): # op only does one step
+        for step in range(model.num_steps):
+          sess.run([model.step_inference], feed_dict)
 
       ## Update weights
       for w_idx in range(len(model.get_sched("weights"))):
@@ -61,24 +67,37 @@ with tf.Session(graph=model.graph) as sess:
       current_step = sess.run(model.global_step)
       if (current_step % model.log_int == 0
         and model.log_int > 0):
-        model.print_update(input_data=input_images, input_label=None,
+        model.print_update(input_data=input_images, input_labels=input_labels,
           batch_step=b_step+1)
 
       ## Plot weights & gradients
       if (current_step % model.gen_plot_int == 0
         and model.gen_plot_int > 0):
-        model.generate_plots(input_data=input_images)
+        model.generate_plots(input_data=input_images, input_labels=input_labels)
 
       ## Checkpoint
       if (current_step % model.cp_int == 0
         and model.cp_int > 0):
         save_dir = model.write_checkpoint(sess)
+        if params["val_on_cp"]: #Compute validation accuracy
+          val_images = data["val"].images.T
+          val_labels = data["val"].labels.T
+          with tf.Session(graph=model.graph) as tmp_sess:
+            val_feed_dict = model.get_feed_dict(val_images, val_labels)
+            tmp_sess.run(model.init_op, val_feed_dict)
+            model.weight_saver.restore(tmp_sess,
+              save_dir+"_weights-"+str(current_step))
+            if hasattr(model, "full_inference"):
+              sess.run([model.full_inference], val_feed_dict)
+            if hasattr(model, "step_inference"):
+              for step in range(model.num_steps):
+                sess.run([model.step_inference], val_feed_dict)
+            val_accuracy = (
+              np.array(tmp_sess.run(model.accuracy, val_feed_dict)).tolist())
+            stat_dict = {"validation_accuracy":val_accuracy}
+            js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+            model.log_info("<stats>"+js_str+"</stats>")
 
-      ## Adjust the feedback influence
-      ## TODO: Don't hardcode, test out when you get stuff working
-      #if (current_step % 10 == 0):
-      #  old_size = model.get_sched("v_step_size")
-      #  model.set_sched("v_step_size", old_size * 10)
-
-
+  save_dir = model.write_checkpoint(sess)
+  print("Training Complete\n")
   import IPython; IPython.embed()
