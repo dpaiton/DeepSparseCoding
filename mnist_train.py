@@ -14,9 +14,10 @@ import models.model_picker as mp
 from data.MNIST import load_MNIST
 
 ## Import parameters & schedules
-from params.mlp_params import params, schedule
-#from params.dsc_params import params, schedule
+#from params.mlp_params import params, schedule
 #from params.lca_params import params, schedule
+from params.ica_params import params, schedule
+#from params.dsc_params import params, schedule
 
 ## Get data
 np_rand_state = np.random.RandomState(params["rand_seed"])
@@ -30,7 +31,7 @@ model.write_saver_defs()
 with tf.Session(graph=model.graph) as sess:
   sess.run(model.init_op,
     feed_dict={model.x:np.zeros((model.num_pixels, model.batch_size),
-    dtype=np.float32)})
+    dtype=np.float32)}) # Need to provide shape if batch_size is used in graph
 
   model.write_graph(sess.graph_def)
 

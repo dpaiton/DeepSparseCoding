@@ -177,6 +177,10 @@ class Model(object):
   def log_info(self, string):
     logging.info(str(string))
 
+  """Returns the gradients for a weight variable using a given optimizer"""
+  def compute_gradients(self, optimizer, weight_op=None):
+    return optimizer.compute_gradients(self.total_loss, var_list=weight_op)
+
   """
   Add optimizers to graph
   Creates member variables grads_and_vars and apply_grads for each weight
@@ -208,9 +212,9 @@ class Model(object):
                 beta1=0.9, beta2=0.99, epsilon=1e-07,
                 name="adam_optimizer_"+weight)
             with tf.variable_scope("weights", reuse=True) as scope:
-              weight_var = [tf.get_variable(weight)]
-            sch_grads_and_vars.append(
-              optimizer.compute_gradients(self.total_loss, var_list=weight_var))
+              weight_op = [tf.get_variable(weight)]
+            sch_grads_and_vars.append(self.compute_gradients(optimizer,
+              weight_op))
             gstep = self.global_step if w_idx == 0 else None # Only update once
             sch_apply_grads.append(
               optimizer.apply_gradients(sch_grads_and_vars[w_idx],
