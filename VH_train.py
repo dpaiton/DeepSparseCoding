@@ -11,17 +11,19 @@ import numpy as np
 import tensorflow as tf
 import json as js
 import models.model_picker as mp
-from data.MNIST import load_MNIST
+from data.vanHateren import load_vanHateren
 
 ## Import parameters & schedules
 #from params.mlp_params import params, schedule
-from params.lca_params import params, schedule
-#from params.ica_params import params, schedule
+#from params.lca_params import params, schedule
+from params.ica_params import params, schedule
 #from params.dsc_params import params, schedule
+
 
 ## Get data
 np_rand_state = np.random.RandomState(params["rand_seed"])
-data = load_MNIST(params["data_dir"], normalize_imgs=params["norm_images"],
+data = load_vanHateren(params["data_dir"], normalize_imgs=params["norm_images"], 
+  whiten_imgs=params["whiten_imgs"], patch_edge_size=params["patch_edge_size"],
   rand_state=np_rand_state)
 
 model = mp.get_model(params, schedule)
@@ -30,7 +32,7 @@ model.write_saver_defs()
 
 with tf.Session(graph=model.graph) as sess:
   sess.run(model.init_op,
-    feed_dict={model.x:np.zeros((model.num_pixels, model.batch_size),
+    feed_dict={model.x:np.zeros((model.patch_pixels, model.batch_size),
     dtype=np.float32)}) # Need to provide shape if batch_size is used in graph
 
   model.write_graph(sess.graph_def)
@@ -39,11 +41,10 @@ with tf.Session(graph=model.graph) as sess:
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
     for b_step in range(model.get_sched("num_batches")):
-      mnist_batch = data["train"].next_batch(model.batch_size)
-      input_images = mnist_batch[0].T
-      input_labels = mnist_batch[1].T
+      vh_batch = data["train"].next_batch(model.batch_size)
+      input_images = vh_batch[0].T
 
-      feed_dict = model.get_feed_dict(input_images, input_labels)
+      feed_dict = model.get_feed_dict(input_images)
 
       ## Normalize weights
       if params["norm_weights"]:
@@ -68,36 +69,19 @@ with tf.Session(graph=model.graph) as sess:
       current_step = sess.run(model.global_step)
       if (current_step % model.log_int == 0
         and model.log_int > 0):
-        model.print_update(input_data=input_images, input_labels=input_labels,
+        model.print_update(input_data=input_images,
           batch_step=b_step+1)
 
       ## Plot weights & gradients
       if (current_step % model.gen_plot_int == 0
         and model.gen_plot_int > 0):
-        model.generate_plots(input_data=input_images, input_labels=input_labels)
+        model.generate_plots(input_data=input_images)
 
       ## Checkpoint
       if (current_step % model.cp_int == 0
         and model.cp_int > 0):
         save_dir = model.write_checkpoint(sess)
-        if params["val_on_cp"]: #Compute validation accuracy
-          val_images = data["val"].images.T
-          val_labels = data["val"].labels.T
-          with tf.Session(graph=model.graph) as tmp_sess:
-            val_feed_dict = model.get_feed_dict(val_images, val_labels)
-            tmp_sess.run(model.init_op, val_feed_dict)
-            model.weight_saver.restore(tmp_sess,
-              save_dir+"_weights-"+str(current_step))
-            if hasattr(model, "full_inference"):
-              sess.run([model.full_inference], val_feed_dict)
-            if hasattr(model, "step_inference"):
-              for step in range(model.num_steps):
-                sess.run([model.step_inference], val_feed_dict)
-            val_accuracy = (
-              np.array(tmp_sess.run(model.accuracy, val_feed_dict)).tolist())
-            stat_dict = {"validation_accuracy":val_accuracy}
-            js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
-            model.log_info("<stats>"+js_str+"</stats>")
+
 
   save_dir = model.write_checkpoint(sess)
   print("Training Complete\n")
