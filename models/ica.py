@@ -77,8 +77,8 @@ class ICA(Model):
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
     z_avg = tf.div(tf.matmul(self.z, tf.transpose(self.u)),
       tf.to_float(tf.shape(self.x)[1]), name="avg_samples")
-    gradient = tf.sub(tf.matmul(weight_op[0], z_avg), weight_op[0]),
-      name=weight_op[0].name+"_gradient")
+    gradient = tf.sub(tf.matmul(weight_op[0], z_avg), weight_op[0],
+       name="gradient")
     return [(gradient, weight_op[0])]
 
   """
