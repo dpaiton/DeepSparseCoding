@@ -91,12 +91,23 @@ class MNIST(object):
         labels = np.frombuffer(buf, dtype=np.uint8)
         return labels.astype(np.int32)
 
-def load_MNIST(
-  data_dir,
-  num_val=10000,
-  num_labeled=50000,
-  normalize_imgs=False,
-  rand_state=np.random.RandomState()):
+"""
+Load MNIST data and format as a Dataset object
+inputs: kwargs [dict] containing keywords:
+  data_dir [str] directory to MNIST data
+  num_val [int] (10000) number of validation images
+  num_labeled [int] (50000) number of labeled images
+  rand_state [obj] (np.random.RandomState()) numpy random state object
+"""
+def load_MNIST(kwargs):
+  assert ("data_dir" in kwargs.keys()), (
+    "function input must have 'data_dir' key")
+  data_dir = kwargs["data_dir"]
+  num_val = kwargs["num_val"] if "num_val" in kwargs.keys() else 10000
+  num_labeled = (kwargs["num_labeled"]
+    if "num_labeled" in kwargs.keys() else 50000)
+  rand_state = (kwargs["rand_state"]
+    if "rand_state" in kwargs.keys() else np.random.RandomState())
 
   ## Training set
   train_img_filename = data_dir+"/train-images-idx3-ubyte.gz"
@@ -113,7 +124,7 @@ def load_MNIST(
   if train_val.ignore_indices is not None:
     train_ignore_lbls[train_val.ignore_indices, ...] = 0
   train = Dataset(train_imgs, train_lbls, train_ignore_lbls,
-    normalize=normalize_imgs, rand_state=rand_state)
+    rand_state=rand_state)
 
   ## Validation set
   if num_val > 0:
@@ -121,7 +132,7 @@ def load_MNIST(
     val_lbls = train_val.labels[train_val.val_indices]
     val_ignore_lbls = val_lbls.copy()
     val = Dataset(val_imgs, val_lbls, val_ignore_lbls,
-      normalize=normalize_imgs, rand_state=rand_state)
+      rand_state=rand_state)
   else:
     val = None
 
@@ -138,6 +149,6 @@ def load_MNIST(
   test_lbls = test.labels
   test_ignore_lbls = test_lbls.copy()
   test = Dataset(test_imgs, test_lbls, test_ignore_lbls,
-    normalize=normalize_imgs, rand_state=rand_state)
+    rand_state=rand_state)
 
   return {"train":train, "val":val, "test":test}

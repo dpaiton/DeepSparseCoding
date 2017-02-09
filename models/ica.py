@@ -34,6 +34,12 @@ class ICA(Model):
     self.num_neurons = self.num_pixels
     self.a_shape = [self.num_pixels, self.num_neurons]
 
+  """Check parameters with assertions"""
+  def check_params(self):
+    Model.check_params(self)
+    assert np.sqrt(self.num_pixels) == np.floor(np.sqrt(self.num_pixels)), (
+      "The parameter `num_pixels` must have an even square-root.")
+
   """Build the TensorFlow graph object"""
   def build_graph(self):
     self.graph = tf.Graph()
@@ -77,8 +83,9 @@ class ICA(Model):
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
     z_avg = tf.div(tf.matmul(self.z, tf.transpose(self.u)),
       tf.to_float(tf.shape(self.x)[1]), name="avg_samples")
-    gradient = tf.sub(tf.matmul(weight_op[0], z_avg), weight_op[0]),
-      name=weight_op[0].name+"_gradient")
+    weight_name = weight_op[0].name.split('/')[1].split(':')[0]
+    gradient = tf.sub(tf.matmul(weight_op[0], z_avg), weight_op[0],
+      name=weight_name+"_gradient")
     return [(gradient, weight_op[0])]
 
   """
@@ -122,6 +129,13 @@ class ICA(Model):
     Model.generate_plots(self, input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
+    pf.save_data_tiled(input_data.T.reshape((self.batch_size,
+      np.int(np.sqrt(self.num_pixels)),
+      np.int(np.sqrt(self.num_pixels)))),
+      normalize=False, title="Images at step "+current_step,
+      save_filename=(self.disp_dir+"images_"
+      +current_step.zfill(5)+".pdf"),
+      vmin=np.min(input_data), vmax=np.max(input_data))
     pf.save_data_tiled(
       tf.transpose(self.a).eval().reshape(self.num_neurons,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),

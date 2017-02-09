@@ -11,9 +11,10 @@ Args:
   data: np.ndarray
 """
 def normalize_data(data):
-  norm_data = data.squeeze()
   if np.max(np.abs(data)) > 0:
     norm_data = (data / np.max(np.abs(data))).squeeze()
+  else:
+    norm_data = data.squeeze()
   return norm_data
 
 """
@@ -57,7 +58,7 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
   if len(data.shape) >= 3:
     data = pad_data(data)
   fig, sub_axis = plt.subplots(1)
-  axis_image = sub_axis.imshow(data, cmap="Greys", interpolation="nearest")
+  axis_image = sub_axis.imshow(data, cmap="Greys_r", interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)
   cbar = fig.colorbar(axis_image)
   sub_axis.tick_params(

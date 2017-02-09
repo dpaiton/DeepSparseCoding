@@ -149,7 +149,7 @@ class deep_sparse_coding(Model):
               name="mean_squared_error")
             self.pSNRdB = tf.mul(10.0, tf.log(tf.div(tf.pow(1.0, 2.0), MSE)),
               name="recon_quality")
-          with tf.name_scope("l1_prior"):
+          with tf.name_scope("layer1_prior"):
             self.sigma = tf.exp(-tf.matmul(self.b, self.v, name="sigma"))
 
         with tf.name_scope("loss") as scope:

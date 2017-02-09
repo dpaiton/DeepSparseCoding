@@ -1,17 +1,14 @@
 import numpy as np
 
 class Dataset(object):
-  def __init__(self, imgs, lbls, ignore_lbls, normalize=False,
+  def __init__(self, imgs, lbls, ignore_lbls,
     rand_state=np.random.RandomState()):
     self.num_examples = imgs.shape[0]
-    num_rows = imgs.shape[1]
-    num_cols = imgs.shape[2]
-    if normalize:
-      self.images = self.normalize_image(imgs.reshape(self.num_examples,
-        num_rows*num_cols))
-    else:
-      self.images = imgs.reshape(self.num_examples, num_rows*num_cols)
-      self.images /= 255.0
+    self.num_px_rows = imgs.shape[1]
+    self.num_px_cols = imgs.shape[2]
+    self.images = imgs.reshape(self.num_examples,
+      self.num_px_rows*self.num_px_cols)
+    self.images /= np.max(self.images)
     self.labels = lbls
     self.ignore_labels = ignore_lbls
     self.epochs_completed = 0
@@ -23,7 +20,7 @@ class Dataset(object):
   """
   Advance epoch counter & generate new index order
   Inputs:
-    num_to_advance : [int] number of epochs to advance
+    num_to_advance [int] number of epochs to advance
   """
   def new_epoch(self, num_to_advance=1):
     self.epochs_completed += int(num_to_advance)
@@ -35,18 +32,14 @@ class Dataset(object):
   Outputs:
     3d tuple containing images, labels and ignore labels
   Inputs:
-    batch_size : [int] representing the number of images in the batch
-  Function assumes that batch_size is a scalar increment of num_examples.
+    batch_size [int] representing the number of images in the batch
+      NOTE: If batch_size does not divide evenly into self.num_examples then
+      some of the images will not be delivered. The function assumes that
+      batch_size is a scalar increment of num_examples.
   """
   def next_batch(self, batch_size):
-    if batch_size > self.num_examples:
-      batch_size = self.num_examaples
-      print("WARNING: batch_size was greater than the number of available"+
-        "examples. batch_size has been set to equal the number of available"+
-        "examples.")
-    if self.num_examples % batch_size != 0:
-      print("WARNING: batch_size should divide evenly into"
-       +" num_examples. Some images may not be included in the dataset.")
+    assert batch_size <= self.num_examples, (
+        "Input batch_size was greater than the number of available examples.")
     if self.curr_epoch_idx + batch_size > self.num_examples:
       start = 0
       self.new_epoch(1)
@@ -62,7 +55,8 @@ class Dataset(object):
           self.labels[set_indices, ...],
           self.ignore_labels[set_indices, ...])
       return (self.images[set_indices, ...],
-        self.labels[set_indices, ...], self.ignore_labels)
+        self.labels[set_indices, ...],
+        self.ignore_labels)
     return (self.images[set_indices, ...], self.labels, self.ignore_labels)
 
   """
@@ -77,17 +71,3 @@ class Dataset(object):
       self.new_epoch(int((num_batches * batch_size) / float(self.num_examples)))
     self.batches_completed += num_batches
     self.curr_epoch_idx = (num_batches * batch_size) % self.num_examples
-
-  """
-  Normalize input image to have mean 0 and std 1
-  The operation is done per image, not across the batch.
-  Outputs:
-    norm: normalized image
-  Inputs:
-    img: numpy ndarray of dim [num_batch, num_data]
-  """
-  def normalize_image(self, img):
-    norm_img = np.vstack([(img[idx,:]-np.mean(img[idx,:]))/np.std(img[idx,:])
-      for idx
-      in range(img.shape[0])])
-    return norm_img

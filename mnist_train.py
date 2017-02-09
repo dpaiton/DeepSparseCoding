@@ -19,14 +19,13 @@ from data.MNIST import load_MNIST
 from params.ica_params import params, schedule
 #from params.dsc_params import params, schedule
 
-## Get data
-np_rand_state = np.random.RandomState(params["rand_seed"])
-data = load_MNIST(params["data_dir"], normalize_imgs=params["norm_images"],
-  rand_state=np_rand_state)
-
+## Get model
 model = mp.get_model(params, schedule)
-
 model.write_saver_defs()
+
+## Get data
+params["rand_state"] = np.random.RandomState(model.rand_seed)
+data = load_MNIST(params)
 
 with tf.Session(graph=model.graph) as sess:
   sess.run(model.init_op,
@@ -41,7 +40,7 @@ with tf.Session(graph=model.graph) as sess:
     for b_step in range(model.get_sched("num_batches")):
       mnist_batch = data["train"].next_batch(model.batch_size)
       input_images = mnist_batch[0].T
-      input_labels = mnist_batch[1].T
+      input_labels = mnist_batch[1].T if mnist_batch[1] is not None else None
 
       feed_dict = model.get_feed_dict(input_images, input_labels)
 
