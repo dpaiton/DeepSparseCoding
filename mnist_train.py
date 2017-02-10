@@ -11,7 +11,7 @@ import numpy as np
 import tensorflow as tf
 import json as js
 import models.model_picker as mp
-from data.MNIST import load_MNIST
+from data.mnist import load_MNIST
 
 ## Import parameters & schedules
 #from params.mlp_params import params, schedule
