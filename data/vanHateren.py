@@ -44,6 +44,18 @@ class vanHateren(object):
       self.num_patches = 0
     return data
 
+
+"""
+Removes images whose pixel intensity variance falls below a certain threshold
+"""
+def prune(images):
+  threshold = 1e-4
+  img_unfold = np.reshape(images, (images.shape[0], images.shape[1]**2))
+  variance = np.var(img_unfold, axis = 1)
+  good_imgs = images[(variance > threshold)]
+  return good_imgs
+
+
 """
 Load van Hateren data and format as a Dataset object
 inputs: kwargs [dict] containing keywords:
@@ -63,6 +75,7 @@ def load_vanHateren(kwargs):
     if "patch_edge_size" in kwargs.keys() else None)
   rand_state = (kwargs["rand_state"]
     if "rand_state" in kwargs.keys() else np.random.RandomState())
+
 
   ## Training set
   img_filename = data_dir+os.sep+"images_curated.h5"
