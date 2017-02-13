@@ -49,7 +49,7 @@ class vanHateren(object):
 Removes images whose pixel intensity variance falls below a certain threshold
 """
 def prune(images):
-  threshold = 1e-4
+  threshold = 1.5e-4
   img_unfold = np.reshape(images, (images.shape[0], images.shape[1]**2))
   variance = np.var(img_unfold, axis = 1)
   good_imgs = images[(variance > threshold)]
