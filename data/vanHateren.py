@@ -42,11 +42,12 @@ class vanHateren(object):
     else:
       data = full_img_data
       self.num_patches = 0
+    data = prune(data)
     return data
 
 
 """
-Removes images whose pixel intensity variance falls below a certain threshold
+Remove images whose pixel intensity variance falls below a threshold
 """
 def prune(images):
   threshold = 1e-4
