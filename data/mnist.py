@@ -30,22 +30,22 @@ class MNIST(object):
     if num_val > 0:
       self.val_indices = rand_state.choice(np.arange(tot_imgs, dtype=np.int32),
         size=num_val, replace=False)
-      self.img_indices = np.setdiff1d(np.arange(tot_imgs, dtype=np.int32),
+      self.train_indices = np.setdiff1d(np.arange(tot_imgs, dtype=np.int32),
         self.val_indices).astype(np.int32)
     else:
       self.val_indices = None
-      self.img_indices = np.arange(tot_imgs, dtype=np.int32)
+      self.train_indices = np.arange(tot_imgs, dtype=np.int32)
 
-    self.num_imgs = len(self.img_indices)
+    self.num_train_imgs = len(self.train_indices)
 
     ## Construct list of images to be ignored
-    if self.num_labeled < self.num_imgs:
+    if self.num_labeled < self.num_train_imgs:
       ignore_idx_list = []
       for lbl in range(0, self.num_classes):
         lbl_loc = [idx
           for idx
-          in np.arange(len(self.img_indices), dtype=np.int32)
-          if self.labels[self.img_indices[idx]] == lbl]
+          in np.arange(len(self.train_indices), dtype=np.int32)
+          if self.labels[self.train_indices[idx]] == lbl]
         ignore_idx_list.extend(rand_state.choice(lbl_loc,
           size=int(len(lbl_loc) - (self.num_labeled/float(self.num_classes))),
           replace=False).tolist())
@@ -118,8 +118,8 @@ def load_MNIST(kwargs):
     num_val=num_val,
     num_labeled=num_labeled,
     rand_state=rand_state)
-  train_imgs = train_val.images[train_val.img_indices, ...]
-  train_lbls = train_val.labels[train_val.img_indices, ...]
+  train_imgs = train_val.images[train_val.train_indices, ...]
+  train_lbls = train_val.labels[train_val.train_indices, ...]
   train_ignore_lbls = train_lbls.copy()
   if train_val.ignore_indices is not None:
     train_ignore_lbls[train_val.ignore_indices, ...] = 0

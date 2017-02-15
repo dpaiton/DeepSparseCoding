@@ -1,31 +1,23 @@
 import matplotlib
 matplotlib.use("Agg")
 
-## TODO:
-##  Estimate kurtosis (q in K&L paper) from layer 1 activity using EM
-##  specify parameter that allows you to load in "phi" and set it for "a"
-##   Will probably require you to load in the original model, eval "phi",
-##   then assign it to a constant for "a"
-
 import numpy as np
 import tensorflow as tf
 import json as js
 import models.model_picker as mp
-from data.mnist import load_MNIST
+from data.vanHateren import load_vanHateren
 
 ## Import parameters & schedules
-#from params.mlp_params import params, schedule
-#from params.lca_params import params, schedule
 from params.ica_params import params, schedule
-#from params.dsc_params import params, schedule
 
 ## Get model
 model = mp.get_model(params, schedule)
 model.write_saver_defs()
 
 ## Get data
+params["patch_edge_size"] = np.int(np.sqrt(model.num_pixels))
 params["rand_state"] = np.random.RandomState(model.rand_seed)
-data = load_MNIST(params)
+data = load_vanHateren(params)
 
 with tf.Session(graph=model.graph) as sess:
   sess.run(model.init_op,
@@ -79,25 +71,6 @@ with tf.Session(graph=model.graph) as sess:
       if (current_step % model.cp_int == 0
         and model.cp_int > 0):
         save_dir = model.write_checkpoint(sess)
-        if params["val_on_cp"]: #Compute validation accuracy
-          val_images = data["val"].images.T
-          val_labels = data["val"].labels.T
-          with tf.Session(graph=model.graph) as tmp_sess:
-            val_feed_dict = model.get_feed_dict(val_images, val_labels)
-            tmp_sess.run(model.init_op, val_feed_dict)
-            model.weight_saver.restore(tmp_sess,
-              save_dir+"_weights-"+str(current_step))
-            if hasattr(model, "full_inference"):
-              sess.run([model.full_inference], val_feed_dict)
-            if hasattr(model, "step_inference"):
-              for step in range(model.num_steps):
-                sess.run([model.step_inference], val_feed_dict)
-            val_accuracy = (
-              np.array(tmp_sess.run(model.accuracy, val_feed_dict)).tolist())
-            stat_dict = {"validation_accuracy":val_accuracy}
-            js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
-            model.log_info("<stats>"+js_str+"</stats>")
 
   save_dir = model.write_checkpoint(sess)
   print("Training Complete\n")
-  import IPython; IPython.embed()

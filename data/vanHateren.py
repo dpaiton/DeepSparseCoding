@@ -42,7 +42,18 @@ class vanHateren(object):
     else:
       data = full_img_data
       self.num_patches = 0
+    data = prune(data)
     return data
+
+"""
+Remove images whose pixel intensity variance falls below a threshold
+"""
+def prune(images):
+  threshold = 1e-4
+  img_unfold = np.reshape(images, (images.shape[0], images.shape[1]**2))
+  variance = np.var(img_unfold, axis = 1)
+  good_imgs = images[(variance > threshold)]
+  return good_imgs
 
 """
 Load van Hateren data and format as a Dataset object

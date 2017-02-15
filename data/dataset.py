@@ -8,6 +8,7 @@ class Dataset(object):
     self.num_px_cols = imgs.shape[2]
     self.images = imgs.reshape(self.num_examples,
       self.num_px_rows*self.num_px_cols)
+    self.images -= np.min(self.images)
     self.images /= np.max(self.images)
     self.labels = lbls
     self.ignore_labels = ignore_lbls
