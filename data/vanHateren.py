@@ -4,34 +4,31 @@ import numpy as np
 from data.dataset import Dataset
 
 class vanHateren(object):
-  def __init__(self,
-    img_dir,
-    patch_edge_size=None,
+  def __init__(self, img_dir, patch_edge_size,
     rand_state=np.random.RandomState()):
     self.images = self.extract_images(img_dir, patch_edge_size)
 
   """
   Load in van Hateren dataset
-  if patch_edge_size is specified, rebuild data array to be of sequential image
-  patches
+    patch_edge_size is based on the num_pixels param specified for the model.
+    num_pixels should be 1048576 (1024**2) to use the full image.
   """
-  def extract_images(self, filename, patch_edge_size=None):
+  def extract_images(self, filename, patch_edge_size):
     with h5py.File(filename, "r") as f:
       full_img_data = np.array(f['van_hateren_good'], dtype=np.float32)
-    if patch_edge_size is not None:
-      (num_img, num_px_rows, num_px_cols) = full_img_data.shape
-      if num_px_cols % patch_edge_size != 0: # crop columns
-        crop_x = num_px_cols % patch_edge_size
-        crop_edge = np.int(np.floor(crop_x/2.0))
-        full_img_data = (
-          full_img_data[:, crop_edge:num_px_cols-crop_edge, :])
-        num_px_cols = full_img_data.shape[1]
-      if num_px_rows % patch_edge_size != 0: # crop rows
-        crop_y = num_px_rows % patch_edge_size
-        crop_edge = np.int(np.floor(crop_y/2.0))
-        full_img_data = (
-          full_img_data[:, :, crop_edge:num_px_rows-crop_edge])
-        num_px_rows = full_img_data.shape[2]
+    (num_img, num_px_rows, num_px_cols) = full_img_data.shape
+    if num_px_cols % patch_edge_size != 0: # crop columns
+      crop_x = num_px_cols % patch_edge_size
+      crop_edge = np.int(np.floor(crop_x/2.0))
+      full_img_data = (
+        full_img_data[:, crop_edge:num_px_cols-crop_edge, :])
+      num_px_cols = full_img_data.shape[1]
+    if num_px_rows % patch_edge_size != 0: # crop rows
+      crop_y = num_px_rows % patch_edge_size
+      crop_edge = np.int(np.floor(crop_y/2.0))
+      full_img_data = (
+        full_img_data[:, :, crop_edge:num_px_rows-crop_edge])
+      num_px_rows = full_img_data.shape[2]
       num_px_img = num_px_rows * num_px_cols
       self.num_patches = int(num_px_img / patch_edge_size**2)
       # Tile column-wise, then row-wise
@@ -70,10 +67,9 @@ def load_vanHateren(kwargs):
   data_dir = kwargs["data_dir"]
   whiten_images = (kwargs["whiten_images"]
     if "whiten_images" in kwargs.keys() else False)
-  patch_edge_size = (kwargs["patch_edge_size"]
-    if "patch_edge_size" in kwargs.keys() else None)
   rand_state = (kwargs["rand_state"]
     if "rand_state" in kwargs.keys() else np.random.RandomState())
+  patch_edge_size = np.int(np.sqrt(kwargs["num_pixels"]))
 
   ## Training set
   img_filename = data_dir+os.sep+"images_curated.h5"

@@ -1,20 +1,19 @@
-from models.mlp import MLP as mlp
-from models.lca import LCA as lca
-from models.ica import ICA as ica
-#from models.karklin_lewicki import karklin_lewicki
-from models.deep_sparse_coding import deep_sparse_coding as dsc
+from params.param_picker import get_params
 
-def get_model(params, schedule):
-  if params["model_type"].lower() == "mlp":
-    return mlp(params, schedule)
-  if params["model_type"].lower() == "lca":
-    return lca(params, schedule)
-  if params["model_type"].lower() == "ica":
-    return ica(params, schedule)
-  if params["model_type"].lower() == "deep_sparse_coding":
-    return dsc(params, schedule)
-  if params["model_type"].lower == "karklin_lewicki":
-    return karklin_lewicki(params, schedule)
+def get_model(model_type):
+  params, schedule = get_params(model_type)
+  if model_type.lower() == "mlp":
+    from models.mlp import MLP as mlp
+    return (mlp(params, schedule), params, schedule)
+  if model_type.lower() == "lca":
+    from models.lca import LCA as lca
+    return (lca(params, schedule), params, schedule)
+  if model_type.lower() == "ica":
+    from models.ica import ICA as ica
+    return (ica(params, schedule), params, schedule)
+  if model_type.lower() == "deep_sparse_coding":
+    from models.deep_sparse_coding import deep_sparse_coding as dsc
+    return (dsc(params, schedule), params, schedule)
 
 def list_models():
   model_list = ["mlp", "deep_sparse_coding", "lca", "ica"]

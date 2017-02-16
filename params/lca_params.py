@@ -16,7 +16,7 @@ params = {
   "dt": 0.001,
   "tau": 0.03,
   "thresh_type": "hard",
-  "cp_int": 2500,
+  "cp_int": 5000,
   "max_cp_to_keep": 5,
   "cp_load": False,
   "cp_load_name": "pretrain",
@@ -34,9 +34,9 @@ params = {
 
 schedule = [
   {"weights": ["phi"],
-  "sparse_mult": 0.1,
+  "sparse_mult": 0.2,
   "weight_lr": [0.1],
-  "decay_steps": [2500],
+  "decay_steps": [4000],
   "decay_rate": [0.8],
   "staircase": [True],
   "num_batches": 5000}]

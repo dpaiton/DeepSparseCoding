@@ -105,12 +105,16 @@ class ICA(Model):
     u_vals_max = np.array(u_vals.max()).tolist()
     u_frac_act = np.array(np.count_nonzero(u_vals)
       / float(self.num_neurons * self.batch_size)).tolist()
+    z_vals = tf.get_default_session().run(self.z, feed_dict)
+    z_frac_act = np.array(np.count_nonzero(z_vals)
+      / float(self.num_neurons * self.batch_size)).tolist()
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "number_of_batch_steps":self.get_sched("num_batches"),
       "schedule_index":self.sched_idx,
       "u_max":u_vals_max,
-      "u_fraction_active":u_frac_act}
+      "u_fraction_active":u_frac_act,
+      "z_fraction_active":z_frac_act}
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
