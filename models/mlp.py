@@ -85,10 +85,10 @@ class MLP(Model):
             initializer=tf.zeros([self.num_classes, 1], dtype=tf.float32,
             name="bias2_init"), trainable=True)
 
-        with tf.name_scope("normalize_weights") as scope:
+        with tf.name_scope("norm_weights") as scope:
           self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.normalize_weights = tf.group(self.norm_phi,
+          self.norm_weights = tf.group(self.norm_phi,
             name="l2_normalization")
 
         with tf.name_scope("hidden_variables") as scope:

@@ -43,27 +43,16 @@ class LCA(Model):
     self.tau = float(params["tau"])
     self.eta = self.dt / self.tau
 
-  """
-  Performs threshold function on input values
-  Outputs:
-    a [float32] thresholded neuron output
-  Inputs:
-    u []
-    thresh_type [str] "hard" or "soft"
-  """
-  def compute_output(self):
-    return a
-
   """Build the TensorFlow graph object"""
   def build_graph(self):
     self.graph = tf.Graph()
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
-          self.x = tf.placeholder(
-            tf.float32, shape=[self.num_pixels, None], name="input_data")
-          self.sparse_mult = tf.placeholder(
-            tf.float32, shape=(), name="sparse_mult")
+          self.x = tf.placeholder(tf.float32,
+            shape=[self.num_pixels, None], name="input_data")
+          self.sparse_mult = tf.placeholder(tf.float32,
+            shape=(), name="sparse_mult")
 
         with tf.name_scope("constants") as scope:
           self.u_zeros = tf.zeros(
@@ -78,10 +67,10 @@ class LCA(Model):
             initializer=tf.truncated_normal(self.phi_shape, mean=0.0,
             stddev=1.0, dtype=tf.float32, name="phi_init"), trainable=True)
 
-        with tf.name_scope("normalize_weights") as scope:
+        with tf.name_scope("norm_weights") as scope:
           self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.normalize_weights = tf.group(self.norm_phi,
+          self.norm_weights = tf.group(self.norm_phi,
             name="l2_normalization")
 
         with tf.name_scope("inference") as scope:
@@ -132,8 +121,8 @@ class LCA(Model):
           self.du = self.lca_b - self.lca_explain_away - self.u
           self.step_inference = tf.group(self.u.assign_add(self.eta * self.du),
             name="step_inference")
-          self.clear_activity = tf.group(self.u.assign(self.u_zeros),
-            name="clear_activity")
+          self.reset_activity = tf.group(self.u.assign(self.u_zeros),
+            name="reset_activity")
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -151,7 +140,7 @@ class LCA(Model):
     batch_step: current batch number within the schedule
   NOTE: Casting tf.eval output to an np.array and then to a list is required to
     ensure that the data type is valid for js.dumps(). An alternative would be
-    to write an np function that converts numpy types to their corresponding
+    to write a numpy function that converts numpy types to their corresponding
     python types.
   """
   def print_update(self, input_data, input_labels=None, batch_step=0):

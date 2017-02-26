@@ -303,7 +303,7 @@ class Model(object):
     key: [str] key in dictionary
   """
   def get_sched(self, key=None):
-    if key:
+    if key is not None:
       assert key in self.sched[self.sched_idx].keys(), (
         key+" was not found in the schedule.")
       return self.sched[self.sched_idx][key]

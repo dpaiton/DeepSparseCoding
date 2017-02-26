@@ -14,7 +14,9 @@ def get_data(dataset_type, params):
   if dataset_type.lower() == "mnist":
     from data.mnist import load_MNIST
     dataset = load_MNIST(params)
-  if dataset_type.lower() == "gendata":
-    from data.genData import load_dist
-    dataset = load_dist(params)
+  if dataset_type.lower() == "synthetic":
+    assert "num_examples" in params.keys(), (
+      "Params must include 'num_examples'")
+    from data.synthetic import load_synthetic
+    dataset = load_synthetic(params)
   return dataset

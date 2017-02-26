@@ -13,10 +13,12 @@ data_type = "vanHateren"
 
 ## Import model, parameters and schedules
 model, params, schedule = mp.get_model(model_type)
+params["rand_state"] = np.random.RandomState(model.rand_seed)
 
 ## Get data
-params["rand_state"] = np.random.RandomState(model.rand_seed)
 data = dp.get_data(data_type, params)
+#data["train"].standardize_data()
+#data["train"].whiten_data()
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
@@ -33,7 +35,7 @@ with tf.Session(graph=model.graph) as sess:
     model.log_info("Beginning schedule "+str(sch_idx))
     for b_step in range(model.get_sched("num_batches")):
       data_batch = data["train"].next_batch(model.batch_size)
-      # Rotate so they are each observation is a column vector
+      ## Rotate so they are each observation is a column vector
       input_data = data_batch[0].T
       input_labels = data_batch[1].T if data_batch[1] is not None else None
 
@@ -43,11 +45,11 @@ with tf.Session(graph=model.graph) as sess:
       ## Normalize weights
       if hasattr(model, "norm_weights"):
         if params["norm_weights"]:
-          sess.run(model.normalize_weights)
+          sess.run(model.norm_weights)
 
-      ## Clear activity from previous batch
-      if hasattr(model, "clear_activity"):
-        sess.run([model.clear_activity], feed_dict)
+      ## Reset activity from previous batch
+      if hasattr(model, "reset_activity"):
+        sess.run([model.reset_activity], feed_dict)
 
       ## Run inference
       if hasattr(model, "full_inference"): # all steps in a single op

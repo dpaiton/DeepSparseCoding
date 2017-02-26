@@ -23,12 +23,12 @@ class ICA(Model):
   """
   def load_params(self, params):
     Model.load_params(self, params)
-    # Meta parameters
+    ## Meta parameters
     self.norm_weights = bool(params["norm_weights"])
     self.prior = str(params["prior"])
     assert (True if self.prior.lower() in ("laplacian", "cauchy") else False), (
       "Prior must be 'laplacian' or 'cauchy'")
-    # Network Size
+    ## Network Size
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(params["num_pixels"])
     self.num_neurons = self.num_pixels
@@ -53,14 +53,23 @@ class ICA(Model):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("weights") as scope:
+          ## Q matrix from QR decomp is guaranteed to be orthonormal and
+          ## non-singular, which prevents a gradient explosion from inverting
+          ## the weight matrix.
+          ## NOTE: TF does not currently have a stable QR decomp function
+          ##  Issue: https://github.com/tensorflow/tensorflow/issues/4739
+          ##  Commit: ""/commit/715f951eb9ca20fdcef20bb544b74dbe576734da
+          #rand = tf.truncated_normal(self.a_shape, mean=0.0,
+          #  stddev=1.0, dtype=tf.float32, name="stand_norm_dist")
+          #Q, R = tf.qr(rand, full_matrices=True, name="qr_decomp")
+          Q, R = np.linalg.qr(np.random.standard_normal(self.a_shape))
           self.a = tf.get_variable(name="a", dtype=tf.float32,
-            initializer=tf.truncated_normal(self.a_shape, mean=0.0,
-            stddev=1.0, dtype=tf.float32, name="a_init"), trainable=True)
+            initializer=Q.astype(np.float32), trainable=True)
 
-        with tf.name_scope("normalize_weights") as scope:
+        with tf.name_scope("norm_weights") as scope:
           self.norm_a = self.a.assign(tf.nn.l2_normalize(self.a,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.normalize_weights = tf.group(self.norm_a,
+          self.norm_weights = tf.group(self.norm_a,
             name="l2_normalization")
 
         with tf.name_scope("inference") as scope:
@@ -81,10 +90,10 @@ class ICA(Model):
   """
   def compute_gradients(self, optimizer, weight_op=None):
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
-    z_avg = tf.div(tf.matmul(self.z, tf.transpose(self.u)),
+    z_avg = tf.truediv(tf.matmul(self.z, tf.transpose(self.u)),
       tf.to_float(tf.shape(self.x)[1]), name="avg_samples")
     weight_name = weight_op[0].name.split('/')[1].split(':')[0]
-    gradient = tf.sub(tf.matmul(weight_op[0], z_avg), weight_op[0],
+    gradient = -tf.sub(tf.matmul(weight_op[0], z_avg), weight_op[0],
       name=weight_name+"_gradient")
     return [(gradient, weight_op[0])]
 
@@ -106,6 +115,7 @@ class ICA(Model):
     u_frac_act = np.array(np.count_nonzero(u_vals)
       / float(self.num_neurons * self.batch_size)).tolist()
     z_vals = tf.get_default_session().run(self.z, feed_dict)
+    z_vals_max = np.array(z_vals.max()).tolist()
     z_frac_act = np.array(np.count_nonzero(z_vals)
       / float(self.num_neurons * self.batch_size)).tolist()
     stat_dict = {"global_batch_index":current_step,
@@ -114,6 +124,7 @@ class ICA(Model):
       "schedule_index":self.sched_idx,
       "u_max":u_vals_max,
       "u_fraction_active":u_frac_act,
+      "z_max":z_vals_max,
       "z_fraction_active":z_frac_act}
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)

@@ -25,7 +25,7 @@ params = {
   "cp_load_var": ["phi"],
   "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 1000,
+  "gen_plot_int": 100,
   "display_plots": False,
   "save_plots": True,
   "eps": 1e-12,
@@ -34,9 +34,9 @@ params = {
 
 schedule = [
   {"weights": ["phi"],
-  "sparse_mult": 0.2,
-  "weight_lr": [0.1],
-  "decay_steps": [4000],
+  "sparse_mult": 0.1,
+  "weight_lr": [0.01],
+  "decay_steps": [2000],
   "decay_rate": [0.8],
   "staircase": [True],
-  "num_batches": 5000}]
+  "num_batches": 2000}]

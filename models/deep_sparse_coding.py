@@ -128,12 +128,12 @@ class deep_sparse_coding(Model):
             initializer=tf.truncated_normal(self.b_shape, mean=0.0,
             stddev=1.0, dtype=tf.float32, name="b_init"), trainable=True)
 
-        with tf.name_scope("normalize_weights") as scope:
+        with tf.name_scope("norm_weights") as scope:
           self.norm_a = self.a.assign(tf.nn.l2_normalize(self.a,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
           self.norm_b = self.b.assign(tf.nn.l2_normalize(self.b,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.normalize_weights = tf.group(self.norm_a, self.norm_b,
+          self.norm_weights = tf.group(self.norm_a, self.norm_b,
             name="l2_normalization")
 
         with tf.variable_scope("layers") as scope:
@@ -162,8 +162,8 @@ class deep_sparse_coding(Model):
         with tf.name_scope("inference") as scope:
           self.clear_u = self.u.assign(self.u_zeros)
           self.clear_v = self.v.assign(self.v_zeros)
-          self.clear_activity = tf.group(self.clear_u, self.clear_v,
-            name="clear_activity")
+          self.reset_activity = tf.group(self.clear_u, self.clear_v,
+            name="reset_activity")
           current_loss = []
           self.u_t = [self.u_zeros] # init to zeros
           self.v_t = [self.v_zeros] # init to zeros

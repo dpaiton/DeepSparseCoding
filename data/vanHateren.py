@@ -44,21 +44,21 @@ class vanHateren(object):
 
 """
 Remove images whose pixel intensity variance falls below a threshold
+Inputs:
+  images: [np.ndarray] of dim [num_imgs, num_px_rows, num_px_cols]
+  threshold: [float] cutoff variance threshold.
+    All images below this value will be rejected
 """
-def prune(images):
-  threshold = 1.5e-4
-  img_unfold = np.reshape(images, (images.shape[0], images.shape[1]**2))
-  variance = np.var(img_unfold, axis = 1)
-  good_imgs = images[(variance > threshold)]
-  return good_imgs
+def prune(images, threshold=1.5e-4):
+  variance = np.var(images, axis=(1, 2))
+  return images[(variance > threshold)]
 
 """
 Load van Hateren data and format as a Dataset object
-inputs: kwargs [dict] containing keywords:
-  data_dir [str] directory to van Hateren data
-  whiten_images [bool] whether or not images should be whitened(not implemented)
-  patch_edge_size [int] length of a patch edge if the images are to be broken up
-    None (default) indicates that the full images should be used.
+Inputs:
+  kwargs [dict] containing keywords:
+    data_dir [str] directory to van Hateren data
+    whiten_images [bool] whether or not images should be whitened(not implemented)
   rand_state [obj] numpy random state object
 """
 def load_vanHateren(kwargs):
