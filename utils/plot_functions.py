@@ -1,14 +1,31 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib
+
+"""
+Plot phase averaged power spectrum for a set of images
+Outputs:
+  fig: [int] corresponding to the figure number
+  sub_axis: index for subplot call
+Inputs:
+  data: [np.ndarray] 1D data to be plotted
+  title: [str] for title of figure
+  save_filename: [str] holding output directory for writing,
+    figures will not display with GUI if set
+"""
+def save_phase_avg_power_spec(data, title="", save_filename="./tmp.pdf"):
+  (fig, axes) = plt.subplots(1)
+  axes.loglog(range(data[data>1].shape[0]), data[data>1])
+  fig.suptitle(title, y=1.0, x=0.5)
+  fig.savefig(save_filename)
+
 
 """
 Normalize data
 Outputs:
-  data normalized so that when plotted 0 will be midlevel grey
-Args:
-  data: np.ndarray
+  norm_data: [np.ndarray] data normalized so that 0 is midlevel grey
+Inputs:
+  data: [np.ndarray] data to be normalized
 """
 def normalize_data(data):
   if np.max(np.abs(data)) > 0:
@@ -21,7 +38,7 @@ def normalize_data(data):
 Pad data with ones for visualization
 Outputs:
   padded version of input
-Args:
+Inputs:
   data: np.ndarray
 """
 def pad_data(data):

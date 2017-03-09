@@ -1,13 +1,12 @@
 import numpy as np
+import utils.image_processing as ip
 
 class Dataset(object):
   def __init__(self, imgs, lbls, ignore_lbls,
     rand_state=np.random.RandomState()):
-    self.num_examples = imgs.shape[0]
-    self.num_px_rows = imgs.shape[1]
-    self.num_px_cols = imgs.shape[2]
+    (self.num_examples, self.num_rows, self.num_cols) = imgs.shape
     self.images = imgs.reshape(self.num_examples,
-      self.num_px_rows*self.num_px_cols)
+      self.num_rows*self.num_cols)
     self.labels = lbls
     self.ignore_labels = ignore_lbls
     self.epochs_completed = 0
@@ -76,44 +75,17 @@ class Dataset(object):
     method is in-place and has no inputs or outputs
   """
   def standardize_data(self):
-    self.images -= np.mean(self.images)
-    self.images = np.vstack([self.images[idx,:] / np.std(self.images[idx,:])
-      for idx in range(self.images.shape[0])])
+    self.images = ip.standardize_data(self.images)
 
   """
   Whiten data
+    method is in-palce and has no outputs
   Inputs:
     data [np.ndarray] of dim (num_batch, num_data_points)
-    method [str] method to use, can be {FT}
-  Outputs:
-    whitened_data
+    method [str] method to use, can be {FT, PCA}
   """
-  def whiten_data(self, method="FT"):
-    imgs = self.images[0:10,:]
-    assert self.num_px_rows == self.num_px_cols, ("Input should be square")
-    if method == "FT":
-      #data_shape = (self.num_px_rows, self.num_px_cols, self.num_examples)
-      #data = self.images.T.reshape(data_shape) # filter in spatial domain
-      data_shape = (self.num_px_rows, self.num_px_cols, 10)
-      data = imgs.T.reshape(data_shape) # filter in spatial domain
-      dataFT = np.fft.fftshift(np.fft.fft2(data, axes=(0, 1)), axes=(0, 1))
-      nyq = self.num_px_rows / 2
-      freqs = np.linspace(-nyq, nyq-1, num=self.num_px_rows)
-      fspace = np.meshgrid(freqs, freqs)
-      rho = np.sqrt(np.square(fspace[0]) + np.square(fspace[1]))
-      lpf = np.exp(-0.5 * np.square(rho / (0.7 * nyq)))
-      filtf = np.multiply(rho, lpf)
-      dataFT_wht = np.multiply(imFT, filtf.reshape((self.num_px_rows,
-        self.num_px_rows, 1)))
-      data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(imFT_wht, axes=(0, 1)),
-        axes=(0, 1)))
-      import IPython; IPython.embed(); raise SystemExit
-    if method == "PCA":
-      #data = self.images - self.images.mean(axis=1)[:, None]
-      data = imgs - imgs.mean(axis=1)[:, None]
-      Cov = np.cov(data.T) # Covariace matrix
-      U, S, V = np.linalg.svd(Cov) # SVD decomposition
-      isqrtS = np.diag(1 / np.sqrt(S)) # Inverse sqrt of S
-      data_wht = np.dot(np.dot(data, U), isqrtS)
-      import IPython; IPython.embed(); raise SystemExit
-    return data_wht
+  def whiten_data(self, method=None):
+    if method is not None:
+      self.images = ip.whiten_data(self.images, method)
+    else:
+      self.images = ip.whiten_data(self.images)

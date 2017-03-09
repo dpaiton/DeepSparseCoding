@@ -15,7 +15,23 @@ class vanHateren(object):
   """
   def extract_images(self, filename, patch_edge_size):
     with h5py.File(filename, "r") as f:
-      full_img_data = np.array(f['van_hateren_good'], dtype=np.float32)
+      full_img_data = np.array(f["van_hateren_good"], dtype=np.float32)
+
+    #### TMP
+    import utils.image_processing as ip
+    num_examples = full_img_data.shape[0]
+    img_data_chunk = np.zeros_like(full_img_data)
+    for batch in range(0,num_examples,10):
+      img_data_chunk[batch:batch+10, ...] = ip.whiten_data(full_img_data[batch:batch+10, ...], method="FT")
+    file_name = "/Users/dpaiton/Work/Datasets/vanHateren/img/images_curated_white.npz"
+    with h5py.File(file_name, "w") as f:
+      f.create_dataset("van_hateren_good", van_hateren_good=img_data_chunk)
+    #np.savez("/Users/dpaiton/Work/Datasets/vanHateren/img/images_curated_white.npz",van_hateren_good=full_img_data)
+    import IPython; IPython.embed(); raise SystemError
+    ##np.savez("/Users/dpaiton/Desktop/tmp/VH_dat.npz", data=full_img_data[0:100, ...])
+    #full_img_data = np.load("/Users/dpaiton/Desktop/tmp/VH_dat.npz")["data"]
+    #### TMP
+
     (num_img, num_px_rows, num_px_cols) = full_img_data.shape
     if num_px_cols % patch_edge_size != 0: # crop columns
       crop_x = num_px_cols % patch_edge_size

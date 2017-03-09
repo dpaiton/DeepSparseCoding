@@ -17,8 +17,7 @@ params["rand_state"] = np.random.RandomState(model.rand_seed)
 
 ## Get data
 data = dp.get_data(data_type, params)
-#data["train"].standardize_data()
-#data["train"].whiten_data()
+import IPython; IPython.embed(); raise SystemExit
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
