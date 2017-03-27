@@ -8,8 +8,8 @@ import models.model_picker as mp
 import data.data_picker as dp
 
 ## Specify model type and data type
-model_type = "ica"
-data_type = "vanHateren"
+model_type = "lca"
+data_type = "mnist"
 
 ## Import model, parameters and schedules
 model, params, schedule = mp.get_model(model_type)
@@ -17,7 +17,7 @@ params["rand_state"] = np.random.RandomState(model.rand_seed)
 
 ## Get data
 data = dp.get_data(data_type, params)
-import IPython; IPython.embed(); raise SystemExit
+#import IPython; IPython.embed(); raise SystemExit
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
@@ -67,6 +67,7 @@ with tf.Session(graph=model.graph) as sess:
         and model.log_int > 0):
         model.print_update(input_data=input_data, input_labels=input_labels,
           batch_step=b_step+1)
+        model.print_tensorboard(model.train_writer, input_data, input_labels)
 
       ## Plot weights & gradients
       if (current_step % model.gen_plot_int == 0
@@ -96,6 +97,8 @@ with tf.Session(graph=model.graph) as sess:
               stat_dict = {"validation_accuracy":val_accuracy}
               js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
               model.log_info("<stats>"+js_str+"</stats>")
+              model.print_tensorboard(model.test_writer, val_images,
+                val_labels)
 
   save_dir = model.write_checkpoint(sess)
   print("Training Complete\n")

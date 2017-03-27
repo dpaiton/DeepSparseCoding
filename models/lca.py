@@ -9,6 +9,8 @@ class LCA(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
     self.build_graph()
+    #Note: this should be calling the child class' setup_graph in case
+    #subclasses need to overwrite setup_graph
     Model.setup_graph(self, self.graph)
 
   """
@@ -56,7 +58,7 @@ class LCA(Model):
 
         with tf.name_scope("constants") as scope:
           self.u_zeros = tf.zeros(
-            shape=tf.pack([self.num_neurons, tf.shape(self.x)[1]]),
+            shape=tf.stack([self.num_neurons, tf.shape(self.x)[1]]),
             dtype=tf.float32, name="u_zeros")
 
         with tf.name_scope("step_counter") as scope:
@@ -78,20 +80,20 @@ class LCA(Model):
             validate_shape=False, name="u")
           if self.thresh_type == "soft":
             if self.rectify_a:
-              self.a = tf.select(tf.greater(self.u, self.sparse_mult),
-                tf.sub(self.u, self.sparse_mult), self.u_zeros, name="activity")
+              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
+                tf.subtract(self.u, self.sparse_mult), self.u_zeros, name="activity")
             else:
-              self.a = tf.select(tf.greater(self.u, self.sparse_mult),
-                tf.sub(self.u, self.sparse_mult), tf.select(tf.less(self.u,
+              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
+                tf.subtract(self.u, self.sparse_mult), tf.where(tf.less(self.u,
                 -self.sparse_mult), tf.add(self.u, self.sparse_mult),
                 self.u_zeros), name="activity")
           elif self.thresh_type == "hard":
             if self.rectify_a:
-              self.a = tf.select(tf.greater(self.u, self.sparse_mult), self.u,
+              self.a = tf.where(tf.greater(self.u, self.sparse_mult), self.u,
                 self.u_zeros, name="activity")
             else:
-              self.a = tf.select(tf.greater(self.u, self.sparse_mult),
-                self.u, tf.select(tf.less(self.u, -self.sparse_mult), self.u,
+              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
+                self.u, tf.where(tf.less(self.u, -self.sparse_mult), self.u,
                 self.u_zeros), name="activity")
 
         with tf.name_scope("output") as scope:
@@ -101,7 +103,7 @@ class LCA(Model):
         with tf.name_scope("loss") as scope:
           with tf.name_scope("unsupervised"):
             self.recon_loss = tf.reduce_mean(0.5 *
-              tf.reduce_sum(tf.pow(tf.sub(self.x, self.x_), 2.0),
+              tf.reduce_sum(tf.pow(tf.subtract(self.x, self.x_), 2.0),
               reduction_indices=[0]), name="recon_loss")
             self.sparse_loss = self.sparse_mult * tf.reduce_mean(
               tf.reduce_sum(tf.abs(self.a), reduction_indices=[0]),
@@ -126,9 +128,9 @@ class LCA(Model):
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.pow(tf.sub(self.x, self.x_), 2.0),
+            MSE = tf.reduce_mean(tf.pow(tf.subtract(self.x, self.x_), 2.0),
               name="mean_squared_error")
-            self.pSNRdB = tf.mul(10.0, tf.log(tf.div(tf.pow(1.0, 2.0), MSE)),
+            self.pSNRdB = tf.multiply(10.0, tf.log(tf.div(tf.pow(1.0, 2.0), MSE)+1e-10),
               name="recon_quality")
     self.graph_built = True
 

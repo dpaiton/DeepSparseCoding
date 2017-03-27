@@ -3,6 +3,7 @@ import logging
 import json as js
 import numpy as np
 import tensorflow as tf
+import pdb
 
 class Model(object):
   def __init__(self, params, schedule):
@@ -19,6 +20,7 @@ class Model(object):
 
   def setup_graph(self, graph):
     self.graph = graph
+    self.add_tensorboard_to_graph()
     self.add_optimizers_to_graph()
     self.add_initializer_to_graph()
     self.construct_savers()
@@ -100,6 +102,7 @@ class Model(object):
       + "/checkpoints/")
     self.log_dir = self.out_dir + "/logfiles/"
     self.save_dir = self.out_dir + "/savefiles/"
+    self.tb_dir = self.out_dir + "/tbfiles/"
     self.disp_dir = self.out_dir + "/vis/"
     # Other
     self.eps = float(params["eps"])
@@ -142,6 +145,8 @@ class Model(object):
       os.makedirs(self.cp_save_dir)
     if not os.path.exists(self.save_dir):
       os.makedirs(self.save_dir)
+    if not os.path.exists(self.tb_dir):
+      os.makedirs(self.tb_dir)
     if not os.path.exists(self.disp_dir):
       os.makedirs(self.disp_dir)
 
@@ -232,7 +237,42 @@ class Model(object):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("initialization") as scope:
-          self.init_op = tf.initialize_all_variables()
+          self.init_op = tf.global_variables_initializer()
+
+  """
+  Add all tensorboard summaries to every op in the graph
+  This must be done last, as we aim to generate summaries for all nodes
+  """
+  def add_tensorboard_to_graph(self):
+      #assert self.optimizers_added, ("Optimizers must be added to graph " \
+      #  "before constructing tensorboard.")
+      #Get all ops
+      all_ops = self.graph.get_operations()
+      #Do we need to set device here?
+      with self.graph.as_default():
+        with tf.name_scope("summary") as scope:
+          for op in all_ops:
+            #op.values() returns a tuple, what else is returned?
+            vals = op.values()
+            for i, v in enumerate(vals):
+              #Grab name without name scope
+              basename = op.name.split('/')[-1]
+              summary_node_name = basename + "_summary_" + str(i)
+              try:
+                #There are cases where v.shape is None (unknown), in which case
+                #we ignore
+                if(v.shape == None):
+                  pass
+                #We ignore boolean outputs
+                elif(v.dtype == tf.bool):
+                  pass
+                elif(v.shape.ndims == 0):
+                  tf.summary.scalar(summary_node_name, v)
+                elif v.shape.ndims > 0:
+                  tf.summary.histogram(summary_node_name, v)
+              except:
+                pdb.set_trace()
+
 
   """Get variables for loading"""
   def get_load_vars(self):
@@ -253,7 +293,7 @@ class Model(object):
       "Optimizers must be added to the graph before constructing savers.")
     with self.graph.as_default():
       with tf.variable_scope("weights", reuse=True) as scope:
-        weights = [weight for weight in tf.all_variables()
+        weights = [weight for weight in tf.global_variables()
           if weight.name.startswith(scope.name)]
       self.weight_saver = tf.train.Saver(var_list=weights,
         max_to_keep=self.max_cp_to_keep)
@@ -268,21 +308,28 @@ class Model(object):
     full_saver_def = self.full_saver.as_saver_def()
     full_file = self.save_dir+self.model_name+"_v"+self.version+"-full.def"
     with open(full_file, "wb") as f:
-        f.write(full_saver_def.SerializeToString())
+      f.write(full_saver_def.SerializeToString())
     logging.info("Full saver def saved in file %s"%full_file)
     weight_saver_def = self.weight_saver.as_saver_def()
     weight_file = self.save_dir+self.model_name+"_v"+self.version+"-weights.def"
     with open(weight_file, "wb") as f:
-        f.write(weight_saver_def.SerializeToString())
+      f.write(weight_saver_def.SerializeToString())
     logging.info("Weight saver def saved in file %s"%weight_file)
 
   """Write graph structure to protobuf file"""
   def write_graph(self, graph_def):
     write_name = self.model_name+"_v"+self.version+".pb"
-    self.writer = tf.train.SummaryWriter(self.save_dir, graph=self.graph)
+
+    self.train_writer = tf.summary.FileWriter(self.tb_dir + "/train",
+      graph=self.graph)
+    self.test_writer = tf.summary.FileWriter(self.tb_dir + "/test",
+      graph=self.graph)
+    with self.graph.as_default():
+      self.mergedSummary = tf.summary.merge_all()
+
     tf.train.write_graph(graph_def,
-      logdir=self.save_dir, name=write_name, as_text=False)
-    logging.info("Graph def saved in file %s"%self.save_dir+write_name)
+      logdir=self.tb_dir, name=write_name, as_text=False)
+    logging.info("Graph def saved in file %s"%self.tb_dir+write_name)
 
   """Write checkpoints for full model and weights-only"""
   def write_checkpoint(self, session):
@@ -369,6 +416,23 @@ class Model(object):
   """
   def print_update(self, input_data, input_labels=None, batch_step=0):
     pass
+
+  """
+  Log tensorboard progress information
+  Inputs:
+    writer: Summary object being written to
+    sess: input session
+    input_data: data object containing the current image batch
+    input_labels: data object containing the current label batch
+  """
+  def print_tensorboard(self, writer, input_data, input_labels=None):
+    #mergedSummary can be None if no summaries exist
+    if self.mergedSummary is not None:
+      feed_dict = self.get_feed_dict(input_data, input_labels)
+      summary = self.mergedSummary.eval(feed_dict=feed_dict)
+      step = self.global_step.eval()
+      print("Writing", step, "to summary")
+      writer.add_summary(summary, step)
 
   """
   Plot weights, reconstruction, gradients, etc
