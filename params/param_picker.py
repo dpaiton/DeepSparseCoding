@@ -10,10 +10,17 @@ Outputs:
 def get_params(model_type):
   if model_type.lower() == "mlp":
     from params.mlp_params import params, schedule
-  if model_type.lower() == "lca":
-    from params.lca_params import params, schedule
+    params["conv"] = False
   if model_type.lower() == "ica":
     from params.ica_params import params, schedule
+    params["conv"] = False
+  if model_type.lower() == "lca":
+    from params.lca_params import params, schedule
+    params["conv"] = False
+  if model_type.lower() == "conv_lca":
+    from params.conv_lca_params import params, schedule
+    params["conv"] = True
   if model_type.lower() == "dsc":
     from params.dsc_params import params, schedule
+    params["conv"] = False
   return params, schedule

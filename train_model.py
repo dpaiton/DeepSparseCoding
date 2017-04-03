@@ -8,24 +8,45 @@ import models.model_picker as mp
 import data.data_picker as dp
 
 ## Specify model type and data type
+#model_type = "mlp"
 model_type = "ica"
-data_type = "vanHateren"
+#model_type = "lca"
+#model_type = "conv_lca"
+#model_type = "deep_sparse_coding"
 
-## Import model, parameters and schedules
-model, params, schedule = mp.get_model(model_type)
-params["rand_state"] = np.random.RandomState(model.rand_seed)
+#data_type = "cifar10"
+data_type = "mnist"
+#data_type = "vanhateren"
+#data_type = "field"
+#data_type = "synthetic"
 
-## Get data
+## Import params
+params, schedule = mp.get_params(model_type)
+if "rand_seed" in params.keys():
+  params["rand_state"] = np.random.RandomState(params["rand_seed"])
+params["data_type"] = data_type
+
+## Import data
 data = dp.get_data(data_type, params)
-import IPython; IPython.embed(); raise SystemExit
+if params["conv"]: # conv param is set in the param picker
+  params["input_shape"] = [data["train"].num_rows, data["train"].num_cols,
+    data["train"].num_channels]
+else:
+  params["input_shape"] = [
+    data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
+params["num_pixels"] = data["train"].num_pixels
+
+## Import model
+model = mp.get_model(model_type, params, schedule)
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
 
 with tf.Session(graph=model.graph) as sess:
+  # Need to provide shape if batch_size is used in graph
   sess.run(model.init_op,
-    feed_dict={model.x:np.zeros((model.num_pixels, model.batch_size),
-    dtype=np.float32)}) # Need to provide shape if batch_size is used in graph
+    feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"],
+    dtype=np.float32)}) 
 
   model.write_graph(sess.graph_def)
 
@@ -34,9 +55,8 @@ with tf.Session(graph=model.graph) as sess:
     model.log_info("Beginning schedule "+str(sch_idx))
     for b_step in range(model.get_sched("num_batches")):
       data_batch = data["train"].next_batch(model.batch_size)
-      ## Rotate so they are each observation is a column vector
-      input_data = data_batch[0].T
-      input_labels = data_batch[1].T if data_batch[1] is not None else None
+      input_data = data_batch[0]
+      input_labels = data_batch[1] if data_batch[1] is not None else None
 
       ## Get feed dictionary for placeholders
       feed_dict = model.get_feed_dict(input_data, input_labels)
@@ -79,8 +99,8 @@ with tf.Session(graph=model.graph) as sess:
         save_dir = model.write_checkpoint(sess)
         if hasattr(model, "val_on_cp"):
           if model.val_on_cp: #Compute validation accuracy
-            val_images = data["val"].images.T
-            val_labels = data["val"].labels.T
+            val_images = data["val"].images
+            val_labels = data["val"].labels
             with tf.Session(graph=model.graph) as tmp_sess:
               val_feed_dict = model.get_feed_dict(val_images, val_labels)
               tmp_sess.run(model.init_op, val_feed_dict)
