@@ -1,4 +1,97 @@
 import numpy as np
+import scipy.ndimage
+
+"""
+Extract patches from image dataset.
+Outputs:
+  patches [np.ndarray] of patches
+Inputs:
+  images [np.ndarray] of shape [num_images, img_height, img_width]
+  out_shape [tuple or list] containing the 2-d output shape
+    [num_patches, patch_size] where patch_size has an even sqrt
+    [num_patches, patch_edge_size, patch_edge_size]
+  overlapping [bool] specify if the patches are evenly tiled or randomly drawn
+  var_thresh [float] acceptance threshold for patch pixel variance. If it is
+    below threshold then reject the patch.
+"""
+def extractPatches(images, out_shape, overlapping=True, var_thresh=0,
+  rand_state=np.random.RandomState()):
+  num_im, im_sizey, im_sizex = images.shape
+  if len(out_shape) == 2:
+    (num_patches, patch_size) = out_shape
+    assert np.floor(np.sqrt(patch_size)) == np.ceil(np.sqrt(patch_size)), (
+      "Patch size must have an even square root.")
+    patch_edge_size = np.int32(np.sqrt(patch_size))
+  elif len(out_shape) == 3:
+    (num_patches, patch_y_size, patch_x_size) = out_shape
+    assert patch_y_size == patch_x_size, ("Patches must be square.")
+    patch_edge_size = patch_y_size
+    patch_size = patch_edge_size**2
+  else:
+    assert False, ("out_shape must have len 2 or 3.")
+  if (patch_edge_size <= 0 or patch_edge_size == im_sizey):
+    if num_patches < num_im:
+      im_keep_idx = rand_state.choice(images.shape[0], num_patches,
+        replace=False)
+      return images[im_keep_idx, ...]
+    elif num_patches == num_im:
+      return images
+    else:
+      assert False, (
+        "The number of requested %g pixel patches must be less than or equal "
+        +"to %g"%(patch_size, num_im))
+  if overlapping:
+    patches = np.zeros((num_patches, patch_size))
+    i = 0
+    while i < num_patches:
+      image = images[rand_state.randint(num_im), ...]
+      row = rand_state.randint(im_sizey - patch_edge_size)
+      col = rand_state.randint(im_sizex - patch_edge_size)
+      patch = image[row:row+patch_edge_size, col:col+patch_edge_size]
+      if np.var(patch) > var_thresh:
+        patches[i, :] = np.reshape(patch, patch_size)
+        i = i+1
+  else:
+    num_available_patches = num_im * np.floor(im_sizex/patch_edge_size)**2
+    assert num_patches <= num_available_patches, (
+      "The number of requested patches (%g) must be less than or equal to %g"%(
+      num_patches, num_available_patches))
+    if im_sizex % patch_edge_size != 0: # crop columns
+      crop_x = im_sizex % patch_edge_size
+      crop_edge = np.int32(np.floor(crop_x/2.0))
+      images = images[:, crop_edge:im_sizex-crop_edge, :]
+      im_sizex = images.shape[1]
+    if im_sizey % patch_edge_size != 0: # crop rows
+      crop_y = im_sizey % patch_edge_size
+      crop_edge = np.int32(np.floor(crop_y/2.0))
+      images = images[:, :, crop_edge:im_sizey-crop_edge]
+      im_sizey = images.shape[2]
+    # Tile column-wise, then row-wise
+    patches = np.asarray(np.split(images, im_sizex/patch_edge_size, 2))
+    patches = np.asarray(np.split(patches, im_sizey/patch_edge_size, 2))
+    patches = np.transpose(np.reshape(np.transpose(patches, axes=(3,4,0,1,2)),
+      (patch_edge_size, patch_edge_size, -1)), axes=(2,0,1))
+    patches = patches[(np.var(patches, axis=(1,2)) > var_thresh)]
+    if patches.shape[0] < num_patches:
+      assert False, (
+        "out_shape requres too many patches (%g); maximum available is %g."%(
+        num_patches, patches.shape[0]))
+    else:
+      patch_keep_idx = rand_state.choice(patches.shape[0], num_patches,
+        replace=False)
+      patches = patches[patch_keep_idx, ...]
+  if len(out_shape) == 2:
+    return patches
+  else:
+    return patches.reshape(num_patches, patch_edge_size, patch_edge_size)
+
+"""
+Downsample data
+currently uses scipy.ndimage.zoom
+I would like to implement a (windowed?) gaussian convolution instead
+"""
+def downsample_data(data, factor, order):
+  return scipy.ndimage.interpolation.zoom(data, factor, order=order)
 
 """
 Helper function to reshape input data for processing and return data shape
@@ -51,6 +144,22 @@ def reshape_data(data, flatten_data=False):
 
 
 """
+Subtract individual example mean from data
+Outputs:
+  data [np.ndarray] centered data
+Inputs:
+  data [np.ndarray] unnormalized data of shape:
+    (n, i, j) - n data points, each of shape (i,j)
+    (n, k) - n data points, each of length k
+    (k) - single data point of length k
+"""
+def center_data(data):
+  data = data[np.newaxis, ...] if data.ndim == 1 else data
+  for idx in range(data.shape[0]):
+    data[idx, ...] -= np.mean(data[idx, ...])
+  return data.squeeze()
+
+"""
 Standardize data to have zero mean and  unit variance
 Outputs:
   data [np.ndarray] normalized data
@@ -59,11 +168,13 @@ Inputs:
     (n, i, j) - n data points, each of shape (i,j)
     (n, k) - n data points, each of length k
     (k) - single data point of length k
+TODO:
+  look into tf.image.per_image_standardization()
 """
 def standardize_data(data):
   data = data[np.newaxis, ...] if data.ndim == 1 else data
-  data -= np.mean(data)
   for idx in range(data.shape[0]):
+    data[idx, ...] -= np.mean(data[idx, ...])
     data[idx, ...] = data[idx, ...] / np.std(data[idx, ...])
   return data.squeeze()
 

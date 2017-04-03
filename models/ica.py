@@ -8,15 +8,12 @@ from models.base_model import Model
 class ICA(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
-    self.build_graph()
-    Model.setup_graph(self, self.graph)
 
   """
   Load parameters into object
   Inputs:
    params: [dict] model parameters
   Modifiable Parameters:
-    norm_weights [bool] If set, l2 normalize weights after updates
     prior        [str] Prior for ICA - can be "laplacian" or "cauchy"
     batch_size   [int] Number of images in a training batch
     num_pixels   [int] Number of pixels
@@ -24,21 +21,16 @@ class ICA(Model):
   def load_params(self, params):
     Model.load_params(self, params)
     ## Meta parameters
-    self.norm_weights = bool(params["norm_weights"])
     self.prior = str(params["prior"])
     assert (True if self.prior.lower() in ("laplacian", "cauchy") else False), (
       "Prior must be 'laplacian' or 'cauchy'")
     ## Network Size
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(params["num_pixels"])
-    self.num_neurons = self.num_pixels
-    self.a_shape = [self.num_pixels, self.num_neurons]
-
-  """Check parameters with assertions"""
-  def check_params(self):
-    Model.check_params(self)
-    assert np.sqrt(self.num_pixels) == np.floor(np.sqrt(self.num_pixels)), (
-      "The parameter `num_pixels` must have an even square-root.")
+    self.patch_edge_size = int(params["patch_edge_size"])
+    self.num_patch_pixels = int(self.patch_edge_size**2)
+    self.num_neurons = self.num_patch_pixels
+    self.a_shape = [self.num_neurons, self.num_patch_pixels]
 
   """Build the TensorFlow graph object"""
   def build_graph(self):
@@ -47,7 +39,7 @@ class ICA(Model):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
           self.x = tf.placeholder(
-            tf.float32, shape=[self.num_pixels, None], name="input_data")
+            tf.float32, shape=[None, self.num_pixels], name="input_data")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -66,38 +58,33 @@ class ICA(Model):
           self.a = tf.get_variable(name="a", dtype=tf.float32,
             initializer=Q.astype(np.float32), trainable=True)
 
-        with tf.name_scope("norm_weights") as scope:
-          self.norm_a = self.a.assign(tf.nn.l2_normalize(self.a,
-            dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.norm_weights = tf.group(self.norm_a,
-            name="l2_normalization")
-
         with tf.name_scope("inference") as scope:
-          self.u = tf.matmul(tf.matrix_inverse(self.a, name="a_inverse"),
-            self.x, name="coefficients")
+          self.u = tf.matmul(self.x, tf.matrix_inverse(self.a,
+            name="a_inverse"), name="coefficients")
           if self.prior.lower() == "laplacian":
             self.z = tf.sign(self.u)
-          else: #It must be laplacian or cauchy, assert in load_params()
+          else: #It must be laplacian or cauchy
             self.z = (2*self.u) / (1 + tf.pow(self.u, 2.0))
 
     self.graph_built = True
 
   """
-    Returns the gradients for a weight variable
+  Returns the natural gradient for the ICA weight matrix
   NOTE:
     This child function does not use optimizer input
-    Weights must be a list with a single matrix ("a") in it
+    weight_op must be a list with a single matrix ("self.a") in it
   """
   def compute_gradients(self, optimizer, weight_op=None):
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
-    z_avg = tf.truediv(tf.matmul(self.z, tf.transpose(self.u)),
-      tf.to_float(tf.shape(self.x)[1]), name="avg_samples")
     weight_name = weight_op[0].name.split('/')[1].split(':')[0]
-    gradient = -tf.sub(tf.matmul(weight_op[0], z_avg), weight_op[0],
+    z_u_avg = tf.truediv(tf.matmul(tf.transpose(self.u), self.z),
+      tf.to_float(tf.shape(self.x)[0]), name="avg_samples")
+    gradient = -tf.sub(tf.matmul(z_u_avg, weight_op[0]), weight_op[0],
       name=weight_name+"_gradient")
     return [(gradient, weight_op[0])]
 
   """
+  Logs progress information
     input_data: data object containing the current image batch
     input_labels: data object containing the current label batch
     batch_step: current batch number within the schedule
@@ -143,26 +130,38 @@ class ICA(Model):
   def generate_plots(self, input_data, input_labels=None):
     Model.generate_plots(self, input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
+    weights = tf.get_default_session().run(self.a, feed_dict)
     current_step = str(self.global_step.eval())
-    pf.save_data_tiled(input_data.T.reshape((self.batch_size,
-      np.int(np.sqrt(self.num_pixels)),
-      np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Images at step "+current_step,
-      save_filename=(self.disp_dir+"images_"
-      +current_step.zfill(5)+".pdf"),
-      vmin=np.min(input_data), vmax=np.max(input_data))
-    pf.save_data_tiled(
-      tf.transpose(self.a).eval().reshape(self.num_neurons,
+    #pf.save_data_tiled(input_data.reshape((self.batch_size,
+    #  np.int(np.sqrt(self.num_pixels)),
+    #  np.int(np.sqrt(self.num_pixels)))),
+    #  normalize=False, title="Images at step "+current_step,
+    #  save_filename=(self.disp_dir+"images_"
+    #  +current_step.zfill(5)+".pdf"),
+    #  vmin=np.min(input_data), vmax=np.max(input_data))
+    pf.save_data_tiled(weights.reshape(self.num_neurons,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
       normalize=True, title="Dictionary at step "+current_step,
       save_filename=(self.disp_dir+"a_v"+self.version+"-"
+      +current_step.zfill(5)+".pdf"), vmin=-1.0, vmax=1.0)
+    pf.save_activity_hist(self.z.eval(feed_dict).T, num_bins=1000,
+      title="z Activity Histogram at step "+current_step,
+      save_filename=(self.disp_dir+"z_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
+    pf.save_activity_hist(self.u.eval(feed_dict).T, num_bins=1000,
+      title="u Activity Histogram at step "+current_step,
+      save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
+      +current_step.zfill(5)+".pdf"))
+    pf.save_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
+      title="a l2 norm", save_filename=(self.disp_dir+"a_norm_v"+self.version
+      +"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
+      ylabel="L2 Norm")
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
-      pf.save_data_tiled(grad.T.reshape(self.num_neurons,
+      pf.save_data_tiled(grad.reshape(self.num_neurons,
         int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-        normalize=True, title="Gradient for "+name+" at step "+current_step,
+        normalize=False, title="Gradient for "+name+" at step "+current_step,
         save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"_"
         +current_step.zfill(5)+".pdf"))

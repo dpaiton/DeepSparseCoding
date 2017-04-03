@@ -6,7 +6,7 @@ class MNIST(object):
   def __init__(self,
     img_dir,
     lbl_dir,
-    num_val=10000,
+    num_val=0,
     num_labeled=50000,
     rand_state=np.random.RandomState()):
 
@@ -24,22 +24,22 @@ class MNIST(object):
       self.labels.shape[0]))
 
     ## Grab a random sample of images for the validation set
-    tot_imgs = self.images.shape[0]
-    if tot_imgs < num_val:
-      num_val = tot_imgs
+    tot_images = self.images.shape[0]
+    if tot_images < num_val:
+      num_val = tot_images
     if num_val > 0:
-      self.val_indices = rand_state.choice(np.arange(tot_imgs, dtype=np.int32),
-        size=num_val, replace=False)
-      self.train_indices = np.setdiff1d(np.arange(tot_imgs, dtype=np.int32),
+      self.val_indices = rand_state.choice(np.arange(tot_images,
+        dtype=np.int32), size=num_val, replace=False)
+      self.train_indices = np.setdiff1d(np.arange(tot_images, dtype=np.int32),
         self.val_indices).astype(np.int32)
     else:
       self.val_indices = None
-      self.train_indices = np.arange(tot_imgs, dtype=np.int32)
+      self.train_indices = np.arange(tot_images, dtype=np.int32)
 
-    self.num_train_imgs = len(self.train_indices)
+    self.num_train_images = len(self.train_indices)
 
     ## Construct list of images to be ignored
-    if self.num_labeled < self.num_train_imgs:
+    if self.num_labeled < self.num_train_images:
       ignore_idx_list = []
       for lbl in range(0, self.num_classes):
         lbl_loc = [idx
@@ -61,27 +61,31 @@ class MNIST(object):
     return labels_one_hot
 
   def read_4B(self, bytestream):
-    dt = np.dtype(np.uint32).newbyteorder("B") #big-endian byte order- MSB first
+    dt = np.dtype(np.uint32).newbyteorder("B") #big-endian byte order-MSB first
     return np.frombuffer(bytestream.read(4), dtype=dt)[0]
 
   def read_img_header(self, bytestream):
     _ = self.read_4B(bytestream)
-    num_images = self.read_4B(bytestream)
+    num_img = self.read_4B(bytestream)
     img_rows = self.read_4B(bytestream)
     img_cols = self.read_4B(bytestream)
-    return (num_images, img_rows, img_cols)
+    return (num_img, img_rows, img_cols)
 
   def read_lbl_header(self, bytestream):
     _ = self.read_4B(bytestream)
     return self.read_4B(bytestream)
 
+  """Extract MNIST zip file, reshape, normalize"""
   def extract_images(self, filename):
     with open(filename, "rb") as f:
       with gzip.GzipFile(fileobj=f) as bytestream:
-        num_images, img_rows, img_cols = self.read_img_header(bytestream)
-        buf = bytestream.read(num_images*img_rows*img_cols)
+        num_img, img_rows, img_cols = self.read_img_header(bytestream)
+        buf = bytestream.read(num_img*img_rows*img_cols)
         images = np.frombuffer(buf, dtype=np.uint8)
-        return images.reshape(num_images, img_rows, img_cols).astype(np.float32)
+        images = images.reshape(num_img, img_rows, img_cols, 1)
+        images = images.astype(np.float32)
+        images /= 255.0
+        return images
 
   def extract_labels(self, filename):
     with open(filename, "rb") as f:
@@ -108,6 +112,7 @@ def load_MNIST(kwargs):
     if "num_labeled" in kwargs.keys() else 50000)
   rand_state = (kwargs["rand_state"]
     if "rand_state" in kwargs.keys() else np.random.RandomState())
+  vectorize = not kwargs["conv"]
 
   ## Training set
   train_img_filename = data_dir+"/train-images-idx3-ubyte.gz"
@@ -118,20 +123,20 @@ def load_MNIST(kwargs):
     num_val=num_val,
     num_labeled=num_labeled,
     rand_state=rand_state)
-  train_imgs = train_val.images[train_val.train_indices, ...]
+  train_images = train_val.images[train_val.train_indices, ...]
   train_lbls = train_val.labels[train_val.train_indices, ...]
   train_ignore_lbls = train_lbls.copy()
   if train_val.ignore_indices is not None:
     train_ignore_lbls[train_val.ignore_indices, ...] = 0
-  train = Dataset(train_imgs, train_lbls, train_ignore_lbls,
+  train = Dataset(train_images, train_lbls, train_ignore_lbls, vectorize,
     rand_state=rand_state)
 
   ## Validation set
   if num_val > 0:
-    val_imgs = train_val.images[train_val.val_indices]
+    val_images = train_val.images[train_val.val_indices]
     val_lbls = train_val.labels[train_val.val_indices]
     val_ignore_lbls = val_lbls.copy()
-    val = Dataset(val_imgs, val_lbls, val_ignore_lbls,
+    val = Dataset(val_images, val_lbls, val_ignore_lbls, vectorize,
       rand_state=rand_state)
   else:
     val = None
@@ -145,10 +150,10 @@ def load_MNIST(kwargs):
     num_val=0,
     num_labeled=10000,
     rand_state=rand_state)
-  test_imgs = test.images
+  test_images = test.images
   test_lbls = test.labels
   test_ignore_lbls = test_lbls.copy()
-  test = Dataset(test_imgs, test_lbls, test_ignore_lbls,
+  test = Dataset(test_images, test_lbls, test_ignore_lbls, vectorize,
     rand_state=rand_state)
 
   return {"train":train, "val":val, "test":test}
