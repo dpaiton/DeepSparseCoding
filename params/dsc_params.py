@@ -11,7 +11,6 @@ params = {
   "norm_images": False,
   "norm_weights": False,
   "batch_size": 500,
-  "num_pixels": 784,
   "num_u": 400,
   "num_v": 10,
   "num_steps": 20,

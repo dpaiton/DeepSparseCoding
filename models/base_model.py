@@ -16,12 +16,7 @@ class Model(object):
     self.init_logging()
     self.log_params()
     self.log_schedule()
-
-  def setup_graph(self, graph):
-    self.graph = graph
-    self.add_optimizers_to_graph()
-    self.add_initializer_to_graph()
-    self.construct_savers()
+    self.setup_graph()
 
   """
   Load schedule into object
@@ -165,6 +160,8 @@ class Model(object):
       dump_obj = params
     else:
       dump_obj = self.params
+    if "rand_state" in dump_obj.keys():
+      del dump_obj["rand_state"]
     js_str = js.dumps(dump_obj, sort_keys=True, indent=2)
     logging.info("<params>"+js_str+"</params>")
 
@@ -211,6 +208,9 @@ class Model(object):
               optimizer = tf.train.AdamOptimizer(learning_rates,
                 beta1=0.9, beta2=0.99, epsilon=1e-07,
                 name="adam_optimizer_"+weight)
+            elif self.optimizer == "adadelta":
+              optimizer = tf.train.AdadeltaOptimizer(learning_rates,
+                epsilon=1e-07, name="adadelta_optimizer_"+weight)
             with tf.variable_scope("weights", reuse=True) as scope:
               weight_op = [tf.get_variable(weight)]
             sch_grads_and_vars.append(self.compute_gradients(optimizer,
@@ -268,12 +268,12 @@ class Model(object):
     full_saver_def = self.full_saver.as_saver_def()
     full_file = self.save_dir+self.model_name+"_v"+self.version+"-full.def"
     with open(full_file, "wb") as f:
-        f.write(full_saver_def.SerializeToString())
+      f.write(full_saver_def.SerializeToString())
     logging.info("Full saver def saved in file %s"%full_file)
     weight_saver_def = self.weight_saver.as_saver_def()
     weight_file = self.save_dir+self.model_name+"_v"+self.version+"-weights.def"
     with open(weight_file, "wb") as f:
-        f.write(weight_saver_def.SerializeToString())
+      f.write(weight_saver_def.SerializeToString())
     logging.info("Weight saver def saved in file %s"%weight_file)
 
   """Write graph structure to protobuf file"""
@@ -303,7 +303,7 @@ class Model(object):
     key: [str] key in dictionary
   """
   def get_sched(self, key=None):
-    if key:
+    if key is not None:
       assert key in self.sched[self.sched_idx].keys(), (
         key+" was not found in the schedule.")
       return self.sched[self.sched_idx][key]
@@ -355,6 +355,17 @@ class Model(object):
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
         self.get_sched(placeholder.split('/')[1]))
     return feed_dict
+
+  """Setup graph object and add optimizers, initializer"""
+  def setup_graph(self):
+    self.build_graph()
+    self.add_optimizers_to_graph()
+    self.add_initializer_to_graph()
+    self.construct_savers()
+
+  """Build the TensorFlow graph object"""
+  def build_graph(self):
+    pass
 
   """
   Log train progress information

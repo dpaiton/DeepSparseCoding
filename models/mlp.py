@@ -8,8 +8,6 @@ from models.base_model import Model
 class MLP(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
-    self.build_graph()
-    Model.setup_graph(self, self.graph)
 
   """
   Load parameters into object
@@ -48,8 +46,8 @@ class MLP(Model):
       self.val_on_cp = bool(params["val_on_cp"])
     else:
       self.val_on_cp = False
-    self.phi_shape = [self.num_pixels, self.num_hidden]
-    self.w_shape = [self.num_classes, self.num_hidden]
+    self.w1_shape = [self.num_pixels, self.num_hidden]
+    self.w2_shape = [self.num_hidden, self.num_classes]
 
   """
   Build an MLP TensorFlow Graph.
@@ -60,74 +58,79 @@ class MLP(Model):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
           self.x = tf.placeholder(tf.float32,
-            shape=[self.num_pixels, None], name="input_data")
+            shape=[None, self.num_pixels], name="input_data")
           self.y = tf.placeholder(tf.float32,
-            shape=[self.num_classes, None], name="input_labels")
+            shape=[None, self.num_classes], name="input_labels")
 
         with tf.name_scope("constants") as scope:
-          self.label_mult = tf.reduce_sum(self.y, reduction_indices=[0])
+          ## For semi-supervised learning, loss is 0 if there is no label
+          self.label_mult = tf.reduce_sum(self.y, reduction_indices=[1])
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
         with tf.variable_scope("weights") as scope:
-          self.phi = tf.get_variable(name="phi", dtype=tf.float32,
-            initializer=tf.truncated_normal(self.phi_shape, mean=0.0,
-            stddev=1.0, dtype=tf.float32, name="phi_init"), trainable=True)
-          self.w = tf.get_variable(name="w", dtype=tf.float32,
-            initializer=tf.truncated_normal(self.w_shape, mean=0.0,
-            stddev=1.0, dtype=tf.float32, name="w_init"), trainable=True)
+          self.w1 = tf.get_variable(name="w1", dtype=tf.float32,
+            initializer=tf.truncated_normal(self.w1_shape, mean=0.0,
+            stddev=1.0, dtype=tf.float32, name="w1_init"), trainable=True)
+          self.w2 = tf.get_variable(name="w2", dtype=tf.float32,
+            initializer=tf.truncated_normal(self.w2_shape, mean=0.0,
+            stddev=1.0, dtype=tf.float32, name="w2_init"), trainable=True)
           self.bias1 = tf.get_variable(name="bias1", dtype=tf.float32,
-            initializer=tf.zeros([self.num_hidden, 1], dtype=tf.float32,
+            initializer=tf.zeros([1, self.num_hidden], dtype=tf.float32,
             name="bias1_init"), trainable=True)
           self.bias2 = tf.get_variable(name="bias2", dtype=tf.float32,
-            initializer=tf.zeros([self.num_classes, 1], dtype=tf.float32,
+            initializer=tf.zeros([1, self.num_classes], dtype=tf.float32,
             name="bias2_init"), trainable=True)
 
-        with tf.name_scope("normalize_weights") as scope:
-          self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi,
+        with tf.name_scope("norm_weights") as scope:
+          self.norm_w1 = self.w1.assign(tf.nn.l2_normalize(self.w1,
             dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.normalize_weights = tf.group(self.norm_phi,
+          self.norm_weights = tf.group(self.norm_w1,
             name="l2_normalization")
 
         with tf.name_scope("hidden_variables") as scope:
           if self.rectify_a:
-            self.a = tf.nn.relu(tf.add(tf.matmul(tf.transpose(self.phi),
-              self.x), self.bias1), name="activity")
+            self.a = tf.nn.relu(tf.add(tf.matmul(self.x, self.w1),
+              self.bias1), name="activity")
           else:
-            self.a = tf.add(tf.matmul(tf.transpose(self.phi), self.x),
-              self.bias1, name="activity")
+            self.a = tf.add(tf.matmul(self.x, self.w1), self.bias1,
+              name="activity")
 
           if self.norm_a:
-            self.c = tf.add(tf.matmul(self.w, tf.nn.l2_normalize(self.a,
-              dim=0, epsilon=self.eps, name="row_l2_norm"),
+            self.c = tf.add(tf.matmul(tf.nn.l2_normalize(self.a,
+              dim=1, epsilon=self.eps, name="row_l2_norm"), self.w2,
               name="classify"), self.bias2, name="c")
           else:
-            self.c = tf.add(tf.matmul(self.w, self.a, name="classify"),
+            self.c = tf.add(tf.matmul(self.a, self.w2, name="classify"),
               self.bias2, name="c")
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("label_estimate"):
-            self.y_ = tf.transpose(tf.nn.softmax(tf.transpose(self.c)))
+            self.y_ = tf.nn.softmax(self.c)
 
         with tf.name_scope("loss") as scope:
           with tf.name_scope("supervised"):
             with tf.name_scope("cross_entropy_loss"):
               self.cross_entropy_loss = (self.label_mult
                 * -tf.reduce_sum(tf.mul(self.y, tf.log(tf.clip_by_value(
-                self.y_, self.eps, 1.0))), reduction_indices=[0]))
+                self.y_, self.eps, 1.0))), reduction_indices=[1]))
               label_count = tf.reduce_sum(self.label_mult)
-              self.mean_cross_entropy_loss = (
-                tf.reduce_sum(self.cross_entropy_loss)
-                / (label_count + self.eps))
+              f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
+              f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
+              pred_fn_pairs = {
+                tf.equal(label_count, tf.constant(0.0)): f1,
+                tf.greater(label_count, tf.constant(0.0)): f2}
+              self.mean_cross_entropy_loss = tf.case(pred_fn_pairs,
+                default=f2, exclusive=True, name="mean_cross_entropy_loss")
             self.supervised_loss = self.mean_cross_entropy_loss
           self.total_loss = self.supervised_loss
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("prediction_bools"):
-            self.correct_prediction = tf.equal(tf.argmax(self.y_, dimension=0),
-              tf.argmax(self.y, dimension=0), name="individual_accuracy")
+            self.correct_prediction = tf.equal(tf.argmax(self.y_, dimension=1),
+              tf.argmax(self.y, dimension=1), name="individual_accuracy")
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
@@ -148,7 +151,7 @@ class MLP(Model):
     a_vals = tf.get_default_session().run(self.a, feed_dict)
     a_vals_max = np.array(a_vals.max()).tolist()
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(self.num_hidden * self.batch_size)).tolist()
+      / float(self.batch_size * self.num_hidden)).tolist()
     accuracy = np.array(self.accuracy.eval(feed_dict)).tolist()
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
@@ -170,30 +173,30 @@ class MLP(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     pf.save_data_tiled(
-      self.w.eval().reshape(self.num_classes,
+      tf.transpose(self.w2).eval().reshape(self.num_classes,
       int(np.sqrt(self.num_hidden)), int(np.sqrt(self.num_hidden))),
       normalize=True, title="Classification matrix at step number "
-      +current_step, save_filename=(self.disp_dir+"w_v"+self.version+"-"
+      +current_step, save_filename=(self.disp_dir+"w2_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
     pf.save_data_tiled(
-      tf.transpose(self.phi).eval().reshape(self.num_hidden,
+      tf.transpose(self.w1).eval().reshape(self.num_hidden,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
       normalize=True, title="Dictionary at step "+current_step,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"-"
+      save_filename=(self.disp_dir+"w1_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
-      if name == "phi":
+      if name == "w1":
         pf.save_data_tiled(grad.T.reshape(self.num_hidden,
           int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-          normalize=True, title="Gradient for phi at step "+current_step,
-          save_filename=(self.disp_dir+"dphi_v"+self.version+"_"
+          normalize=True, title="Gradient for w1 at step "+current_step,
+          save_filename=(self.disp_dir+"dw1_v"+self.version+"_"
           +current_step.zfill(5)+".pdf"))
-      elif name == "w":
-        pf.save_data_tiled(grad.reshape(self.num_classes,
+      elif name == "w2":
+        pf.save_data_tiled(grad.T.reshape(self.num_classes,
           int(np.sqrt(self.num_hidden)), int(np.sqrt(self.num_hidden))),
-          normalize=True, title="Gradient for w at step "+current_step,
-          save_filename=(self.disp_dir+"dw_v"+self.version+"_"
+          normalize=True, title="Gradient for w2 at step "+current_step,
+          save_filename=(self.disp_dir+"dw2_v"+self.version+"_"
           +current_step.zfill(5)+".pdf"))

@@ -1,15 +1,24 @@
 import numpy as np
+import utils.image_processing as ip
 
 class Dataset(object):
-  def __init__(self, imgs, lbls, ignore_lbls,
+  def __init__(self, imgs, lbls, ignore_lbls=None, vectorize=True,
     rand_state=np.random.RandomState()):
-    self.num_examples = imgs.shape[0]
-    self.num_px_rows = imgs.shape[1]
-    self.num_px_cols = imgs.shape[2]
-    self.images = imgs.reshape(self.num_examples,
-      self.num_px_rows*self.num_px_cols)
-    self.images -= np.min(self.images)
-    self.images /= np.max(self.images)
+    if imgs.ndim == 3:
+      (self.num_examples, self.num_rows, self.num_cols) = imgs.shape
+      self.num_channels = 1
+    elif imgs.ndim == 4:
+      (self.num_examples, self.num_rows,
+        self.num_cols, self.num_channels) = imgs.shape
+    else:
+      assert False, (
+        "ndim must be 3 (batch, rows, cols) or 4 (batch, rows, cols, chans)")
+    if vectorize:
+      self.images = imgs.reshape(self.num_examples,
+        self.num_rows*self.num_cols*self.num_channels)
+    else:
+      self.images = imgs
+    self.num_pixels = self.num_rows*self.num_cols*self.num_channels
     self.labels = lbls
     self.ignore_labels = ignore_lbls
     self.epochs_completed = 0
@@ -72,3 +81,15 @@ class Dataset(object):
       self.new_epoch(int((num_batches * batch_size) / float(self.num_examples)))
     self.batches_completed += num_batches
     self.curr_epoch_idx = (num_batches * batch_size) % self.num_examples
+
+  """Reshape images to be a vector per data point"""
+  def vectorize_data(self):
+    #assert self.images.ndim == 4, ("Image must be a 4D tensor")
+    self.images = self.images.reshape(self.num_examples,
+      self.num_rows * self.num_cols * self.num_channels)
+
+  """Reshape images to be a vector per data point"""
+  def devectorize_data(self):
+    #assert self.images.ndim == 2, ("Image must be a 2D tensor")
+    self.images = self.images.reshape(self.num_examples,
+      self.num_rows, self.num_cols, self.num_channels)
