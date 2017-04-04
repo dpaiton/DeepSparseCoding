@@ -76,10 +76,10 @@ class ICA(Model):
   """
   def compute_gradients(self, optimizer, weight_op=None):
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
-    weight_name = weight_op[0].name.split('/')[1].split(':')[0]
-    z_u_avg = tf.truediv(tf.matmul(tf.transpose(self.u), self.z),
+    weight_name = weight_op[0].name.split('/')[1].split(':')[0]#np.split
+    z_u_avg = tf.divide(tf.matmul(tf.transpose(self.u), self.z),
       tf.to_float(tf.shape(self.x)[0]), name="avg_samples")
-    gradient = -tf.sub(tf.matmul(z_u_avg, weight_op[0]), weight_op[0],
+    gradient = -tf.subtract(tf.matmul(z_u_avg, weight_op[0]), weight_op[0],
       name=weight_name+"_gradient")
     return [(gradient, weight_op[0])]
 
@@ -115,7 +115,7 @@ class ICA(Model):
       "z_fraction_active":z_frac_act}
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       stat_dict[name+"_max_grad"] = np.array(grad.max()).tolist()
       stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
@@ -159,7 +159,7 @@ class ICA(Model):
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       pf.save_data_tiled(grad.reshape(self.num_neurons,
         int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
         normalize=False, title="Gradient for "+name+" at step "+current_step,

@@ -64,7 +64,7 @@ class MLP(Model):
 
         with tf.name_scope("constants") as scope:
           ## For semi-supervised learning, loss is 0 if there is no label
-          self.label_mult = tf.reduce_sum(self.y, reduction_indices=[1])
+          self.label_mult = tf.reduce_sum(self.y, axis=[1])
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False,
@@ -114,8 +114,8 @@ class MLP(Model):
           with tf.name_scope("supervised"):
             with tf.name_scope("cross_entropy_loss"):
               self.cross_entropy_loss = (self.label_mult
-                * -tf.reduce_sum(tf.mul(self.y, tf.log(tf.clip_by_value(
-                self.y_, self.eps, 1.0))), reduction_indices=[1]))
+                * -tf.reduce_sum(tf.multiply(self.y, tf.log(tf.clip_by_value(
+                self.y_, self.eps, 1.0))), axis=[1]))
               label_count = tf.reduce_sum(self.label_mult)
               f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
               f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
@@ -129,8 +129,8 @@ class MLP(Model):
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("prediction_bools"):
-            self.correct_prediction = tf.equal(tf.argmax(self.y_, dimension=1),
-              tf.argmax(self.y, dimension=1), name="individual_accuracy")
+            self.correct_prediction = tf.equal(tf.argmax(self.y_, axis=1),
+              tf.argmax(self.y, axis=1), name="individual_accuracy")
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
@@ -187,7 +187,7 @@ class MLP(Model):
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       if name == "w1":
         pf.save_data_tiled(grad.T.reshape(self.num_hidden,
           int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),

@@ -24,7 +24,7 @@ params = {
   "cp_load_val": 150000,
   "cp_load_ver": "0.0",
   "cp_load_var": ["phi"],
-  "log_int": 10,
+  "log_int": 1,
   "log_to_file": False,
   "gen_plot_int": 10,
   "display_plots": False,

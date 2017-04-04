@@ -10,12 +10,12 @@ import data.data_picker as dp
 ## Specify model type and data type
 #model_type = "mlp"
 #model_type = "ica"
-model_type = "lca"
-#model_type = "conv_lca"
-#model_type = "deep_sparse_coding"
+#model_type = "lca"
+model_type = "conv_lca"
+#model_type = "dsc"
 
-#data_type = "cifar10"
-data_type = "mnist"
+data_type = "cifar10"
+#data_type = "mnist"
 #data_type = "vanhateren"
 #data_type = "field"
 #data_type = "synthetic"

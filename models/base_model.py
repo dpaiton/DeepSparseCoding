@@ -232,7 +232,7 @@ class Model(object):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("initialization") as scope:
-          self.init_op = tf.initialize_all_variables()
+          self.init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
 
   """Get variables for loading"""
   def get_load_vars(self):
@@ -253,7 +253,7 @@ class Model(object):
       "Optimizers must be added to the graph before constructing savers.")
     with self.graph.as_default():
       with tf.variable_scope("weights", reuse=True) as scope:
-        weights = [weight for weight in tf.all_variables()
+        weights = [weight for weight in tf.global_variables()
           if weight.name.startswith(scope.name)]
       self.weight_saver = tf.train.Saver(var_list=weights,
         max_to_keep=self.max_cp_to_keep)
@@ -279,7 +279,7 @@ class Model(object):
   """Write graph structure to protobuf file"""
   def write_graph(self, graph_def):
     write_name = self.model_name+"_v"+self.version+".pb"
-    self.writer = tf.train.SummaryWriter(self.save_dir, graph=self.graph)
+    self.writer = tf.summary.FileWriter(self.save_dir, graph=self.graph)
     tf.train.write_graph(graph_def,
       logdir=self.save_dir, name=write_name, as_text=False)
     logging.info("Graph def saved in file %s"%self.save_dir+write_name)
@@ -353,7 +353,7 @@ class Model(object):
       feed_dict = {self.x:input_data}
     for placeholder in placeholders:
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
-        self.get_sched(placeholder.split('/')[1]))
+        self.get_sched(placeholder.split("/")[1]))
     return feed_dict
 
   """Setup graph object and add optimizers, initializer"""
