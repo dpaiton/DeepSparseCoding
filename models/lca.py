@@ -54,8 +54,11 @@ class LCA(Model):
 
         with tf.name_scope("constants") as scope:
           self.u_zeros = tf.zeros(
-            shape=tf.pack([tf.shape(self.x)[0], self.num_neurons]),
+            shape=tf.stack([tf.shape(self.x)[0], self.num_neurons]),
             dtype=tf.float32, name="u_zeros")
+          self.u_noise = tf.truncated_normal(
+            shape=tf.stack([tf.shape(self.x)[0], self.num_neurons]),
+            mean=0.0, stddev=0.1, dtype=tf.float32, name="u_noise")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -76,20 +79,22 @@ class LCA(Model):
             validate_shape=False, name="u")
           if self.thresh_type == "soft":
             if self.rectify_a:
-              self.a = tf.select(tf.greater(self.u, self.sparse_mult),
-                tf.sub(self.u, self.sparse_mult), self.u_zeros, name="activity")
+              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
+                tf.subtract(self.u, self.sparse_mult), self.u_zeros,
+                name="activity")
             else:
-              self.a = tf.select(tf.greater(self.u, self.sparse_mult),
-                tf.sub(self.u, self.sparse_mult), tf.select(tf.less(self.u,
-                -self.sparse_mult), tf.add(self.u, self.sparse_mult),
+              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
+                tf.subtract(self.u, self.sparse_mult),
+                tf.where(tf.less(self.u, -self.sparse_mult),
+                tf.add(self.u, self.sparse_mult),
                 self.u_zeros), name="activity")
           elif self.thresh_type == "hard":
             if self.rectify_a:
-              self.a = tf.select(tf.greater(self.u, self.sparse_mult), self.u,
+              self.a = tf.where(tf.greater(self.u, self.sparse_mult), self.u,
                 self.u_zeros, name="activity")
             else:
-              self.a = tf.select(tf.greater(self.u, self.sparse_mult),
-                self.u, tf.select(tf.less(self.u, -self.sparse_mult), self.u,
+              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
+                self.u, tf.where(tf.less(self.u, -self.sparse_mult), self.u,
                 self.u_zeros), name="activity")
 
         with tf.name_scope("output") as scope:
@@ -100,10 +105,10 @@ class LCA(Model):
         with tf.name_scope("loss") as scope:
           with tf.name_scope("unsupervised"):
             self.recon_loss = tf.reduce_mean(0.5 *
-              tf.reduce_sum(tf.pow(tf.sub(self.x, self.x_), 2.0),
-              reduction_indices=[1]), name="recon_loss")
+              tf.reduce_sum(tf.pow(tf.subtract(self.x, self.x_), 2.0),
+              axis=[1]), name="recon_loss")
             self.sparse_loss = self.sparse_mult * tf.reduce_mean(
-              tf.reduce_sum(tf.abs(self.a), reduction_indices=[1]),
+              tf.reduce_sum(tf.abs(self.a), axis=[1]),
               name="sparse_loss")
             self.unsupervised_loss = (self.recon_loss + self.sparse_loss)
           self.total_loss = self.unsupervised_loss
@@ -119,15 +124,15 @@ class LCA(Model):
           self.du = self.lca_b - self.lca_explain_away - self.u
           self.step_inference = tf.group(self.u.assign_add(self.eta * self.du),
             name="step_inference")
-          self.reset_activity = tf.group(self.u.assign(self.u_zeros),
+          self.reset_activity = tf.group(self.u.assign(self.u_noise),
             name="reset_activity")
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.pow(tf.sub(self.x, self.x_), 2.0),
-              reduction_indices=[1, 0], name="mean_squared_error")
-            self.pSNRdB = tf.mul(10.0, tf.log(tf.div(tf.pow(1.0, 2.0), MSE)),
-              name="recon_quality")
+            MSE = tf.reduce_mean(tf.pow(tf.subtract(self.x, self.x_), 2.0),
+              axis=[1, 0], name="mean_squared_error")
+            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.pow(1.0,
+               2.0), MSE)), name="recon_quality")
     self.graph_built = True
 
   """
@@ -163,7 +168,7 @@ class LCA(Model):
       "a_fraction_active":a_frac_act}
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       stat_dict[name+"_max_grad"] = np.array(grad.max()).tolist()
       stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
@@ -188,7 +193,7 @@ class LCA(Model):
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       pf.save_data_tiled(grad.T.reshape(self.num_neurons,
         int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
         normalize=True, title="Gradient for phi at step "+current_step,

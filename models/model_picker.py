@@ -20,10 +20,10 @@ def get_model(model_type, params=None, schedule=None):
   if model_type.lower() == "conv_lca":
     from models.conv_lca import conv_LCA as conv_lca
     return conv_lca(params, schedule)
-  if model_type.lower() == "deep_sparse_coding":
-    from models.deep_sparse_coding import deep_sparse_coding as dsc
+  if model_type.lower() == "dsc":
+    from models.dsc import dsc as dsc
     return dsc(params, schedule)
 
 def get_model_list():
-  model_list = ["mlp", "ica", "lca", "conv_lca", "deep_sparse_coding"]
+  model_list = ["mlp", "ica", "lca", "conv_lca", "dsc"]
   return model_list

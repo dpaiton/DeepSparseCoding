@@ -1,11 +1,10 @@
 import numpy as np
-import logging
 import json as js
 import tensorflow as tf
 import utils.plot_functions as pf
 from models.base_model import Model
 
-class deep_sparse_coding(Model):
+class dsc(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
 
@@ -71,13 +70,11 @@ class deep_sparse_coding(Model):
     temp_sigma = tf.exp(tf.matmul(v_state, tf.transpose(b)))
     temp_x_ = tf.matmul(u_state, tf.transpose(a))
     recon_loss = self.recon_mult * tf.reduce_mean(0.5 *
-      tf.reduce_sum(tf.pow(tf.sub(input_data, temp_x_), 2.0),
-      reduction_indices=[1]))
+      tf.reduce_sum(tf.pow(tf.subtract(input_data, temp_x_), 2.0), axis=[1]))
     feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
-      tf.div(u_state, temp_sigma), tf.log(temp_sigma)),
-      reduction_indices=[1]))
+      tf.divide(u_state, temp_sigma), tf.log(temp_sigma)), axis=[1]))
     sparse_loss = self.sparse_mult * tf.reduce_mean(
-      tf.reduce_sum(tf.abs(v_state), reduction_indices=[1]))
+      tf.reduce_sum(tf.abs(v_state), axis=[1]))
     total_loss = (recon_loss + feedback_loss + sparse_loss)
     return (total_loss, recon_loss, feedback_loss, sparse_loss)
 
@@ -108,10 +105,10 @@ class deep_sparse_coding(Model):
 
         with tf.name_scope("constants") as scope:
           self.u_zeros = tf.zeros(
-            shape=tf.pack([tf.shape(self.x)[0], self.num_u]),
+            shape=tf.stack([tf.shape(self.x)[0], self.num_u]),
             dtype=tf.float32, name="u_zeros")
           self.v_zeros = tf.zeros(
-            shape=tf.pack([tf.shape(self.x)[0], self.num_v]),
+            shape=tf.stack([tf.shape(self.x)[0], self.num_v]),
             dtype=tf.float32, name="v_zeros")
 
         with tf.name_scope("step_counter") as scope:
@@ -143,10 +140,10 @@ class deep_sparse_coding(Model):
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
             self.x_ = tf.matmul(self.u, tf.transpose(self.a), name="reconstruction")
-            MSE = tf.reduce_mean(tf.pow(tf.sub(self.x, self.x_), 2.0),
-              reduction_indices=[1, 0], name="mean_squared_error")
-            self.pSNRdB = tf.mul(10.0, tf.log(tf.div(tf.pow(1.0, 2.0), MSE)),
-              name="recon_quality")
+            MSE = tf.reduce_mean(tf.pow(tf.subtract(self.x, self.x_), 2.0),
+              axis=[1, 0], name="mean_squared_error")
+            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.pow(1.0,
+               2.0), MSE)), name="recon_quality")
           with tf.name_scope("layer1_prior"):
             self.sigma = tf.exp(-tf.matmul(self.v, tf.transpose(self.b),
               name="sigma"))
@@ -228,7 +225,7 @@ class deep_sparse_coding(Model):
       "v_fraction_active":v_frac_act}
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       stat_dict[name+"_max_grad"] = np.array(grad.max()).tolist()
       stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
@@ -259,7 +256,7 @@ class deep_sparse_coding(Model):
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       if name == "a":
         pf.save_data_tiled(grad.T.reshape(self.num_u,
           int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),

@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import utils.image_processing as ip
 
 """
 Generate a bar graph of data
@@ -74,20 +75,6 @@ def save_phase_avg_power_spec(data, title="", save_filename="./pow_spec.pdf"):
 
 
 """
-Normalize data
-Outputs:
-  norm_data: [np.ndarray] data normalized so that 0 is midlevel grey
-Inputs:
-  data: [np.ndarray] data to be normalized
-"""
-def normalize_data(data):
-  if np.max(np.abs(data)) > 0:
-    norm_data = (data / np.max(np.abs(data))).squeeze()
-  else:
-    norm_data = data.squeeze()
-  return norm_data
-
-"""
 Pad data with ones for visualization
 Outputs:
   padded version of input
@@ -134,7 +121,7 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
   if vmax is None:
     vmax = np.max(data)
   if normalize:
-    data = normalize_data(data)
+    data = ip.normalize_data_with_max(data)
   if len(data.shape) >= 3:
     data = pad_data(data)
   fig, sub_axis = plt.subplots(1)

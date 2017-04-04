@@ -21,7 +21,6 @@ class conv_LCA(Model):
     stride_y
     patch_size_y
     patch_size_x
-    unroll_inference [bool]
     num_neurons  [int] Number of LCA neurons
     num_steps    [int] Number of inference steps
     dt           [float] Discrete global time constant
@@ -31,7 +30,6 @@ class conv_LCA(Model):
     Model.load_params(self, params)
     # Meta parameters
     self.norm_weights = bool(params["norm_weights"])
-    self.unroll_inference = bool(params["unroll_inference"])
     # Network Size
     self.batch_size = int(params["batch_size"])
     self.input_shape = params["input_shape"]
@@ -69,6 +67,11 @@ class conv_LCA(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
+        with tf.name_scope("constants") as scope:
+          u_full_shape = tf.stack([tf.shape(self.x)[0]]+self.u_shape)
+          self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0,
+            stddev=0.1, dtype=tf.float32, name="u_noise")
+
         with tf.variable_scope("weights") as scope:
           self.phi = tf.get_variable(name="phi", dtype=tf.float32,
             initializer=tf.truncated_normal(self.phi_shape, mean=0.0,
@@ -80,8 +83,7 @@ class conv_LCA(Model):
           self.norm_weights = tf.group(self.norm_phi, name="l2_normalization")
 
         with tf.name_scope("inference") as scope:
-          u_full_shape = tf.pack([tf.shape(self.x)[0]]+self.u_shape)
-          self.u = tf.Variable(tf.truncated_normal(u_full_shape),
+          self.u = tf.Variable(self.u_noise,
             trainable=False, validate_shape=False, dtype=tf.float32, name="u")
           self.a = tf.Variable(tf.zeros(u_full_shape, name="a_init"),
             trainable=False, validate_shape=False, dtype=tf.float32, name="a")
@@ -95,36 +97,35 @@ class conv_LCA(Model):
         with tf.name_scope("loss") as scope:
           with tf.name_scope("unsupervised"):
             self.recon_loss = tf.reduce_mean(0.5 *
-              tf.reduce_sum(tf.pow(tf.sub(self.x, self.x_), 2.0),
-              reduction_indices=[1, 2, 3]), name="recon_loss")
+              tf.reduce_sum(tf.pow(tf.subtract(self.x, self.x_), 2.0),
+              axis=[1, 2, 3]), name="recon_loss")
             self.sparse_loss = self.sparse_mult * tf.reduce_mean(
-              tf.reduce_sum(tf.abs(self.a), reduction_indices=[1, 2, 3]),
+              tf.reduce_sum(tf.abs(self.a), axis=[1, 2, 3]),
               name="sparse_loss")
             self.unsupervised_loss = (self.recon_loss + self.sparse_loss)
           self.total_loss = self.unsupervised_loss
 
         with tf.name_scope("update_u") as scope:
-          if self.unroll_inference:
-            assert 0
-          else:
-            self.initialize_a = self.a.assign(tf.nn.relu((self.u
-              - self.sparse_mult)))
-            self.u_optimizer = tf.train.GradientDescentOptimizer(self.eta)
-            #self.u_optimizer = tf.train.AdamOptimizer(self.eta) #TODO: Broke
-            with tf.control_dependencies([self.initialize_a]):
-              self.loss_grad = self.u_optimizer.compute_gradients(
-                  self.recon_loss, var_list=[self.a])
-              self.du = [(self.loss_grad[0][0] - self.a + self.u, self.u)]
-              self.update_u = self.u_optimizer.apply_gradients(self.du)
-              self.step_inference = tf.group(self.update_u,
-                name="step_inference")
+          self.initialize_a = self.a.assign(tf.nn.relu((self.u
+            - self.sparse_mult)))
+          self.u_optimizer = tf.train.GradientDescentOptimizer(self.eta)
+          #self.u_optimizer = tf.train.AdamOptimizer(self.eta) #TODO: Broke
+          with tf.control_dependencies([self.initialize_a]):
+            self.loss_grad = self.u_optimizer.compute_gradients(
+                self.recon_loss, var_list=[self.a])
+            self.du = [(self.loss_grad[0][0] - self.a + self.u, self.u)]
+            self.update_u = self.u_optimizer.apply_gradients(self.du)
+            self.step_inference = tf.group(self.update_u,
+              name="step_inference")
+          self.reset_activity = tf.group(self.u.assign(self.u_noise),
+            name="reset_activity")
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.pow(tf.sub(self.x, self.x_), 2.0),
-              reduction_indices=[1, 0], name="mean_squared_error")
-            self.pSNRdB = tf.mul(10.0, tf.log(tf.div(tf.pow(1.0, 2.0), MSE)),
-              name="recon_quality")
+            MSE = tf.reduce_mean(tf.pow(tf.subtract(self.x, self.x_), 2.0),
+              axis=[1, 0], name="mean_squared_error")
+            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.pow(1.0,
+              2.0), MSE)), name="recon_quality")
     self.graph_built = True
 
   """
@@ -161,7 +162,7 @@ class conv_LCA(Model):
       "a_fraction_active":a_frac_act}
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       stat_dict[name+"_max_grad"] = np.array(grad.max()).tolist()
       stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
@@ -185,7 +186,7 @@ class conv_LCA(Model):
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       pf.save_data_tiled(grad, normalize=True,
         title="Gradient for phi at step "+current_step,
         save_filename=(self.disp_dir+"dphi_v"+self.version+"_"
