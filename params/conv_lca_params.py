@@ -17,7 +17,6 @@ params = {
   "num_steps": 200,
   "dt": 0.001,
   "tau": 1.0,
-  "unroll_inference": False,
   "cp_int": 5000,
   "max_cp_to_keep": 5,
   "cp_load": False,

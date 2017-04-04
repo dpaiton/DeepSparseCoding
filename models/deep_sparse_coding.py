@@ -1,5 +1,4 @@
 import numpy as np
-import logging
 import json as js
 import tensorflow as tf
 import utils.plot_functions as pf

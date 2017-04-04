@@ -9,8 +9,8 @@ import data.data_picker as dp
 
 ## Specify model type and data type
 #model_type = "mlp"
-model_type = "ica"
-#model_type = "lca"
+#model_type = "ica"
+model_type = "lca"
 #model_type = "conv_lca"
 #model_type = "deep_sparse_coding"
 
@@ -46,7 +46,7 @@ with tf.Session(graph=model.graph) as sess:
   # Need to provide shape if batch_size is used in graph
   sess.run(model.init_op,
     feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"],
-    dtype=np.float32)}) 
+    dtype=np.float32)})
 
   model.write_graph(sess.graph_def)
 

@@ -56,6 +56,9 @@ class LCA(Model):
           self.u_zeros = tf.zeros(
             shape=tf.pack([tf.shape(self.x)[0], self.num_neurons]),
             dtype=tf.float32, name="u_zeros")
+          self.u_noise = tf.truncated_normal(
+            shape=tf.pack([tf.shape(self.x)[0], self.num_neurons]),
+            mean=0.0, stddev=0.1, dtype=tf.float32, name="u_noise")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -119,7 +122,7 @@ class LCA(Model):
           self.du = self.lca_b - self.lca_explain_away - self.u
           self.step_inference = tf.group(self.u.assign_add(self.eta * self.du),
             name="step_inference")
-          self.reset_activity = tf.group(self.u.assign(self.u_zeros),
+          self.reset_activity = tf.group(self.u.assign(self.u_noise),
             name="reset_activity")
 
         with tf.name_scope("performance_metrics") as scope:

@@ -142,6 +142,19 @@ def reshape_data(data, flatten_data=False):
     assert False, ("Data must have 1, 2, or 3 dimensions.")
   return (data, orig_shape, num_examples, num_rows, num_cols)
 
+"""
+Normalize data by dividing by abs(max(data))
+Outputs:
+  norm_data: [np.ndarray] data normalized so that 0 is midlevel grey
+Inputs:
+  data: [np.ndarray] data to be normalized
+"""
+def normalize_data_with_max(data):
+  if np.max(np.abs(data)) > 0:
+    norm_data = (data / np.max(np.abs(data))).squeeze()
+  else:
+    norm_data = data.squeeze()
+  return norm_data
 
 """
 Subtract individual example mean from data
