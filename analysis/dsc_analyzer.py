@@ -1,35 +1,38 @@
 import numpy as np
 import tensorflow as tf
-import matplotlib
 import utils.plot_functions as pf
 from analysis.base_analysis import Analyzer
 
-class karklin_lewicki(Analyzer):
-  def __init__(self, params):
-    Analyzer.__init__(self, params)
+class dsc(Analyzer):
+  def __init__(self, params, schedule, log_text):
+    Analyzer.__init__(self, params, schedule, log_text)
 
   def load_params(self, params):
     Analyzer.load_params(self, params)
     self.eval_inference = params["eval_inference"]
     self.eval_density_weights = params["eval_density_weights"]
 
+  def load_schedule(self, schedule):
+    self.schedule = schedule
+
   """
   plot loss values during learning
   """
-  def plot_stats(self, stats):
+  def save_log_stats(self):
+    stats = log_parser.read_stats(self.log_text)
     losses = {
      "batch_step":stats["batch_step"],
      "recon_loss":stats["recon_loss"],
      "sparse_loss":stats["sparse_loss"],
      "feedback_loss":stats["feedback_loss"],
      "total_loss":stats["total_loss"]}
-    loss_filename = self.out_dir+"losses_v"+self.version+self.file_ext
-    pf.save_losses(data=losses, labels=None, out_filename=loss_filename)
+    loss_filename = self.out_dir+"log_stats_v"+self.version+self.file_ext
+    pf.save_stats(data=losses, labels=None, out_filename=loss_filename)
 
   """
   plot activity triggered averages
   """
-  def plot_ata(self, data, datatype):
+  def save_data(self, data, datatype):
     fig_title = "Activity triggered averages on "+datatype+" data"
     for layer_idx, layer in enumerate(data):
       ata_filename = (self.out_dir+"act_trig_avg_layer_"+str(layer_idx)+"_"
