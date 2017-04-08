@@ -4,13 +4,16 @@ from data.dataset import Dataset
 import utils.image_processing as ip
 
 class vanHateren(object):
-  def __init__(self, img_dir, num_examples=None, patch_edge_size=None,
-    overlapping=None, var_thresh=None, rand_state=np.random.RandomState()):
+  def __init__(self, img_dir, whiten_data=False, num_examples=None,
+    patch_edge_size=None, overlapping=None, var_thresh=None,
+    rand_state=np.random.RandomState()):
     full_img_data = self.extract_images(img_dir, num_examples=50,
       rand_state=rand_state)
     full_img_data = ip.downsample_data(full_img_data, factor=[1, 0.5, 0.5],
       order=2)
     full_img_data = ip.center_data(full_img_data)
+    if whiten_data:
+      full_img_data = ip.whiten_data(full_img_data, method="FT")
     if all(param is not None for param in (num_examples, patch_edge_size,
       overlapping, var_thresh)):
       out_shape = (num_examples, patch_edge_size, patch_edge_size)
@@ -59,8 +62,8 @@ def load_vanHateren(kwargs):
 
   ## Training set
   img_filename = data_dir+"/img/images_curated.h5"
-  vh_data = vanHateren(img_filename, num_examples, patch_edge_size, overlapping,
-    var_thresh, rand_state=rand_state)
+  vh_data = vanHateren(img_filename, whiten_images, num_examples,
+    patch_edge_size, overlapping, var_thresh, rand_state=rand_state)
   images = Dataset(vh_data.images, lbls=None, ignore_lbls=None,
     vectorize=vectorize, rand_state=rand_state)
   return {"train":images}
