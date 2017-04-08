@@ -13,7 +13,6 @@ class dsc(Model):
   Inputs:
    params: [dict] model parameters
   Modifiable Parameters:
-    rectify_u      [bool] If set, rectify layer 1 activity
     rectify_v      [bool] If set, rectify layer 2 activity
     norm_weights   [bool] If set, l2 normalize weights after updates
     batch_size     [int] Number of images in a training batch
@@ -42,7 +41,7 @@ class dsc(Model):
   def check_params(self):
     Model.check_params(self)
     assert np.sqrt(self.num_u) == np.floor(np.sqrt(self.num_u)), (
-      "The parameter `num_u` must have an even square-root.")
+      "The parameter `num_u` must have an even square-root for plotting.")
 
   """
   Returns total loss function for given input
@@ -55,28 +54,31 @@ class dsc(Model):
     a []
     b []
   """
-  def compute_loss(self, input_data, u_state=None, v_state=None, a=None,
-    b=None):
+  def compute_loss(self, input_data, u_state=None, v_state=None):
     with tf.variable_scope("layers", reuse=True) as scope:
       if u_state is None:
         u_state = tf.get_variable("u")
       if v_state is None:
         v_state = tf.get_variable("v")
     with tf.variable_scope("weights", reuse=True) as scope:
-      if a is None:
-        a = tf.get_variable(name="a")
-      if b is None:
-        b = tf.get_variable(name="b")
+      a = tf.get_variable(name="a")
+      b = tf.get_variable(name="b")
     temp_sigma = tf.exp(tf.matmul(v_state, tf.transpose(b)))
     temp_x_ = tf.matmul(u_state, tf.transpose(a))
-    recon_loss = self.recon_mult * tf.reduce_mean(0.5 *
-      tf.reduce_sum(tf.pow(tf.subtract(input_data, temp_x_), 2.0), axis=[1]))
+    input_stddev = tf.reduce_mean(tf.square(tf.nn.moments(input_data,
+      axes=[1])))
+    recon_loss = self.recon_mult * tf.reduce_mean((1.0/(2.0*input_stddev))*
+      tf.reduce_sum(tf.square(tf.subtract(input_data, temp_x_)), axis=[1]))
     feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
       tf.divide(u_state, temp_sigma), tf.log(temp_sigma)), axis=[1]))
     sparse_loss = self.sparse_mult * tf.reduce_mean(
       tf.reduce_sum(tf.abs(v_state), axis=[1]))
-    total_loss = (recon_loss + feedback_loss + sparse_loss)
-    return (total_loss, recon_loss, feedback_loss, sparse_loss)
+    a_loss = self.a_decay_mult * tf.reduce_mean(
+      tf.reduce_sum(tf.square(a), axis=[1]))
+    b_loss = self.b_decay_mult * tf.reduce_mean(
+      tf.reduce_sum(tf.abs(b), axis=[1]))
+    total_loss = (recon_loss + feedback_loss + sparse_loss + a_loss + b_loss)
+    return (total_loss, recon_loss, feedback_loss, sparse_loss, a_loss, b_loss)
 
   """
   Build the nework described in:
@@ -98,6 +100,10 @@ class dsc(Model):
             shape=(), name="recon_mult")
           self.sparse_mult = tf.placeholder(tf.float32,
             shape=(), name="sparse_mult")
+          self.a_decay_mult = tf.placeholder(tf.float32,
+            shape=(), name="a_decay_mult")
+          self.b_decay_mult = tf.placeholder(tf.float32,
+            shape=(), name="b_decay_mult")
           self.u_step_size = tf.placeholder(tf.float32,
             shape=(), name="u_step_size")
           self.v_step_size = tf.placeholder(tf.float32,
@@ -110,6 +116,9 @@ class dsc(Model):
           self.v_zeros = tf.zeros(
             shape=tf.stack([tf.shape(self.x)[0], self.num_v]),
             dtype=tf.float32, name="v_zeros")
+          self.u_noise = tf.truncated_normal(
+            shape=tf.stack([tf.shape(self.x)[0], self.num_u]),
+            mean=0.0, stddev=0.1, dtype=tf.float32, name="u_noise")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False,
@@ -117,11 +126,12 @@ class dsc(Model):
 
         with tf.variable_scope("weights") as scope:
           self.a = tf.get_variable(name="a", dtype=tf.float32,
-            initializer=tf.truncated_normal(self.a_shape, mean=0.0,
-            stddev=1.0, dtype=tf.float32, name="a_init"), trainable=True)
+            initializer=tf.nn.l2_normalize(tf.truncated_normal(self.a_shape,
+            mean=0.0, stddev=0.5, dtype=tf.float32, name="a_init"), dim=[1]),
+            trainable=True)
           self.b = tf.get_variable(name="b", dtype=tf.float32,
             initializer=tf.truncated_normal(self.b_shape, mean=0.0,
-            stddev=1.0, dtype=tf.float32, name="b_init"), trainable=True)
+            stddev=0.01, dtype=tf.float32, name="b_init"), trainable=True)
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_a = self.a.assign(tf.nn.l2_normalize(self.a,
@@ -153,7 +163,9 @@ class dsc(Model):
             (self.total_loss,
             self.recon_loss,
             self.feedback_loss,
-            self.sparse_loss) = self.compute_loss(self.x)
+            self.sparse_loss,
+            self.a_loss,
+            self.b_loss) = self.compute_loss(self.x)
 
         with tf.name_scope("inference") as scope:
           self.clear_u = self.u.assign(self.u_zeros)
@@ -161,7 +173,7 @@ class dsc(Model):
           self.reset_activity = tf.group(self.clear_u, self.clear_v,
             name="reset_activity")
           current_loss = []
-          self.u_t = [self.u_zeros] # init to zeros
+          self.u_t = [self.u_noise] # init to noise
           self.v_t = [self.v_zeros] # init to zeros
           for step in range(self.num_steps-1): # loop doesn't include init
             current_loss.append(self.compute_loss(self.x, self.u_t[step],
@@ -180,6 +192,8 @@ class dsc(Model):
             self.v_t.append(new_v)
           self.full_inference = tf.group(self.u.assign(self.u_t[-1]),
             self.v.assign(self.v_t[-1]), name="full_inference")
+          self.reset_activity = tf.group(self.u.assign(self.u_noise),
+            self.v.assign(self.v_zeros), name="reset_activity")
 
     self.graph_built = True
 
@@ -202,6 +216,8 @@ class dsc(Model):
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
     feedback_loss = np.array(self.feedback_loss.eval(feed_dict)).tolist()
     sparse_loss = np.array(self.sparse_loss.eval(feed_dict)).tolist()
+    a_loss = np.array(self.a_loss.eval(feed_dict)).tolist()
+    b_loss = np.array(self.b_loss.eval(feed_dict)).tolist()
     total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
     u_vals = tf.get_default_session().run(self.u, feed_dict)
     u_vals_max = np.array(u_vals.max()).tolist()
@@ -218,6 +234,8 @@ class dsc(Model):
       "recon_loss":recon_loss,
       "feedback_loss":feedback_loss,
       "sparse_loss":sparse_loss,
+      "a_l2_loss":a_loss,
+      "b_l1_loss":b_loss,
       "total_loss":total_loss,
       "u_max":u_vals_max,
       "v_max":v_vals_max,
@@ -241,18 +259,50 @@ class dsc(Model):
     Model.generate_plots(self, input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
-    pf.save_data_tiled(
-      tf.transpose(self.b).eval().T.reshape(self.num_v,
-      int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
-      normalize=True, title="Density weights matrix at step number "
-      +current_step, save_filename=(self.disp_dir+"b_v"+self.version+"-"
-      +current_step.zfill(5)+".pdf"))
-    pf.save_data_tiled(
-      tf.transpose(self.a).eval().reshape(self.num_u,
+    recon = tf.get_default_session().run(self.x_, feed_dict)
+    a_weights = tf.get_default_session().run(self.a, feed_dict)
+    #b_weights = tf.get_default_session().run(self.b, feed_dict)
+    u_vals = tf.get_default_session().run(self.u, feed_dict)
+    #v_vals = tf.get_default_session().run(self.v, feed_dict)
+    #pf.save_data_tiled(input_data.reshape((self.batch_size,
+    #  np.int(np.sqrt(self.num_pixels)),
+    #  np.int(np.sqrt(self.num_pixels)))),
+    #  normalize=False, title="Images at step "+current_step,
+    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
+    #  +current_step.zfill(5)+".pdf"), vmin=np.min(input_data),
+    #  vmax=np.max(input_data))
+    pf.save_data_tiled(recon.reshape((self.batch_size,
+      np.int(np.sqrt(self.num_pixels)),
+      np.int(np.sqrt(self.num_pixels)))),
+      normalize=False, title="Recons at step "+current_step,
+      save_filename=(self.disp_dir+"recons_v"+self.version+"-"
+      +current_step.zfill(5)+".pdf"), vmin=np.min(recon), vmax=np.max(recon))
+    pf.save_data_tiled(a_weights.T.reshape(self.num_u,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-      normalize=True, title="Dictionary at step "+current_step,
+      normalize=False, title="Dictionary at step "+current_step,
       save_filename=(self.disp_dir+"a_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
+    #pf.save_data_tiled(b_weights.T.reshape(self.num_v,
+    #  int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
+    #  normalize=False, title="Density weights matrix at step number "
+    #  +current_step, save_filename=(self.disp_dir+"b_v"+self.version+"-"
+    #  +current_step.zfill(5)+".pdf"))
+    pf.save_activity_hist(u_vals, num_bins=1000,
+      title="u Activity Histogram at step "+current_step,
+      save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
+      +current_step.zfill(5)+".pdf"))
+    #pf.save_activity_hist(v_vals, num_bins=1000,
+    #  title="v Activity Histogram at step "+current_step,
+    #  save_filename=(self.disp_dir+"v_hist_v"+self.version+"-"
+    #  +current_step.zfill(5)+".pdf"))
+    pf.save_bar(np.linalg.norm(a_weights, axis=1, keepdims=False), num_xticks=5,
+      title="a l2 norm", save_filename=(self.disp_dir+"a_norm_v"+self.version
+      +"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
+      ylabel="L2 Norm")
+    #pf.save_bar(np.linalg.norm(b_weights, axis=1, keepdims=False), num_xticks=5,
+    #  title="b l2 norm", save_filename=(self.disp_dir+"b_norm_v"+self.version
+    #  +"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
+    #  ylabel="L2 Norm")
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
@@ -260,12 +310,12 @@ class dsc(Model):
       if name == "a":
         pf.save_data_tiled(grad.T.reshape(self.num_u,
           int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-          normalize=True, title="Gradient for a at step "+current_step,
+          normalize=False, title="Gradient for a at step "+current_step,
           save_filename=(self.disp_dir+"da_v"+self.version+"_"
           +current_step.zfill(5)+".pdf"))
-      elif name == "b":
-        pf.save_data_tiled(grad.T.reshape(self.num_v,
-          int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
-          normalize=True, title="Gradient for b at step "+current_step,
-          save_filename=(self.disp_dir+"db_v"+self.version+"_"
-          +current_step.zfill(5)+".pdf"))
+      #elif name == "b":
+      #  pf.save_data_tiled(grad.T.reshape(self.num_v,
+      #    int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
+      #    normalize=False, title="Gradient for b at step "+current_step,
+      #    save_filename=(self.disp_dir+"db_v"+self.version+"_"
+      #    +current_step.zfill(5)+".pdf"))
