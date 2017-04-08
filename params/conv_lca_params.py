@@ -2,8 +2,6 @@ import os
 params = {
   "model_type": "conv_lca",
   "model_name": "test",
-  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
   "version": "0.0",
   "optimizer": "adadelta",
   "norm_images": False,
@@ -27,11 +25,12 @@ params = {
   "log_int": 1,
   "log_to_file": False,
   "gen_plot_int": 10,
-  "display_plots": False,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/cpu:0",
-  "rand_seed": 1234567890}
+  "rand_seed": 1234567890,
+  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
+  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
   {"weights": ["phi"],

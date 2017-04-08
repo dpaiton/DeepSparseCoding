@@ -1,18 +1,16 @@
 import os
 params = {
-  "model_type": "ICA",
+  "model_type": "ica",
   "model_name": "test",
-  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
   "version": "0.0",
   "optimizer": "annealed_sgd",
   "norm_images": False,
-  "whiten_images": False,
+  "whiten_images": True,
   "epoch_size": 1000000,
   "patch_edge_size": 20,
   "overlapping_patches": True,
   "patch_variance_threshold": 1e-6,
-  "batch_size": 1000,
+  "batch_size": 100,
   #"prior": "cauchy",
   "prior": "laplacian",
   "cp_int": 10000,
@@ -25,11 +23,12 @@ params = {
   "log_int": 10,
   "log_to_file": False,
   "gen_plot_int": 100,
-  "display_plots": False,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/cpu:0",
-  "rand_seed": 1234567890}
+  "rand_seed": 1234567890,
+  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
+  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
   {"weights": ["a"],

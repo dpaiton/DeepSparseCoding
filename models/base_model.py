@@ -46,7 +46,6 @@ class Model(object):
     log_int        [int] How often to send updates to stdout
     log_to_file    [bool] If set, log to file, else log to stderr
     gen_plot_int   [int] How often to generate plots
-    display_plots  [bool] If set, display plots
     save_plots     [bool] If set, save plots to file
     cp_int         [int] How often to checkpoint
     max_cp_to_keep [int] How many checkpoints to keep. See max_to_keep tf arg
@@ -75,7 +74,6 @@ class Model(object):
     self.log_int = int(params["log_int"])
     self.log_to_file = bool(params["log_to_file"])
     self.gen_plot_int = int(params["gen_plot_int"])
-    self.disp_plots = bool(params["display_plots"])
     self.save_plots = bool(params["save_plots"])
     # Checkpointing
     self.cp_int = int(params["cp_int"])

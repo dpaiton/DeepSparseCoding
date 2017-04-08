@@ -116,12 +116,12 @@ Inpus:
 """
 def save_data_tiled(data, normalize=False, title="", save_filename="",
   vmin=None, vmax=None):
+  if normalize:
+    data = ip.normalize_data_with_max(data)
   if vmin is None:
     vmin = np.min(data)
   if vmax is None:
     vmax = np.max(data)
-  if normalize:
-    data = ip.normalize_data_with_max(data)
   if len(data.shape) >= 3:
     data = pad_data(data)
   fig, sub_axis = plt.subplots(1)
@@ -153,7 +153,7 @@ Inputs:
           data.keys(). If nothing is given, data.keys() will be used as labels
   out_filename: [str] containing the complete output filename.
 """
-def save_losses(data, labels=None, out_filename='./Fig.pdf'):
+def save_stats(data, labels=None, out_filename='./Fig.pdf'):
   data_keys = list(data.keys())
   data_keys.remove("batch_step")
   if labels is None:
@@ -170,6 +170,6 @@ def save_losses(data, labels=None, out_filename='./Fig.pdf'):
     ylabel_xpos = -0.1
     sub_axes[key_idx].yaxis.set_label_coords(ylabel_xpos, 0.5)
   sub_axes[-1].set_xlabel("Batch Number")
-  fig.suptitle("Average Losses per Batch", y=1.0, x=0.5)
+  fig.suptitle("Stats per Batch", y=1.0, x=0.5)
   fig.savefig(out_filename, transparent=True)
   plt.close(fig)

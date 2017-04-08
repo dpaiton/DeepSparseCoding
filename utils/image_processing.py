@@ -16,6 +16,7 @@ Inputs:
 """
 def extractPatches(images, out_shape, overlapping=True, var_thresh=0,
   rand_state=np.random.RandomState()):
+  images = reshape_data(images, flatten=False)[0]
   num_im, im_sizey, im_sizex = images.shape
   if len(out_shape) == 2:
     (num_patches, patch_size) = out_shape
@@ -98,8 +99,8 @@ Helper function to reshape input data for processing and return data shape
 Outputs:
   tuple containing:
   data [np.ndarray] data with new shape
-    (num_examples, num_rows, num_cols) if flatten_data==False
-    (num_examples, num_elements) if flatten_data==True
+    (num_examples, num_rows, num_cols) if flatten==False
+    (num_examples, num_elements) if flatten==True
   orig_shape [tuple of int32] original shape of the input data
   num_examples [int32] number of data examples
   num_rows [int32] number of data rows (sqrt of num elements)
@@ -109,34 +110,34 @@ Inputs:
     (n, i, j) - n data points, each of shape (i,j)
     (n, k) - n data points, each of length k
     (k) - single data point of length k
-  flatten_data [bool] if True, 
+  flatten [bool] if True, 
 """
-def reshape_data(data, flatten_data=False):
+def reshape_data(data, flatten=False):
   orig_shape = data.shape
   orig_ndim = data.ndim
   if orig_ndim == 1:
     num_examples = 1
     num_elements = data.shape[0]
     assert np.floor(np.sqrt(num_elements)) == np.ceil(np.sqrt(num_elements)), (
-      "Data length must have an even square root for spatial whitening.")
+      "Data length must have an even square root.")
     num_rows = np.int32(np.floor(np.sqrt(num_elements)))
     num_cols = num_rows
-    if flatten_data:
+    if flatten:
       data = data[np.newaxis, ...]
     else:
       data = data.reshape((num_rows, num_cols))[np.newaxis, ...]
   elif orig_ndim == 2:
     (num_examples, num_elements) = data.shape
     assert np.floor(np.sqrt(num_elements)) == np.ceil(np.sqrt(num_elements)), (
-      "Data length must have an even square root for spatial whitening.")
+      "Data length must have an even square root.")
     num_rows = np.int32(np.floor(np.sqrt(num_elements)))
     num_cols = num_rows
-    if not flatten_data:
+    if not flatten:
       data = data.reshape((num_examples, num_rows, num_cols))
   elif orig_ndim == 3:
     (num_examples, num_rows, num_cols) = data.shape
     assert num_rows == num_cols, ("Data points must be square.")
-    if flatten_data:
+    if flatten:
       data = data.reshape((num_examples, num_rows * num_cols))
   else:
     assert False, ("Data must have 1, 2, or 3 dimensions.")
@@ -202,10 +203,10 @@ Inputs:
     (k) - single data point of length k
   method [str] method to use, can be {FT, PCA}
 """
-def whiten_data(data, method="PCA"):
+def whiten_data(data, method="FT"):
   if method == "FT":
     (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
-      flatten_data=False) # Need spatial dim for 2d-Fourier transform
+      flatten=False) # Need spatial dim for 2d-Fourier transform
     data -= data.mean(axis=(1,2))[:,None,None]
     dataFT = np.fft.fftshift(np.fft.fft2(data, axes=(1, 2)), axes=(1, 2))
     nyq = np.int32(np.floor(num_rows/2))
@@ -217,10 +218,10 @@ def whiten_data(data, method="PCA"):
     dataFT_wht = np.multiply(dataFT, filtf[None, :])
     data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(dataFT_wht, axes=(1, 2)),
       axes=(1, 2)))
-    data_wht = reshape_data(data_wht, flatten_data=True)[0]
+    data_wht = reshape_data(data_wht, flatten=True)[0]
   elif method == "PCA":
     (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
-      flatten_data=True)
+      flatten=True)
     data -= data.mean(axis=(1))[:,None]
     Cov = np.cov(data.T) # Covariace matrix
     U, S, V = np.linalg.svd(Cov) # SVD decomposition
@@ -242,7 +243,7 @@ Inputs:
 """
 def compute_power_spectrum(data):
   (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
-    flatten_data=False)
+    flatten=False)
   data = standardize_data(data)
   dataFT = np.fft.fftshift(np.fft.fft2(data, axes=(1, 2)), axes=(1, 2))
   power_spec = np.multiply(dataFT, np.conjugate(dataFT)).real
@@ -262,7 +263,7 @@ Inputs:
 """
 def phase_avg_pow_spec(data):
   (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
-    flatten_data=False)
+    flatten=False)
   power_spec = compute_power_spectrum(data)
   dims = power_spec[0].shape
   nyq = np.int32(np.floor(np.array(dims)/2.0))

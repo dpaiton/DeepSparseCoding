@@ -144,11 +144,11 @@ class ICA(Model):
       normalize=True, title="Dictionary at step "+current_step,
       save_filename=(self.disp_dir+"a_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"), vmin=-1.0, vmax=1.0)
-    pf.save_activity_hist(self.z.eval(feed_dict).T, num_bins=1000,
+    pf.save_activity_hist(self.z.eval(feed_dict), num_bins=1000,
       title="z Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"z_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
-    pf.save_activity_hist(self.u.eval(feed_dict).T, num_bins=1000,
+    pf.save_activity_hist(self.u.eval(feed_dict), num_bins=1000,
       title="u Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
