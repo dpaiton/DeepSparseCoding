@@ -23,4 +23,7 @@ def get_params(model_type):
   if model_type.lower() == "dsc":
     from params.dsc_params import params, schedule
     params["conv"] = False
+  if model_type.lower() == "density_learner":
+    from params.density_learner_params import params, schedule
+    params["conv"] = False
   return params, schedule

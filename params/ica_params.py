@@ -1,7 +1,7 @@
 import os
 params = {
   "model_type": "ica",
-  "model_name": "test",
+  "model_name": "ica_nowhite",
   "version": "0.0",
   "optimizer": "annealed_sgd",
   "norm_images": False,
@@ -17,12 +17,12 @@ params = {
   "max_cp_to_keep": 5,
   "cp_load": False,
   "cp_load_name": "pretrain",
-  "cp_load_val": 150000,
+  "cp_load_step": 150000,
   "cp_load_ver": "0.0",
   "cp_load_var": ["phi"],
-  "log_int": 10,
-  "log_to_file": False,
-  "gen_plot_int": 100,
+  "log_int": 100,
+  "log_to_file": True,
+  "gen_plot_int": 500,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/cpu:0",
@@ -33,7 +33,7 @@ params = {
 schedule = [
   {"weights": ["a"],
   "weight_lr": [0.01],
-  "decay_steps": [10000],
+  "decay_steps": [30000],
   "decay_rate": [0.6],
   "staircase": [True],
-  "num_batches": 20000}]
+  "num_batches": 30000}]

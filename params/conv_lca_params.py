@@ -19,7 +19,7 @@ params = {
   "max_cp_to_keep": 5,
   "cp_load": False,
   "cp_load_name": "pretrain",
-  "cp_load_val": 150000,
+  "cp_load_step": 150000,
   "cp_load_ver": "0.0",
   "cp_load_var": ["phi"],
   "log_int": 1,
