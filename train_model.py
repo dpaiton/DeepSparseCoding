@@ -10,12 +10,13 @@ import data.data_picker as dp
 ## Specify model type and data type
 #model_type = "mlp"
 #model_type = "ica"
-#model_type = "lca"
-model_type = "conv_lca"
+model_type = "lca"
+#model_type = "conv_lca"
 #model_type = "dsc"
+#model_type = "density_learner"
 
-data_type = "cifar10"
-#data_type = "mnist"
+#data_type = "cifar10"
+data_type = "mnist"
 #data_type = "vanhateren"
 #data_type = "field"
 #data_type = "synthetic"
@@ -56,7 +57,7 @@ with tf.Session(graph=model.graph) as sess:
     for b_step in range(model.get_sched("num_batches")):
       data_batch = data["train"].next_batch(model.batch_size)
       input_data = data_batch[0]
-      input_labels = data_batch[1] if data_batch[1] is not None else None
+      input_labels = data_batch[1]
 
       ## Get feed dictionary for placeholders
       feed_dict = model.get_feed_dict(input_data, input_labels)
@@ -66,7 +67,7 @@ with tf.Session(graph=model.graph) as sess:
         if params["norm_weights"]:
           sess.run(model.norm_weights)
 
-      ## Reset activity from previous batch
+      # Reset activity from previous batch
       if hasattr(model, "reset_activity"):
         sess.run([model.reset_activity], feed_dict)
 
@@ -76,6 +77,12 @@ with tf.Session(graph=model.graph) as sess:
       if hasattr(model, "step_inference"): # op only does one step
         for step in range(model.num_steps):
           sess.run([model.step_inference], feed_dict)
+
+      ## Temporary for density learning
+      #for step in range(model.num_u_steps):
+      #  sess.run([model.step_u], feed_dict)
+      #for step in range(model.num_v_steps):
+      #  sess.run([model.step_v], feed_dict)
 
       ## Update weights
       for w_idx in range(len(model.get_sched("weights"))):
