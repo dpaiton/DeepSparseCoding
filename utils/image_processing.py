@@ -14,7 +14,7 @@ Inputs:
   var_thresh [float] acceptance threshold for patch pixel variance. If it is
     below threshold then reject the patch.
 """
-def extractPatches(images, out_shape, overlapping=True, var_thresh=0,
+def extract_patches(images, out_shape, overlapping=True, var_thresh=0,
   rand_state=np.random.RandomState()):
   images = reshape_data(images, flatten=False)[0]
   num_im, im_sizey, im_sizex = images.shape
@@ -174,7 +174,7 @@ def center_data(data):
   return data.squeeze()
 
 """
-Standardize data to have zero mean and  unit variance
+Standardize data to have zero mean and unit variance (z-score)
 Outputs:
   data [np.ndarray] normalized data
 Inputs:

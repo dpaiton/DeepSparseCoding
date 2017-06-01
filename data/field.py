@@ -9,7 +9,7 @@ class field(object):
     if all(param is not None for param in (num_examples, patch_edge_size,
       overlapping, var_thresh)):
       out_shape = (num_examples, patch_edge_size, patch_edge_size)
-      self.images = ip.extractPatches(full_img_data, out_shape, overlapping,
+      self.images = ip.extract_patches(full_img_data, out_shape, overlapping,
         var_thresh, rand_state)
     else:
       self.images = full_img_data
