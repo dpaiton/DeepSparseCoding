@@ -64,9 +64,10 @@ class LCA(Model):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("weights") as scope:
+          phi_init = tf.truncated_normal(self.phi_shape, mean=0.0,
+            stddev=1.0, dtype=tf.float32, name="phi_init")
           self.phi = tf.get_variable(name="phi", dtype=tf.float32,
-            initializer=tf.truncated_normal(self.phi_shape, mean=0.0,
-            stddev=1.0, dtype=tf.float32, name="phi_init"), trainable=True)
+            initializer=phi_init, trainable=True)
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi,
@@ -124,7 +125,7 @@ class LCA(Model):
           self.du = self.lca_b - self.lca_explain_away - self.u
           self.step_inference = tf.group(self.u.assign_add(self.eta * self.du),
             name="step_inference")
-          self.reset_activity = tf.group(self.u.assign(self.u_noise),
+          self.reset_activity = tf.group(self.u.assign(self.u_zeros),
             name="reset_activity")
 
         with tf.name_scope("performance_metrics") as scope:
@@ -186,12 +187,12 @@ class LCA(Model):
     current_step = str(self.global_step.eval())
     recon = tf.get_default_session().run(self.x_, feed_dict)
     weights = tf.get_default_session().run(self.phi, feed_dict)
-    #pf.save_data_tiled(input_data.reshape((self.batch_size,
-    #  np.int(np.sqrt(self.num_pixels)),
-    #  np.int(np.sqrt(self.num_pixels)))),
-    #  normalize=False, title="Images at step "+current_step,
-    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
-    #  +current_step.zfill(5)+".pdf"))
+    pf.save_data_tiled(input_data.reshape((self.batch_size,
+      np.int(np.sqrt(self.num_pixels)),
+      np.int(np.sqrt(self.num_pixels)))),
+      normalize=False, title="Images at step "+current_step,
+      save_filename=(self.disp_dir+"images_"+self.version+"-"
+      +current_step.zfill(5)+".pdf"))
     pf.save_data_tiled(weights.T.reshape(self.num_neurons,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
       normalize=False, title="Dictionary at step "+current_step,
@@ -207,12 +208,12 @@ class LCA(Model):
       normalize=False, title="Recons at step "+current_step,
       save_filename=(self.disp_dir+"recons_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
-    #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-    #  grad = weight_grad_var[0][0].eval(feed_dict)
-    #  shape = grad.shape
-    #  name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-    #  pf.save_data_tiled(grad.T.reshape(self.num_neurons,
-    #    int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-    #    normalize=True, title="Gradient for phi at step "+current_step,
-    #    save_filename=(self.disp_dir+"dphi_v"+self.version+"_"
-    #    +current_step.zfill(5)+".pdf"))
+    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+      grad = weight_grad_var[0][0].eval(feed_dict)
+      shape = grad.shape
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+      pf.save_data_tiled(grad.T.reshape(self.num_neurons,
+        int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
+        normalize=True, title="Gradient for phi at step "+current_step,
+        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"
+        +current_step.zfill(5)+".pdf"))

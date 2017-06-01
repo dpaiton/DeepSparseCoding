@@ -74,7 +74,7 @@ class ICA(Model):
     This child function does not use optimizer input
     weight_op must be a list with a single matrix ("self.a") in it
   """
-  def compute_gradients(self, optimizer, weight_op=None):
+  def compute_weight_gradients(self, optimizer, weight_op=None):
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
     weight_name = weight_op[0].name.split('/')[1].split(':')[0]#np.split
     z_u_avg = tf.divide(tf.matmul(tf.transpose(self.u), self.z),

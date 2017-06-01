@@ -23,6 +23,9 @@ def get_model(model_type, params=None, schedule=None):
   if model_type.lower() == "dsc":
     from models.dsc import dsc as dsc
     return dsc(params, schedule)
+  if model_type.lower() == "density_learner":
+    from models.density_learner import density_learner as dl
+    return dl(params, schedule)
 
 def get_model_list():
   model_list = ["mlp", "ica", "lca", "conv_lca", "dsc"]
