@@ -4,6 +4,8 @@ import tensorflow as tf
 import utils.plot_functions as pf
 from models.base_model import Model
 
+import os
+
 class dsc(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
@@ -26,7 +28,6 @@ class dsc(Model):
     # Meta parameters
     self.rectify_u = bool(params["rectify_u"])
     self.rectify_v = bool(params["rectify_v"])
-    self.norm_weights = bool(params["norm_weights"])
     # Network Size
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(params["num_pixels"])
@@ -34,6 +35,7 @@ class dsc(Model):
     self.num_v = int(params["num_v"])
     self.a_shape = [self.num_pixels, self.num_u]
     self.b_shape = [self.num_u, self.num_v]
+    self.w_shapes = [vals for vals in zip(self.a_shape, self.b_shape)]
     # Hyper Parameters
     self.num_steps = int(params["num_steps"])
 
@@ -51,39 +53,54 @@ class dsc(Model):
     input_data []
     u_state []
     v_state []
-    a []
-    b []
   """
-  def compute_loss(self, input_data, u_state=None, v_state=None):
-    with tf.variable_scope("layers", reuse=True) as scope:
-      if u_state is None:
-        u_state = tf.get_variable("u")
-      if v_state is None:
-        v_state = tf.get_variable("v")
+  def compute_loss(self, input_data, u_state, v_state):
     with tf.variable_scope("weights", reuse=True) as scope:
-      a = tf.get_variable(name="a")
-      b = tf.get_variable(name="b")
-    temp_sigma = tf.exp(tf.matmul(v_state, tf.transpose(b)))
-    temp_x_ = tf.matmul(u_state, tf.transpose(a))
-    input_stddev = tf.reduce_mean(tf.square(tf.nn.moments(input_data,
-      axes=[1])))
-    recon_loss = self.recon_mult * tf.reduce_mean((1.0/(2.0*input_stddev))*
-      tf.reduce_sum(tf.square(tf.subtract(input_data, temp_x_)), axis=[1]))
-    feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
-      tf.divide(u_state, temp_sigma), tf.log(temp_sigma)), axis=[1]))
-    sparse_loss = self.sparse_mult * tf.reduce_mean(
-      tf.reduce_sum(tf.abs(v_state), axis=[1]))
-    a_loss = self.a_decay_mult * tf.reduce_mean(
-      tf.reduce_sum(tf.square(a), axis=[1]))
-    b_loss = self.b_decay_mult * tf.reduce_mean(
-      tf.reduce_sum(tf.abs(b), axis=[1]))
-    total_loss = (recon_loss + feedback_loss + sparse_loss + a_loss + b_loss)
+      a_state = tf.get_variable(name="a")
+      b_state = tf.get_variable(name="b")
+    with tf.name_scope("iterative_loss"):
+      temp_sigma = tf.exp(tf.matmul(v_state, tf.transpose(b_state)))#0.83
+      temp_x_ = tf.matmul(u_state, tf.transpose(a_state))
+      self.input_stddev = 1.0#tf.reduce_mean(tf.square(tf.nn.moments(input_data,
+        #axes=[1])[1]))
+      recon_loss = tf.multiply(self.recon_mult, tf.reduce_mean(
+        tf.multiply(tf.divide(1.0, (2.0*self.input_stddev)),
+        tf.reduce_sum(tf.square(tf.subtract(input_data, temp_x_)),
+        axis=[1]))), name="recon_loss")
+      feedback_loss = tf.reduce_mean(tf.reduce_sum(tf.add(
+        tf.divide(u_state, temp_sigma), tf.log(temp_sigma)),
+        axis=[1]), name="fb_loss")
+      sparse_loss = tf.multiply(self.sparse_mult, tf.reduce_mean(
+        tf.reduce_sum(tf.abs(v_state), axis=[1])), name="sparse_loss")
+      a_loss = tf.multiply(self.a_decay_mult, tf.reduce_mean(
+        tf.reduce_sum(tf.square(a_state), axis=[1])), name="a_loss")
+      b_loss = tf.multiply(self.b_decay_mult, tf.reduce_mean(
+        tf.reduce_sum(tf.abs(b_state), axis=[1])), name="b_loss")
+      total_loss = tf.add_n([recon_loss, feedback_loss, sparse_loss,
+        a_loss, b_loss], name="total_loss")
     return (total_loss, recon_loss, feedback_loss, sparse_loss, a_loss, b_loss)
 
+  def inference_step(self, inference_idx, u_in, v_in, u_relu, v_relu):
+    current_u_loss = self.compute_loss(self.x, u_in, v_in)[0]
+    with tf.name_scope("inference"+str(inference_idx)):
+      u_grad = tf.gradients(current_u_loss, u_in)[0]
+      u_update = tf.add(u_in, tf.multiply(-self.u_step_size, u_grad),
+        name="u_update"+str(inference_idx))
+      u_out = tf.nn.relu(u_update) if u_relu else u_update
+    current_v_loss = self.compute_loss(self.x, u_out, v_in)[0]
+    with tf.name_scope("inference"+str(inference_idx)):
+      v_grad = tf.gradients(current_v_loss, v_in)[0]
+      v_update = tf.add(v_in, tf.multiply(-self.v_step_size, v_grad),
+        name="v_update"+str(inference_idx))
+      v_out = tf.nn.relu(v_update) if v_relu else v_update
+      return u_out, v_out
+
   """
-  Build the nework described in:
+  Based on the neworks described in:
     Y Karklin, MS Lewicki (2005) - A Hierarchical Bayesian Model for Learning
       Nonlinear Statistical Regularities in Nonstationary Natural Signals
+    TS Lee, D Mumford (2003) - Hierarchical Bayesian Inference in the Visual
+      Cortex
   Method for unrolling inference into the graph
     # compute loss for current sate
     # take gradient of loss wrt current state
@@ -110,90 +127,61 @@ class dsc(Model):
             shape=(), name="v_step_size")
 
         with tf.name_scope("constants") as scope:
-          self.u_zeros = tf.zeros(
-            shape=tf.stack([tf.shape(self.x)[0], self.num_u]),
-            dtype=tf.float32, name="u_zeros")
-          self.v_zeros = tf.zeros(
-            shape=tf.stack([tf.shape(self.x)[0], self.num_v]),
-            dtype=tf.float32, name="v_zeros")
           self.u_noise = tf.truncated_normal(
             shape=tf.stack([tf.shape(self.x)[0], self.num_u]),
             mean=0.0, stddev=0.1, dtype=tf.float32, name="u_noise")
+          self.v_ones = tf.ones(
+            shape=tf.stack([tf.shape(self.x)[0], self.num_v]),
+            dtype=tf.float32, name="v_ones")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
+        w_inits = [np.load(os.path.expanduser("~")+"/Work/Projects/pretrain/analysis/0.0/weights/phi.npz")["data"],
+          tf.multiply(0.1, tf.ones(self.w_shapes[1], dtype=tf.float32),
+          name="b_init")]
+
         with tf.variable_scope("weights") as scope:
           self.a = tf.get_variable(name="a", dtype=tf.float32,
-            initializer=tf.nn.l2_normalize(tf.truncated_normal(self.a_shape,
-            mean=0.0, stddev=0.5, dtype=tf.float32, name="a_init"), dim=[1]),
-            trainable=True)
+            initializer=w_inits[0], trainable=True)
           self.b = tf.get_variable(name="b", dtype=tf.float32,
-            initializer=tf.truncated_normal(self.b_shape, mean=0.0,
-            stddev=0.01, dtype=tf.float32, name="b_init"), trainable=True)
+            initializer=w_inits[1], trainable=True)
 
-        with tf.name_scope("norm_weights") as scope:
-          self.norm_a = self.a.assign(tf.nn.l2_normalize(self.a,
-            dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.norm_b = self.b.assign(tf.nn.l2_normalize(self.b,
-            dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.norm_weights = tf.group(self.norm_a, self.norm_b,
-            name="l2_normalization")
+        u_list = [self.u_noise]
+        v_list = [self.v_ones]
+        for inference_idx in range(self.num_steps-1):
+          u_out, v_out = self.inference_step(inference_idx,
+            u_list[inference_idx], v_list[inference_idx],
+            self.rectify_u, self.rectify_v)
+          u_list.append(u_out)
+          v_list.append(v_out)
 
         with tf.variable_scope("layers") as scope:
           self.u = tf.get_variable(name="u", dtype=tf.float32,
-            initializer=self.u_zeros, trainable=False, validate_shape=False)
+            initializer=u_list[-1], trainable=False, validate_shape=False)
           self.v = tf.get_variable(name="v", dtype=tf.float32,
-            initializer=self.v_zeros, trainable=False, validate_shape=False)
-
+            initializer=v_list[-1], trainable=False, validate_shape=False)
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
-            self.x_ = tf.matmul(self.u, tf.transpose(self.a), name="reconstruction")
+            self.x_ = tf.matmul(self.u, tf.transpose(self.a),
+              name="reconstruction")
             MSE = tf.reduce_mean(tf.pow(tf.subtract(self.x, self.x_), 2.0),
               axis=[1, 0], name="mean_squared_error")
-            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.pow(1.0,
-               2.0), MSE)), name="recon_quality")
+            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(1.0),
+              MSE)), name="recon_quality")
           with tf.name_scope("layer1_prior"):
-            self.sigma = tf.exp(-tf.matmul(self.v, tf.transpose(self.b),
+            self.sigma = tf.exp(tf.matmul(self.v, tf.transpose(self.b),
               name="sigma"))
 
-        with tf.name_scope("loss") as scope:
-          with tf.name_scope("unsupervised"):
-            (self.total_loss,
-            self.recon_loss,
-            self.feedback_loss,
-            self.sparse_loss,
-            self.a_loss,
-            self.b_loss) = self.compute_loss(self.x)
-
-        with tf.name_scope("inference") as scope:
-          self.clear_u = self.u.assign(self.u_zeros)
-          self.clear_v = self.v.assign(self.v_zeros)
-          self.reset_activity = tf.group(self.clear_u, self.clear_v,
-            name="reset_activity")
-          current_loss = []
-          self.u_t = [self.u_noise] # init to noise
-          self.v_t = [self.v_zeros] # init to zeros
-          for step in range(self.num_steps-1): # loop doesn't include init
-            current_loss.append(self.compute_loss(self.x, self.u_t[step],
-              self.v_t[step])[0])
-            du = -tf.gradients(current_loss[step], self.u_t[step])[0]
-            if self.rectify_u:
-              new_u = tf.nn.relu(self.u_t[step] + self.u_step_size * du)
-            else:
-              new_u = self.u_t[step] + self.u_step_size * du
-            self.u_t.append(new_u)
-            dv = -tf.gradients(current_loss[step], self.v_t[step])[0]
-            if self.rectify_v:
-              new_v = tf.nn.relu(self.v_t[step] + self.v_step_size * dv)
-            else:
-              new_v = self.v_t[step] + self.v_step_size * dv
-            self.v_t.append(new_v)
-          self.full_inference = tf.group(self.u.assign(self.u_t[-1]),
-            self.v.assign(self.v_t[-1]), name="full_inference")
-          self.reset_activity = tf.group(self.u.assign(self.u_noise),
-            self.v.assign(self.v_zeros), name="reset_activity")
+          with tf.name_scope("loss") as scope:
+            with tf.name_scope("unsupervised"):
+              (self.total_loss,
+              self.recon_loss,
+              self.feedback_loss,
+              self.sparse_loss,
+              self.a_loss,
+              self.b_loss) = self.compute_loss(self.x, self.u, self.v)
 
     self.graph_built = True
 
@@ -248,6 +236,7 @@ class dsc(Model):
       stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     self.log_info("<stats>"+js_str+"</stats>")
+    #print(self.input_stddev.eval(feed_dict))
 
   """
   Plot weights, reconstruction, and gradients
