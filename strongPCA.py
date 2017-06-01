@@ -1,71 +1,72 @@
+import matplotlib
+matplotlib.use("Agg")
+
 import os
+import numpy as np
+import tensorflow as tf
 
-def get_dataset(num_images, out_shape):
-  img_filename = (os.path.expanduser("~")
-    +"/Work/Datasets/vanHateren/img/images_curated.h5")
-  full_img_data = extract_images(img_filename, num_images)
-  full_img_data = ip.downsample_data(full_img_data, factor=[1, 0.5, 0.5],
-    order=2)
-  full_img_data = ip.standardize_data(full_img_data)
-  dataset = ip.extract_patches(full_img_data, out_shape, True, 1e-6)
-  return dataset
+import data.data_picker as dp
+import utils.plot_functions as pf
 
-def extract_images(filename, num_images=50):
-  with h5py.File(filename, "r") as f:
-    full_img_data = np.array(f["van_hateren_good"], dtype=np.float32)
-    im_keep_idx = np.random.choice(full_img_data.shape[0], num_images,
-      replace=False)
-    return full_img_data[im_keep_idx, ...]
-
-## Model params
-out_dir = os.path.expanduser("~")+"/Work/StrongPCA/outputs/"
-
-update_interval = 500
-device = "/cpu:0"
-num_batches = 30000
-batch_size = 100
-learning_rate = 0.01
-num_neurons = 500
-
-## Data params
-num_images = 50
-epoch_size = int(1e6)
-patch_edge_size = 16
-whiten = True
+params = {
+  ## Model params
+  "out_dir": os.path.expanduser("~")+"/Work/Projects/strongPCA/outputs/",
+  "chk_dir": os.path.expanduser("~")+"/Work/Projects/strongPCA/checkpoints/",
+  "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
+  "update_interval": 100,
+  "device": "/cpu:0",
+  "learning_rate": 0.12,
+  "num_neurons": 500,
+  "sparse_mult": 0.2,
+  "num_inference_steps": 20,
+  "eta": 0.001/0.03, #dt/tau
+  "eps": 1e-12,
+  ## Data params
+  "data_type": "vanhateren",
+  "rand_state": np.random.RandomState(12345),
+  "num_images": 50,
+  "num_batches": 30000,
+  "batch_size": 100,
+  "patch_edge_size": 16,
+  "overlapping_patches": True,
+  "patch_variance_threshold": 1e-6,
+  "conv": False,
+  "whiten_images": True}
 
 ## Calculated params
-num_pixels = int(patch_edge_size**2)
-dataset_shape = [int(val)
-  for val in [epoch_size, num_pixels]]
-phi_shape = [num_pixels, num_neurons]
+params["epoch_size"] = params["batch_size"] * params["num_batches"]
+params["num_pixels"] = int(params["patch_edge_size"]**2)
+params["dataset_shape"] = [int(val)
+    for val in [params["epoch_size"], params["num_pixels"]]],
+params["phi_shape"] = [params["num_pixels"], params["num_neurons"]]
 
 graph = tf.Graph()
-with tf.device(device):
+with tf.device(params["device"]):
   with graph.as_default():
     with tf.name_scope("placeholders") as scope:
-      x = tf.placeholder(tf.float32, shape=[batch_size, num_pixels],
-        name="input_data")
+      x = tf.placeholder(tf.float32, shape=[params["batch_size"],
+        params["num_pixels"]], name="input_data")
       sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
     with tf.name_scope("constants") as scope:
-      u_zeros = tf.zeros(shape=tf.stack([tf.shape(x)[0], num_neurons]),
-        dtype=tf.float32, name="u_zeros")
+      u_zeros = tf.zeros(shape=tf.stack([tf.shape(x)[0],
+        params["num_neurons"]]), dtype=tf.float32, name="u_zeros")
       u_noise = tf.truncated_normal(
-        shape=tf.stack([tf.shape(x)[0], num_neurons]),
+        shape=tf.stack([tf.shape(x)[0], params["num_neurons"]]),
         mean=0.0, stddev=0.1, dtype=tf.float32, name="u_noise")
 
     with tf.name_scope("step_counter") as scope:
       global_step = tf.Variable(0, trainable=False, name="global_step")
 
     with tf.variable_scope("weights") as scope:
-      phi_init = tf.truncated_normal(phi_shape, mean=0.0, stddev=0.5,
+      phi_init = tf.truncated_normal(params["phi_shape"], mean=0.0, stddev=0.5,
         dtype=tf.float32, name="phi_init")
       phi = tf.get_variable(name="phi", dtype=tf.float32,
         initializer=phi_init, trainable=True)
 
     with tf.name_scope("norm_weights") as scope:
       norm_phi = phi.assign(tf.nn.l2_normalize(phi,
-        dim=0, epsilon=eps, name="row_l2_norm"))
+        dim=0, epsilon=params["eps"], name="row_l2_norm"))
       norm_weights = tf.group(norm_phi,
         name="l2_normalization")
 
@@ -97,12 +98,12 @@ with tf.device(device):
       lca_b = tf.matmul(x, phi, name="driving_input")
       lca_g = (tf.matmul(tf.transpose(phi), phi,
         name="gram_matrix") -
-        tf.constant(np.identity(phi_shape[1], dtype=np.float32),
+        tf.constant(np.identity(params["phi_shape"][1], dtype=np.float32),
         name="identity_matrix"))
       lca_explain_away = tf.matmul(a, lca_g,
         name="explaining_away")
       du = lca_b - lca_explain_away - u
-      step_inference = tf.group(u.assign_add(eta * du),
+      step_inference = tf.group(u.assign_add(params["eta"] * du),
         name="step_inference")
       reset_activity = tf.group(u.assign(u_zeros),
         name="reset_activity")
@@ -113,7 +114,7 @@ with tf.device(device):
           axis=[1, 0], name="mean_squared_error")
 
     with tf.name_scope("optimizers") as scope:
-      optimizer = tf.train.GradientDescentOptimizer(learning_rate,
+      optimizer = tf.train.GradientDescentOptimizer(params["learning_rate"],
         name="phi_optimizer")
       update_weights = optimizer.minimize(total_loss, global_step=global_step,
         var_list=[phi], name="phi_minimizer")
@@ -121,18 +122,74 @@ with tf.device(device):
     full_saver = tf.train.Saver(var_list=[phi], max_to_keep=2)
 
     with tf.name_scope("summaries") as scope:
-      #tf.summary.image("input", tf.reshape(x, [batch_size, patch_edge_size,
-      #  patch_edge_size, 1]))
-      #tf.summary.image("weights", tf.reshape(tf.transpose(phi), [num_neurons,
-      #  patch_edge_size, patch_edge_size, 1]))
+      #tf.summary.image("input", tf.reshape(x, [params["batch_size"],
+      #  params["patch_edge_size"], params["patch_edge_size"], 1]))
+      #tf.summary.image("weights", tf.reshape(tf.transpose(phi),
+      #  [params["num_neurons"], params["patch_edge_size"],
+      #  params["patch_edge_size"], 1]))
       tf.summary.histogram("u", u)
       tf.summary.histogram("a", a)
       tf.summary.histogram("phi", phi)
 
     merged_summaries = tf.summary.merge_all()
-    train_writer = tf.summary.FileWriter(out_dir, graph)
+    train_writer = tf.summary.FileWriter(params["out_dir"], graph)
 
     with tf.name_scope("initialization") as scope:
       init_op = tf.group(tf.global_variables_initializer(),
         tf.local_variables_initializer())
 
+if not os.path.exists(params["out_dir"]):
+  os.makedirs(params["out_dir"])
+if not os.path.exists(params["chk_dir"]):
+  os.makedirs(params["chk_dir"])
+
+data = dp.get_data(params["data_type"], params)
+params["input_shape"] = [
+  data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
+
+with tf.Session(graph=graph) as sess:
+  sess.run(init_op,
+    feed_dict={x:np.zeros([params["batch_size"]]+params["input_shape"],
+    dtype=np.float32)})
+
+  for b_step in range(params["num_batches"]):
+    data_batch = data["train"].next_batch(params["batch_size"])
+    input_data = data_batch[0]
+
+    feed_dict = {x:input_data, sparse_mult:params["sparse_mult"]}
+
+    sess.run(norm_weights, feed_dict)
+
+    for inference_step in range(params["num_inference_steps"]):
+      sess.run(step_inference, feed_dict)
+
+    sess.run(update_weights, feed_dict)
+
+    current_step = sess.run(global_step)
+    if (current_step % params["update_interval"] == 0):
+      summary = sess.run(merged_summaries, feed_dict)
+      train_writer.add_summary(summary, current_step)
+      full_saver.save(sess, save_path=params["chk_dir"]+"lca_chk",
+        global_step=global_step)
+
+      [current_loss, a_vals, recons, weights] = sess.run(
+        [total_loss, a, x_, phi], feed_dict)
+      a_vals_max = np.array(a_vals.max()).tolist()
+      a_frac_act = np.array(np.count_nonzero(a_vals)
+        / float(params["batch_size"]*params["num_neurons"])).tolist()
+
+      print_dict = {"current_step":str(current_step).zfill(5),
+        "loss":str(current_loss),
+        "a_max":str(a_vals_max),
+        "a_frac_act":str(a_frac_act)}
+      print(print_dict)
+      pf.save_data_tiled(weights.T.reshape((params["num_neurons"],
+        params["patch_edge_size"], params["patch_edge_size"])), normalize=False,
+        title="Dictionary at step "+str(current_step),
+        save_filename=(params["out_dir"]+"phi_"+str(current_step).zfill(5)
+        +".png"))
+      pf.save_data_tiled(recons.reshape((params["batch_size"],
+        params["patch_edge_size"], params["patch_edge_size"])), normalize=False,
+        title="Recons at step "+str(current_step),
+        save_filename=(params["out_dir"]+"recons_"+str(current_step).zfill(5)
+        +".png"))
