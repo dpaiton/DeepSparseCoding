@@ -4,6 +4,18 @@ Inputs:
   dataset_type: [str] containing the name of the dataset to return
     Current allowed values are: vanHateren, mnist, laplacian
   params: [dict] containing params returned from params/param_picker.py
+    data_dir (cifar, field, mnist, vanhateren)
+    num_classes (cifar)
+    num_val (cifar, mnist)
+    num_labeled (cifar, mnist)
+    rand_state (cifar, field, mnist, synthetic, vanhateren)
+    conv (cifar, field, mnist, synthetic, vanhateren)
+    whiten_images (field, vanhateren)
+    patch_edge_size (field, synthetic, vanhateren)
+    epoch_size (field, synthetic, vanhateren)
+    overlapping_patches (field, vanhateren)
+    patch_variance_threshold (field, vanhateren)
+    dist_type (synthetic)
 Outputs:
   dataset: [dataset] object containing the dataset
 """

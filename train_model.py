@@ -65,7 +65,7 @@ with tf.Session(graph=model.graph) as sess:
       ## Normalize weights
       if hasattr(model, "norm_weights"):
         if params["norm_weights"]:
-          sess.run(model.norm_weights)
+          sess.run([model.norm_weights], feed_dict)
 
       # Reset activity from previous batch
       if hasattr(model, "reset_activity"):
