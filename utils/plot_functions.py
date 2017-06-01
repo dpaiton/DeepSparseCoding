@@ -5,7 +5,7 @@ import utils.image_processing as ip
 
 """
 Generate a bar graph of data
-Args:
+Inputs:
   data: [np.ndarray] of shape (N,)
   xticklabels: [list of N str] indicating the labels for the xticks
   save_filename: [str] indicating where the file should be saved
@@ -29,9 +29,6 @@ def save_bar(data, num_xticks=5, title="", save_filename="./bar_fig.pdf",
 
 """
 Histogram activity matrix
-Outputs:
-  fig: [int] figure number
-  sub_axis: index for subplot call
 Inputs:
   data [np.ndarray] data matrix, can have shapes:
     1D tensor [data_points]
@@ -40,13 +37,14 @@ Inputs:
   title: [str] for title of figure
   save_filename: [str] holding output directory for writing,
 """
-def save_activity_hist(data, num_bins=100, title="",
+def save_activity_hist(data, num_bins="auto", title="",
   save_filename="./hist.pdf"):
   num_dim = data.ndim
   if num_dim > 1:
     data = np.mean(data, axis=0)
   (fig, ax) = plt.subplots(1)
-  vals, bins, patches = ax.hist(data, histtype="barstacked", stacked=True)
+  vals, bins, patches = ax.hist(data, bins=num_bins, histtype="barstacked",
+    stacked=True)
   ax.set_xlabel('Activity')
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
@@ -57,9 +55,6 @@ def save_activity_hist(data, num_bins=100, title="",
 
 """
 Plot phase averaged power spectrum for a set of images
-Outputs:
-  fig: [int] figure number
-  sub_axis: index for subplot call
 Inputs:
   data: [np.ndarray] 1D data to be plotted
   title: [str] for title of figure
@@ -73,34 +68,8 @@ def save_phase_avg_power_spec(data, title="", save_filename="./pow_spec.pdf"):
   fig.savefig(save_filename)
   plt.close(fig)
 
-
-"""
-Pad data with ones for visualization
-Outputs:
-  padded version of input
-Inputs:
-  data: np.ndarray
-"""
-def pad_data(data):
-  n = int(np.ceil(np.sqrt(data.shape[0])))
-  padding = (((0, n ** 2 - data.shape[0]),
-    (1, 1), (1, 1)) # add some space between filters
-    + ((0, 0),) * (data.ndim - 3)) # don't pad last dimension (if there is one)
-  padded_data = np.pad(data, padding, mode="constant", constant_values=1)
-  # tile the filters into an image
-  padded_data = padded_data.reshape((
-    (n, n) + padded_data.shape[1:])).transpose((
-    (0, 2, 1, 3) + tuple(range(4, padded_data.ndim + 1))))
-  padded_data = padded_data.reshape((n * padded_data.shape[1],
-    n * padded_data.shape[3]) + padded_data.shape[4:])
-  return padded_data
-
 """
 Save figure for input data as a tiled image
-Outputs:
-  fig: index for figure call
-  sub_axis: index for subplot call
-  axis_image: index for imshow call
 Inpus:
   data: [np.ndarray] of shape:
     (height, width) - single image
@@ -118,6 +87,8 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
   vmin=None, vmax=None):
   if normalize:
     data = ip.normalize_data_with_max(data)
+    vmin = -1.0
+    vmax = 1.0
   if vmin is None:
     vmin = np.min(data)
   if vmax is None:
@@ -144,8 +115,6 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
 
 """
 Generate time-series plots of stats specified by keys
-Outputs:
-  fig: [int] corresponding to the figure number
 Inputs:
   data: [dict] containing data to be plotted. len of all values should be equal
         data must have the key "batch_step"
@@ -173,3 +142,24 @@ def save_stats(data, labels=None, out_filename='./Fig.pdf'):
   fig.suptitle("Stats per Batch", y=1.0, x=0.5)
   fig.savefig(out_filename, transparent=True)
   plt.close(fig)
+
+"""
+Pad data with ones for visualization
+Outputs:
+  padded version of input
+Inputs:
+  data: np.ndarray
+"""
+def pad_data(data):
+  n = int(np.ceil(np.sqrt(data.shape[0])))
+  padding = (((0, n ** 2 - data.shape[0]),
+    (1, 1), (1, 1)) # add some space between filters
+    + ((0, 0),) * (data.ndim - 3)) # don't pad last dimension (if there is one)
+  padded_data = np.pad(data, padding, mode="constant", constant_values=1)
+  # tile the filters into an image
+  padded_data = padded_data.reshape((
+    (n, n) + padded_data.shape[1:])).transpose((
+    (0, 2, 1, 3) + tuple(range(4, padded_data.ndim + 1))))
+  padded_data = padded_data.reshape((n * padded_data.shape[1],
+    n * padded_data.shape[3]) + padded_data.shape[4:])
+  return padded_data
