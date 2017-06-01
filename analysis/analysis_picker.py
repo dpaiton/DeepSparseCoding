@@ -9,4 +9,6 @@ def get_analyzer(params):
     from analysis.conv_lca_analyzer import conv_lca as analyzer
   if params["model_type"].lower() == "dsc":
     from analysis.dsc_analyzer import dsc as analyzer
+  if params["model_type"].lower() == "density_learner":
+    from analysis.density_analyzer import density_analyzer as analyzer
   return analyzer(params)

@@ -38,9 +38,11 @@ class Analyzer(object):
     self.version = params["version"]
     self.model_name = params["model_name"]
     # Analysis details
+    self.save_weights = params["save_weights"]
     self.eval_train = params["eval_train"]
-    self.eval_test = params["eval_test"]
     self.eval_val = params["eval_val"]
+    self.eval_test = params["eval_test"]
+    self.act_trig_avgs = params["act_trig_avgs"]
     # Output details
     self.file_ext = params["file_ext"]
     self.device = params["device"]
@@ -66,15 +68,5 @@ class Analyzer(object):
   def evaluate_model(self, images):
     pass
 
-  #"""
-  #plot activity triggered averages
-  #"""
-  #def save_atas(self, data, datatype):
-  #  fig_title = "Activity triggered averages on "+datatype+" data"
-  #  for layer_idx, layer in enumerate(data):
-  #    ata_filename = (self.out_dir+"act_trig_avg_layer_"+str(layer_idx)+"_"
-  #      +datatype+"_v"+self.version+self.file_ext)
-  #    ata = layer.reshape(layer.shape[0], int(np.sqrt(
-  #      layer.shape[1])), int(np.sqrt(layer.shape[1])))
-  #    pf.save_data_tiled(ata, normalize=True, title=fig_title,
-  #      save_filename=ata_filename, vmin=-1.0, vmax=1.0)
+  def compute_atas(self, weights, activities, images):
+    pass
