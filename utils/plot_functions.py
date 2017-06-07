@@ -120,9 +120,9 @@ Inputs:
         data must have the key "batch_step"
   labels: [list of str] optional list of labels, should be same len as
           data.keys(). If nothing is given, data.keys() will be used as labels
-  out_filename: [str] containing the complete output filename.
+  save_filename: [str] containing the complete output filename.
 """
-def save_stats(data, labels=None, out_filename='./Fig.pdf'):
+def save_stats(data, labels=None, save_filename="./Fig.pdf"):
   data_keys = list(data.keys())
   data_keys.remove("batch_step")
   if labels is None:
@@ -140,7 +140,7 @@ def save_stats(data, labels=None, out_filename='./Fig.pdf'):
     sub_axes[key_idx].yaxis.set_label_coords(ylabel_xpos, 0.5)
   sub_axes[-1].set_xlabel("Batch Number")
   fig.suptitle("Stats per Batch", y=1.0, x=0.5)
-  fig.savefig(out_filename, transparent=True)
+  fig.savefig(save_filename, transparent=True)
   plt.close(fig)
 
 """
@@ -149,13 +149,15 @@ Outputs:
   padded version of input
 Inputs:
   data: np.ndarray
+  pad_values: [int] specifying what value will be used for padding
 """
-def pad_data(data):
+def pad_data(data, pad_values=1):
   n = int(np.ceil(np.sqrt(data.shape[0])))
   padding = (((0, n ** 2 - data.shape[0]),
     (1, 1), (1, 1)) # add some space between filters
     + ((0, 0),) * (data.ndim - 3)) # don't pad last dimension (if there is one)
-  padded_data = np.pad(data, padding, mode="constant", constant_values=1)
+  padded_data = np.pad(data, padding, mode="constant",
+    constant_values=pad_values)
   # tile the filters into an image
   padded_data = padded_data.reshape((
     (n, n) + padded_data.shape[1:])).transpose((

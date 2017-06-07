@@ -118,9 +118,10 @@ def reshape_data(data, flatten=False):
   if orig_ndim == 1:
     num_examples = 1
     num_elements = data.shape[0]
-    assert np.floor(np.sqrt(num_elements)) == np.ceil(np.sqrt(num_elements)), (
+    sqrt_num_elements = np.sqrt(num_elements)
+    assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
       "Data length must have an even square root.")
-    num_rows = np.int32(np.floor(np.sqrt(num_elements)))
+    num_rows = np.int32(np.floor(sqrt_num_elements))
     num_cols = num_rows
     if flatten:
       data = data[np.newaxis, ...]
@@ -128,11 +129,13 @@ def reshape_data(data, flatten=False):
       data = data.reshape((num_rows, num_cols))[np.newaxis, ...]
   elif orig_ndim == 2:
     (num_examples, num_elements) = data.shape
-    assert np.floor(np.sqrt(num_elements)) == np.ceil(np.sqrt(num_elements)), (
-      "Data length must have an even square root.")
-    num_rows = np.int32(np.floor(np.sqrt(num_elements)))
-    num_cols = num_rows
+    sqrt_num_elements = np.sqrt(num_elements)
+    num_rows = np.int32(np.floor(sqrt_num_elements))
+    num_cols = (num_rows
+      + np.int32(np.ceil(sqrt_num_elements)-np.floor(sqrt_num_elements)))
     if not flatten:
+      assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
+        "Data length must have an even square root.")
       data = data.reshape((num_examples, num_rows, num_cols))
   elif orig_ndim == 3:
     (num_examples, num_rows, num_cols) = data.shape
@@ -201,9 +204,10 @@ Inputs:
     (n, i, j) - n data points, each of shape (i,j)
     (n, k) - n data points, each of length k
     (k) - single data point of length k
-  method [str] method to use, can be {FT, PCA}
+  method: [str] method to use, can be {FT, PCA}
+  num_dim: [int] specifies the number of PCs to use for PCA method
 """
-def whiten_data(data, method="FT"):
+def whiten_data(data, method="FT", num_dim=-1):
   if method == "FT":
     (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
       flatten=False) # Need spatial dim for 2d-Fourier transform
@@ -230,6 +234,23 @@ def whiten_data(data, method="FT"):
   else:
     assert False, ("whitening method must be 'FT' or 'PCA'")
   return data_wht
+
+def pca_reduction(data, num_pcs=-1):
+  (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
+    flatten=True)
+  data_mean = data.mean(axis=(1))[:,None]
+  data -= data_mean
+  Cov = np.cov(data.T) # Covariace matrix
+  U, S, V = np.linalg.svd(Cov) # SVD decomposition
+  diagS = np.diag(S)
+  if num_pcs <= 0:
+    n = num_rows
+  else:
+    n = num_pcs
+  data_reduc = np.dot(data, np.dot(np.dot(U[:, :n], diagS[:n, :n]), V[:n, :]))
+  if orig_shape != data.shape:
+    data_reduc = reshape_data(data_reduc, flatten=False)[0]
+  return data_reduc
 
 """
 Compute Fourier power spectrum for input data
