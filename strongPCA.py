@@ -7,12 +7,14 @@ import tensorflow as tf
 
 import data.data_picker as dp
 import utils.plot_functions as pf
+import utils.image_processing as ip
 
 params = {
   ## Model params
   "out_dir": os.path.expanduser("~")+"/Work/Projects/strongPCA/outputs/",
   "chk_dir": os.path.expanduser("~")+"/Work/Projects/strongPCA/checkpoints/",
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
+  "load_chk": True,
   "update_interval": 100,
   "device": "/cpu:0",
   "learning_rate": 0.12,
@@ -24,7 +26,7 @@ params = {
   ## Data params
   "data_type": "vanhateren",
   "rand_state": np.random.RandomState(12345),
-  "num_images": 50,
+  "num_images": 5,#50,
   "num_batches": 30000,
   "batch_size": 100,
   "patch_edge_size": 16,
@@ -114,7 +116,14 @@ with tf.device(params["device"]):
           axis=[1, 0], name="mean_squared_error")
 
     with tf.name_scope("optimizers") as scope:
-      optimizer = tf.train.GradientDescentOptimizer(params["learning_rate"],
+      learning_rates = tf.train.exponential_decay(
+        learning_rate=params["learning_rate"],
+        global_step=global_step,
+        decay_steps=int(np.floor(params["num_batches"]*0.9)),
+        decay_rate=0.5,
+        staircase=True,
+        name="phi_annealing_schedule")
+      optimizer = tf.train.GradientDescentOptimizer(learning_rates,
         name="phi_optimizer")
       update_weights = optimizer.minimize(total_loss, global_step=global_step,
         var_list=[phi], name="phi_minimizer")
@@ -143,53 +152,97 @@ if not os.path.exists(params["out_dir"]):
 if not os.path.exists(params["chk_dir"]):
   os.makedirs(params["chk_dir"])
 
+print("Loading data...")
 data = dp.get_data(params["data_type"], params)
 params["input_shape"] = [
   data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
 
+print("Initializing Session...")
 with tf.Session(graph=graph) as sess:
   sess.run(init_op,
     feed_dict={x:np.zeros([params["batch_size"]]+params["input_shape"],
     dtype=np.float32)})
 
-  for b_step in range(params["num_batches"]):
-    data_batch = data["train"].next_batch(params["batch_size"])
-    input_data = data_batch[0]
+  if params["load_chk"]:
+    full_saver.restore(sess, tf.train.latest_checkpoint(params["chk_dir"]))
+  else:
+    batch_steps = []
+    losses = []
+    sparsities = []
+    recon_errors = []
+    for b_step in range(params["num_batches"]):
+      data_batch = data["train"].next_batch(params["batch_size"])
+      input_data = data_batch[0]
 
-    feed_dict = {x:input_data, sparse_mult:params["sparse_mult"]}
+      feed_dict = {x:input_data, sparse_mult:params["sparse_mult"]}
 
-    sess.run(norm_weights, feed_dict)
+      sess.run(norm_weights, feed_dict)
 
-    for inference_step in range(params["num_inference_steps"]):
-      sess.run(step_inference, feed_dict)
+      for inference_step in range(params["num_inference_steps"]):
+        sess.run(step_inference, feed_dict)
 
-    sess.run(update_weights, feed_dict)
+      sess.run(update_weights, feed_dict)
 
-    current_step = sess.run(global_step)
-    if (current_step % params["update_interval"] == 0):
-      summary = sess.run(merged_summaries, feed_dict)
-      train_writer.add_summary(summary, current_step)
-      full_saver.save(sess, save_path=params["chk_dir"]+"lca_chk",
-        global_step=global_step)
+      current_step = sess.run(global_step)
+      if (current_step % params["update_interval"] == 0):
+        summary = sess.run(merged_summaries, feed_dict)
+        train_writer.add_summary(summary, current_step)
+        full_saver.save(sess, save_path=params["chk_dir"]+"lca_chk",
+          global_step=global_step)
 
-      [current_loss, a_vals, recons, weights] = sess.run(
-        [total_loss, a, x_, phi], feed_dict)
-      a_vals_max = np.array(a_vals.max()).tolist()
-      a_frac_act = np.array(np.count_nonzero(a_vals)
-        / float(params["batch_size"]*params["num_neurons"])).tolist()
+        [current_loss, a_vals, recons, recon_err, weights] = sess.run(
+          [total_loss, a, x_, MSE, phi], feed_dict)
+        a_vals_max = np.array(a_vals.max()).tolist()
+        a_frac_act = np.array(np.count_nonzero(a_vals)
+          / float(params["batch_size"]*params["num_neurons"])).tolist()
+        batch_steps.append(current_step)
+        losses.append(current_loss)
+        sparsities.append(a_frac_act)
+        recon_errors.append(recon_err)
 
-      print_dict = {"current_step":str(current_step).zfill(5),
-        "loss":str(current_loss),
-        "a_max":str(a_vals_max),
-        "a_frac_act":str(a_frac_act)}
-      print(print_dict)
-      pf.save_data_tiled(weights.T.reshape((params["num_neurons"],
-        params["patch_edge_size"], params["patch_edge_size"])), normalize=False,
-        title="Dictionary at step "+str(current_step),
-        save_filename=(params["out_dir"]+"phi_"+str(current_step).zfill(5)
-        +".png"))
-      pf.save_data_tiled(recons.reshape((params["batch_size"],
-        params["patch_edge_size"], params["patch_edge_size"])), normalize=False,
-        title="Recons at step "+str(current_step),
-        save_filename=(params["out_dir"]+"recons_"+str(current_step).zfill(5)
-        +".png"))
+        print_dict = {"current_step":str(current_step).zfill(5),
+          "loss":str(current_loss),
+          "a_max":str(a_vals_max),
+          "a_frac_act":str(a_frac_act)}
+        print(print_dict)
+        pf.save_data_tiled(weights.T.reshape((params["num_neurons"],
+          params["patch_edge_size"], params["patch_edge_size"])),
+          normalize=False, title="Dictionary at step "+str(current_step),
+          save_filename=(params["out_dir"]+"phi_"+str(current_step).zfill(5)
+          +".png"))
+        pf.save_data_tiled(recons.reshape((params["batch_size"],
+          params["patch_edge_size"], params["patch_edge_size"])),
+          normalize=False, title="Recons at step "+str(current_step),
+          save_filename=(params["out_dir"]+"recons_"
+          +str(current_step).zfill(5)+".png"))
+    output_data = {"batch_step":batch_steps, "total_loss":losses,
+      "frac_active":sparsities, "recon_MSE":recon_errors}
+    pf.save_stats(output_data, save_filename=(params["out_dir"]+"loss.png"))
+
+  input_data = data["train"].next_batch(params["batch_size"])[0]
+  feed_dict = {x:input_data, sparse_mult:params["sparse_mult"]}
+  [a_vals, weights] = sess.run([a, phi], feed_dict)
+
+  ## Testing
+  pf.save_data_tiled(input_data.reshape((params["batch_size"],
+    params["patch_edge_size"], params["patch_edge_size"])), normalize=False,
+    title="Dim Reduced Data",
+    save_filename=(params["out_dir"]+"dim_reduc_ALL_dat.png"))
+  data_pca_reduc = ip.pca_reduction(input_data, num_dim=10)[0]
+  pf.save_data_tiled(data_pca_reduc.reshape((params["batch_size"],
+    params["patch_edge_size"], params["patch_edge_size"])), normalize=False,
+    title="Dim Reduced Data",
+    save_filename=(params["out_dir"]+"dim_reduc_10_dat.png"))
+  data_pca_reduc = ip.pca_reduction(input_data, num_dim=100)[0]
+  pf.save_data_tiled(data_pca_reduc.reshape((params["batch_size"],
+    params["patch_edge_size"], params["patch_edge_size"])), normalize=False,
+    title="Dim Reduced Data",
+    save_filename=(params["out_dir"]+"dim_reduc_100_dat.png"))
+  data_pca_reduc = ip.pca_reduction(input_data, num_dim=256)[0]
+  pf.save_data_tiled(data_pca_reduc.reshape((params["batch_size"],
+    params["patch_edge_size"], params["patch_edge_size"])), normalize=False,
+    title="Dim Reduced Data",
+    save_filename=(params["out_dir"]+"dim_reduc_256_dat.png"))
+
+  (a_reduc, a_u, a_diagS, a_V) = ip.pca_reduction(a_vals, num_dim=24)
+
