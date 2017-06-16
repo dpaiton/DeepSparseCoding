@@ -42,13 +42,13 @@ def extract_patches(images, out_shape, overlapping=True, var_thresh=0,
         "The number of requested %g pixel patches must be less than or equal "
         +"to %g"%(patch_size, num_im))
   if overlapping:
-    patches = np.zeros((num_patches, patch_size))
+    patches = np.zeros((num_patches, patch_size), dtype=np.float32)
     i = 0
     while i < num_patches:
-      image = images[rand_state.randint(num_im), ...]
       row = rand_state.randint(im_sizey - patch_edge_size)
       col = rand_state.randint(im_sizex - patch_edge_size)
-      patch = image[row:row+patch_edge_size, col:col+patch_edge_size]
+      patch = images[rand_state.randint(num_im),
+        row:row+patch_edge_size, col:col+patch_edge_size]
       if np.var(patch) > var_thresh:
         patches[i, :] = np.reshape(patch, patch_size)
         i = i+1
