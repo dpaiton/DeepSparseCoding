@@ -88,8 +88,6 @@ def extract_patches(images, out_shape, overlapping=True, var_thresh=0,
 
 """
 Downsample data
-currently uses scipy.ndimage.zoom
-I would like to implement a (windowed?) gaussian convolution instead
 """
 def downsample_data(data, factor, order):
   return scipy.ndimage.interpolation.zoom(data, factor, order=order)
@@ -105,12 +103,12 @@ Outputs:
   num_examples [int32] number of data examples
   num_rows [int32] number of data rows (sqrt of num elements)
   num_cols [int32] number of data cols (sqrt of num elements)
-Inputs: 
+Inputs:
   data [np.ndarray] unnormalized data of shape:
     (n, i, j) - n data points, each of shape (i,j)
     (n, k) - n data points, each of length k
     (k) - single data point of length k
-  flatten [bool] if True, 
+  flatten [bool] if True, return raveled data
 """
 def reshape_data(data, flatten=False):
   orig_shape = data.shape
