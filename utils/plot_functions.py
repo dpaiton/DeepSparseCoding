@@ -89,7 +89,7 @@ def plot_pooling_func(plot_func, weights, pooling_filters, num_connected_weights
   filter_idx_list = np.random.choice(np.arange(pooling_filters.shape[0],
     dtype=np.int32), size=num_pooling_filters, replace=False)
   filter_total = 0
-  # TODO: rewrite with np.ndindex
+  # TODO: rewrite with np.ndindex?
   for y_id in range(num_plts_y):
     for x_id in range(num_plts_x):
       if (filter_total < num_pooling_filters and x_id != num_plts_x-1):
