@@ -1,5 +1,170 @@
 import numpy as np
 import scipy.ndimage
+import skimage.draw
+
+"""
+Compute Hilbert amplitude envelope of weight matrix
+Inputs:
+  weights [np.ndarray] of shape [num_inputs, num_outputs]
+    num_inputs must have an even square root
+Outputs:
+  env [np.ndarray] of shape [num_outputs, num_inputs]
+    Hilbert envelope
+  bff_filt [np.ndarray] of shape [num_outputs, padded_num_inputs]
+    Filtered Fourier transform of basis function
+  hil_filt [np.ndarray] of shape [num_outputs, sqrt(num_inputs), sqrt(num_inputs]
+    Hilbert filter to be applied in Fourier space
+  bffs [np.ndarray] of shape [num_outputs, padded_num_inputs, padded_num_inputs]
+    Fourier transform of input weights
+TODO:
+  Add padding parameter, with default as it is now
+"""
+def hilbertize(weights):
+  cart2pol = lambda x,y: (np.arctan2(y,x), np.hypot(x, y))
+  num_inputs, num_outputs = weights.shape
+  assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
+    "weights.shape[0] must have an even square root.")
+  patch_edge_size = int(np.sqrt(num_inputs))
+  # Amount of zero padding for fft2 (closest power of 2)                          
+  N = np.int(2**(np.ceil(np.log2(patch_edge_size))))
+  # Analytic signal envelope for weights
+  # (Hilbet transform of each basis function)                                     
+  env = np.zeros((num_outputs, num_inputs), dtype=complex)                
+  # Fourier transform of weights                                               
+  bffs = np.zeros((num_outputs, N, N), dtype=complex)                               
+  # Filtered Fourier transform of weights                                               
+  bff_filt = np.zeros((num_outputs, N**2), dtype=complex)                               
+  # Hilbert filters
+  hil_filt = np.zeros((num_outputs, patch_edge_size,
+    patch_edge_size))
+  # Grid for creating filter
+  f = (2/N) * np.pi * np.arange(-N/2.0, N/2.0)                                    
+  (fx, fy) = np.meshgrid(f, f)                                                    
+  (theta, r) = cart2pol(fx, fy)
+  for neuron_idx in range(num_outputs):                                           
+    # Grab single basis function, reshape to a square image                       
+    bf = weights[:, neuron_idx].reshape(patch_edge_size, patch_edge_size)                   
+    # Convert basis function into DC-centered Fourier domain                      
+    bff = np.fft.fftshift(np.fft.fft2(bf, [N, N]))
+    bffs[neuron_idx, ...] = bff                                                                           
+    # Find indices of the peak amplitude                                          
+    max_ys = np.abs(bff).argmax(axis=0) # Returns row index for each col          
+    max_x = np.argmax(np.abs(bff).max(axis=0))      
+    # Convert peak amplitude location into angle in freq domain                   
+    fx_ang = f[max_x]                                                             
+    fy_ang = f[max_ys[max_x]]                                                     
+    theta_max = np.arctan2(fy_ang, fx_ang)
+    # Define the half-plane with respect to the maximum                           
+    ang_diff = np.abs(theta-theta_max)                                            
+    idx = (ang_diff>np.pi).nonzero()                                              
+    ang_diff[idx] = 2.0 * np.pi - ang_diff[idx]                                   
+    hil_filt[neuron_idx, ...] = (ang_diff < np.pi/2.0).astype(int)
+    # Create analytic signal from the inverse FT of the half-plane filtered bf
+    abf = np.fft.ifft2(np.fft.fftshift(hil_filt[neuron_idx, ...]*bff))                                  
+    env[neuron_idx, ...] = abf[0:patch_edge_size,
+      0:patch_edge_size].reshape(num_inputs)    
+    bff_filt[neuron_idx, ...] = (hil_filt[neuron_idx, ...]*bff).reshape(N**2)   
+  return (env, bff_filt, hil_filt, bffs)
+
+"""
+Compute summary statistics on dictionary elements using Hilbert amplitude envelope
+Inputs:
+  weights [np.ndarray] of shape [num_inputs, num_outputs]
+Outputs:
+  basis_functions
+  envelopes
+  filters
+  envelope_centers
+  lengths
+  fourier_centers
+  fourier_maps
+  orientations
+  line_images
+  blob_images
+"""
+def get_dictionary_stats(weights):
+  num_inputs, num_outputs = weights.shape
+  envelope, bff_filt, hil_filter, bffs = hilbertize(weights)
+  basis_funcs = []
+  envelopes = []
+  filters = []
+  envelope_centers = []
+  fourier_centers = []
+  fourier_maps = []
+  orientations = []
+  lengths = []
+  line_images = []
+  blob_images = []
+  for bf_idx in range(num_outputs):
+    # Reformatted individual basis function
+    basis_funcs.append(np.squeeze(reshape_data(weights.T[bf_idx,...],
+      flatten=False)[0]))
+    # Reformatted individual envelope filter
+    envelopes.append(np.squeeze(reshape_data(np.abs(envelope[bf_idx,...]),
+      flatten=False)[0]))
+    # Basis function center
+    max_ys = envelopes[bf_idx].argmax(axis=0) # Returns row index for each col          
+    max_x = np.argmax(envelopes[bf_idx].max(axis=0))
+    y_cen = max_ys[max_x]
+    x_cen = max_x
+    envelope_centers.append((y_cen, x_cen)) 
+    # Basis function orientation
+    filt = hil_filter[bf_idx, ...]
+    filters.append(filt)
+    y, x = np.nonzero(filt)
+    x = x - np.mean(x)
+    y = y - np.mean(y)
+    coords = np.vstack([y, x])
+    evals, evecs = np.linalg.eigh(np.cov(coords))
+    sort_indices = np.argsort(evals)[::-1]
+    filt_evec = evecs[:, sort_indices[0]]
+    orientations.append(filt_evec)
+    # Basis function length
+    env_evals, env_evecs = np.linalg.eigh(np.cov(envelopes[bf_idx])) 
+    sorted_indices = np.argsort(env_evals)[::-1]
+    env_major_length = env_evals[sort_indices[0]]
+    env_minor_length = env_evals[sort_indices[1]]
+    lengths.append((env_major_length, env_minor_length))
+    # Rastered basis function line representation
+    out_image = np.zeros_like(basis_funcs[bf_idx]) # row (y), col (x)
+    y_start = np.int32(np.max([0, np.min([np.ceil(y_cen-filt_evec[0]*lengths[bf_idx][0]), 15])]))
+    x_start = np.int32(np.max([0, np.min([np.ceil(x_cen-filt_evec[1]*lengths[bf_idx][0]), 15])]))
+    y_end = np.int32(np.max([0, np.min([np.ceil(y_cen+filt_evec[0]*lengths[bf_idx][0]), 15])]))
+    x_end = np.int32(np.max([0, np.min([np.ceil(x_cen+filt_evec[1]*lengths[bf_idx][0]), 15])]))
+    y_lin, x_lin = skimage.draw.line(y_start, x_start, y_end, x_end)
+    out_image[y_lin, x_lin] += 1
+    line_images.append(out_image)
+    # Thresholded envelope
+    thr_env = envelopes[bf_idx].copy()
+    thr_env[np.where(thr_env<np.mean(thr_env)+2*np.std(thr_env))] = 0
+    blob_images.append(thr_env)
+    # Rastered basis function blob representations
+    #out_image = np.zeros_like(basis_funcs[bf_idx]) # row (y), col (x)
+    #rot = np.arctan2(orientations[bf_idx][0], orientations[bf_idx][1])
+    #y_elip, x_elip = skimage.draw.ellipse(y_cen, x_cen, env_major_length,
+    #  env_minor_length, rotation=rot)
+    #out_image[y_elip, x_elip] += 1
+    #out_image = np.zeros_like(basis_funcs[bf_idx]) # row (y), col (x)
+    #env_y, env_x = np.nonzero(thr_env)
+    #points = np.hstack([env_y, env_x])
+    #import scipy.spatial
+    #hull = scipy.spatial.ConvexHull(points)
+    #out_image[points[hull.vertices,0], points[hull.vertices,1]] += 1
+    #blob_images.append(out_image)
+    # Fourier function center
+    fourier_map = np.sqrt(np.real(bffs[bf_idx, ...])**2+np.imag(bffs[bf_idx, ...])**2)
+    fourier_maps.append(fourier_map)
+    max_fys = fourier_map.argmax(axis=0)
+    max_fx = np.argmax(fourier_map.max(axis=0))
+    fy_cen = max_ys[max_x]
+    fx_cen = max_x
+    fourier_centers.append((fy_cen, fx_cen))
+  output = {"basis_functions":basis_funcs, "envelopes":envelopes,
+    "filters":filters, "envelope_centers":envelope_centers, "lengths":lengths,
+    "fourier_centers":fourier_centers, "fourier_maps":fourier_maps,
+    "orientations":orientations, "line_images":line_images,
+    "blob_images":blob_images}
+  return output
 
 """
 Extract patches from image dataset.
