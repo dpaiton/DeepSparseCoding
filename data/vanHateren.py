@@ -4,8 +4,8 @@ from data.dataset import Dataset
 import utils.image_processing as ip
 
 class vanHateren(object):
-  def __init__(self, img_dir, whiten_data=False, num_images=50,
-    num_examples=None, patch_edge_size=None, overlapping=None,
+  def __init__(self, img_dir, whiten_data=False, contrast_normalize=False,
+    num_images=50, num_examples=None, patch_edge_size=None, overlapping=None,
     var_thresh=None, rand_state=np.random.RandomState()):
     full_img_data = self.extract_images(img_dir, num_images,
       rand_state=rand_state)
@@ -13,10 +13,11 @@ class vanHateren(object):
       order=2)
 
     if whiten_data:
-      full_img_data = ip.center_data(full_img_data)
       full_img_data = ip.whiten_data(full_img_data, method="FT")
     else:
       full_img_data = ip.standardize_data(full_img_data)
+    if contrast_normalize:
+      full_img_data = ip.contrast_normalize(full_img_data)
     if all(param is not None for param in (num_examples, patch_edge_size,
       overlapping, var_thresh)):
       out_shape = (num_examples, patch_edge_size, patch_edge_size)
@@ -51,6 +52,8 @@ def load_vanHateren(kwargs):
   data_dir = kwargs["data_dir"]
   whiten_images = (kwargs["whiten_images"]
     if "whiten_images" in kwargs.keys() else False)
+  contrast_normalize = (kwargs["contrast_normalize"]
+    if "contrast_normalize" in kwargs.keys() else False)
   rand_state = (kwargs["rand_state"]
     if "rand_state" in kwargs.keys() else np.random.RandomState())
   patch_edge_size = (np.int(kwargs["patch_edge_size"])
@@ -67,8 +70,8 @@ def load_vanHateren(kwargs):
 
   ## Training set
   img_filename = data_dir+"/img/images_curated.h5"
-  vh_data = vanHateren(img_filename, whiten_images, num_images, num_examples,
-    patch_edge_size, overlapping, var_thresh, rand_state=rand_state)
+  vh_data = vanHateren(img_filename, whiten_images, contrast_normalize, num_images,
+    num_examples, patch_edge_size, overlapping, var_thresh, rand_state=rand_state)
   images = Dataset(vh_data.images, lbls=None, ignore_lbls=None,
     vectorize=vectorize, rand_state=rand_state)
   return {"train":images}

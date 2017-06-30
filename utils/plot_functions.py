@@ -127,10 +127,13 @@ Inputs:
   bf_stats
   bf_idx
   colorVal
+TODO: Change to 'plot_line'
+  fill out inputs
 """
 def plot_lines(axis, bf_stats, bf_idx, colorVal):
-  y, x = bf_stats["orientations"][bf_idx]
-  y_cen, x_cen = bf_stats["envelope_centers"][bf_idx]
+  evals, evecs = bf_stats["orientations"][bf_idx]
+  y, x = evecs[:,0]
+  y_cen, x_cen = bf_stats["gauss_centers"][bf_idx]
   length = 3#bf_stats["lengths"][bf_idx][0]
   x_points = [(x_cen-x*length/2), (x_cen+x*length/2)]
   y_points = [(y_cen-y*length/2), (y_cen+y*length/2)]
@@ -145,11 +148,17 @@ Inputs:
   colorVal
 """
 def plot_ellipse(axis, bf_stats, bf_idx, colorVal):
-  y_cen, x_cen = bf_stats["envelope_centers"][bf_idx]
-  (y_ang, x_ang) = bf_stats["orientations"][bf_idx]
-  angle = np.rad2deg(np.arctan2(y_ang, x_ang))
-  e = matplotlib.patches.Ellipse(xy=[x_cen, y_cen], width=0.8,
-    height=0.3, angle=angle, color=colorVal, alpha=1.0, fill=True)
+  y_cen, x_cen = bf_stats["gauss_centers"][bf_idx]
+  evals, evecs = bf_stats["orientations"][bf_idx]
+  if colorVal == "b":
+    SFs = bf_stats["fourier_stats"][:][1]
+    angle = np.rad2deg(bf_stats["fourier_stats"][bf_idx][2])
+    #alpha = spatial frequency?
+  else:
+    angle = np.rad2deg(np.arctan2(*evecs[:,0]))
+  width, height = evals
+  e = matplotlib.patches.Ellipse(xy=[x_cen, y_cen], width=width,
+    height=height, angle=angle, color=colorVal, alpha=1.0, fill=True)
   axis.add_artist(e)
   e.set_clip_box(axis.bbox)
 
@@ -159,74 +168,71 @@ Inputs:
   bf_stats [dict] output of ip.get_dictionary_stats()
   num_bf [int] number of basis functions to plot
 """
-def plot_bf_stats(bf_stats, num_bf=1):
-    fig, sub_axes = plt.subplots(num_bf, 6, figsize=(36,36))
-    for bf_idx in range(int(num_bf)):
-      bf = bf_stats["basis_functions"][bf_idx]
-      env = bf_stats["envelopes"][bf_idx]
-      filt = bf_stats["filters"][bf_idx]
-      fourier = bf_stats["fourier_maps"][bf_idx]
-      y, x = bf_stats["orientations"][bf_idx]
-      y_cen, x_cen = bf_stats["envelope_centers"][bf_idx]
-      length = bf_stats["lengths"][bf_idx] 
-      line_img = bf_stats["line_images"][bf_idx]
-      blob_img = bf_stats["blob_images"][bf_idx]
-      fy_cen, fx_cen = bf_stats["fourier_centers"][bf_idx]
+def plot_bf_stats(bf_stats, num_bf=2):
+    tot_num_bf = len(bf_stats["basis_functions"])
+    bf_idx_list = np.random.choice(tot_num_bf, num_bf, replace=False)
+    fig, sub_axes = plt.subplots(num_bf, 6, figsize=(15,15))
+    for plot_idx in range(int(num_bf)):
+      bf_idx = bf_idx_list[plot_idx]
       # Basis function in pixel space
-      sub_axes[bf_idx, 0].imshow(bf, cmap="Greys_r", interpolation="Nearest")
-      sub_axes[bf_idx, 0].tick_params(axis="both", bottom="off", top="off",
+      bf = bf_stats["basis_functions"][bf_idx]
+      sub_axes[plot_idx, 0].imshow(bf, cmap="Greys_r", interpolation="Nearest")
+      sub_axes[plot_idx, 0].tick_params(axis="both", bottom="off", top="off",
         left="off", right="off")
-      sub_axes[bf_idx, 0].get_xaxis().set_visible(False)
-      sub_axes[bf_idx, 0].get_yaxis().set_visible(False)
+      sub_axes[plot_idx, 0].get_xaxis().set_visible(False)
+      sub_axes[plot_idx, 0].get_yaxis().set_visible(False)
       # Hilbert envelope
-      sub_axes[bf_idx, 1].imshow(env, cmap="Greys_r", interpolation="Nearest")
-      sub_axes[bf_idx, 1].tick_params(axis="both", bottom="off", top="off",
+      env = bf_stats["envelopes"][bf_idx]
+      sub_axes[plot_idx, 1].imshow(env, cmap="Greys_r", interpolation="Nearest")
+      sub_axes[plot_idx, 1].tick_params(axis="both", bottom="off", top="off",
         left="off", right="off")
-      sub_axes[bf_idx, 1].get_xaxis().set_visible(False)
-      sub_axes[bf_idx, 1].get_yaxis().set_visible(False)
+      sub_axes[plot_idx, 1].get_xaxis().set_visible(False)
+      sub_axes[plot_idx, 1].get_yaxis().set_visible(False)
       # Hilbert filter
-      sub_axes[bf_idx, 2].imshow(filt, cmap="Greys_r", interpolation="Nearest")
-      sub_axes[bf_idx, 2].tick_params(axis="both", bottom="off", top="off",
+      filt = bf_stats["filters"][bf_idx]
+      sub_axes[plot_idx, 2].imshow(filt, cmap="Greys_r", interpolation="Nearest")
+      sub_axes[plot_idx, 2].tick_params(axis="both", bottom="off", top="off",
         left="off", right="off")
-      sub_axes[bf_idx, 2].get_xaxis().set_visible(False)
-      sub_axes[bf_idx, 2].get_yaxis().set_visible(False)
+      sub_axes[plot_idx, 2].get_xaxis().set_visible(False)
+      sub_axes[plot_idx, 2].get_yaxis().set_visible(False)
       # Fourier transform of basis function
-      sub_axes[bf_idx, 3].imshow(fourier, cmap="Greys_r", interpolation="Nearest")
-      sub_axes[bf_idx, 3].tick_params(axis="both", top="off", right="off",
+      fourier = bf_stats["fourier_maps"][bf_idx]
+      sub_axes[plot_idx, 3].imshow(fourier, cmap="Greys_r", interpolation="Nearest")
+      sub_axes[plot_idx, 3].tick_params(axis="both", top="off", right="off",
         bottom="off", left="off")
-      sub_axes[bf_idx, 3].spines["left"].set_position("center")
-      sub_axes[bf_idx, 3].spines["left"].set_color("black")
-      sub_axes[bf_idx, 3].spines["left"].set_linewidth(2.5)
-      sub_axes[bf_idx, 3].spines["bottom"].set_position("center")
-      sub_axes[bf_idx, 3].spines["bottom"].set_color("black")
-      sub_axes[bf_idx, 3].spines["bottom"].set_linewidth(2.5)
-      sub_axes[bf_idx, 3].spines["top"].set_color("none")
-      sub_axes[bf_idx, 3].spines["right"].set_color("none")
-      sub_axes[bf_idx, 3].set_yticklabels([])
-      sub_axes[bf_idx, 3].set_xticklabels([])
-      sub_axes[bf_idx, 3].set_ylim([0, fourier.shape[0]-1])
-      sub_axes[bf_idx, 3].set_xlim([0, fourier.shape[1]-1])
-      # Pixel line summary of basis function
-      line_img[y_cen, x_cen] += 1
-      sub_axes[bf_idx, 4].imshow(line_img, interpolation="Nearest")
-      sub_axes[bf_idx, 4].tick_params(axis="both", bottom="off", top="off",
+      sub_axes[plot_idx, 3].spines["left"].set_position("center")
+      sub_axes[plot_idx, 3].spines["left"].set_color("black")
+      sub_axes[plot_idx, 3].spines["left"].set_linewidth(2.5)
+      sub_axes[plot_idx, 3].spines["bottom"].set_position("center")
+      sub_axes[plot_idx, 3].spines["bottom"].set_color("black")
+      sub_axes[plot_idx, 3].spines["bottom"].set_linewidth(2.5)
+      sub_axes[plot_idx, 3].spines["top"].set_color("none")
+      sub_axes[plot_idx, 3].spines["right"].set_color("none")
+      sub_axes[plot_idx, 3].set_yticklabels([])
+      sub_axes[plot_idx, 3].set_xticklabels([])
+      sub_axes[plot_idx, 3].set_ylim([0, fourier.shape[0]-1])
+      sub_axes[plot_idx, 3].set_xlim([0, fourier.shape[1]-1])
+      # Summary ellipse
+      sub_axes[plot_idx, 4].imshow(bf, interpolation="Nearest", cmap="Greys_r")
+      plot_ellipse(sub_axes[plot_idx, 4], bf_stats, bf_idx, "r")
+      sub_axes[plot_idx, 4].tick_params(axis="both", bottom="off", top="off",
         left="off", right="off")
-      sub_axes[bf_idx, 4].get_xaxis().set_visible(False)
-      sub_axes[bf_idx, 4].get_yaxis().set_visible(False)
-      # Filtered Hilbert envelope 
-      blob_img[np.where(blob_img>0)] = 1
-      blob_img[y_cen, x_cen] += 1
-      sub_axes[bf_idx, 5].imshow(blob_img, interpolation="Nearest")
-      sub_axes[bf_idx, 5].tick_params(axis="both", bottom="off", top="off",
+      sub_axes[plot_idx, 4].get_xaxis().set_visible(False)
+      sub_axes[plot_idx, 4].get_yaxis().set_visible(False)
+      sub_axes[plot_idx, 4].set_aspect("equal")
+      # Fourier summary stats
+      sub_axes[plot_idx, 5].imshow(bf, interpolation="Nearest", cmap="Greys_r")
+      plot_ellipse(sub_axes[plot_idx, 5], bf_stats, bf_idx, "b")
+      sub_axes[plot_idx, 5].tick_params(axis="both", bottom="off", top="off",
         left="off", right="off")
-      sub_axes[bf_idx, 5].get_xaxis().set_visible(False)
-      sub_axes[bf_idx, 5].get_yaxis().set_visible(False)
-    sub_axes[0,0].set_title("bf", fontsize=32)
-    sub_axes[0,1].set_title("envelope", fontsize=32)
-    sub_axes[0,2].set_title("filter", fontsize=32)
-    sub_axes[0,3].set_title("fourier map", fontsize=32)
-    sub_axes[0,4].set_title("envelope summary line", fontsize=22)
-    sub_axes[0,5].set_title("envelope summary blob", fontsize=22)
+      sub_axes[plot_idx, 5].get_xaxis().set_visible(False)
+      sub_axes[plot_idx, 5].get_yaxis().set_visible(False)
+    sub_axes[0,0].set_title("bf", fontsize=12)
+    sub_axes[0,1].set_title("envelope", fontsize=12)
+    sub_axes[0,2].set_title("filter", fontsize=12)
+    sub_axes[0,3].set_title("Fourier map", fontsize=12)
+    sub_axes[0,4].set_title("spatial ellipse", fontsize=10)
+    sub_axes[0,5].set_title("Fourier ellipse", fontsize=10)
     plt.show()
 
 """
@@ -235,8 +241,8 @@ Inputs:
   weights: [np.ndarray] with shape [num_inputs, num_outputs]
     num_inputs must have even square root.
 """
-def plot_hilbert_analysis(weights):
-  Envelope, bff_filt, Hil_filter, bff = ip.hilbertize(weights)
+def plot_hilbert_analysis(weights, padding=None):
+  Envelope, bff_filt, Hil_filter, bff = ip.hilbertize(weights, padding)
   num_inputs, num_outputs = weights.shape
   assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
     "weights.shape[0] must have an even square root.")

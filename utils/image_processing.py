@@ -1,4 +1,6 @@
 import numpy as np
+import scipy.signal
+import scipy.stats
 import scipy.ndimage
 import skimage.draw
 
@@ -7,6 +9,7 @@ Compute Hilbert amplitude envelope of weight matrix
 Inputs:
   weights [np.ndarray] of shape [num_inputs, num_outputs]
     num_inputs must have an even square root
+  padding [int] specifying how much 0-padding to use for FFT
 Outputs:
   env [np.ndarray] of shape [num_outputs, num_inputs]
     Hilbert envelope
@@ -16,54 +19,53 @@ Outputs:
     Hilbert filter to be applied in Fourier space
   bffs [np.ndarray] of shape [num_outputs, padded_num_inputs, padded_num_inputs]
     Fourier transform of input weights
-TODO:
-  Add padding parameter, with default as it is now
 """
-def hilbertize(weights):
+def hilbertize(weights, padding=None):
   cart2pol = lambda x,y: (np.arctan2(y,x), np.hypot(x, y))
   num_inputs, num_outputs = weights.shape
   assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
     "weights.shape[0] must have an even square root.")
   patch_edge_size = int(np.sqrt(num_inputs))
-  # Amount of zero padding for fft2 (closest power of 2)                          
-  N = np.int(2**(np.ceil(np.log2(patch_edge_size))))
+  if padding is None:
+    # Amount of zero padding for fft2 (closest power of 2)
+    N = np.int(2**(np.ceil(np.log2(patch_edge_size))))
+  else:
+    N = np.int(padding)
   # Analytic signal envelope for weights
-  # (Hilbet transform of each basis function)                                     
-  env = np.zeros((num_outputs, num_inputs), dtype=complex)                
-  # Fourier transform of weights                                               
-  bffs = np.zeros((num_outputs, N, N), dtype=complex)                               
-  # Filtered Fourier transform of weights                                               
-  bff_filt = np.zeros((num_outputs, N**2), dtype=complex)                               
+  # (Hilbet transform of each basis function)
+  env = np.zeros((num_outputs, num_inputs), dtype=complex)
+  # Fourier transform of weights
+  bffs = np.zeros((num_outputs, N, N), dtype=complex)
+  # Filtered Fourier transform of weights
+  bff_filt = np.zeros((num_outputs, N**2), dtype=complex)
   # Hilbert filters
-  hil_filt = np.zeros((num_outputs, patch_edge_size,
-    patch_edge_size))
+  hil_filt = np.zeros((num_outputs, N, N))
   # Grid for creating filter
-  f = (2/N) * np.pi * np.arange(-N/2.0, N/2.0)                                    
-  (fx, fy) = np.meshgrid(f, f)                                                    
+  f = (2/N) * np.pi * np.arange(-N/2.0, N/2.0)
+  (fx, fy) = np.meshgrid(f, f)
   (theta, r) = cart2pol(fx, fy)
-  for neuron_idx in range(num_outputs):                                           
-    # Grab single basis function, reshape to a square image                       
-    bf = weights[:, neuron_idx].reshape(patch_edge_size, patch_edge_size)                   
-    # Convert basis function into DC-centered Fourier domain                      
-    bff = np.fft.fftshift(np.fft.fft2(bf, [N, N]))
-    bffs[neuron_idx, ...] = bff                                                                           
-    # Find indices of the peak amplitude                                          
-    max_ys = np.abs(bff).argmax(axis=0) # Returns row index for each col          
-    max_x = np.argmax(np.abs(bff).max(axis=0))      
-    # Convert peak amplitude location into angle in freq domain                   
-    fx_ang = f[max_x]                                                             
-    fy_ang = f[max_ys[max_x]]                                                     
+  for neuron_idx in range(num_outputs):
+    # Grab single basis function, reshape to a square image
+    bf = weights[:, neuron_idx].reshape(patch_edge_size, patch_edge_size)
+    # Convert basis function into DC-centered Fourier domain
+    bff = np.fft.fftshift(np.fft.fft2(bf-np.mean(bf), [N, N]))
+    bffs[neuron_idx, ...] = bff
+    # Find indices of the peak amplitude
+    max_ys = np.abs(bff).argmax(axis=0) # Returns row index for each col
+    max_x = np.argmax(np.abs(bff).max(axis=0))
+    # Convert peak amplitude location into angle in freq domain
+    fx_ang = f[max_x]
+    fy_ang = f[max_ys[max_x]]
     theta_max = np.arctan2(fy_ang, fx_ang)
-    # Define the half-plane with respect to the maximum                           
-    ang_diff = np.abs(theta-theta_max)                                            
-    idx = (ang_diff>np.pi).nonzero()                                              
-    ang_diff[idx] = 2.0 * np.pi - ang_diff[idx]                                   
+    # Define the half-plane with respect to the maximum
+    ang_diff = np.abs(theta-theta_max)
+    idx = (ang_diff>np.pi).nonzero()
+    ang_diff[idx] = 2.0 * np.pi - ang_diff[idx]
     hil_filt[neuron_idx, ...] = (ang_diff < np.pi/2.0).astype(int)
     # Create analytic signal from the inverse FT of the half-plane filtered bf
-    abf = np.fft.ifft2(np.fft.fftshift(hil_filt[neuron_idx, ...]*bff))                                  
-    env[neuron_idx, ...] = abf[0:patch_edge_size,
-      0:patch_edge_size].reshape(num_inputs)    
-    bff_filt[neuron_idx, ...] = (hil_filt[neuron_idx, ...]*bff).reshape(N**2)   
+    abf = np.fft.ifft2(np.fft.fftshift(hil_filt[neuron_idx, ...]*bff))
+    env[neuron_idx, ...] = abf[0:patch_edge_size, 0:patch_edge_size].reshape(num_inputs)
+    bff_filt[neuron_idx, ...] = (hil_filt[neuron_idx, ...]*bff).reshape(N**2)
   return (env, bff_filt, hil_filt, bffs)
 
 """
@@ -82,19 +84,23 @@ Outputs:
   line_images
   blob_images
 """
-def get_dictionary_stats(weights):
+def get_dictionary_stats(weights, padding=None):
   num_inputs, num_outputs = weights.shape
-  envelope, bff_filt, hil_filter, bffs = hilbertize(weights)
+  patch_edge_size = np.int(np.floor(np.sqrt(num_inputs)))
+  if padding is None:
+    fft_scale = 1
+  else:
+    fft_scale = patch_edge_size/padding
+  envelope, bff_filt, hil_filter, bffs = hilbertize(weights, padding)
   basis_funcs = []
   envelopes = []
+  gauss_fits = []
+  gauss_centers = []
   filters = []
   envelope_centers = []
-  fourier_centers = []
+  fourier_stats = []
   fourier_maps = []
   orientations = []
-  lengths = []
-  line_images = []
-  blob_images = []
   for bf_idx in range(num_outputs):
     # Reformatted individual basis function
     basis_funcs.append(np.squeeze(reshape_data(weights.T[bf_idx,...],
@@ -105,66 +111,115 @@ def get_dictionary_stats(weights):
     # Basis function center
     max_ys = envelopes[bf_idx].argmax(axis=0) # Returns row index for each col          
     max_x = np.argmax(envelopes[bf_idx].max(axis=0))
-    y_cen = max_ys[max_x]
-    x_cen = max_x
+    y_cen = max_ys[max_x]*fft_scale
+    x_cen = max_x*fft_scale
     envelope_centers.append((y_cen, x_cen)) 
-    # Basis function orientation
+    # Hilbert amplitude filters
     filt = hil_filter[bf_idx, ...]
     filters.append(filt)
-    y, x = np.nonzero(filt)
-    x = x - np.mean(x)
-    y = y - np.mean(y)
-    coords = np.vstack([y, x])
-    evals, evecs = np.linalg.eigh(np.cov(coords))
+    # Gaussian fit to Hilbet amplitude envelope
+    gauss_fit, grid, gauss_mean, gauss_cov = get_gauss_fit(envelopes[bf_idx], 20, 0.2)
+    gauss_fits.append((gauss_fit, grid))
+    # center might be outside of patch because of Fourier padding
+    gauss_centers.append(gauss_mean*fft_scale)
+    evals, evecs = np.linalg.eigh(gauss_cov)
     sort_indices = np.argsort(evals)[::-1]
-    filt_evec = evecs[:, sort_indices[0]]
-    orientations.append(filt_evec)
-    # Basis function length
-    env_evals, env_evecs = np.linalg.eigh(np.cov(envelopes[bf_idx])) 
-    sorted_indices = np.argsort(env_evals)[::-1]
-    env_major_length = env_evals[sort_indices[0]]
-    env_minor_length = env_evals[sort_indices[1]]
-    lengths.append((env_major_length, env_minor_length))
-    # Rastered basis function line representation
-    out_image = np.zeros_like(basis_funcs[bf_idx]) # row (y), col (x)
-    y_start = np.int32(np.max([0, np.min([np.ceil(y_cen-filt_evec[0]*lengths[bf_idx][0]), 15])]))
-    x_start = np.int32(np.max([0, np.min([np.ceil(x_cen-filt_evec[1]*lengths[bf_idx][0]), 15])]))
-    y_end = np.int32(np.max([0, np.min([np.ceil(y_cen+filt_evec[0]*lengths[bf_idx][0]), 15])]))
-    x_end = np.int32(np.max([0, np.min([np.ceil(x_cen+filt_evec[1]*lengths[bf_idx][0]), 15])]))
-    y_lin, x_lin = skimage.draw.line(y_start, x_start, y_end, x_end)
-    out_image[y_lin, x_lin] += 1
-    line_images.append(out_image)
-    # Thresholded envelope
-    thr_env = envelopes[bf_idx].copy()
-    thr_env[np.where(thr_env<np.mean(thr_env)+2*np.std(thr_env))] = 0
-    blob_images.append(thr_env)
-    # Rastered basis function blob representations
-    #out_image = np.zeros_like(basis_funcs[bf_idx]) # row (y), col (x)
-    #rot = np.arctan2(orientations[bf_idx][0], orientations[bf_idx][1])
-    #y_elip, x_elip = skimage.draw.ellipse(y_cen, x_cen, env_major_length,
-    #  env_minor_length, rotation=rot)
-    #out_image[y_elip, x_elip] += 1
-    #out_image = np.zeros_like(basis_funcs[bf_idx]) # row (y), col (x)
-    #env_y, env_x = np.nonzero(thr_env)
-    #points = np.hstack([env_y, env_x])
-    #import scipy.spatial
-    #hull = scipy.spatial.ConvexHull(points)
-    #out_image[points[hull.vertices,0], points[hull.vertices,1]] += 1
-    #blob_images.append(out_image)
-    # Fourier function center
+    orientations.append((evals[sort_indices], evecs[:,sort_indices]))
+    # Fourier function center, spatial frequency, orientation
     fourier_map = np.sqrt(np.real(bffs[bf_idx, ...])**2+np.imag(bffs[bf_idx, ...])**2)
     fourier_maps.append(fourier_map)
+    N = fourier_map.shape[0]
+    center_freq = int(np.floor(N/2))
+    fourier_map[center_freq, center_freq] = 0 # remove DC component
     max_fys = fourier_map.argmax(axis=0)
     max_fx = np.argmax(fourier_map.max(axis=0))
     fy_cen = max_ys[max_x]
     fx_cen = max_x
-    fourier_centers.append((fy_cen, fx_cen))
+    spatial_freq = np.sqrt(fy_cen**2+fx_cen**2)
+    orientation = 0
+    if fx_cen != 0:
+      orientation = np.pi-np.arctan2(fy_cen, fx_cen)
+      #orientation = np.arctan(fy_cen/fx_cen)
+    fourier_stats.append(((fy_cen, fx_cen), spatial_freq, orientation))
   output = {"basis_functions":basis_funcs, "envelopes":envelopes,
-    "filters":filters, "envelope_centers":envelope_centers, "lengths":lengths,
-    "fourier_centers":fourier_centers, "fourier_maps":fourier_maps,
-    "orientations":orientations, "line_images":line_images,
-    "blob_images":blob_images}
+    "envelope_centers":envelope_centers, "filters":filters,
+    "gauss_fits":gauss_fits, "gauss_centers":gauss_centers, "orientations":orientations,
+    "fourier_stats":fourier_stats, "fourier_maps":fourier_maps}
   return output
+
+"""
+Generate a Gaussian PDF from given mean & cov
+Inputs:
+  shape: [tuple] specifying (num_rows, num_cols)
+  mean: [np.ndarray] of shape (2,) specifying the 2-D Gaussian center
+  cov: [np.ndarray] of shape (2,2) specifying the 2-D Gaussian covariance matrix
+Outputs:
+  tuple containing (Gaussian PDF, grid_points used to generate PDF)
+    grid_points are specified as a tuple of (y,x) points
+"""
+def generate_gaussian(shape, mean, cov):
+  (y_size, x_size) = shape
+  y = np.linspace(0, y_size, np.int32(np.floor(y_size)))
+  x = np.linspace(0, x_size, np.int32(np.floor(x_size)))
+  y, x = np.meshgrid(y, x)
+  pos = np.empty(x.shape + (2,)) #x.shape == y.shape
+  pos[:, :, 0] = y; pos[:, :, 1] = x
+  gauss = scipy.stats.multivariate_normal(mean, cov)
+  return (gauss.pdf(pos), (y,x))
+
+"""
+Returns the MLE mean & covariance matrix for a 2-D gaussian fit of input distribution
+Inputs:
+  pyx [np.ndarray] of shape [num_rows, num_cols] that indicates the probability function to fit
+Outputs:
+  mean: [np.ndarray] of shape (2,) specifying the 2-D Gaussian center
+  cov: [np.ndarray] of shape (2,2) specifying the 2-D Gaussian covariance matrix
+"""
+def gaussian_fit(pyx):
+  assert pyx.ndim == 2, (
+    "Input must have 2 dimensions specifying [num_rows, num_cols]")
+  mean = np.zeros((1,2), dtype=np.float32) # [mu_y, mu_x]
+  for idx in np.ndindex(pyx.shape): # [y, x] ticks columns (x) first, then rows (y)
+    mean += np.asarray([pyx[idx]*idx[0], pyx[idx]*idx[1]])[None,:]
+  cov = np.zeros((2,2), dtype=np.float32)
+  for idx in np.ndindex(pyx.shape): # ticks columns first, then rows
+    cov += np.dot((idx-mean).T, (idx-mean))*pyx[idx] # typically an outer-product
+  return (np.squeeze(mean), cov)
+
+"""
+Returns a gaussian fit for a given probability map
+Fitting is done via robust regression, where a fit is
+continuously refined by deleting outliers num_attempts times
+Inputs:
+  prob_map: 2-D probability map to be fit
+  num_attempts: Number of times to fit & remove outliers
+  perc_mean: All probability values below perc_mean*mean(gauss_fit) will be
+    considered outliers for repeated attempts
+Outputs:
+  gauss_fit: [np.ndarray] specifying the 2-D Gaussian PDF
+  grid: [tuple] containing (y,x) points with which the Gaussian PDF can be plotted
+  gauss_mean: [np.ndarray] of shape (2,) specifying the 2-D Gaussian center
+  gauss_cov: [np.ndarray] of shape (2,2) specifying the 2-D Gaussian covariance matrix
+"""
+def get_gauss_fit(prob_map, num_attempts=20, perc_mean=0.33):
+  assert prob_map.ndim==2, (
+    "Input prob_map must have 2 dimension specifying [num_rows, num_cols")
+  for i in range(num_attempts):
+    map_min = np.min(prob_map)
+    map_sum = np.sum(prob_map)
+    if map_min != 0.0:
+      prob_map -= map_min
+    if map_sum != 1.0:
+      prob_map /= map_sum
+    gauss_mean, gauss_cov = gaussian_fit(prob_map)
+    gauss_fit, grid = generate_gaussian(prob_map.shape, gauss_mean, gauss_cov)
+    gauss_fit = (gauss_fit * map_sum) + map_min
+    if i < num_attempts-1:
+      gauss_mask = gauss_fit.copy().T
+      gauss_mask[np.where(gauss_mask<perc_mean*np.mean(gauss_mask))] = 0
+      gauss_mask[np.where(gauss_mask>0)] = 1
+      prob_map *= gauss_mask
+  return (gauss_fit, grid, gauss_mean, gauss_cov)
 
 """
 Extract patches from image dataset.
@@ -340,7 +395,7 @@ def center_data(data):
   return data.squeeze()
 
 """
-Standardize data to have zero mean and unit variance (z-score)
+Standardize data to have zero mean and unit standard-deviation (z-score)
 Outputs:
   data [np.ndarray] normalized data
 Inputs:
@@ -356,6 +411,22 @@ def standardize_data(data):
   for idx in range(data.shape[0]):
     data[idx, ...] -= np.mean(data[idx, ...])
     data[idx, ...] = data[idx, ...] / np.std(data[idx, ...])
+  return data.squeeze()
+
+"""
+Divide data by its variance
+Outputs:
+  data [np.ndarray] input data batch
+Inputs:
+  data [np.ndarray] normalized data of shape:
+    (n, i, j) - n data points, each of shape (i,j)
+    (n, k) - n data points, each of length k
+    (k) - single data point of length k
+"""
+def norm_data_by_var(data):
+  data = data[np.newaxis, ...] if data.ndim == 1 else data
+  for idx in range(data.shape[0]):
+    data[idx, ...] /= np.var(data[idx, ...])
   return data.squeeze()
 
 """
@@ -385,7 +456,8 @@ def whiten_data(data, method="FT", num_dim=-1):
     dataFT_wht = np.multiply(dataFT, filtf[None, :])
     data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(dataFT_wht, axes=(1, 2)),
       axes=(1, 2)))
-    data_wht = reshape_data(data_wht, flatten=True)[0]
+    if data_wht.shape != orig_shape:
+      data_wht = reshape_data(data_wht, flatten=True)[0]
   elif method == "PCA":
     (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
       flatten=True)
@@ -397,6 +469,40 @@ def whiten_data(data, method="FT", num_dim=-1):
   else:
     assert False, ("whitening method must be 'FT' or 'PCA'")
   return data_wht
+
+"""
+Returns a symmetric Gaussian with specified radius
+Inputs:
+  radius [int] radius of Gaussian function
+"""
+def generate_local_contrast_normalizer(radius=12):
+    xs = np.linspace(-radius, radius-1, num=2*radius)
+    xs, ys = np.meshgrid(xs, xs)
+    gauss = np.exp(-0.5*((np.square(xs)+np.square(ys))/radius**2))
+    gauss = gauss/np.sum(gauss)
+    return gauss
+
+"""
+Perform patch-wise local contrast normalization on input data
+Inputs:
+  data: [np.ndarray] of shape:
+    (n, i, j) - n data points, each of shape (i,j)
+    (n, k) - n data points, each of length k
+    (k) - single data point of length k
+  gauss_patch_size [int] indicates radius of Gaussian function
+"""
+def contrast_normalize(data, gauss_patch_size=12):
+  (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
+    flatten=False) # Need spatial dim for 2d-Fourier transform
+  pooler = generate_local_contrast_normalizer(gauss_patch_size)
+  for ex in range(num_examples):
+    example = data[ex, ...]
+    localIntensityEstimate = scipy.signal.convolve2d(np.square(example), pooler, mode='same')
+    normalizedData = np.divide(example, np.sqrt(localIntensityEstimate))
+    data[ex, ...] = normalizedData
+  if data.shape != orig_shape:
+    data = reshape_data(data, flatten=True)[0]
+  return data
 
 def pca_reduction(data, num_pcs=-1):
   (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
