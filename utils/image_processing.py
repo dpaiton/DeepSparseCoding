@@ -15,7 +15,7 @@ Outputs:
     Hilbert envelope
   bff_filt [np.ndarray] of shape [num_outputs, padded_num_inputs]
     Filtered Fourier transform of basis function
-  hil_filt [np.ndarray] of shape [num_outputs, sqrt(num_inputs), sqrt(num_inputs]
+  hil_filt [np.ndarray] of shape [num_outputs, sqrt(num_inputs), sqrt(num_inputs)]
     Hilbert filter to be applied in Fourier space
   bffs [np.ndarray] of shape [num_outputs, padded_num_inputs, padded_num_inputs]
     Fourier transform of input weights
@@ -26,7 +26,7 @@ def hilbertize(weights, padding=None):
   assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
     "weights.shape[0] must have an even square root.")
   patch_edge_size = int(np.sqrt(num_inputs))
-  if padding is None:
+  if padding is None or padding < patch_edge_size:
     # Amount of zero padding for fft2 (closest power of 2)
     N = np.int(2**(np.ceil(np.log2(patch_edge_size))))
   else:
@@ -85,13 +85,9 @@ Outputs:
   blob_images
 """
 def get_dictionary_stats(weights, padding=None):
+  envelope, bff_filt, hil_filter, bffs = hilbertize(weights, padding)
   num_inputs, num_outputs = weights.shape
   patch_edge_size = np.int(np.floor(np.sqrt(num_inputs)))
-  if padding is None:
-    fft_scale = 1
-  else:
-    fft_scale = patch_edge_size/padding
-  envelope, bff_filt, hil_filter, bffs = hilbertize(weights, padding)
   basis_funcs = []
   envelopes = []
   gauss_fits = []
@@ -109,11 +105,11 @@ def get_dictionary_stats(weights, padding=None):
     envelopes.append(np.squeeze(reshape_data(np.abs(envelope[bf_idx,...]),
       flatten=False)[0]))
     # Basis function center
-    max_ys = envelopes[bf_idx].argmax(axis=0) # Returns row index for each col          
+    max_ys = envelopes[bf_idx].argmax(axis=0) # Returns row index for each col
     max_x = np.argmax(envelopes[bf_idx].max(axis=0))
-    y_cen = max_ys[max_x]*fft_scale
-    x_cen = max_x*fft_scale
-    envelope_centers.append((y_cen, x_cen)) 
+    y_cen = max_ys[max_x]
+    x_cen = max_x
+    envelope_centers.append((y_cen, x_cen))
     # Hilbert amplitude filters
     filt = hil_filter[bf_idx, ...]
     filters.append(filt)
@@ -121,7 +117,7 @@ def get_dictionary_stats(weights, padding=None):
     gauss_fit, grid, gauss_mean, gauss_cov = get_gauss_fit(envelopes[bf_idx], 20, 0.2)
     gauss_fits.append((gauss_fit, grid))
     # center might be outside of patch because of Fourier padding
-    gauss_centers.append(gauss_mean*fft_scale)
+    gauss_centers.append(gauss_mean)
     evals, evecs = np.linalg.eigh(gauss_cov)
     sort_indices = np.argsort(evals)[::-1]
     orientations.append((evals[sort_indices], evecs[:,sort_indices]))
@@ -138,13 +134,14 @@ def get_dictionary_stats(weights, padding=None):
     spatial_freq = np.sqrt(fy_cen**2+fx_cen**2)
     orientation = 0
     if fx_cen != 0:
-      orientation = np.pi-np.arctan2(fy_cen, fx_cen)
+      orientation = np.arctan2(fy_cen, fx_cen)
       #orientation = np.arctan(fy_cen/fx_cen)
     fourier_stats.append(((fy_cen, fx_cen), spatial_freq, orientation))
   output = {"basis_functions":basis_funcs, "envelopes":envelopes,
     "envelope_centers":envelope_centers, "filters":filters,
     "gauss_fits":gauss_fits, "gauss_centers":gauss_centers, "orientations":orientations,
-    "fourier_stats":fourier_stats, "fourier_maps":fourier_maps}
+    "fourier_stats":fourier_stats, "fourier_maps":fourier_maps, "num_inputs":num_inputs,
+    "num_outputs":num_outputs}
   return output
 
 """
