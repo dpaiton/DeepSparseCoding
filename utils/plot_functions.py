@@ -6,55 +6,83 @@ import matplotlib.gridspec as gsp
 from mpl_toolkits import axes_grid1
 import utils.image_processing as ip
 
-def plot_pooling_summaries(bf_stats, pooling_filters, num_connected_weights, num_pooling_filters, lines=False):
+def plot_ellipse(axis, center, shape, angle, colorVal='auto', alpha=1.0, lines=False):
+  """
+  Add an ellipse to given axis
+  Inputs:
+    axis [matplotlib.axes._subplots.AxesSubplot] axis on which ellipse should be drawn
+    center [tuple or list] specifying [y, x] center coordinates
+    shape [tuple or list] specifying [width, height] shape of ellipse
+    angle [float] specifying angle of ellipse
+    colorVal [matplotlib color spec] specifying the color of the edge & face of the ellipse
+    alpha [float] specifying the transparency of the ellipse
+    lines [bool] if true, output will be a line, where the secondary axis of the ellipse is collapsed
+  """
+  y_cen, x_cen = center
+  width, height = shape
+  if lines:
+    #aspect_region = 0.05
+    #aspect = width / height
+    if True:#not (aspect > 1.0 - aspect_region and aspect < 1.0 + aspect_region):
+      min_length = 0.1
+      if width < height:
+        width = min_length
+      elif width > height:
+        height = min_length
+  e = matplotlib.patches.Ellipse(xy=[x_cen, y_cen], width=width,
+    height=height, angle=angle, edgecolor=colorVal, facecolor=colorVal,
+    alpha=alpha, fill=True)
+  axis.add_artist(e)
+  e.set_clip_box(axis.bbox)
+
+def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_connected_weights, lines=False):
   """
   Plot 2nd layer (fully-connected) weights in terms of connection strengths to 1st layer weights
   Inputs:
     bf_stats [dict] output of ip.get_dictionary_stats() which was run on the 1st layer weights
     pooling_filters [np.ndarray] 2nd layer weights, of shape [num_1st_layer_neurons, num_2nd_layer_neurons]
-    num_connected_weights [int] How many 1st layer weight summaries to include for a given 2nd layer neuron
     num_pooling_filters [int] How many 2nd layer neurons to plot
+    num_connected_weights [int] How many 1st layer weight summaries to include for a given 2nd layer neuron
     lines [bool] if True, 1st layer weight summaries will appear as lines instead of ellipses
   """
   num_inputs = bf_stats["num_inputs"]
   num_outputs = bf_stats["num_outputs"]
   patch_edge_size = np.int32(np.sqrt(num_inputs))
+  filter_idx_list = np.arange(num_pooling_filters, dtype=np.int32)
   assert num_pooling_filters <= num_outputs, (
     "num_pooling_filters must be less than or equal to bf_stats['num_outputs']")
-  cmap = plt.get_cmap('bwr')
+  cmap = plt.get_cmap('coolwarm')
   cNorm = matplotlib.colors.Normalize(vmin=-1, vmax=1)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
   num_plts_y = np.int32(np.ceil(np.sqrt(num_pooling_filters)))
-  num_plts_x = np.int32(np.floor(np.sqrt(num_pooling_filters)))+1 # +cbar row
+  num_plts_x = np.int32(np.floor(np.sqrt(num_pooling_filters)))+1 # +cbar col
   fig, sub_ax = plt.subplots(num_plts_y, num_plts_x, figsize=(15,15))
-  filter_idx_list = np.random.choice(np.arange(pooling_filters.shape[0],
-    dtype=np.int32), size=num_pooling_filters, replace=False)
   filter_total = 0
   for plot_id in  np.ndindex((num_plts_y, num_plts_x)):
     (y_id, x_id) = plot_id
     if (filter_total < num_pooling_filters and x_id != num_plts_x-1):
       filter_idx = filter_idx_list[filter_total]
-      example_filter = pooling_filters[filter_idx, :]
-      top_indices = np.argsort(np.abs(example_filter))[::-1]
+      example_filter = pooling_filters[:, filter_idx]
+      top_indices = np.argsort(np.abs(example_filter))
       filter_norm = np.max(np.abs(example_filter))
       SFs = np.asarray([np.sqrt(fcent[0]**2 + fcent[1]**2)
         for fcent in bf_stats["fourier_centers"]], dtype=np.float32)
       sf_norm = np.max(SFs)
       # Plot weakest of the top connected filters first because of occlusion
-      for bf_idx in top_indices[:num_connected_weights][::-1]:
+      for bf_idx in top_indices[:num_connected_weights]:
         connection_strength = example_filter[bf_idx]/filter_norm
         colorVal = scalarMap.to_rgba(connection_strength)
         center = bf_stats["gauss_centers"][bf_idx]
         evals, evecs = bf_stats["orientations"][bf_idx]
-        ## TODO: Add Fourier info
-        #fourier_center = bf_stats["fourier_centers"][bf_idx]
-        #spatial_freq = np.sqrt(fourier_center[0]**2+fourier_center[1]**2)/sf_norm
-        #angle = np.rad2deg(np.arctan2(*bf_stats["fourier_centers"][bf_idx]))
+        orientations = bf_stats["fourier_centers"][bf_idx]
+        angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
+        ## TODO: Add spatial freq
+        #spatial_freq = SFs[bf_idx] / sf_norm
         #alpha = spatial_freq
-        plot_ellipse(sub_ax[plot_id], center, evals, evecs[:,0], colorVal, alpha=1.0, lines=lines)
+        alpha = np.abs(connection_strength)
+        plot_ellipse(sub_ax[plot_id], center, evals, angle, colorVal, alpha=alpha, lines=lines)
       sub_ax[plot_id].set_xlim(0, patch_edge_size-1)
       sub_ax[plot_id].set_ylim(0, patch_edge_size-1)
-      sub_ax[plot_id].set_aspect("equal")
       filter_total += 1
     else:
       sub_ax[plot_id].spines["right"].set_color("none")
@@ -69,6 +97,46 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_connected_weights, num
       left="off", right="off")
   scalarMap._A = []
   cbar = fig.colorbar(scalarMap, ax=list(sub_ax[:, -1]), ticks=[-1, 0, 1])
+  plt.show()
+
+def plot_ellipse_summaries(bf_stats, num_bf=4, lines=False):
+  """
+  Plot basis functions with summary ellipses drawn over them
+  Inputs:
+    bf_stats [dict] output of ip.get_dictionary_stats()
+    num_bf [int] number of basis functions to plot (must be >=4)
+    lines [bool] If true, will plot lines instead of ellipses
+  """
+  tot_num_bf = len(bf_stats["basis_functions"])
+  bf_range = np.random.choice([i for i in range(tot_num_bf)],
+    num_bf, replace=False)
+  num_plots_y = int(np.ceil(np.sqrt(num_bf)))
+  num_plots_x = int(np.floor(np.sqrt(num_bf)))
+  filter_idx = 0
+  fig, sub_ax = plt.subplots(num_plots_y, num_plots_x, figsize=(17, 17))
+  for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
+    if filter_idx < tot_num_bf:
+      bf = bf_stats["basis_functions"][filter_idx]
+      sub_ax[plot_id].imshow(bf, interpolation="Nearest", cmap="Greys_r")
+      center = bf_stats["gauss_centers"][filter_idx]
+      evals, evecs = bf_stats["orientations"][filter_idx]
+      orientations = bf_stats["fourier_centers"][filter_idx]
+      angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
+      alpha = 1.0
+      plot_ellipse(sub_ax[plot_id], center, evals, angle, colorVal="b", alpha=alpha, lines=lines)
+      sub_ax[plot_id].tick_params(axis="both", bottom="off", top="off",
+        left="off", right="off")
+      sub_ax[plot_id].get_xaxis().set_visible(False)
+      sub_ax[plot_id].get_yaxis().set_visible(False)
+      filter_idx += 1
+    sub_ax[plot_id].spines["right"].set_color("none")
+    sub_ax[plot_id].spines["top"].set_color("none")
+    sub_ax[plot_id].spines["left"].set_color("none")
+    sub_ax[plot_id].spines["bottom"].set_color("none")
+    sub_ax[plot_id].tick_params(axis="both", bottom="off", top="off", left="off", right="off")
+    sub_ax[plot_id].get_xaxis().set_visible(False)
+    sub_ax[plot_id].get_yaxis().set_visible(False)
+    sub_ax[plot_id].set_aspect("equal")
   plt.show()
 
 def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
@@ -126,77 +194,6 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
   plt.subplot(gs[0,1]).set_title("strongest corr --> weakest corr", horizontalalignment="left");
   plt.show()
 
-def plot_ellipse_summaries(bf_stats, num_bf=4, lines=False):
-  """
-  Plot basis functions with summary ellipses drawn over them
-  Inputs:
-    bf_stats [dict] output of ip.get_dictionary_stats()
-    num_bf [int] number of basis functions to plot (must be >=4)
-    lines [bool] If true, will plot lines instead of ellipses
-  """
-  tot_num_bf = len(bf_stats["basis_functions"])
-  bf_range = np.random.choice([i for i in range(tot_num_bf)],
-    num_bf, replace=False)
-  num_plots_y = int(np.ceil(np.sqrt(num_bf)))
-  num_plots_x = int(np.floor(np.sqrt(num_bf)))
-  filter_idx = 0
-  fig, sub_ax = plt.subplots(num_plots_y, num_plots_x, figsize=(17, 17))
-  for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
-    if filter_idx < tot_num_bf:
-      bf = bf_stats["basis_functions"][filter_idx]
-      sub_ax[plot_id].imshow(bf, interpolation="Nearest", cmap="Greys_r")
-      center = bf_stats["gauss_centers"][filter_idx]
-      evals, evecs = bf_stats["orientations"][filter_idx]
-      alpha = 1.0
-      colorVal = "r"
-      plot_ellipse(sub_ax[plot_id], center, evals, evecs[:,0], colorVal, alpha, lines)
-      sub_ax[plot_id].tick_params(axis="both", bottom="off", top="off",
-        left="off", right="off")
-      sub_ax[plot_id].get_xaxis().set_visible(False)
-      sub_ax[plot_id].get_yaxis().set_visible(False)
-      filter_idx += 1
-    sub_ax[plot_id].spines["right"].set_color("none")
-    sub_ax[plot_id].spines["top"].set_color("none")
-    sub_ax[plot_id].spines["left"].set_color("none")
-    sub_ax[plot_id].spines["bottom"].set_color("none")
-    sub_ax[plot_id].tick_params(axis="both", bottom="off", top="off", left="off", right="off")
-    sub_ax[plot_id].get_xaxis().set_visible(False)
-    sub_ax[plot_id].get_yaxis().set_visible(False)
-    sub_ax[plot_id].set_aspect("equal")
-  plt.show()
-
-def plot_ellipse(axis, center, shape, orientation, colorVal='auto', alpha=1.0, lines=False):
-  """
-  Add an ellipse to given axis
-  Inputs:
-    axis [matplotlib.axes._subplots.AxesSubplot] axis on which ellipse should be drawn
-    center [tuple or list] specifying [y, x] center coordinates
-    shape [tuple or list] specifying [width, height] shape of ellipse
-    orientation [tuple or list] specifying [y_len, x_len] for triangle specifying angle of ellipse
-    colorVal [matplotlib color spec] specifying the color of the edge & face of the ellipse
-    alpha [float] specifying the transparency of the ellipse
-    lines [bool] if true, output will be a line, where the secondary axis of the ellipse is collapsed
-  """
-  y_cen, x_cen = center
-  width, height = shape
-  y_ang, x_ang = orientation
-  if colorVal == "b":
-    angle = -np.rad2deg(np.arctan2(y_ang, x_ang))
-  else:
-    angle = np.rad2deg(np.arctan2(y_ang, x_ang))
-  width, height = shape
-  if lines:
-    min_length = 0.1
-    if width < height:
-      width = min_length
-    elif width > height:
-      height = min_length
-  e = matplotlib.patches.Ellipse(xy=[x_cen, y_cen], width=width,
-    height=height, angle=angle, edgecolor=colorVal, facecolor=colorVal,
-    alpha=alpha, fill=True)
-  axis.add_artist(e)
-  e.set_clip_box(axis.bbox)
-
 def plot_bf_stats(bf_stats, num_bf=2):
   """
   Plot outputs of the ip.get_dictionary_stats()
@@ -251,9 +248,10 @@ def plot_bf_stats(bf_stats, num_bf=2):
     sub_ax[plot_id, 4].imshow(bf, interpolation="Nearest", cmap="Greys_r")
     center = bf_stats["gauss_centers"][bf_idx]
     evals, evecs = bf_stats["orientations"][bf_idx]
+    angle = np.rad2deg(np.arctan2(*evecs[:,0]))
     alpha = 1.0
     colorVal = "r"
-    plot_ellipse(sub_ax[plot_id, 4], center, evals, evecs[:,0], colorVal, alpha)
+    plot_ellipse(sub_ax[plot_id, 4], center, evals, angle, colorVal, alpha)
     sub_ax[plot_id, 4].tick_params(axis="both", bottom="off", top="off",
       left="off", right="off")
     sub_ax[plot_id, 4].get_xaxis().set_visible(False)
@@ -264,9 +262,10 @@ def plot_bf_stats(bf_stats, num_bf=2):
     center = bf_stats["gauss_centers"][bf_idx]
     evals, evecs = bf_stats["orientations"][bf_idx]
     orientation = bf_stats["fourier_centers"][bf_idx]
+    angle = np.rad2deg(np.pi/2 + np.arctan2(*orientation))
     alpha = 1.0
     colorVal = "b"
-    plot_ellipse(sub_ax[plot_id, 5], center, evals, orientation, colorVal, alpha)
+    plot_ellipse(sub_ax[plot_id, 5], center, evals, angle, colorVal, alpha)
     sub_ax[plot_id, 5].tick_params(axis="both", bottom="off", top="off",
       left="off", right="off")
     sub_ax[plot_id, 5].get_xaxis().set_visible(False)
@@ -277,6 +276,33 @@ def plot_bf_stats(bf_stats, num_bf=2):
   sub_ax[0,3].set_title("Fourier map", fontsize=12)
   sub_ax[0,4].set_title("spatial ellipse", fontsize=10)
   sub_ax[0,5].set_title("Fourier ellipse", fontsize=10)
+  plt.show()
+
+def plot_loc_freq_summary(bf_stats):
+  fig, sub_ax = plt.subplots(1, 2, figsize=(10,5))
+  x_pos = [x for (y,x) in bf_stats["gauss_centers"]]
+  y_pos = [y for (y,x) in bf_stats["gauss_centers"]]
+  sub_ax[0].scatter(x_pos, y_pos, color='k', s=10)
+  sub_ax[0].set_xlim([0, bf_stats["patch_edge_size"]-1])
+  sub_ax[0].set_ylim([bf_stats["patch_edge_size"]-1, 0])
+  sub_ax[0].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  sub_ax[0].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  sub_ax[0].set_aspect("equal")
+  sub_ax[0].set_ylabel("Pixels")
+  sub_ax[0].set_xlabel("Pixels")
+  sub_ax[0].set_title("Basis Function Centers", fontsize=12)
+  x_sf = [x for (y,x) in bf_stats["fourier_centers"]]
+  y_sf = [y for (y,x) in bf_stats["fourier_centers"]]
+  max_sf = np.max(np.abs(x_sf+y_sf))
+  sub_ax[1].scatter(x_sf, y_sf, color='k', s=10)
+  sub_ax[1].set_xlim([-max_sf, max_sf])
+  sub_ax[1].set_ylim([-max_sf, max_sf])
+  sub_ax[1].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  sub_ax[1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  sub_ax[1].set_aspect("equal")
+  sub_ax[1].set_ylabel("Cycles / Patch")
+  sub_ax[1].set_xlabel("Cycles / Patch")
+  sub_ax[1].set_title("Basis Function Spatial Frequencies", fontsize=12)
   plt.show()
 
 def plot_hilbert_analysis(weights, padding=None):
@@ -291,8 +317,8 @@ def plot_hilbert_analysis(weights, padding=None):
   assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
     "weights.shape[0] must have an even square root.")
   patch_edge_size = int(np.sqrt(num_inputs))
-  N = np.int32(np.sqrt(bff_filt.shape[1]))           
-  fig, sub_ax = plt.subplots(3, 1, figsize=(64,64))  
+  N = np.int32(np.sqrt(bff_filt.shape[1]))
+  fig, sub_ax = plt.subplots(3, 1, figsize=(64,64))
   plot_data = pad_data(weights.T.reshape((num_outputs, patch_edge_size,
     patch_edge_size)))
   bf_axis_image = sub_ax[0].imshow(plot_data, cmap="Greys_r",
@@ -301,7 +327,7 @@ def plot_hilbert_analysis(weights, padding=None):
     right="off")
   sub_ax[0].get_xaxis().set_visible(False)
   sub_ax[0].get_yaxis().set_visible(False)
-  sub_ax[0].set_title("Basis Functions", fontsize=32)  
+  sub_ax[0].set_title("Basis Functions", fontsize=32)
   plot_data = pad_data(np.abs(Envelope).reshape((num_outputs,
     patch_edge_size, patch_edge_size)))
   hil_axis_image = sub_ax[1].imshow(plot_data, cmap="Greys_r",
@@ -311,10 +337,10 @@ def plot_hilbert_analysis(weights, padding=None):
   sub_ax[1].get_xaxis().set_visible(False)
   sub_ax[1].get_yaxis().set_visible(False)
   sub_ax[1].set_title("Analytic Signal Amplitude Envelope", fontsize=32)
-  resh_Zf = np.abs(bff_filt).reshape((num_outputs, N, N))                             
-  output_z = np.zeros(resh_Zf.shape)                                              
-  for i in range(num_outputs):                                                    
-    output_z[i,...] = resh_Zf[i,...] / np.max(resh_Zf[i,...])                     
+  resh_Zf = np.abs(bff_filt).reshape((num_outputs, N, N))
+  output_z = np.zeros(resh_Zf.shape)
+  for i in range(num_outputs):
+    output_z[i,...] = resh_Zf[i,...] / np.max(resh_Zf[i,...])
   plot_data = pad_data(output_z)
   hil_axis_image = sub_ax[2].imshow(plot_data, cmap="Greys_r",
     interpolation="nearest")
@@ -344,7 +370,7 @@ def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
   """
   Plot the input eigenvalues
   Inputs:
-    evals [np.ndarray] 
+    evals [np.ndarray]
     ylim [2-D list] specifying the [min,max] of the y-axis
     xlim [2-D list] specifying the [min,max] of the x-axis
   """
@@ -360,7 +386,7 @@ def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
 
 def plot_gaussian_contours(bf_stats, num_plots):
   """
-  Plot basis functions with contour lines for Gaussian fits 
+  Plot basis functions with contour lines for Gaussian fits
   Inputs:
     bf_stats [dict] output from ip.get_dictionary_stats()
     num_plots [int] indicating the number of random BFs to plot

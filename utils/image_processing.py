@@ -68,7 +68,7 @@ def hilbertize(weights, padding=None):
     bff_filt[neuron_idx, ...] = (hil_filt[neuron_idx, ...]*bff).reshape(N**2)
   return (env, bff_filt, hil_filt, bffs)
 
-def get_dictionary_stats(weights, padding=None, num_gauss_fits=20):
+def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=0.2):
   """
   Compute summary statistics on dictionary elements using Hilbert amplitude envelope
   Inputs:
@@ -118,7 +118,7 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20):
     filters.append(filt)
     # Gaussian fit to Hilbet amplitude envelope
     gauss_fit, grid, gauss_mean, gauss_cov = get_gauss_fit(envelopes[bf_idx],
-      num_gauss_fits, 0.2)
+      num_gauss_fits, gauss_thresh)
     gauss_fits.append((gauss_fit, grid))
     # center might be outside of patch because of Fourier padding
     gauss_centers.append(gauss_mean)
@@ -140,7 +140,7 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20):
     "envelope_centers":envelope_centers, "filters":filters,
     "gauss_fits":gauss_fits, "gauss_centers":gauss_centers, "orientations":orientations,
     "fourier_centers":fourier_centers, "fourier_maps":fourier_maps, "num_inputs":num_inputs,
-    "num_outputs":num_outputs}
+    "num_outputs":num_outputs, "patch_edge_size":patch_edge_size}
   return output
 
 def generate_gaussian(shape, mean, cov):
