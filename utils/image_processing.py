@@ -4,21 +4,22 @@ import scipy.stats
 import scipy.ndimage
 import skimage.draw
 
-def hilbertize(weights, padding=None):
+def hilbert_amplitude(weights, padding=None):
   """
   Compute Hilbert amplitude envelope of weight matrix
   Inputs:
-    weights [np.ndarray] of shape [num_inputs, num_outputs]
+    weights: [np.ndarray] of shape [num_inputs, num_outputs]
       num_inputs must have an even square root
-    padding [int] specifying how much 0-padding to use for FFT
+    padding: [int] specifying how much 0-padding to use for FFT
+      default is the closest power of 2 of sqrt(num_inputs)
   Outputs:
-    env [np.ndarray] of shape [num_outputs, num_inputs]
+    env: [np.ndarray] of shape [num_outputs, num_inputs]
       Hilbert envelope
-    bff_filt [np.ndarray] of shape [num_outputs, padded_num_inputs]
+    bff_filt: [np.ndarray] of shape [num_outputs, padded_num_inputs]
       Filtered Fourier transform of basis function
-    hil_filt [np.ndarray] of shape [num_outputs, sqrt(num_inputs), sqrt(num_inputs)]
+    hil_filt: [np.ndarray] of shape [num_outputs, sqrt(num_inputs), sqrt(num_inputs)]
       Hilbert filter to be applied in Fourier space
-    bffs [np.ndarray] of shape [num_outputs, padded_num_inputs, padded_num_inputs]
+    bffs: [np.ndarray] of shape [num_outputs, padded_num_inputs, padded_num_inputs]
       Fourier transform of input weights
   """
   cart2pol = lambda x,y: (np.arctan2(y,x), np.hypot(x, y))
@@ -26,7 +27,7 @@ def hilbertize(weights, padding=None):
   assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
     "weights.shape[0] must have an even square root.")
   patch_edge_size = int(np.sqrt(num_inputs))
-  if padding is None or padding < patch_edge_size:
+  if padding is None or padding <= patch_edge_size:
     # Amount of zero padding for fft2 (closest power of 2)
     N = np.int(2**(np.ceil(np.log2(patch_edge_size))))
   else:
@@ -72,62 +73,66 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
   """
   Compute summary statistics on dictionary elements using Hilbert amplitude envelope
   Inputs:
-    weights [np.ndarray] of shape [num_inputs, num_outputs]
-    padding [int] total image size to pad out to in the FFT computation
-    num_gauss_fits [int] total number of attempts to make when fitting the BFs
+    weights: [np.ndarray] of shape [num_inputs, num_outputs]
+    padding: [int] total image size to pad out to in the FFT computation
+    num_gauss_fits: [int] total number of attempts to make when fitting the BFs
   Outputs:
-    basis_functions
-    envelopes
-    filters
-    envelope_centers
-    lengths
-    fourier_centers
-    fourier_maps
-    orientations
-    line_images
-    blob_images
-  TODO: remove unnecessary outputs, finish up documentation
+    The function output is a dictionary containing the keys for each type of analysis
+    Each key dereferences a list of len num_outputs (i.e. one entry for each weight vector)
+    The keys and their list entries are as follows:
+      basis_functions: [np.ndarray] of shape [patch_edge_size, patch_edge_size]
+      envelopes: [np.ndarray] of shape [N, N], where N is the amount of padding
+        for the hilbert_amplitude function
+      envelope_centers: [tuples of ints] indicating the (y, x) position of the
+        center of the Hilbert envelope
+      gauss_fits: [tuple of np.ndarrays] containing (gaussian_fit, grid) where gaussian_fit
+        is returned from get_gauss_fit and specifies the 2D Gaussian PDF fit to the Hilbert envelope
+        and grid is a tuple containing (y,x) points with which the Gaussian PDF can be plotted
+      gauss_centers: [tuple of ints] containing the (y,x) position of the center of the Gaussian fit
+      gauss_orientations: [tuple of np.ndarrays] containing the (eigenvalues, eigenvectors) of the covariance
+        matrix for the Gaussian fit of the Hilbert amplitude envelope. They are both sorted according to
+        the highest to lowest Eigenvalue.
+      fourier_centers: [tuple of ints] containing the (y,x) position of the center (max) of the 
+        Fourier amplitude map
+      num_inputs: [int] dim[0] of input weights
+      num_outputs: [int] dim[1] of input weights
+      patch_edge_size: [int] int(floor(sqrt(num_inputs)))
   """
-  envelope, bff_filt, hil_filter, bffs = hilbertize(weights, padding)
+  envelope, bff_filt, hil_filter, bffs = hilbert_amplitude(weights, padding)
   num_inputs, num_outputs = weights.shape
   patch_edge_size = np.int(np.floor(np.sqrt(num_inputs)))
-  basis_funcs = []
-  envelopes = []
-  gauss_fits = []
-  gauss_centers = []
-  filters = []
-  envelope_centers = []
-  fourier_centers = []
-  fourier_maps = []
-  orientations = []
+  basis_funcs = [None]*num_outputs
+  envelopes = [None]*num_outputs
+  gauss_fits = [None]*num_outputs
+  gauss_centers = [None]*num_outputs
+  gauss_orientations = [None]*num_outputs
+  envelope_centers = [None]*num_outputs
+  fourier_centers = [None]*num_outputs
+  fourier_maps = [None]*num_outputs
   for bf_idx in range(num_outputs):
     # Reformatted individual basis function
-    basis_funcs.append(np.squeeze(reshape_data(weights.T[bf_idx,...],
-      flatten=False)[0]))
+    basis_funcs[bf_idx] = np.squeeze(reshape_data(weights.T[bf_idx,...],
+      flatten=False)[0])
     # Reformatted individual envelope filter
-    envelopes.append(np.squeeze(reshape_data(np.abs(envelope[bf_idx,...]),
-      flatten=False)[0]))
+    envelopes[bf_idx] = np.squeeze(reshape_data(np.abs(envelope[bf_idx,...]),
+      flatten=False)[0])
     # Basis function center
     max_ys = envelopes[bf_idx].argmax(axis=0) # Returns row index for each col
     max_x = np.argmax(envelopes[bf_idx].max(axis=0))
     y_cen = max_ys[max_x]
     x_cen = max_x
-    envelope_centers.append((y_cen, x_cen))
-    # Hilbert amplitude filters
-    filt = hil_filter[bf_idx, ...]
-    filters.append(filt)
+    envelope_centers[bf_idx] = (y_cen, x_cen)
     # Gaussian fit to Hilbet amplitude envelope
     gauss_fit, grid, gauss_mean, gauss_cov = get_gauss_fit(envelopes[bf_idx],
       num_gauss_fits, gauss_thresh)
-    gauss_fits.append((gauss_fit, grid))
-    # center might be outside of patch because of Fourier padding
-    gauss_centers.append(gauss_mean)
+    gauss_fits[bf_idx] = (gauss_fit, grid)
+    gauss_centers[bf_idx] = gauss_mean
     evals, evecs = np.linalg.eigh(gauss_cov)
     sort_indices = np.argsort(evals)[::-1]
-    orientations.append((evals[sort_indices], evecs[:,sort_indices]))
+    gauss_orientations[bf_idx] = (evals[sort_indices], evecs[:,sort_indices])
     # Fourier function center, spatial frequency, orientation
     fourier_map = np.sqrt(np.real(bffs[bf_idx, ...])**2+np.imag(bffs[bf_idx, ...])**2)
-    fourier_maps.append(fourier_map)
+    fourier_maps[bf_idx] = fourier_map
     N = fourier_map.shape[0]
     center_freq = int(np.floor(N/2))
     fourier_map[center_freq, center_freq] = 0 # remove DC component
@@ -135,12 +140,11 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     max_fx = np.argmax(fourier_map.max(axis=0))
     fy_cen = (max_fys[max_fx] - (N/2)) * (patch_edge_size/N)
     fx_cen = (max_fx - (N/2)) * (patch_edge_size/N)
-    fourier_centers.append([fy_cen, fx_cen])
-  output = {"basis_functions":basis_funcs, "envelopes":envelopes,
-    "envelope_centers":envelope_centers, "filters":filters,
-    "gauss_fits":gauss_fits, "gauss_centers":gauss_centers, "orientations":orientations,
-    "fourier_centers":fourier_centers, "fourier_maps":fourier_maps, "num_inputs":num_inputs,
-    "num_outputs":num_outputs, "patch_edge_size":patch_edge_size}
+    fourier_centers[bf_idx] = [fy_cen, fx_cen]
+  output = {"basis_functions":basis_funcs, "envelopes":envelopes, "gauss_fits":gauss_fits, 
+    "gauss_centers":gauss_centers, "gauss_orientations":gauss_orientations,
+    "fourier_centers":fourier_centers, "fourier_maps":fourier_maps, "envelope_centers":envelope_centers,
+    "num_inputs":num_inputs, "num_outputs":num_outputs, "patch_edge_size":patch_edge_size}
   return output
 
 def generate_gaussian(shape, mean, cov):
@@ -165,9 +169,9 @@ def generate_gaussian(shape, mean, cov):
 
 def gaussian_fit(pyx):
   """
-  Returns the MLE mean & covariance matrix for a 2-D gaussian fit of input distribution
+  Compute the MLE mean & covariance matrix for a 2-D gaussian fit of input distribution
   Inputs:
-    pyx [np.ndarray] of shape [num_rows, num_cols] that indicates the probability function to fit
+    pyx: [np.ndarray] of shape [num_rows, num_cols] that indicates the probability function to fit
   Outputs:
     mean: [np.ndarray] of shape (2,) specifying the 2-D Gaussian center
     cov: [np.ndarray] of shape (2,2) specifying the 2-D Gaussian covariance matrix
@@ -221,8 +225,6 @@ def extract_patches(images, out_shape, overlapping=True, var_thresh=0,
   rand_state=np.random.RandomState()):
   """
   Extract patches from image dataset.
-  Outputs:
-    patches [np.ndarray] of patches
   Inputs:
     images [np.ndarray] of shape [num_images, img_height, img_width]
     out_shape [tuple or list] containing the 2-d output shape
@@ -231,6 +233,8 @@ def extract_patches(images, out_shape, overlapping=True, var_thresh=0,
     overlapping [bool] specify if the patches are evenly tiled or randomly drawn
     var_thresh [float] acceptance threshold for patch pixel variance. If it is
       below threshold then reject the patch.
+  Outputs:
+    patches [np.ndarray] of patches
   """
   images = reshape_data(images, flatten=False)[0]
   num_im, im_sizey, im_sizex = images.shape
@@ -309,21 +313,21 @@ def downsample_data(data, factor, order):
 def reshape_data(data, flatten=False):
   """
   Helper function to reshape input data for processing and return data shape
-  Outputs:
-    tuple containing:
-    data [np.ndarray] data with new shape
-      (num_examples, num_rows, num_cols) if flatten==False
-      (num_examples, num_elements) if flatten==True
-    orig_shape [tuple of int32] original shape of the input data
-    num_examples [int32] number of data examples
-    num_rows [int32] number of data rows (sqrt of num elements)
-    num_cols [int32] number of data cols (sqrt of num elements)
   Inputs:
-    data [np.ndarray] unnormalized data of shape:
+    data: [np.ndarray] unnormalized data of shape:
       (n, i, j) - n data points, each of shape (i,j)
       (n, k) - n data points, each of length k
       (k) - single data point of length k
-    flatten [bool] if True, return raveled data
+    flatten: [bool] if True, return raveled data
+  Outputs:
+    tuple containing:
+    data: [np.ndarray] data with new shape
+      (num_examples, num_rows, num_cols) if flatten==False
+      (num_examples, num_elements) if flatten==True
+    orig_shape: [tuple of int32] original shape of the input data
+    num_examples: [int32] number of data examples
+    num_rows: [int32] number of data rows (sqrt of num elements)
+    num_cols: [int32] number of data cols (sqrt of num elements)
   """
   orig_shape = data.shape
   orig_ndim = data.ndim
@@ -361,10 +365,10 @@ def reshape_data(data, flatten=False):
 def normalize_data_with_max(data):
   """
   Normalize data by dividing by abs(max(data))
-  Outputs:
-    norm_data: [np.ndarray] data normalized so that 0 is midlevel grey
   Inputs:
     data: [np.ndarray] data to be normalized
+  Outputs:
+    norm_data: [np.ndarray] data normalized so that 0 is midlevel grey
   """
   if np.max(np.abs(data)) > 0:
     norm_data = (data / np.max(np.abs(data))).squeeze()
@@ -375,13 +379,13 @@ def normalize_data_with_max(data):
 def center_data(data):
   """
   Subtract individual example mean from data
-  Outputs:
-    data [np.ndarray] centered data
   Inputs:
-    data [np.ndarray] unnormalized data of shape:
+    data: [np.ndarray] unnormalized data of shape:
       (n, i, j) - n data points, each of shape (i,j)
       (n, k) - n data points, each of length k
       (k) - single data point of length k
+  Outputs:
+    data: [np.ndarray] centered data
   """
   data = data[np.newaxis, ...] if data.ndim == 1 else data
   for idx in range(data.shape[0]):
@@ -391,15 +395,13 @@ def center_data(data):
 def standardize_data(data):
   """
   Standardize data to have zero mean and unit standard-deviation (z-score)
-  Outputs:
-    data [np.ndarray] normalized data
   Inputs:
-    data [np.ndarray] unnormalized data of shape:
+    data: [np.ndarray] unnormalized data of shape:
       (n, i, j) - n data points, each of shape (i,j)
       (n, k) - n data points, each of length k
       (k) - single data point of length k
-  TODO:
-    look into tf.image.per_image_standardization()
+  Outputs:
+    data: [np.ndarray] normalized data
   """
   data = data[np.newaxis, ...] if data.ndim == 1 else data
   for idx in range(data.shape[0]):
@@ -410,13 +412,13 @@ def standardize_data(data):
 def norm_data_by_var(data):
   """
   Divide data by its variance
-  Outputs:
-    data [np.ndarray] input data batch
   Inputs:
-    data [np.ndarray] normalized data of shape:
+    data: [np.ndarray] normalized data of shape:
       (n, i, j) - n data points, each of shape (i,j)
       (n, k) - n data points, each of length k
       (k) - single data point of length k
+  Outputs:
+    data: [np.ndarray] input data batch
   """
   data = data[np.newaxis, ...] if data.ndim == 1 else data
   for idx in range(data.shape[0]):
@@ -426,8 +428,6 @@ def norm_data_by_var(data):
 def whiten_data(data, method="FT", num_dim=-1):
   """
   Whiten data
-  Outputs:
-    whitened_data
   Inputs:
     data: [np.ndarray] of shape:
       (n, i, j) - n data points, each of shape (i,j)
@@ -435,6 +435,8 @@ def whiten_data(data, method="FT", num_dim=-1):
       (k) - single data point of length k
     method: [str] method to use, can be {FT, PCA}
     num_dim: [int] specifies the number of PCs to use for PCA method
+  Outputs:
+    whitened_data
   """
   if method == "FT":
     (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
@@ -468,7 +470,9 @@ def generate_local_contrast_normalizer(radius=12):
   """
   Returns a symmetric Gaussian with specified radius
   Inputs:
-    radius [int] radius of Gaussian function
+    radius: [int] radius of Gaussian function
+  Outputs:
+    gauss: [np.ndarray] Gaussian filter
   """
   xs = np.linspace(-radius, radius-1, num=2*radius)
   xs, ys = np.meshgrid(xs, xs)
@@ -484,7 +488,7 @@ def contrast_normalize(data, gauss_patch_size=12):
       (n, i, j) - n data points, each of shape (i,j)
       (n, k) - n data points, each of length k
       (k) - single data point of length k
-    gauss_patch_size [int] indicates radius of Gaussian function
+    gauss_patch_size: [int] indicates radius of Gaussian function
   """
   (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
     flatten=False) # Need spatial dim for 2d-Fourier transform
@@ -499,6 +503,14 @@ def contrast_normalize(data, gauss_patch_size=12):
   return data
 
 def pca_reduction(data, num_pcs=-1):
+  """
+  Perform PCA dimensionality reduction on input data
+  Inputs:
+    data: [np.ndarray] data to be PCA reduced
+    num_pcs: [int] number of principal components to keep (-1 for all)
+  outputs:
+    data_reduc: [np.ndarray] data with reduced dimensionality
+  """
   (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
     flatten=True)
   data_mean = data.mean(axis=(1))[:,None]
@@ -518,13 +530,13 @@ def pca_reduction(data, num_pcs=-1):
 def compute_power_spectrum(data):
   """
   Compute Fourier power spectrum for input data
-  Outputs:
-    power_spec: [np.ndarray] Fourier power spectrum
   Inputs:
     data: [np.ndarray] of shape:
       (n, i, j) - n data points, each of shape (i,j)
       (n, k) - n data points, each of length k
       (k) - single data point of length k (k must have even sqrt)
+  Outputs:
+    power_spec: [np.ndarray] Fourier power spectrum
   """
   (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
     flatten=False)
@@ -537,14 +549,14 @@ def phase_avg_pow_spec(data):
   """
   Compute phase average of power spectrum
   Only works for greyscale imagery
-  Outputs:
-    phase_avg: [list of np.ndarray] phase averaged power spectrum
-      each element in the list corresponds to a data point
   Inputs:
     data: [np.ndarray] of shape:
       (n, i, j) - n data points, each of shape (i,j)
       (n, k) - n data points, each of length k
       (k) - single data point of length k (k must have even sqrt)
+  Outputs:
+    phase_avg: [list of np.ndarray] phase averaged power spectrum
+      each element in the list corresponds to a data point
   """
   (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
     flatten=False)

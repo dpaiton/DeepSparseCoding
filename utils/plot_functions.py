@@ -73,7 +73,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
         connection_strength = example_filter[bf_idx]/filter_norm
         colorVal = scalarMap.to_rgba(connection_strength)
         center = bf_stats["gauss_centers"][bf_idx]
-        evals, evecs = bf_stats["orientations"][bf_idx]
+        evals, evecs = bf_stats["gauss_orientations"][bf_idx]
         orientations = bf_stats["fourier_centers"][bf_idx]
         angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
         ## TODO: Add spatial freq
@@ -119,7 +119,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=4, lines=False):
       bf = bf_stats["basis_functions"][filter_idx]
       sub_ax[plot_id].imshow(bf, interpolation="Nearest", cmap="Greys_r")
       center = bf_stats["gauss_centers"][filter_idx]
-      evals, evecs = bf_stats["orientations"][filter_idx]
+      evals, evecs = bf_stats["gauss_orientations"][filter_idx]
       orientations = bf_stats["fourier_centers"][filter_idx]
       angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
       alpha = 1.0
@@ -137,6 +137,92 @@ def plot_ellipse_summaries(bf_stats, num_bf=4, lines=False):
     sub_ax[plot_id].get_xaxis().set_visible(False)
     sub_ax[plot_id].get_yaxis().set_visible(False)
     sub_ax[plot_id].set_aspect("equal")
+  plt.show()
+
+def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_size=(10,10), spot_size=10):
+  """
+  Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of 1st layer weights
+  Inputs:
+    bf_stats [dict] Output of ip.get_dictionary_stats() which was run on the 1st layer weights
+    pooling_filters [np.ndarray] 2nd layer weights, of shape [num_1st_layer_neurons, num_2nd_layer_neurons]
+    num_pooling_filters [int] How many 2nd layer neurons to plot
+    fig_size [tuple] Containing the (width, height) of the figure, in inches
+    spot_size [int] How big to make the points
+  """
+  num_filters_y = int(np.ceil(np.sqrt(num_pooling_filters)))+1
+  num_filters_x = int(np.floor(np.sqrt(num_pooling_filters)))
+  cmap = plt.get_cmap("bwr")
+  cNorm = matplotlib.colors.Normalize(vmin=-1, vmax=1)
+  scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
+  x_p_cent = [x for (y,x) in bf_stats["gauss_centers"]]# Get raw points
+  y_p_cent = [y for (y,x) in bf_stats["gauss_centers"]]
+  x_f_cent = [x for (y,x) in bf_stats["fourier_centers"]]
+  y_f_cent = [y for (y,x) in bf_stats["fourier_centers"]]
+  max_sf = np.max(np.abs(x_f_cent+y_f_cent))
+  pair_w_gap = 0.01
+  group_w_gap = 0.03
+  h_gap = 0.03
+  plt_w = (num_filters_x/num_pooling_filters)
+  plt_h = plt_w
+  fig = plt.figure(figsize=fig_size) #fig_size is (w,h)
+  axes = []
+  filter_id = 0
+  for (y_id, x_id) in np.ndindex((num_filters_y, num_filters_x)):
+    if y_id==0:
+      if x_id==0:
+        axes.append(fig.add_axes([0, plt_h+h_gap, 2*plt_w, plt_h]))
+        scalarMap._A = []
+        cbar = fig.colorbar(scalarMap, ax=axes[-1], ticks=[-1, 0, 1], orientation="horizontal")
+        for label in cbar.ax.xaxis.get_ticklabels():
+          label.set_weight("bold")
+          label.set_fontsize(18)
+        axes[-1].set_yticklabels([])
+        axes[-1].set_xticklabels([])
+        axes[-1].spines["right"].set_color("none")
+        axes[-1].spines["top"].set_color("none")
+        axes[-1].spines["left"].set_color("none")
+        axes[-1].spines["bottom"].set_color("none")
+        axes[-1].tick_params(axis="both", bottom="off", top="off", left="off", right="off")
+      pass
+    example_filter = pooling_filters[:, filter_id]
+    filter_norm = np.max(np.abs(example_filter))
+    connection_colors = [scalarMap.to_rgba(example_filter[bf_idx]/filter_norm)
+      for bf_idx in range(bf_stats["num_outputs"])]
+    if x_id == 0:
+      ax_l = 0  
+      ax_b = - y_id * (plt_h+h_gap)
+    else:
+      bbox = axes[-1].get_position().get_points()[0]#bbox is [[x0,y0],[x1,y1]] 
+      prev_l = bbox[0]
+      prev_b = bbox[1]
+      ax_l = prev_l + plt_w + group_w_gap
+      ax_b = prev_b
+    ax_w = plt_w
+    ax_h = plt_h
+    #spatial
+    axes.append(fig.add_axes([ax_l, ax_b, ax_w, ax_h]))# [left, bottom, width, height]
+    axes[-1].scatter(x_p_cent, y_p_cent, c=connection_colors, s=spot_size)
+    axes[-1].set_xlim(0, bf_stats["patch_edge_size"]-1)
+    axes[-1].set_ylim(0, bf_stats["patch_edge_size"]-1)
+    axes[-1].invert_yaxis()
+    axes[-1].set_yticklabels([])
+    axes[-1].set_xticklabels([])
+    axes[-1].tick_params(axis="both", bottom="off", top="off", left="off", right="off")
+    axes[-1].set_aspect("equal")
+    axes[-1].set_facecolor("k")
+    #freq
+    axes.append(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h]))# [left, bottom, width, height]
+    axes[-1].scatter(x_f_cent, y_f_cent, c=connection_colors, s=spot_size)
+    axes[-1].set_xlim([-max_sf, max_sf])
+    axes[-1].set_ylim([-max_sf, max_sf])
+    axes[-1].set_yticklabels([])
+    axes[-1].set_xticklabels([])
+    axes[-1].tick_params(axis="both", bottom="off", top="off", left="off", right="off")
+    axes[-1].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+    axes[-1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+    axes[-1].set_aspect("equal")
+    axes[-1].set_facecolor("k")
+    filter_id += 1
   plt.show()
 
 def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
@@ -203,7 +289,7 @@ def plot_bf_stats(bf_stats, num_bf=2):
   """
   tot_num_bf = len(bf_stats["basis_functions"])
   bf_idx_list = np.random.choice(tot_num_bf, num_bf, replace=False)
-  fig, sub_ax = plt.subplots(num_bf, 6, figsize=(15,15))
+  fig, sub_ax = plt.subplots(num_bf, 4, figsize=(15,15))
   for plot_id in range(int(num_bf)):
     bf_idx = bf_idx_list[plot_id]
     # Basis function in pixel space
@@ -220,62 +306,40 @@ def plot_bf_stats(bf_stats, num_bf=2):
       left="off", right="off")
     sub_ax[plot_id, 1].get_xaxis().set_visible(False)
     sub_ax[plot_id, 1].get_yaxis().set_visible(False)
-    # Hilbert filter
-    filt = bf_stats["filters"][bf_idx]
-    sub_ax[plot_id, 2].imshow(filt, cmap="Greys_r", interpolation="Nearest")
-    sub_ax[plot_id, 2].tick_params(axis="both", bottom="off", top="off",
-      left="off", right="off")
-    sub_ax[plot_id, 2].get_xaxis().set_visible(False)
-    sub_ax[plot_id, 2].get_yaxis().set_visible(False)
     # Fourier transform of basis function
     fourier = bf_stats["fourier_maps"][bf_idx]
-    sub_ax[plot_id, 3].imshow(fourier, cmap="Greys_r", interpolation="Nearest")
-    sub_ax[plot_id, 3].tick_params(axis="both", top="off", right="off",
+    sub_ax[plot_id, 2].imshow(fourier, cmap="Greys_r", interpolation="Nearest")
+    sub_ax[plot_id, 2].tick_params(axis="both", top="off", right="off",
       bottom="off", left="off")
-    sub_ax[plot_id, 3].spines["left"].set_position("center")
-    sub_ax[plot_id, 3].spines["left"].set_color("black")
-    sub_ax[plot_id, 3].spines["left"].set_linewidth(2.5)
-    sub_ax[plot_id, 3].spines["bottom"].set_position("center")
-    sub_ax[plot_id, 3].spines["bottom"].set_color("black")
-    sub_ax[plot_id, 3].spines["bottom"].set_linewidth(2.5)
-    sub_ax[plot_id, 3].spines["top"].set_color("none")
-    sub_ax[plot_id, 3].spines["right"].set_color("none")
-    sub_ax[plot_id, 3].set_yticklabels([])
-    sub_ax[plot_id, 3].set_xticklabels([])
-    sub_ax[plot_id, 3].set_ylim([0, fourier.shape[0]-1])
-    sub_ax[plot_id, 3].set_xlim([0, fourier.shape[1]-1])
-    # Summary ellipse
-    sub_ax[plot_id, 4].imshow(bf, interpolation="Nearest", cmap="Greys_r")
-    center = bf_stats["gauss_centers"][bf_idx]
-    evals, evecs = bf_stats["orientations"][bf_idx]
-    angle = np.rad2deg(np.arctan2(*evecs[:,0]))
-    alpha = 1.0
-    colorVal = "r"
-    plot_ellipse(sub_ax[plot_id, 4], center, evals, angle, colorVal, alpha)
-    sub_ax[plot_id, 4].tick_params(axis="both", bottom="off", top="off",
-      left="off", right="off")
-    sub_ax[plot_id, 4].get_xaxis().set_visible(False)
-    sub_ax[plot_id, 4].get_yaxis().set_visible(False)
-    sub_ax[plot_id, 4].set_aspect("equal")
+    sub_ax[plot_id, 2].spines["left"].set_position("center")
+    sub_ax[plot_id, 2].spines["left"].set_color("black")
+    sub_ax[plot_id, 2].spines["left"].set_linewidth(2.5)
+    sub_ax[plot_id, 2].spines["bottom"].set_position("center")
+    sub_ax[plot_id, 2].spines["bottom"].set_color("black")
+    sub_ax[plot_id, 2].spines["bottom"].set_linewidth(2.5)
+    sub_ax[plot_id, 2].spines["top"].set_color("none")
+    sub_ax[plot_id, 2].spines["right"].set_color("none")
+    sub_ax[plot_id, 2].set_yticklabels([])
+    sub_ax[plot_id, 2].set_xticklabels([])
+    sub_ax[plot_id, 2].set_ylim([0, fourier.shape[0]-1])
+    sub_ax[plot_id, 2].set_xlim([0, fourier.shape[1]-1])
     # Fourier summary stats
-    sub_ax[plot_id, 5].imshow(bf, interpolation="Nearest", cmap="Greys_r")
+    sub_ax[plot_id, 3].imshow(bf, interpolation="Nearest", cmap="Greys_r")
     center = bf_stats["gauss_centers"][bf_idx]
-    evals, evecs = bf_stats["orientations"][bf_idx]
+    evals, evecs = bf_stats["gauss_orientations"][bf_idx]
     orientation = bf_stats["fourier_centers"][bf_idx]
     angle = np.rad2deg(np.pi/2 + np.arctan2(*orientation))
     alpha = 1.0
     colorVal = "b"
-    plot_ellipse(sub_ax[plot_id, 5], center, evals, angle, colorVal, alpha)
-    sub_ax[plot_id, 5].tick_params(axis="both", bottom="off", top="off",
+    plot_ellipse(sub_ax[plot_id, 3], center, evals, angle, colorVal, alpha)
+    sub_ax[plot_id, 3].tick_params(axis="both", bottom="off", top="off",
       left="off", right="off")
-    sub_ax[plot_id, 5].get_xaxis().set_visible(False)
-    sub_ax[plot_id, 5].get_yaxis().set_visible(False)
-  sub_ax[0,0].set_title("bf", fontsize=12)
-  sub_ax[0,1].set_title("envelope", fontsize=12)
-  sub_ax[0,2].set_title("filter", fontsize=12)
-  sub_ax[0,3].set_title("Fourier map", fontsize=12)
-  sub_ax[0,4].set_title("spatial ellipse", fontsize=10)
-  sub_ax[0,5].set_title("Fourier ellipse", fontsize=10)
+    sub_ax[plot_id, 3].get_xaxis().set_visible(False)
+    sub_ax[plot_id, 3].get_yaxis().set_visible(False)
+  sub_ax[0,0].set_title("Basis Function", fontsize=10)
+  sub_ax[0,1].set_title("Envelope", fontsize=10)
+  sub_ax[0,2].set_title("Fourier map", fontsize=10)
+  sub_ax[0,3].set_title("Fourier ellipse", fontsize=10)
   plt.show()
 
 def plot_loc_freq_summary(bf_stats):
@@ -312,7 +376,7 @@ def plot_hilbert_analysis(weights, padding=None):
     weights: [np.ndarray] with shape [num_inputs, num_outputs]
       num_inputs must have even square root.
   """
-  Envelope, bff_filt, Hil_filter, bff = ip.hilbertize(weights, padding)
+  Envelope, bff_filt, Hil_filter, bff = ip.hilbert_amplitude(weights, padding)
   num_inputs, num_outputs = weights.shape
   assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
     "weights.shape[0] must have an even square root.")
