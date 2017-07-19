@@ -169,7 +169,7 @@ def generate_gaussian(shape, mean, cov):
 
 def gaussian_fit(pyx):
   """
-  Compute the MLE mean & covariance matrix for a 2-D gaussian fit of input distribution
+  Compute the expected mean & covariance matrix for a 2-D gaussian fit of input distribution
   Inputs:
     pyx: [np.ndarray] of shape [num_rows, num_cols] that indicates the probability function to fit
   Outputs:
@@ -186,7 +186,7 @@ def gaussian_fit(pyx):
     cov += np.dot((idx-mean).T, (idx-mean))*pyx[idx] # typically an outer-product
   return (np.squeeze(mean), cov)
 
-def get_gauss_fit(prob_map, num_attempts=20, perc_mean=0.33):
+def get_gauss_fit(prob_map, num_attempts=1, perc_mean=0.33):
   """
   Returns a gaussian fit for a given probability map
   Fitting is done via robust regression, where a fit is
@@ -203,22 +203,34 @@ def get_gauss_fit(prob_map, num_attempts=20, perc_mean=0.33):
     gauss_cov: [np.ndarray] of shape (2,2) specifying the 2-D Gaussian covariance matrix
   """
   assert prob_map.ndim==2, (
-    "Input prob_map must have 2 dimension specifying [num_rows, num_cols")
-  for i in range(num_attempts):
-    map_min = np.min(prob_map)
-    map_sum = np.sum(prob_map)
-    if map_min != 0.0:
-      prob_map -= map_min
-    if map_sum != 1.0:
-      prob_map /= map_sum
-    gauss_mean, gauss_cov = gaussian_fit(prob_map)
-    gauss_fit, grid = generate_gaussian(prob_map.shape, gauss_mean, gauss_cov)
-    gauss_fit = (gauss_fit * map_sum) + map_min
-    if i < num_attempts-1:
-      gauss_mask = gauss_fit.copy().T
-      gauss_mask[np.where(gauss_mask<perc_mean*np.mean(gauss_mask))] = 0
-      gauss_mask[np.where(gauss_mask>0)] = 1
-      prob_map *= gauss_mask
+    "get_gauss_fit: Input prob_map must have 2 dimension specifying [num_rows, num_cols")
+  if num_attempts < 1:
+    num_attempts = 1
+  orig_prob_map = prob_map.copy()
+  gauss_success = False
+  while not gauss_success:
+    prob_map = orig_prob_map.copy()
+    try:
+      for i in range(num_attempts):
+        map_min = np.min(prob_map)
+        prob_map -= map_min
+        map_sum = np.sum(prob_map)
+        if map_sum != 1.0:
+          prob_map /= map_sum
+        gauss_mean, gauss_cov = gaussian_fit(prob_map)
+        gauss_fit, grid = generate_gaussian(prob_map.shape, gauss_mean, gauss_cov)
+        gauss_fit = (gauss_fit * map_sum) + map_min
+        if i < num_attempts-1:
+          gauss_mask = gauss_fit.copy().T
+          gauss_mask[np.where(gauss_mask<perc_mean*np.mean(gauss_mask))] = 0
+          gauss_mask[np.where(gauss_mask>0)] = 1
+          prob_map *= gauss_mask
+      gauss_success = True
+    except np.linalg.LinAlgError: # Usually means cov matrix is singular
+      print("get_gauss_fit: Failed to fit Gaussian at attempt %g, trying again.\n  To avoid this try decreasing perc_mean."%(i))
+      num_attempts = i-1
+      if num_attempts <= 0:
+        assert False, ("get_gauss_fit: np.linalg.LinAlgError - Unable to fit gaussian.")
   return (gauss_fit, grid, gauss_mean, gauss_cov)
 
 def extract_patches(images, out_shape, overlapping=True, var_thresh=0,
