@@ -1,0 +1,43 @@
+import os
+import numpy as np
+params = {
+  "model_type": "ica_pca",
+  "model_name": "ica_pca",
+  "version": "0.0",
+  "optimizer": "annealed_sgd",
+  "rectify_a": True,
+  "norm_weights": True,
+  "whiten_images": True,
+  "contrast_normalize": False,
+  "epoch_size": 1e6,
+  "patch_edge_size": 16,
+  "overlapping_patches": True,
+  "patch_variance_threshold": 1e-6,
+  "batch_size": 100,
+  #"prior": "cauchy",
+  "prior": "laplacian",
+  "num_pooling_units": 25,
+  "cp_int": 10000,
+  "max_cp_to_keep": 2,
+  "cp_load": False,
+  "cp_load_name": "pretrain",
+  "cp_load_step": 150000,
+  "cp_load_ver": "0.0",
+  "cp_load_var": ["a"],
+  "log_int": 500,
+  "log_to_file": True,
+  "gen_plot_int": 500,
+  "save_plots": True,
+  "eps": 1e-12,
+  "device": "/gpu:0",
+  "rand_seed": 12345,
+  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
+  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
+
+schedule = [
+  {"weights": ["phi"],
+  "weight_lr": [0.01],
+  "decay_steps": [int(np.floor(1e5*0.8))],
+  "decay_rate": [0.8],
+  "staircase": [True],
+  "num_batches": int(1e5)}]
