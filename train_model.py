@@ -10,14 +10,16 @@ import data.data_picker as dp
 ## Specify model type and data type
 #model_type = "mlp"
 #model_type = "ica"
-model_type = "lca"
+model_type = "ica_pca"
+#model_type = "lca"
+#model_type = "lca_pca"
 #model_type = "conv_lca"
 #model_type = "dsc"
 #model_type = "density_learner"
 
 #data_type = "cifar10"
-data_type = "mnist"
-#data_type = "vanhateren"
+#data_type = "mnist"
+data_type = "vanhateren"
 #data_type = "field"
 #data_type = "synthetic"
 
@@ -49,6 +51,7 @@ with tf.Session(graph=model.graph) as sess:
     feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"],
     dtype=np.float32)})
 
+  sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)
 
   for sch_idx, sch in enumerate(schedule):

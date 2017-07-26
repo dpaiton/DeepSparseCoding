@@ -19,7 +19,7 @@ params = {
   "cp_load_name": "pretrain",
   "cp_load_step": 150000,
   "cp_load_ver": "0.0",
-  "cp_load_var": ["phi"],
+  "cp_load_var": ["a"],
   "log_int": 100,
   "log_to_file": True,
   "gen_plot_int": 500,
@@ -31,7 +31,7 @@ params = {
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
-  {"weights": ["a"],
+  {"weights": ["phi"],
   "weight_lr": [0.01],
   "decay_steps": [30000],
   "decay_rate": [0.6],

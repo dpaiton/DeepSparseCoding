@@ -12,7 +12,7 @@ params = {
   "patch_size_y": 6,
   "patch_size_x": 6,
   "num_neurons": 64,
-  "num_steps": 200,
+  "num_inferencesteps": 200,
   "dt": 0.001,
   "tau": 1.0,
   "cp_int": 5000,

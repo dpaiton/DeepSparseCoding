@@ -30,7 +30,7 @@ class ICA(Model):
     self.patch_edge_size = int(params["patch_edge_size"])
     self.num_patch_pixels = int(self.patch_edge_size**2)
     self.num_neurons = self.num_patch_pixels
-    self.a_shape = [self.num_neurons, self.num_patch_pixels]
+    self.phi_shape = [self.num_neurons, self.num_patch_pixels]
 
   """Build the TensorFlow graph object"""
   def build_graph(self):
@@ -51,16 +51,16 @@ class ICA(Model):
           ## NOTE: TF does not currently have a stable QR decomp function
           ##  Issue: https://github.com/tensorflow/tensorflow/issues/4739
           ##  Commit: ""/commit/715f951eb9ca20fdcef20bb544b74dbe576734da
-          #rand = tf.truncated_normal(self.a_shape, mean=0.0,
+          #rand = tf.truncated_normal(self.phi_shape, mean=0.0,
           #  stddev=1.0, dtype=tf.float32, name="stand_norm_dist")
           #Q, R = tf.qr(rand, full_matrices=True, name="qr_decomp")
-          Q, R = np.linalg.qr(np.random.standard_normal(self.a_shape))
-          self.a = tf.get_variable(name="a", dtype=tf.float32,
+          Q, R = np.linalg.qr(np.random.standard_normal(self.phi_shape))
+          self.phi = tf.get_variable(name="phi", dtype=tf.float32,
             initializer=Q.astype(np.float32), trainable=True)
 
         with tf.name_scope("inference") as scope:
-          self.u = tf.matmul(self.x, tf.matrix_inverse(self.a,
-            name="a_inverse"), name="coefficients")
+          self.u = tf.matmul(self.x, tf.matrix_inverse(self.phi,
+            name="phi_inverse"), name="coefficients")
           if self.prior.lower() == "laplacian":
             self.z = tf.sign(self.u)
           else: #It must be laplacian or cauchy
@@ -72,7 +72,7 @@ class ICA(Model):
   Returns the natural gradient for the ICA weight matrix
   NOTE:
     This child function does not use optimizer input
-    weight_op must be a list with a single matrix ("self.a") in it
+    weight_op must be a list with a single matrix ("self.phi") in it
   """
   def compute_weight_gradients(self, optimizer, weight_op=None):
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
@@ -130,7 +130,7 @@ class ICA(Model):
   def generate_plots(self, input_data, input_labels=None):
     Model.generate_plots(self, input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    weights = tf.get_default_session().run(self.a, feed_dict)
+    weights = tf.get_default_session().run(self.phi, feed_dict)
     current_step = str(self.global_step.eval())
     #pf.save_data_tiled(input_data.reshape((self.batch_size,
     #  np.int(np.sqrt(self.num_pixels)),
@@ -153,7 +153,7 @@ class ICA(Model):
       save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
     pf.save_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
-      title="a l2 norm", save_filename=(self.disp_dir+"a_norm_v"+self.version
+      title="phi l2 norm", save_filename=(self.disp_dir+"a_norm_v"+self.version
       +"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
       ylabel="L2 Norm")
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
