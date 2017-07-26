@@ -69,6 +69,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False):
       filter_idx += 1
     ax.set_aspect("equal")
   plt.show()
+  return fig
 
 def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_connected_weights, lines=False):
   """
@@ -86,7 +87,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
   filter_idx_list = np.arange(num_pooling_filters, dtype=np.int32)
   assert num_pooling_filters <= num_outputs, (
     "num_pooling_filters must be less than or equal to bf_stats['num_outputs']")
-  cmap = plt.get_cmap('coolwarm')
+  cmap = plt.get_cmap('bwr')
   cNorm = matplotlib.colors.Normalize(vmin=-1, vmax=1)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
   num_plots_y = np.int32(np.ceil(np.sqrt(num_pooling_filters)))
@@ -101,13 +102,13 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
       ax = clear_axis(ax, spines="k")
       filter_idx = filter_idx_list[filter_total]
       example_filter = pooling_filters[:, filter_idx]
-      top_indices = np.argsort(np.abs(example_filter))
+      top_indices = np.argsort(np.abs(example_filter))[::-1] #descending
       filter_norm = np.max(np.abs(example_filter))
       SFs = np.asarray([np.sqrt(fcent[0]**2 + fcent[1]**2)
         for fcent in bf_stats["fourier_centers"]], dtype=np.float32)
       sf_norm = np.max(SFs)
       # Plot weakest of the top connected filters first because of occlusion
-      for bf_idx in top_indices[:num_connected_weights]:
+      for bf_idx in top_indices[:num_connected_weights][::-1]:
         connection_strength = example_filter[bf_idx]/filter_norm
         colorVal = scalarMap.to_rgba(connection_strength)
         center = bf_stats["gauss_centers"][bf_idx]
@@ -117,10 +118,10 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
         ## TODO: Add spatial freq
         #spatial_freq = SFs[bf_idx] / sf_norm
         #alpha = spatial_freq
-        alpha = np.abs(connection_strength)
+        alpha = 1.0#np.abs(connection_strength)
         ellipse = plot_ellipse(ax, center, evals, angle, colorVal, alpha=alpha, lines=lines)
       ax.set_xlim(0, patch_edge_size-1)
-      ax.set_ylim(0, patch_edge_size-1)
+      ax.set_ylim(patch_edge_size-1, 0)
       filter_total += 1
     else:
       ax = clear_axis(ax, spines="none")
@@ -129,6 +130,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
   ax = clear_axis(fig.add_subplot(gs[:, -1]))
   cbar = fig.colorbar(scalarMap, ax=ax, ticks=[-1, 0, 1])
   plt.show()
+  return fig
     
 def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_size=(17,17), spot_size=10):
   """
@@ -185,6 +187,7 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_siz
       ax_h = plt_h
       #spatial
       axes.append(clear_axis(fig.add_axes([ax_l, ax_b, ax_w, ax_h])))
+      axes[-1].invert_yaxis()
       axes[-1].scatter(x_p_cent, y_p_cent, c=connection_colors, s=spot_size)
       axes[-1].set_xlim(0, bf_stats["patch_edge_size"]-1)
       axes[-1].set_ylim(bf_stats["patch_edge_size"]-1, 0)
@@ -194,13 +197,14 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_siz
       axes.append(clear_axis(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h])))
       axes[-1].scatter(x_f_cent, y_f_cent, c=connection_colors, s=spot_size)
       axes[-1].set_xlim([-max_sf, max_sf])
-      axes[-1].set_ylim([max_sf, -max_sf])
+      axes[-1].set_ylim([-max_sf, max_sf])
       axes[-1].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
       axes[-1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
       axes[-1].set_aspect("equal")
       axes[-1].set_facecolor("k")
       filter_id += 1
   plt.show()
+  return fig
 
 def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
   """
@@ -256,6 +260,7 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
   plt.subplot(gs[0,0]).set_title("rand bf");
   plt.subplot(gs[0,1]).set_title("strongest corr --> weakest corr", horizontalalignment="left");
   plt.show()
+  return fig
 
 def plot_bf_stats(bf_stats, num_bf=2):
   """
@@ -266,38 +271,27 @@ def plot_bf_stats(bf_stats, num_bf=2):
   """
   tot_num_bf = len(bf_stats["basis_functions"])
   bf_idx_list = np.random.choice(tot_num_bf, num_bf, replace=False)
-  fig, sub_ax = plt.subplots(num_bf, 4, figsize=(15,15))
+  fig, sub_ax = plt.subplots(num_bf, 5, figsize=(15,15))
   for plot_id in range(int(num_bf)):
     bf_idx = bf_idx_list[plot_id]
     # Basis function in pixel space
     bf = bf_stats["basis_functions"][bf_idx]
     sub_ax[plot_id, 0].imshow(bf, cmap="Greys_r", interpolation="Nearest")
-    sub_ax[plot_id, 0].tick_params(axis="both", bottom="off", top="off",
-      left="off", right="off")
-    sub_ax[plot_id, 0].get_xaxis().set_visible(False)
-    sub_ax[plot_id, 0].get_yaxis().set_visible(False)
+    sub_ax[plot_id, 0] = clear_axis(sub_ax[plot_id, 0], spines="k")
     # Hilbert envelope
     env = bf_stats["envelopes"][bf_idx]
     sub_ax[plot_id, 1].imshow(env, cmap="Greys_r", interpolation="Nearest")
-    sub_ax[plot_id, 1].tick_params(axis="both", bottom="off", top="off",
-      left="off", right="off")
-    sub_ax[plot_id, 1].get_xaxis().set_visible(False)
-    sub_ax[plot_id, 1].get_yaxis().set_visible(False)
+    sub_ax[plot_id, 1] = clear_axis(sub_ax[plot_id, 1], spines="k")
     # Fourier transform of basis function
     fourier = bf_stats["fourier_maps"][bf_idx]
     sub_ax[plot_id, 2].imshow(fourier, cmap="Greys_r", interpolation="Nearest")
-    sub_ax[plot_id, 2].tick_params(axis="both", top="off", right="off",
-      bottom="off", left="off")
+    sub_ax[plot_id, 2] = clear_axis(sub_ax[plot_id, 2], spines="k")
     sub_ax[plot_id, 2].spines["left"].set_position("center")
-    sub_ax[plot_id, 2].spines["left"].set_color("black")
     sub_ax[plot_id, 2].spines["left"].set_linewidth(2.5)
     sub_ax[plot_id, 2].spines["bottom"].set_position("center")
-    sub_ax[plot_id, 2].spines["bottom"].set_color("black")
     sub_ax[plot_id, 2].spines["bottom"].set_linewidth(2.5)
     sub_ax[plot_id, 2].spines["top"].set_color("none")
     sub_ax[plot_id, 2].spines["right"].set_color("none")
-    sub_ax[plot_id, 2].set_yticklabels([])
-    sub_ax[plot_id, 2].set_xticklabels([])
     sub_ax[plot_id, 2].set_ylim([0, fourier.shape[0]-1])
     sub_ax[plot_id, 2].set_xlim([0, fourier.shape[1]-1])
     # Fourier summary stats
@@ -309,15 +303,18 @@ def plot_bf_stats(bf_stats, num_bf=2):
     alpha = 1.0
     colorVal = "b"
     ellipse = plot_ellipse(sub_ax[plot_id, 3], center, evals, angle, colorVal, alpha)
-    sub_ax[plot_id, 3].tick_params(axis="both", bottom="off", top="off",
-      left="off", right="off")
-    sub_ax[plot_id, 3].get_xaxis().set_visible(False)
-    sub_ax[plot_id, 3].get_yaxis().set_visible(False)
-  sub_ax[0,0].set_title("Basis Function", fontsize=10)
-  sub_ax[0,1].set_title("Envelope", fontsize=10)
-  sub_ax[0,2].set_title("Fourier map", fontsize=10)
-  sub_ax[0,3].set_title("Fourier ellipse", fontsize=10)
+    sub_ax[plot_id, 3] = clear_axis(sub_ax[plot_id, 3], spines="k")
+    sub_ax[plot_id, 4].imshow(bf, interpolation="Nearest", cmap="Greys_r")
+    sub_ax[plot_id, 4] = clear_axis(sub_ax[plot_id, 4], spines="k")
+    ellipse = plot_ellipse(sub_ax[plot_id, 4], center, evals, angle, colorVal, alpha, lines=True)
+  sub_ax[0,0].set_title("Basis functions", fontsize=12)
+  sub_ax[0,1].set_title("Envelopes", fontsize=12)
+  sub_ax[0,2].set_title("Fourier maps", fontsize=12)
+  sub_ax[0,3].set_title("Fourier ellipses", fontsize=12)
+  sub_ax[0,4].set_title("Fourier lines", fontsize=12)
+  plt.tight_layout()
   plt.show()
+  return fig
 
 def plot_loc_freq_summary(bf_stats):
   fig, sub_ax = plt.subplots(1, 2, figsize=(10,5))
@@ -345,6 +342,7 @@ def plot_loc_freq_summary(bf_stats):
   sub_ax[1].set_xlabel("Cycles / Patch")
   sub_ax[1].set_title("Basis Function Spatial Frequencies", fontsize=12)
   plt.show()
+  return fig
 
 def plot_hilbert_analysis(weights, padding=None):
   """
@@ -391,6 +389,7 @@ def plot_hilbert_analysis(weights, padding=None):
   sub_ax[2].get_yaxis().set_visible(False)
   sub_ax[2].set_title("Fourier Amplitude Spectrum", fontsize=32)
   plt.show()
+  return fig
 
 def plot_cov_matrix(cov_matrix, num_cov_images=""):
   """
@@ -403,9 +402,11 @@ def plot_cov_matrix(cov_matrix, num_cov_images=""):
   fig, ax = plt.subplots(1, figsize=(10,10))
   im = ax.imshow(cov_matrix, cmap="Greys_r", interpolation="nearest")
   im.set_clim(vmin=0, vmax=np.max(cov_matrix))
-  ax.set_title("Covariance matrix computed over "+str(num_cov_images)+" image patches", fontsize=16)
-  add_colorbar(im)
+  ax.set_title("Activity covariance matrix averaged from "+str(num_cov_images)+" image patches",
+    fontsize=14)
+  add_colorbar_to_im(im)
   plt.show()
+  return fig
 
 def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
   """
@@ -424,6 +425,7 @@ def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
   ax.set_yscale("log")
   ax.set_title("Sorted eigenvalues of covariance matrix", fontsize=16)
   plt.show()
+  return fig
 
 def plot_gaussian_contours(bf_stats, num_plots):
   """
@@ -459,23 +461,7 @@ def plot_gaussian_contours(bf_stats, num_plots):
     sub_ax[plot_id].get_yaxis().set_visible(False)
     sub_ax[plot_id].set_aspect("equal")
   plt.show()
-
-def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs):
-  """
-  Add a vertical color bar to an image plot.
-  Inputs:
-    im: [AxisImage] object returned from matplotlib.plt.imshow()
-    aspect: [int] aspect ratio of the colorbar
-    pad_fraction: [float] how much space to place between colorbar & plot
-    **kwargs: [dict] other keyword arguments that would be passed to im.axes.figure.colorbar()
-  """
-  divider = axes_grid1.make_axes_locatable(im.axes)
-  width = axes_grid1.axes_size.AxesY(im.axes, aspect=1./aspect)
-  pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
-  current_ax = plt.gca()
-  cax = divider.append_axes("right", size=width, pad=pad)
-  plt.sca(current_ax)
-  return im.axes.figure.colorbar(im, cax=cax, **kwargs)
+  return fig
 
 def save_bar(data, num_xticks=5, title="", save_filename="./bar_fig.pdf",
   xlabel="", ylabel=""):
@@ -638,12 +624,28 @@ def pad_data(data, pad_values=1):
     n * padded_data.shape[3]) + padded_data.shape[4:])
   return padded_data
 
+def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, **kwargs):
+  """
+  Add a vertical color bar to an image plot.
+  Inputs:
+    im: [AxisImage] object returned from matplotlib.plt.imshow()
+    aspect: [int] aspect ratio of the colorbar
+    pad_fraction: [float] how much space to place between colorbar & plot
+    **kwargs: [dict] other keyword arguments that would be passed to im.axes.figure.colorbar()
+  """
+  divider = axes_grid1.make_axes_locatable(im.axes)
+  width = axes_grid1.axes_size.AxesY(im.axes, aspect=1./aspect)
+  pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
+  current_ax = plt.gca()
+  cax = divider.append_axes("right", size=width, pad=pad)
+  plt.sca(current_ax)
+  return im.axes.figure.colorbar(im, cax=cax, **kwargs)
+
 def clear_axis(ax, spines="none"):
   ax.spines["right"].set_color(spines)
   ax.spines["top"].set_color(spines)
   ax.spines["left"].set_color(spines)
   ax.spines["bottom"].set_color(spines)
-  ax.invert_yaxis()
   ax.set_yticklabels([])
   ax.set_xticklabels([])
   ax.get_xaxis().set_visible(False)
