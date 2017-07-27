@@ -22,9 +22,13 @@ def get_params(model_type):
     return mlp_params.params, mlp_params.schedule
   if model_type.lower() == "ica":
     ica_params.params["conv"] = False
+    ica_params.params["num_pixels"] = int(ica_params.params["patch_edge_size"]**2)
+    ica_params.params["num_neurons"] = ica_params.params["num_pixels"]
     return ica_params.params, ica_params.schedule
   if model_type.lower() == "ica_pca":
     ica_pca_params.params["conv"] = False
+    ica_pca_params.params["num_pixels"] = int(ica_pca_params.params["patch_edge_size"]**2)
+    ica_pca_params.params["num_neurons"] = ica_pca_params.params["num_pixels"]
     return ica_pca_params.params, ica_pca_params.schedule
   if model_type.lower() == "lca":
     lca_params.params["conv"] = False

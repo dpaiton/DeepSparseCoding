@@ -4,6 +4,7 @@ matplotlib.use("Agg")
 import numpy as np
 import tensorflow as tf
 import json as js
+import params.param_picker as pp
 import models.model_picker as mp
 import data.data_picker as dp
 
@@ -24,7 +25,7 @@ data_type = "vanhateren"
 #data_type = "synthetic"
 
 ## Import params
-params, schedule = mp.get_params(model_type)
+params, schedule = pp.get_params(model_type)
 if "rand_seed" in params.keys():
   params["rand_state"] = np.random.RandomState(params["rand_seed"])
 params["data_type"] = data_type
