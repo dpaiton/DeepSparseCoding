@@ -158,7 +158,7 @@ class LCA(Model):
     a_vals = tf.get_default_session().run(self.a, feed_dict)
     a_vals_max = np.array(a_vals.max()).tolist()
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(self.num_neurons * self.batch_size)).tolist()
+      / float(self.batch_size * self.num_neurons)).tolist()
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,

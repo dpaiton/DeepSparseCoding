@@ -57,10 +57,10 @@ class ICA(Model):
           Q, R = np.linalg.qr(np.random.standard_normal(self.a_shape))
           self.a = tf.get_variable(name="a", dtype=tf.float32,
             initializer=Q.astype(np.float32), trainable=True)
+          self.a_inv = tf.matrix_inverse(self.a, name="a_inverse")
 
         with tf.name_scope("inference") as scope:
-          self.u = tf.matmul(self.x, tf.matrix_inverse(self.a,
-            name="a_inverse"), name="coefficients")
+          self.u = tf.matmul(self.x, self.a_inv, name="coefficients")
           if self.prior.lower() == "laplacian":
             self.z = tf.sign(self.u)
           else: #It must be laplacian or cauchy

@@ -5,7 +5,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 from models.base_model import Model
 
-class conv_LCA(Model):
+class CONV_LCA(Model):
   def __init__(self, params, schedule):
     Model.__init__(self, params, schedule)
 
@@ -48,7 +48,7 @@ class conv_LCA(Model):
     self.u_y = int(self.input_shape[1]/self.stride_y)
     self.u_shape = [int(self.u_y), int(self.u_x), int(self.num_neurons)]
     # Hyper Parameters
-    self.num_steps = int(params["num_steps"])
+    self.num_steps = int(params["num_inference_steps"])
     self.dt = float(params["dt"])
     self.tau = float(params["tau"])
     self.eta = self.dt / self.tau
