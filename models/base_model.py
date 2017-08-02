@@ -317,8 +317,8 @@ class Model(object):
     return self.sched[self.sched_idx]
 
   """
-  modifies the internal schedule for the current schedule index
-  inputs:
+  Modifies the internal schedule for the current schedule index
+  Inputs:
     key: [str] key in dictionary
     val: value be set in schedlue,
       if there is already a val for key, new val must be of same type
@@ -330,18 +330,18 @@ class Model(object):
     self.sched[self.sched_idx][key] = val
 
   """
-  load checkpoint model into session.
-  inputs:
-    session: tf.session() that you want to load into
-    model_dir: string specifying the path to the checkpoint
+  Load checkpoint model into session.
+  Inputs:
+    session: tf.Session() that you want to load into
+    model_dir: String specifying the path to the checkpoint
   """
   def load_full_model(self, session, model_dir):
     self.full_saver.restore(session, model_dir)
 
   """
-  load checkpoint weights into session.
-  inputs:
-    session: tf.session() that you want to load into
+  Load checkpoint weights into session.
+  Inputs:
+    session: tf.Session() that you want to load into
     model_dir: String specifying the path to the checkpoint
   """
   def load_weights(self, session, model_dir):
