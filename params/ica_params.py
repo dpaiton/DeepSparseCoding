@@ -5,7 +5,7 @@ params = {
   "version": "0.0",
   "optimizer": "annealed_sgd",
   "norm_images": False,
-  "whiten_images": True,
+  "whiten_images": False,
   "epoch_size": 1000000,
   "patch_edge_size": 20,
   "overlapping_patches": True,
@@ -31,7 +31,7 @@ params = {
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
-  {"weights": ["phi"],
+  {"weights": ["a"],
   "weight_lr": [0.01],
   "decay_steps": [30000],
   "decay_rate": [0.6],

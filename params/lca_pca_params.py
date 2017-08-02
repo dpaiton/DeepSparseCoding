@@ -40,8 +40,8 @@ params = {
 schedule = [
   {"weights": ["phi"],
   "sparse_mult": 0.4,
-  "weight_lr": [0.05],
+  "weight_lr": [0.15],
   "decay_steps": [int(np.floor(1e5*0.8))],
-  "decay_rate": [0.8],
+  "decay_rate": [0.5],
   "staircase": [True],
   "num_batches": int(1e5)}]
