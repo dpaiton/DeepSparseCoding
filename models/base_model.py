@@ -37,25 +37,26 @@ class Model(object):
    params: [dict] model parameters
   Modifiable Parameters:
     model_type     [str] Type of model
-                         Can be "MLP", "karklin_lewicki"
+                     Can be "MLP", "karklin_lewicki"
     model_name     [str] Name for model
     out_dir        [str] Base directory where output will be directed
     version        [str] Model version for output
     optimizer      [str] Which optimization algorithm to use
-                         Can be "annealed_sgd" or "adam"
+                     Can be "annealed_sgd" or "adam"
     log_int        [int] How often to send updates to stdout
     log_to_file    [bool] If set, log to file, else log to stderr
     gen_plot_int   [int] How often to generate plots
-    display_plots  [bool] If set, display plots
     save_plots     [bool] If set, save plots to file
     cp_int         [int] How often to checkpoint
     max_cp_to_keep [int] How many checkpoints to keep. See max_to_keep tf arg
     cp_load        [bool] if set, load from checkpoint
     cp_load_name   [str] Checkpoint model name to load
-    cp_load_val    [int] Checkpoint time step to load
+    cp_load_step   [int] Checkpoint time step to load
     cp_load_ver    [str] Checkpoint version to load
     cp_load_var    [list of str] which variables to load
-                         if None or empty list, the model load all weights
+                     if None or empty list, the model load all weights
+    cp_set_var     [list of str] which variables to assign values to
+                     len(cp_set_var) should equal len(cp_load_var)
     eps            [float] Small value to avoid division by zero
     device         [str] Which device to run on
     rand_seed      [int] Random seed
@@ -75,19 +76,22 @@ class Model(object):
     self.log_int = int(params["log_int"])
     self.log_to_file = bool(params["log_to_file"])
     self.gen_plot_int = int(params["gen_plot_int"])
-    self.disp_plots = bool(params["display_plots"])
     self.save_plots = bool(params["save_plots"])
     # Checkpointing
     self.cp_int = int(params["cp_int"])
     self.max_cp_to_keep = int(params["max_cp_to_keep"])
     self.cp_load = bool(params["cp_load"])
     self.cp_load_name = str(params["cp_load_name"])
-    self.cp_load_val = int(params["cp_load_val"])
+    self.cp_load_step = int(params["cp_load_step"])
     self.cp_load_ver = str(params["cp_load_ver"])
-    if params["cp_load_var"]:
+    if "cp_load_var" in params:
       self.cp_load_var = [str(var) for var in params["cp_load_var"]]
     else:
       self.cp_load_var = []
+    if "cp_set_var" in params:
+      self.cp_set_var = [str(var) for var in params["cp_set_var"]]
+    else:
+      self.cp_set_var = []
     # Directories
     self.out_dir = str(params["out_dir"]) + self.model_name
     self.cp_save_dir = self.out_dir + "/checkpoints/"
@@ -151,7 +155,9 @@ class Model(object):
       logging.basicConfig(filename=log_filename, format=log_format,
         datefmt=date_format, filemode="w", level=logging.INFO)
     else:
-      logging.basicConfig(format=log_format, datefmt=date_format, filemode="w",
+      #logging.basicConfig(format=log_format, datefmt=date_format, filemode="w",
+      #  level=logging.INFO)
+      logging.basicConfig(format=log_format, datefmt=date_format,
         level=logging.INFO)
 
   """Use logging to write model params"""
@@ -175,7 +181,7 @@ class Model(object):
     logging.info(str(string))
 
   """Returns the gradients for a weight variable using a given optimizer"""
-  def compute_gradients(self, optimizer, weight_op=None):
+  def compute_weight_gradients(self, optimizer, weight_op=None):
     return optimizer.compute_gradients(self.total_loss, var_list=weight_op)
 
   """
@@ -213,7 +219,7 @@ class Model(object):
                 epsilon=1e-07, name="adadelta_optimizer_"+weight)
             with tf.variable_scope("weights", reuse=True) as scope:
               weight_op = [tf.get_variable(weight)]
-            sch_grads_and_vars.append(self.compute_gradients(optimizer,
+            sch_grads_and_vars.append(self.compute_weight_gradients(optimizer,
               weight_op))
             gstep = self.global_step if w_idx == 0 else None # Only update once
             sch_apply_grads.append(
@@ -232,7 +238,8 @@ class Model(object):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("initialization") as scope:
-          self.init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
+          self.init_op = tf.group(tf.global_variables_initializer(),
+            tf.local_variables_initializer())
 
   """Get variables for loading"""
   def get_load_vars(self):
@@ -258,7 +265,7 @@ class Model(object):
       self.weight_saver = tf.train.Saver(var_list=weights,
         max_to_keep=self.max_cp_to_keep)
       self.full_saver = tf.train.Saver(max_to_keep=self.max_cp_to_keep)
-      if self.cp_load and len(self.cp_load_var) > 0:
+      if self.cp_load:
         self.loader = tf.train.Saver(var_list=self.get_load_vars())
     self.savers_constructed = True
 
@@ -323,13 +330,22 @@ class Model(object):
     self.sched[self.sched_idx][key] = val
 
   """
+  Load checkpoint model into session.
+  Inputs:
+    session: tf.Session() that you want to load into
+    model_dir: String specifying the path to the checkpoint
+  """
+  def load_full_model(self, session, model_dir):
+    self.full_saver.restore(session, model_dir)
+
+  """
   Load checkpoint weights into session.
   Inputs:
     session: tf.Session() that you want to load into
     model_dir: String specifying the path to the checkpoint
   """
-  def load_model(self, session, model_dir):
-    self.full_saver.restore(session, model_dir)
+  def load_weights(self, session, model_dir):
+    self.weight_saver.restore(session, model_dir)
 
   """
   Return dictionary containing all placeholders

@@ -2,8 +2,6 @@ import os
 params = {
   "model_type": "MLP",
   "model_name": "test",
-  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
   "version": "0.0",
   "optimizer": "annealed_sgd",
   "rectify_a": True,
@@ -20,17 +18,18 @@ params = {
   "val_on_cp": True,
   "cp_load": False,
   "cp_load_name": "pretrain",
-  "cp_load_val": 150000,
+  "cp_load_step": 150000,
   "cp_load_ver": "0.0",
   "cp_load_var": ["w1"],
   "log_int": 1,
   "log_to_file": False,
   "gen_plot_int": 10,
-  "display_plots": False,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/cpu:0",
-  "rand_seed": 1234567890}
+  "rand_seed": 1234567890,
+  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
+  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
   {"weights": ["w1", "w2", "bias1", "bias2"],

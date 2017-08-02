@@ -2,8 +2,6 @@ import os
 params = {
   "model_type": "conv_lca",
   "model_name": "test",
-  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
   "version": "0.0",
   "optimizer": "adadelta",
   "norm_images": False,
@@ -14,24 +12,25 @@ params = {
   "patch_size_y": 6,
   "patch_size_x": 6,
   "num_neurons": 64,
-  "num_steps": 200,
+  "num_inferencesteps": 200,
   "dt": 0.001,
   "tau": 1.0,
   "cp_int": 5000,
   "max_cp_to_keep": 5,
   "cp_load": False,
   "cp_load_name": "pretrain",
-  "cp_load_val": 150000,
+  "cp_load_step": 150000,
   "cp_load_ver": "0.0",
   "cp_load_var": ["phi"],
   "log_int": 1,
   "log_to_file": False,
   "gen_plot_int": 10,
-  "display_plots": False,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/cpu:0",
-  "rand_seed": 1234567890}
+  "rand_seed": 1234567890,
+  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
+  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
   {"weights": ["phi"],

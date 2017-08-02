@@ -57,10 +57,10 @@ class ICA(Model):
           Q, R = np.linalg.qr(np.random.standard_normal(self.a_shape))
           self.a = tf.get_variable(name="a", dtype=tf.float32,
             initializer=Q.astype(np.float32), trainable=True)
+          self.a_inv = tf.matrix_inverse(self.a, name="a_inverse")
 
         with tf.name_scope("inference") as scope:
-          self.u = tf.matmul(self.x, tf.matrix_inverse(self.a,
-            name="a_inverse"), name="coefficients")
+          self.u = tf.matmul(self.x, self.a_inv, name="coefficients")
           if self.prior.lower() == "laplacian":
             self.z = tf.sign(self.u)
           else: #It must be laplacian or cauchy
@@ -74,7 +74,7 @@ class ICA(Model):
     This child function does not use optimizer input
     weight_op must be a list with a single matrix ("self.a") in it
   """
-  def compute_gradients(self, optimizer, weight_op=None):
+  def compute_weight_gradients(self, optimizer, weight_op=None):
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
     weight_name = weight_op[0].name.split('/')[1].split(':')[0]#np.split
     z_u_avg = tf.divide(tf.matmul(tf.transpose(self.u), self.z),
@@ -144,11 +144,11 @@ class ICA(Model):
       normalize=True, title="Dictionary at step "+current_step,
       save_filename=(self.disp_dir+"a_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"), vmin=-1.0, vmax=1.0)
-    pf.save_activity_hist(self.z.eval(feed_dict).T, num_bins=1000,
+    pf.save_activity_hist(self.z.eval(feed_dict), num_bins=1000,
       title="z Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"z_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
-    pf.save_activity_hist(self.u.eval(feed_dict).T, num_bins=1000,
+    pf.save_activity_hist(self.u.eval(feed_dict), num_bins=1000,
       title="u Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))

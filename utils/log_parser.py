@@ -1,6 +1,5 @@
 import re
 import json as js
-import numpy as np
 
 """
 Load log file into memory

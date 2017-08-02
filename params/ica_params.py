@@ -1,9 +1,7 @@
 import os
 params = {
-  "model_type": "ICA",
-  "model_name": "test",
-  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
+  "model_type": "ica",
+  "model_name": "ica_nowhite",
   "version": "0.0",
   "optimizer": "annealed_sgd",
   "norm_images": False,
@@ -12,29 +10,30 @@ params = {
   "patch_edge_size": 20,
   "overlapping_patches": True,
   "patch_variance_threshold": 1e-6,
-  "batch_size": 1000,
+  "batch_size": 100,
   #"prior": "cauchy",
   "prior": "laplacian",
   "cp_int": 10000,
   "max_cp_to_keep": 5,
   "cp_load": False,
   "cp_load_name": "pretrain",
-  "cp_load_val": 150000,
+  "cp_load_step": 150000,
   "cp_load_ver": "0.0",
-  "cp_load_var": ["phi"],
-  "log_int": 10,
-  "log_to_file": False,
-  "gen_plot_int": 100,
-  "display_plots": False,
+  "cp_load_var": ["a"],
+  "log_int": 100,
+  "log_to_file": True,
+  "gen_plot_int": 500,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/cpu:0",
-  "rand_seed": 1234567890}
+  "rand_seed": 1234567890,
+  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
+  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
   {"weights": ["a"],
   "weight_lr": [0.01],
-  "decay_steps": [10000],
+  "decay_steps": [30000],
   "decay_rate": [0.6],
   "staircase": [True],
-  "num_batches": 20000}]
+  "num_batches": 30000}]
