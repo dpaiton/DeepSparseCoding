@@ -4,25 +4,28 @@ matplotlib.use("Agg")
 import numpy as np
 import tensorflow as tf
 import json as js
+import params.param_picker as pp
 import models.model_picker as mp
 import data.data_picker as dp
 
 ## Specify model type and data type
 #model_type = "mlp"
 #model_type = "ica"
-model_type = "lca"
+model_type = "ica_pca"
+#model_type = "lca"
+#model_type = "lca_pca"
 #model_type = "conv_lca"
 #model_type = "dsc"
 #model_type = "density_learner"
 
 #data_type = "cifar10"
-data_type = "mnist"
-#data_type = "vanhateren"
+#data_type = "mnist"
+data_type = "vanhateren"
 #data_type = "field"
 #data_type = "synthetic"
 
 ## Import params
-params, schedule = mp.get_params(model_type)
+params, schedule = pp.get_params(model_type)
 if "rand_seed" in params.keys():
   params["rand_state"] = np.random.RandomState(params["rand_seed"])
 params["data_type"] = data_type
@@ -49,6 +52,7 @@ with tf.Session(graph=model.graph) as sess:
     feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"],
     dtype=np.float32)})
 
+  sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)
 
   for sch_idx, sch in enumerate(schedule):
@@ -65,7 +69,7 @@ with tf.Session(graph=model.graph) as sess:
       ## Normalize weights
       if hasattr(model, "norm_weights"):
         if params["norm_weights"]:
-          sess.run(model.norm_weights)
+          sess.run([model.norm_weights], feed_dict)
 
       # Reset activity from previous batch
       if hasattr(model, "reset_activity"):

@@ -330,13 +330,22 @@ class Model(object):
     self.sched[self.sched_idx][key] = val
 
   """
-  Load checkpoint weights into session.
+  Load checkpoint model into session.
   Inputs:
     session: tf.Session() that you want to load into
     model_dir: String specifying the path to the checkpoint
   """
   def load_full_model(self, session, model_dir):
     self.full_saver.restore(session, model_dir)
+
+  """
+  Load checkpoint weights into session.
+  Inputs:
+    session: tf.Session() that you want to load into
+    model_dir: String specifying the path to the checkpoint
+  """
+  def load_weights(self, session, model_dir):
+    self.weight_saver.restore(session, model_dir)
 
   """
   Return dictionary containing all placeholders
