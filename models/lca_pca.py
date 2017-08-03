@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 import params.param_picker as pp
 from models.lca import LCA
@@ -36,6 +35,7 @@ class LCA_PCA(LCA):
         self.full_cov = tf.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),
           name="full_covariance_matrix")
         s, u, v = tf.svd(self.full_cov, full_matrices=True, name="a_svd")
+        self.eigen_vecs = u
         top_vecs = u[:, :self.num_pooling_units]
         self.pooling_filters = tf.transpose(tf.matmul(top_vecs, tf.transpose(top_vecs)),
           name="pooling_filters")

@@ -41,6 +41,46 @@ class LCA(Model):
     self.tau = float(params["tau"])
     self.eta = self.dt / self.tau
 
+  def infer_coefficients(self):
+   lca_b = tf.matmul(self.x, self.phi, name="driving_input")
+   lca_g = (tf.matmul(tf.transpose(self.phi), self.phi, name="gram_matrix")
+     - tf.constant(np.identity(self.phi_shape[1], dtype=np.float32), name="identity_matrix"))
+   u_list = [self.u_zeros]
+   a_list = [self.threshold_units(u_list[0])]
+   for step in range(self.num_steps-1):
+     u_list.append(self.step_inference(u_list[step], a_list[step], lca_b, lca_g))
+     a_list.append(self.threshold_units(u_list[step+1]))
+   return (u_list[-1], a_list[-1])
+
+  def step_inference(self, u_in, a_in, b, g):
+    with tf.name_scope("update_u") as scope:
+      lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
+      du = tf.subtract(tf.subtract(b, lca_explain_away), u_in, name="du")
+      u_out = tf.add(u_in, tf.multiply(self.eta, du))
+    return u_out
+
+  def threshold_units(self, u_in):
+    if self.thresh_type == "soft":
+      if self.rectify_a:
+        a = tf.where(tf.greater(u_in, self.sparse_mult),
+          tf.subtract(u_in, self.sparse_mult), self.u_zeros,
+          name="activity")
+      else:
+        a = tf.where(tf.greater(u_in, self.sparse_mult),
+          tf.subtract(u_in, self.sparse_mult),
+          tf.where(tf.less(u_in, -self.sparse_mult),
+          tf.add(u_in, self.sparse_mult),
+          self.u_zeros), name="activity")
+    elif self.thresh_type == "hard":
+      if self.rectify_a:
+        a = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
+          self.u_zeros, name="activity")
+      else:
+        a = tf.where(tf.greater(u_in, self.sparse_mult),
+          u_in, tf.where(tf.less(u_in, -self.sparse_mult), u_in,
+          self.u_zeros), name="activity")
+    return a
+
   """Build the TensorFlow graph object"""
   def build_graph(self):
     self.graph = tf.Graph()
@@ -76,32 +116,11 @@ class LCA(Model):
             name="l2_normalization")
 
         with tf.name_scope("inference") as scope:
-          self.u = tf.Variable(self.u_zeros, trainable=False,
-            validate_shape=False, name="u")
-          if self.thresh_type == "soft":
-            if self.rectify_a:
-              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
-                tf.subtract(self.u, self.sparse_mult), self.u_zeros,
-                name="activity")
-            else:
-              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
-                tf.subtract(self.u, self.sparse_mult),
-                tf.where(tf.less(self.u, -self.sparse_mult),
-                tf.add(self.u, self.sparse_mult),
-                self.u_zeros), name="activity")
-          elif self.thresh_type == "hard":
-            if self.rectify_a:
-              self.a = tf.where(tf.greater(self.u, self.sparse_mult), self.u,
-                self.u_zeros, name="activity")
-            else:
-              self.a = tf.where(tf.greater(self.u, self.sparse_mult),
-                self.u, tf.where(tf.less(self.u, -self.sparse_mult), self.u,
-                self.u_zeros), name="activity")
+         self.u, self.a = self.infer_coefficients()
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
-            self.x_ = tf.matmul(self.a, tf.transpose(self.phi),
-              name="reconstruction")
+            self.x_ = tf.matmul(self.a, tf.transpose(self.phi), name="reconstruction")
 
         with tf.name_scope("loss") as scope:
           with tf.name_scope("unsupervised"):
@@ -109,24 +128,9 @@ class LCA(Model):
               tf.reduce_sum(tf.pow(tf.subtract(self.x, self.x_), 2.0),
               axis=[1]), name="recon_loss")
             self.sparse_loss = self.sparse_mult * tf.reduce_mean(
-              tf.reduce_sum(tf.abs(self.a), axis=[1]),
-              name="sparse_loss")
+              tf.reduce_sum(tf.abs(self.a), axis=[1]), name="sparse_loss")
             self.unsupervised_loss = (self.recon_loss + self.sparse_loss)
           self.total_loss = self.unsupervised_loss
-
-        with tf.name_scope("update_u") as scope:
-          self.lca_b = tf.matmul(self.x, self.phi, name="driving_input")
-          self.lca_g = (tf.matmul(tf.transpose(self.phi), self.phi,
-            name="gram_matrix") -
-            tf.constant(np.identity(self.phi_shape[1], dtype=np.float32),
-            name="identity_matrix"))
-          self.lca_explain_away = tf.matmul(self.a, self.lca_g,
-            name="explaining_away")
-          self.du = self.lca_b - self.lca_explain_away - self.u
-          self.step_inference = tf.group(self.u.assign_add(self.eta * self.du),
-            name="step_inference")
-          self.reset_activity = tf.group(self.u.assign(self.u_zeros),
-            name="reset_activity")
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
