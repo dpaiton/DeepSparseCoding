@@ -75,12 +75,18 @@ with tf.Session(graph=model.graph) as sess:
       if hasattr(model, "reset_activity"):
         sess.run([model.reset_activity], feed_dict)
 
-      ## Run inference
-      if hasattr(model, "full_inference"): # all steps in a single op
-        sess.run([model.full_inference], feed_dict)
-      if hasattr(model, "step_inference"): # op only does one step
-        for step in range(model.num_steps):
-          sess.run([model.step_inference], feed_dict)
+      ### Run inference
+      #if hasattr(model, "full_inference"): # all steps in a single op
+      #  sess.run([model.full_inference], feed_dict)
+      #if hasattr(model, "step_inference"): # op only does one step
+      #  for step in range(model.num_steps):
+      #    sess.run([model.step_inference], feed_dict)
+
+      ## Temporary for density learning
+      #for step in range(model.num_u_steps):
+      #  sess.run([model.step_u], feed_dict)
+      #for step in range(model.num_v_steps):
+      #  sess.run([model.step_v], feed_dict)
 
       ## Temporary for density learning
       #for step in range(model.num_u_steps):
