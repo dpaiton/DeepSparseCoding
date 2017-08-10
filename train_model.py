@@ -11,8 +11,8 @@ import data.data_picker as dp
 ## Specify model type and data type
 #model_type = "mlp"
 #model_type = "ica"
-#model_type = "ica_pca"
-model_type = "lca"
+model_type = "ica_pca"
+#model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "conv_lca"
 #model_type = "dsc"
@@ -81,6 +81,12 @@ with tf.Session(graph=model.graph) as sess:
       #if hasattr(model, "step_inference"): # op only does one step
       #  for step in range(model.num_steps):
       #    sess.run([model.step_inference], feed_dict)
+
+      ## Temporary for density learning
+      #for step in range(model.num_u_steps):
+      #  sess.run([model.step_u], feed_dict)
+      #for step in range(model.num_v_steps):
+      #  sess.run([model.step_v], feed_dict)
 
       ## Temporary for density learning
       #for step in range(model.num_u_steps):

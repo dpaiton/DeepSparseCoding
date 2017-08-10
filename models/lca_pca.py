@@ -36,6 +36,6 @@ class LCA_PCA(LCA):
           name="full_covariance_matrix")
         s, u, v = tf.svd(self.full_cov, full_matrices=True, name="a_svd")
         self.eigen_vecs = u
-        top_vecs = u[:, :self.num_pooling_units]
+        top_vecs = self.eigen_vecs[:, :self.num_pooling_units]
         self.pooling_filters = tf.transpose(tf.matmul(top_vecs, tf.transpose(top_vecs)),
           name="pooling_filters")
