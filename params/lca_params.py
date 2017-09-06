@@ -1,7 +1,7 @@
 import os
 params = {
   "model_type": "lca",
-  "model_name": "test",
+  "model_name": "pretrain_vh_white",
   "version": "0.0",
   "optimizer": "annealed_sgd",
   "rectify_a": True,
@@ -27,10 +27,10 @@ params = {
   "cp_load_var": ["phi"],
   "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 100,
+  "gen_plot_int": 1000,
   "save_plots": True,
   "eps": 1e-12,
-  "device": "/cpu:0",
+  "device": "/gpu:1",
   "rand_seed": 1234567890,
   "out_dir": os.path.expanduser("~")+"/Work/Projects/",
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
@@ -38,8 +38,8 @@ params = {
 schedule = [
   {"weights": ["phi"],
   "sparse_mult": 0.4,
-  "weight_lr": [0.15],
-  "decay_steps": [9000],
+  "weight_lr": [0.07],
+  "decay_steps": [8000],
   "decay_rate": [0.5],
   "staircase": [True],
-  "num_batches": 10000}]
+  "num_batches": 24000}]

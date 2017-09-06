@@ -3,6 +3,7 @@ import params.ica_params as ica_params
 import params.ica_pca_params as ica_pca_params
 import params.lca_params as lca_params
 import params.lca_pca_params as lca_pca_params
+import params.lca_pca_fb_params as lca_pca_fb_params
 import params.conv_lca_params as conv_lca_params
 import params.dsc_params as dsc_params
 import params.density_learner_params as density_params
@@ -32,10 +33,14 @@ def get_params(model_type):
     return ica_pca_params.params, ica_pca_params.schedule
   if model_type.lower() == "lca":
     lca_params.params["conv"] = False
+    lca_params.params["num_pixels"] = int(lca_params.params["patch_edge_size"]**2)
     return lca_params.params, lca_params.schedule
   if model_type.lower() == "lca_pca":
     lca_pca_params.params["conv"] = False
     return lca_pca_params.params, lca_pca_params.schedule
+  if model_type.lower() == "lca_pca_fb":
+    lca_pca_params.params["conv"] = False
+    return lca_pca_params.params, None
   if model_type.lower() == "conv_lca":
     conv_lca_params.params["conv"] = True
     return conv_lca_params.params, conv_lca_params.schedule

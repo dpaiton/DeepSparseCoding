@@ -76,10 +76,21 @@ class LCA(Model):
         a = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
           self.u_zeros, name="activity")
       else:
-        a = tf.where(tf.greater(u_in, self.sparse_mult),
-          u_in, tf.where(tf.less(u_in, -self.sparse_mult), u_in,
-          self.u_zeros), name="activity")
+        a = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
+          tf.where(tf.less(u_in, -self.sparse_mult), u_in, self.u_zeros),
+          name="activity")
     return a
+
+  def compute_total_loss(self):
+      with tf.name_scope("unsupervised"):
+        self.recon_loss = tf.reduce_mean(0.5 *
+          tf.reduce_sum(tf.pow(tf.subtract(self.x, self.x_), 2.0),
+          axis=[1]), name="recon_loss")
+        self.sparse_loss = self.sparse_mult * tf.reduce_mean(
+          tf.reduce_sum(tf.abs(self.a), axis=[1]), name="sparse_loss")
+        self.unsupervised_loss = (self.recon_loss + self.sparse_loss)
+      total_loss = self.unsupervised_loss
+      return total_loss
 
   """Build the TensorFlow graph object"""
   def build_graph(self):
@@ -105,7 +116,7 @@ class LCA(Model):
 
         with tf.variable_scope("weights") as scope:
           phi_init = tf.truncated_normal(self.phi_shape, mean=0.0,
-            stddev=1.0, dtype=tf.float32, name="phi_init")
+            stddev=0.5, dtype=tf.float32, name="phi_init")
           self.phi = tf.get_variable(name="phi", dtype=tf.float32,
             initializer=phi_init, trainable=True)
 
@@ -123,14 +134,7 @@ class LCA(Model):
             self.x_ = tf.matmul(self.a, tf.transpose(self.phi), name="reconstruction")
 
         with tf.name_scope("loss") as scope:
-          with tf.name_scope("unsupervised"):
-            self.recon_loss = tf.reduce_mean(0.5 *
-              tf.reduce_sum(tf.pow(tf.subtract(self.x, self.x_), 2.0),
-              axis=[1]), name="recon_loss")
-            self.sparse_loss = self.sparse_mult * tf.reduce_mean(
-              tf.reduce_sum(tf.abs(self.a), axis=[1]), name="sparse_loss")
-            self.unsupervised_loss = (self.recon_loss + self.sparse_loss)
-          self.total_loss = self.unsupervised_loss
+          self.total_loss = self.compute_total_loss()
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):

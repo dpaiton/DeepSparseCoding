@@ -131,7 +131,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
   cbar = fig.colorbar(scalarMap, ax=ax, ticks=[-1, 0, 1])
   plt.show()
   return fig
-    
+
 def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_size=(17,17), spot_size=10):
   """
   Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of 1st layer weights
