@@ -66,4 +66,4 @@ class lca(Analyzer):
      "total_loss":stats["total_loss"],
      "a_frac_act":stats["a_fraction_active"]}
     loss_filename = self.out_dir+"log_stats_v"+self.version+self.file_ext
-    pf.save_stats(data=relevant_stats, labels=None, out_filename=loss_filename)
+    pf.plot_stats(data=relevant_stats, labels=None, save_filename=loss_filename)

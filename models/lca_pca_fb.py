@@ -107,15 +107,11 @@ class LCA_PCA_FB(LCA_PCA):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     recon = tf.get_default_session().run(self.x_, feed_dict)
-    pf.save_data_tiled(input_data.reshape((self.batch_size,
-      np.int(np.sqrt(self.num_pixels)),
-      np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Images at step "+current_step,
-      save_filename=(self.disp_dir+"images_"+self.version+"-"
-      +current_step.zfill(5)+".pdf"))
-    pf.save_data_tiled(recon.reshape((self.batch_size,
-      np.int(np.sqrt(self.num_pixels)),
-      np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Recons at step "+current_step,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"
-      +current_step.zfill(5)+".pdf"))
+    pf.plot_data_tiled(input_data.reshape((self.batch_size,
+      np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
+      normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    pf.plot_data_tiled(recon.reshape((self.batch_size,
+      np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
+      normalize=False, title="Recons at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".pdf"))

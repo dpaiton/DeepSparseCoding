@@ -175,10 +175,10 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_siz
         for bf_idx in range(bf_stats["num_outputs"])]
       (y_id, x_id) = plot_id
       if x_id == 0:
-        ax_l = 0  
+        ax_l = 0
         ax_b = - y_id * (plt_h+h_gap)
       else:
-        bbox = axes[-1].get_position().get_points()[0]#bbox is [[x0,y0],[x1,y1]] 
+        bbox = axes[-1].get_position().get_points()[0]#bbox is [[x0,y0],[x1,y1]]
         prev_l = bbox[0]
         prev_b = bbox[1]
         ax_l = prev_l + plt_w + group_w_gap
@@ -463,14 +463,14 @@ def plot_gaussian_contours(bf_stats, num_plots):
   plt.show()
   return fig
 
-def save_bar(data, num_xticks=5, title="", save_filename="./bar_fig.pdf",
-  xlabel="", ylabel=""):
+def plot_bar(data, num_xticks=5, title="", xlabel="", ylabel="", save_filename=None):
   """
   Generate a bar graph of data
   Inputs:
     data: [np.ndarray] of shape (N,)
     xticklabels: [list of N str] indicating the labels for the xticks
     save_filename: [str] indicating where the file should be saved
+      if None, don't save the file
     xlabel: [str] indicating the x-axis label
     ylabel: [str] indicating the y-axis label
     title: [str] indicating the plot title
@@ -484,10 +484,13 @@ def save_bar(data, num_xticks=5, title="", save_filename="./bar_fig.pdf",
   ax.set_xlabel(xlabel)
   ax.set_ylabel(ylabel)
   fig.suptitle(title, y=1.0, x=0.5)
-  fig.savefig(save_filename, transparent=True)
-  plt.close(fig)
+  if save_filename is not None:
+    fig.savefig(save_filename, transparent=True)
+    plt.close(fig)
+    return None
+  return fig
 
-def save_activity_hist(data, num_bins="auto", title="", save_filename="./hist.pdf"):
+def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   """
   Histogram activity matrix
   Inputs:
@@ -508,10 +511,13 @@ def save_activity_hist(data, num_bins="auto", title="", save_filename="./hist.pd
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
   fig.tight_layout()
-  fig.savefig(save_filename)
-  plt.close(fig)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
+  return fig
 
-def save_phase_avg_power_spec(data, title="", save_filename="./pow_spec.pdf"):
+def plot_phase_avg_power_spec(data, title="", save_filename=None):
   """
   Plot phase averaged power spectrum for a set of images
   Inputs:
@@ -523,11 +529,14 @@ def save_phase_avg_power_spec(data, title="", save_filename="./pow_spec.pdf"):
   (fig, ax) = plt.subplots(1)
   ax.loglog(range(data[data>1].shape[0]), data[data>1])
   fig.suptitle(title, y=1.0, x=0.5)
-  fig.savefig(save_filename)
-  plt.close(fig)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
+  return fig
 
-def save_data_tiled(data, normalize=False, title="", save_filename="",
-  vmin=None, vmax=None):
+def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
+  save_filename=""):
   """
   Save figure for input data as a tiled image
   Inpus:
@@ -539,9 +548,9 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
     normalize: [bool] indicating whether the data should be streched (normalized)
       This is recommended for dictionary plotting.
     title: [str] for title of figure
+    vmin, vmax: [int] the min and max of the color range
     save_filename: [str] holding output directory for writing,
       figures will not display with GUI if set
-    vmin, vmax: [int] the min and max of the color range
   """
   if normalize:
     data = ip.normalize_data_with_max(data)
@@ -566,12 +575,15 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
   sub_axis.get_xaxis().set_visible(False)
   sub_axis.get_yaxis().set_visible(False)
   sub_axis.set_title(title)
-  if save_filename == "":
-    save_filename = "./output.ps"
-  fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad_inches=0.01)
-  plt.close(fig)
+  if save_filename is not None:
+      if save_filename == "":
+        save_filename = "./output.ps"
+      fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad_inches=0.01)
+      plt.close(fig)
+      return None
+  return fig
 
-def save_stats(data, labels=None, save_filename="./Fig.pdf"):
+def plot_stats(data, labels=None, save_filename=None):
   """
   Generate time-series plots of stats specified by keys
   Inputs:
@@ -598,8 +610,11 @@ def save_stats(data, labels=None, save_filename="./Fig.pdf"):
     sub_ax[key_idx].yaxis.set_label_coords(ylabel_xpos, 0.5)
   sub_ax[-1].set_xlabel("Batch Number")
   fig.suptitle("Stats per Batch", y=1.0, x=0.5)
-  fig.savefig(save_filename, transparent=True)
-  plt.close(fig)
+  if save_filename is not None:
+      fig.savefig(save_filename, transparent=True)
+      plt.close(fig)
+      return None
+  return fig
 
 def pad_data(data, pad_values=1):
   """

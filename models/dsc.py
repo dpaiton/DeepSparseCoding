@@ -28,6 +28,7 @@ class dsc(Model):
     # Meta parameters
     self.rectify_u = bool(params["rectify_u"])
     self.rectify_v = bool(params["rectify_v"])
+    self.w_init_loc = params["w_init_loc"]
     # Network Size
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(params["num_pixels"])
@@ -138,9 +139,15 @@ class dsc(Model):
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
-        w_inits = [np.load(os.path.expanduser("~")+"/Work/Projects/pretrain/analysis/0.0/weights/phi.npz")["data"],
-          tf.multiply(0.1, tf.ones(self.w_shapes[1], dtype=tf.float32),
-          name="b_init")]
+        if self.w_init_loc is None:
+          w_inits = [tf.truncated_normal(self.w_shapes[0], mean=0.0,
+            stddev=0.5, dtype=tf.float32, name="a_init"),
+            tf.multiply(0.1, tf.ones(self.w_shapes[1], dtype=tf.float32),
+            name="b_init")]
+        else:
+          w_inits = [np.load(self.w_init_loc)["data"],
+            tf.multiply(0.1, tf.ones(self.w_shapes[1], dtype=tf.float32),
+            name="b_init")]
 
         with tf.variable_scope("weights") as scope:
           self.a = tf.get_variable(name="a", dtype=tf.float32,
@@ -253,58 +260,51 @@ class dsc(Model):
     #b_weights = tf.get_default_session().run(self.b, feed_dict)
     u_vals = tf.get_default_session().run(self.u, feed_dict)
     #v_vals = tf.get_default_session().run(self.v, feed_dict)
-    #pf.save_data_tiled(input_data.reshape((self.batch_size,
+    #pf.plot_data_tiled(input_data.reshape((self.batch_size,
     #  np.int(np.sqrt(self.num_pixels)),
     #  np.int(np.sqrt(self.num_pixels)))),
-    #  normalize=False, title="Images at step "+current_step,
-    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
-    #  +current_step.zfill(5)+".pdf"), vmin=np.min(input_data),
-    #  vmax=np.max(input_data))
-    pf.save_data_tiled(recon.reshape((self.batch_size,
+    #  normalize=False, title="Images at step "+current_step, vmin=np.min(input_data),
+    #  vmax=np.max(input_data), save_filename=(self.disp_dir+"images_"+self.version+"-"
+    #  +current_step.zfill(5)+".pdf"))
+    pf.plot_data_tiled(recon.reshape((self.batch_size,
       np.int(np.sqrt(self.num_pixels)),
       np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Recons at step "+current_step,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"
-      +current_step.zfill(5)+".pdf"), vmin=np.min(recon), vmax=np.max(recon))
-    pf.save_data_tiled(a_weights.T.reshape(self.num_u,
+      normalize=False, title="Recons at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    pf.plot_data_tiled(a_weights.T.reshape(self.num_u,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-      normalize=False, title="Dictionary at step "+current_step,
-      save_filename=(self.disp_dir+"a_v"+self.version+"-"
-      +current_step.zfill(5)+".pdf"))
-    #pf.save_data_tiled(b_weights.T.reshape(self.num_v,
+      normalize=False, title="Dictionary at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"a_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    #pf.plot_data_tiled(b_weights.T.reshape(self.num_v,
     #  int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
-    #  normalize=False, title="Density weights matrix at step number "
-    #  +current_step, save_filename=(self.disp_dir+"b_v"+self.version+"-"
+    #  normalize=False, title="Density weights matrix at step number "+current_step,
+    #  vmin=None, vmax=None, save_filename=(self.disp_dir+"b_v"+self.version+"-"
     #  +current_step.zfill(5)+".pdf"))
-    pf.save_activity_hist(u_vals, num_bins=1000,
+    pf.plot_activity_hist(u_vals, num_bins=1000,
       title="u Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
-    #pf.save_activity_hist(v_vals, num_bins=1000,
+    #pf.plot_activity_hist(v_vals, num_bins=1000,
     #  title="v Activity Histogram at step "+current_step,
     #  save_filename=(self.disp_dir+"v_hist_v"+self.version+"-"
     #  +current_step.zfill(5)+".pdf"))
-    pf.save_bar(np.linalg.norm(a_weights, axis=1, keepdims=False), num_xticks=5,
-      title="a l2 norm", save_filename=(self.disp_dir+"a_norm_v"+self.version
-      +"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
-      ylabel="L2 Norm")
-    #pf.save_bar(np.linalg.norm(b_weights, axis=1, keepdims=False), num_xticks=5,
-    #  title="b l2 norm", save_filename=(self.disp_dir+"b_norm_v"+self.version
-    #  +"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
-    #  ylabel="L2 Norm")
+    pf.plot_bar(np.linalg.norm(a_weights, axis=1, keepdims=False), num_xticks=5,
+      title="a l2 norm", xlabel="Basis Index",ylabel="L2 Norm",
+      save_filename=(self.disp_dir+"a_norm_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    #pf.plot_bar(np.linalg.norm(b_weights, axis=1, keepdims=False), num_xticks=5,
+    #  title="b l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+    #  save_filename=(self.disp_dir+"b_norm_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       if name == "a":
-        pf.save_data_tiled(grad.T.reshape(self.num_u,
+        pf.plot_data_tiled(grad.T.reshape(self.num_u,
           int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-          normalize=False, title="Gradient for a at step "+current_step,
-          save_filename=(self.disp_dir+"da_v"+self.version+"_"
-          +current_step.zfill(5)+".pdf"))
+          normalize=False, title="Gradient for a at step "+current_step, vmin=None, vmax=None,
+          save_filename=(self.disp_dir+"da_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
       #elif name == "b":
-      #  pf.save_data_tiled(grad.T.reshape(self.num_v,
+      #  pf.plot_data_tiled(grad.T.reshape(self.num_v,
       #    int(np.sqrt(self.num_u)), int(np.sqrt(self.num_u))),
-      #    normalize=False, title="Gradient for b at step "+current_step,
-      #    save_filename=(self.disp_dir+"db_v"+self.version+"_"
-      #    +current_step.zfill(5)+".pdf"))
+      #    normalize=False, title="Gradient for b at step "+current_step, vmin=None, vmax=None,
+      #    save_filename=(self.disp_dir+"db_v"+self.version+"_"+current_step.zfill(5)+".pdf"))

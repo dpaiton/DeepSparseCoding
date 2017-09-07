@@ -35,6 +35,8 @@ data = dp.get_data(data_type, params)
 if params["conv"]: # conv param is set in the param picker
   params["input_shape"] = [data["train"].num_rows, data["train"].num_cols,
     data["train"].num_channels]
+  for key in data.keys():
+      data[key].devectorize_data()
 else:
   params["input_shape"] = [
     data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]

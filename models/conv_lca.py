@@ -178,16 +178,14 @@ class CONV_LCA(Model):
     Model.generate_plots(self, input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
-    pf.save_data_tiled(
+    pf.plot_data_tiled(
       self.phi.eval(), normalize=True,
-      title="Dictionary at step "+current_step,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"_"
-      +current_step.zfill(5)+".pdf"))
+      title="Dictionary at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      pf.save_data_tiled(grad, normalize=True,
-        title="Gradient for phi at step "+current_step,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"
-        +current_step.zfill(5)+".pdf"))
+      pf.plot_data_tiled(grad, normalize=True,
+        title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))

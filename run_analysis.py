@@ -60,10 +60,10 @@ if analyzer.eval_train or analyzer.act_trig_avgs:
       +analyzer.version+analyzer.file_ext)
     ata_title = "Activity triggered averages on image data"
     num_pixels, num_neurons = train_atas.shape
-    pf.save_data_tiled(train_atas.T.reshape(num_neurons,
+    pf.plot_data_tiled(train_atas.T.reshape(num_neurons,
       int(np.sqrt(num_pixels)), int(np.sqrt(num_pixels))), normalize=False,
-      title=ata_title, save_filename=ata_filename, vmin=np.min(train_atas),
-      vmax=np.max(train_atas))
+      title=ata_title, vmin=np.min(train_atas), vmax=np.max(train_atas),
+      save_filename=ata_filename)
     ## Compute activity triggered averages on noise data
     noise_data = np.random.standard_normal(train_imgs.shape)
     noise_model_outputs = analyzer.evaluate_model(noise_data)
@@ -73,9 +73,9 @@ if analyzer.eval_train or analyzer.act_trig_avgs:
       +analyzer.version+analyzer.file_ext)
     ata_title = "Activity triggered averages on image data"
     num_pixels, num_neurons = noise_atas.shape
-    pf.save_data_tiled(noise_atas.T.reshape(num_neurons,
+    pf.plot_data_tiled(noise_atas.T.reshape(num_neurons,
       int(np.sqrt(num_pixels)), int(np.sqrt(num_pixels))), normalize=False,
-      title=ata_title, save_filename=ata_filename, vmin=np.min(noise_atas),
-      vmax=np.max(noise_atas))
+      title=ata_title, vmin=np.min(noise_atas), vmax=np.max(noise_atas),
+      save_filename=ata_filename)
 
 #import IPython; IPython.embed(); raise SystemExit

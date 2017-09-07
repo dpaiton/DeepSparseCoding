@@ -63,7 +63,7 @@ class Analyzer(object):
   def save_log_stats(self):
     stats = lp.read_stats(self.log_text)
     loss_filename = self.out_dir+"log_stats_v"+self.version+self.file_ext
-    pf.save_stats(data=stats, labels=None, out_filename=loss_filename)
+    pf.plot_stats(data=stats, labels=None, save_filename=loss_filename)
 
   def evaluate_model(self, images):
     pass

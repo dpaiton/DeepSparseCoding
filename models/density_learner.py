@@ -261,53 +261,43 @@ class density_learner(Model):
     #weights = tf.get_default_session().run(self.phi, feed_dict)
     b_weights = tf.get_default_session().run(self.b, feed_dict)
     v_vals = tf.get_default_session().run(self.v, feed_dict)
-    #pf.save_data_tiled(input_data.reshape((self.batch_size,
-    #  np.int(np.sqrt(self.num_pixels)),
-    #  np.int(np.sqrt(self.num_pixels)))),
-    #  normalize=False, title="Images at step "+current_step,
-    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
-    #  +current_step.zfill(5)+".pdf"))
-    #pf.save_data_tiled(weights.T.reshape(self.num_neurons,
+    #pf.plot_data_tiled(input_data.reshape((self.batch_size,
+    #  np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
+    #  normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    #pf.plot_data_tiled(weights.T.reshape(self.num_neurons,
     #  int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-    #  normalize=False, title="Dictionary at step "+current_step,
-    #  save_filename=(self.disp_dir+"phi_v"+self.version+"_"
-    #  +current_step.zfill(5)+".pdf"))
-    pf.save_data_tiled(b_weights.T.reshape(self.num_v,
+    #  normalize=False, title="Dictionary at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+    pf.plot_data_tiled(b_weights.T.reshape(self.num_v,
       int(np.sqrt(self.num_neurons)), int(np.sqrt(self.num_neurons))),
-      normalize=True, title="Density weights at step "+current_step,
-      save_filename=(self.disp_dir+"b_v"+self.version+"_"
-      +current_step.zfill(5)+".pdf"))
-    #pf.save_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
-    #  title="phi l2 norm", save_filename=(self.disp_dir+"phi_norm_v"
-    #  +self.version+"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
-    #  ylabel="L2 Norm")
-    pf.save_bar(np.linalg.norm(b_weights, axis=1, ord=1, keepdims=False),
-      num_xticks=5, title="b l1 norm", save_filename=(self.disp_dir+"b_norm_v"
-      +self.version+"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
-      ylabel="L1 Norm")
-    pf.save_activity_hist(v_vals, num_bins=1000,
+      normalize=True, title="Density weights at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"b_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+    #pf.plot_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
+    #  title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+    #  save_filename=(self.disp_dir+"phi_norm_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    pf.plot_bar(np.linalg.norm(b_weights, axis=1, ord=1, keepdims=False),
+      num_xticks=5, title="b l1 norm", xlabel="Basis Index", ylabel="L1 Norm",
+      save_filename=(self.disp_dir+"b_norm_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    pf.plot_activity_hist(v_vals, num_bins=1000,
       title="v Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"v_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
-    #pf.save_data_tiled(recon.reshape((self.batch_size,
-    #  np.int(np.sqrt(self.num_pixels)),
-    #  np.int(np.sqrt(self.num_pixels)))),
-    #  normalize=False, title="Recons at step "+current_step,
-    #  save_filename=(self.disp_dir+"recons_v"+self.version+"-"
-    #  +current_step.zfill(5)+".pdf"))
+    #pf.plot_data_tiled(recon.reshape((self.batch_size,
+    #  np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
+    #  normalize=False, title="Recons at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       if name == "phi":
-        pf.save_data_tiled(grad.T.reshape(self.num_neurons,
+        pf.plot_data_tiled(grad.T.reshape(self.num_neurons,
           int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-          normalize=True, title="Gradient for phi at step "+current_step,
-          save_filename=(self.disp_dir+"dphi_v"+self.version+"_"
-          +current_step.zfill(5)+".pdf"))
+          normalize=True, title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+          save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
       elif name == "b":
-        pf.save_data_tiled(grad.T.reshape(self.num_v,
+        pf.plot_data_tiled(grad.T.reshape(self.num_v,
           int(np.sqrt(self.num_neurons)), int(np.sqrt(self.num_neurons))),
-          normalize=True, title="Gradient for b at step "+current_step,
-          save_filename=(self.disp_dir+"db_v"+self.version+"_"
-          +current_step.zfill(5)+".pdf"))
+          normalize=True, title="Gradient for b at step "+current_step, vmin=None, vmax=None,
+          save_filename=(self.disp_dir+"db_v"+self.version+"_"+current_step.zfill(5)+".pdf"))

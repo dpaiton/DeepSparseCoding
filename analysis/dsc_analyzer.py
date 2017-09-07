@@ -27,7 +27,7 @@ class dsc(Analyzer):
      "feedback_loss":stats["feedback_loss"],
      "total_loss":stats["total_loss"]}
     loss_filename = self.out_dir+"log_stats_v"+self.version+self.file_ext
-    pf.save_stats(data=losses, labels=None, out_filename=loss_filename)
+    pf.plot_stats(data=losses, labels=None, save_filename=loss_filename)
 
   """
   plot activity triggered averages
@@ -39,8 +39,8 @@ class dsc(Analyzer):
         +datatype+"_v"+self.version+self.file_ext)
       ata = layer.reshape(layer.shape[0], int(np.sqrt(
         layer.shape[1])), int(np.sqrt(layer.shape[1])))
-      pf.save_data_tiled(ata, normalize=True, title=fig_title,
-        save_filename=ata_filename, vmin=-1.0, vmax=1.0)
+      pf.plot_data_tiled(ata, normalize=True, title=fig_title, vmin=-1.0, vmax=1.0,
+        save_filename=ata_filename)
 
   """
   Evaluate model and return activations & weights
