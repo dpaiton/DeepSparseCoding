@@ -1,5 +1,6 @@
-import tensorflow as tf
+import os
 import numpy as np
+import tensorflow as tf
 from analysis.base_analysis import Analyzer
 
 class lca(Analyzer):
@@ -9,11 +10,21 @@ class lca(Analyzer):
   def load_params(self, params):
     Analyzer.load_params(self, params)
 
-  def run_analysis(self, images):
+  def run_analysis(self, images, save_info=""):
     self.run_stats = self.get_log_stats()
     self.evals = self.evaluate_model(images)
     self.atas = self.compute_atas(self.evals["weights/phi:0"],
       self.evals["inference/activity:0"], images)
+    np.savez(self.out_dir+"analysis_"+save_info+".npz",
+      data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas})
+
+  def load_analysis(self, save_info=""):
+    file_loc = self.out_dir+"analysis_"+save_info+".npz"
+    assert os.path.exists(file_loc), "Cannot find file "+file_loc
+    analysis = np.load(file_loc)["data"]
+    self.run_stats = analysis.item().get("run_stats")
+    self.evals = analysis.item().get("evals")
+    self.atas = analysis.item().get("atas")
 
   def evaluate_model(self, images):
     var_names = [
