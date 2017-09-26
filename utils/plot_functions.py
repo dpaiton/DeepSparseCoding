@@ -423,7 +423,7 @@ def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
   ax.set_xlim(xlim[0], xlim[1]) # Ignore first eigenvalue
   ax.set_ylim(ylim[0], ylim[1])
   ax.set_yscale("log")
-  ax.set_title("Sorted eigenvalues of covariance matrix", fontsize=16)
+  ax.set_title("Sorted eigenvalues of covariance matrix", fontsize=18)
   plt.show()
   return fig
 
@@ -488,6 +488,7 @@ def plot_bar(data, num_xticks=5, title="", xlabel="", ylabel="", save_filename=N
     fig.savefig(save_filename, transparent=True)
     plt.close(fig)
     return None
+  plt.show()
   return fig
 
 def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
@@ -515,6 +516,7 @@ def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
       fig.savefig(save_filename)
       plt.close(fig)
       return None
+  plt.show()
   return fig
 
 def plot_phase_avg_power_spec(data, title="", save_filename=None):
@@ -533,10 +535,11 @@ def plot_phase_avg_power_spec(data, title="", save_filename=None):
       fig.savefig(save_filename)
       plt.close(fig)
       return None
+  plt.show()
   return fig
 
 def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
-  save_filename=""):
+  save_filename=None):
   """
   Save figure for input data as a tiled image
   Inpus:
@@ -562,51 +565,58 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
     vmax = np.max(data)
   if len(data.shape) >= 3:
     data = pad_data(data)
-  fig, sub_axis = plt.subplots(1)
+  fig, sub_axis = plt.subplots(1, figsize=(24, 24))
   axis_image = sub_axis.imshow(data, cmap="Greys_r", interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)
-  cbar = fig.colorbar(axis_image)
-  sub_axis.tick_params(
-   axis="both",
-   bottom="off",
-   top="off",
-   left="off",
-   right="off")
+  cbar = add_colorbar_to_im(axis_image)
+  #cbar = fig.colorbar(axis_image)
+  sub_axis.tick_params(axis="both", bottom="off", top="off", left="off", right="off")
   sub_axis.get_xaxis().set_visible(False)
   sub_axis.get_yaxis().set_visible(False)
-  sub_axis.set_title(title)
+  sub_axis.set_title(title, fontsize=24)
   if save_filename is not None:
-      if save_filename == "":
-        save_filename = "./output.ps"
-      fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad_inches=0.01)
-      plt.close(fig)
-      return None
+    if save_filename == "":
+      save_filename = "./output.png"
+    fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad_inches=0.01)
+    plt.close(fig)
+    return None
+  plt.show()
   return fig
 
-def plot_stats(data, labels=None, save_filename=None):
+def plot_stats(data, keys=None, labels=None, save_filename=None):
   """
   Generate time-series plots of stats specified by keys
   Inputs:
     data: [dict] containing data to be plotted. len of all values should be equal
-          data must have the key "batch_step"
-    labels: [list of str] optional list of labels, should be same len as
-            data.keys(). If nothing is given, data.keys() will be used as labels
+      data must have the key "batch_step"
+    keys: [list of str] optional list of keys to plot, each should exist in data.keys()
+      If nothing is given, data.keys() will be used
+    labels: [list of str] optional list of labels, should be the same length as keys input
+      If nothing is given, data.keys() will be used
     save_filename: [str] containing the complete output filename.
   """
-  data_keys = list(data.keys())
-  data_keys.remove("batch_step")
+  if keys is None:
+    keys = list(data.keys())
+  else:
+    assert all([key in data.keys() for key in keys]), (
+      "All input keys must exist as keys in the data dictionary")
+  if "batch_step" in keys:
+    keys.remove("batch_step")
   if labels is None:
-    labels = data_keys
-  num_keys = len(data_keys)
+    labels = keys
+  else:
+    assert len(labels) == len(keys), (
+      "The number of labels must match the number of keys")
+  num_keys = len(keys)
   fig, sub_ax = plt.subplots(num_keys)
   axis_image = [None]*num_keys
-  for key_idx, key in enumerate(data_keys):
+  for key_idx, key in enumerate(keys):
     axis_image[key_idx] = sub_ax[key_idx].plot(data["batch_step"], data[key])
-    if key_idx < len(data_keys)-1:
+    if key_idx < len(keys)-1:
       sub_ax[key_idx].get_xaxis().set_ticklabels([])
     sub_ax[key_idx].locator_params(axis="y", nbins=5)
     sub_ax[key_idx].set_ylabel(labels[key_idx])
-    ylabel_xpos = -0.1
+    ylabel_xpos = -0.15
     sub_ax[key_idx].yaxis.set_label_coords(ylabel_xpos, 0.5)
   sub_ax[-1].set_xlabel("Batch Number")
   fig.suptitle("Stats per Batch", y=1.0, x=0.5)
@@ -614,6 +624,68 @@ def plot_stats(data, labels=None, save_filename=None):
       fig.savefig(save_filename, transparent=True)
       plt.close(fig)
       return None
+  plt.show()
+  return fig
+
+def plot_inference_traces(data, activation_threshold, img_idx=0):
+  """
+  Plot of model neuron inputs over time
+  Args:
+    data: [dict] with each trace, with keys [b, u, a, ga, images]
+      Dictionary is created by analyze_lca.evaluate_inference()
+    img_idx: [int] which image in data["images"] to run analysis on
+  """
+  plt.rc('text', usetex=True)
+  (num_images, num_timesteps, num_neurons) = data["b"].shape
+  sqrt_nn = int(np.sqrt(num_neurons))
+  global_max_val = float(np.max(np.abs([data["b"][img_idx,...],
+    data["u"][img_idx,...], data["ga"][img_idx,...], data["a"][img_idx,...]])))
+  fig, sub_axes = plt.subplots(sqrt_nn+2, sqrt_nn+1, figsize=(20, 20))
+  fig.subplots_adjust(hspace=0.20, wspace=0.20)
+  for (axis_idx, axis) in enumerate(fig.axes): # one axis per neuron
+    if axis_idx < num_neurons:
+      t = np.arange(data["b"].shape[1])
+      b = data["b"][img_idx,:,axis_idx]
+      u = data["u"][img_idx,:,axis_idx]
+      ga = data["ga"][img_idx,:,axis_idx]
+      a = data["a"][img_idx,:,axis_idx]
+      l1, = axis.plot(t, b, linewidth=0.25, color="g", label="b")
+      l2, = axis.plot(t, u, linewidth=0.25, color="b", label="u")
+      l3, = axis.plot(t, ga, linewidth=0.25, color="r", label="Ga")
+      l4, = axis.plot(t, [0 for _ in t], linewidth=0.25, color="k", linestyle="-",
+        label="zero")
+      l5 = axis.plot(t, [activation_threshold for _ in t], linewidth=0.25, color="k",
+        linestyle=":", dashes=(1,1), label=r"$\lambda$")
+      max_val = np.max(np.abs([b, ga, u, a]))
+      scale_ratio = max_val / global_max_val
+      transFigure = fig.transFigure.inverted()
+      axis_height = axis.get_window_extent().transformed(transFigure).height
+      line_length = axis_height * scale_ratio
+      x_offset = 0.003
+      axis_origin = transFigure.transform(axis.transAxes.transform([0,0]))
+      coord1 = [axis_origin[0] - x_offset, axis_origin[1]]
+      coord2 = [coord1[0], coord1[1] + line_length]
+      line = matplotlib.lines.Line2D((coord1[0], coord2[0]), (coord1[1],
+        coord2[1]), transform=fig.transFigure, color="0.3")
+      fig.lines.append(line)
+      if (a[-1] > 0):
+        clear_axis(axis, spines="magenta")
+      else:
+        clear_axis(axis, spines="black")
+    else:
+      clear_axis(axis)
+  num_pixels = np.size(data["images"][img_idx])
+  image = data["images"][img_idx,...].reshape(int(np.sqrt(num_pixels)), int(np.sqrt(num_pixels)))
+  sub_axes[sqrt_nn+1, 0].imshow(image, cmap="Greys", interpolation="nearest")
+  for plot_col in range(sqrt_nn):
+    clear_axis(sub_axes[sqrt_nn+1, plot_col])
+  fig.suptitle("LCA Activity", y=0.9, fontsize=18)
+  handles, labels = sub_axes[0,0].get_legend_handles_labels()
+  legend = sub_axes[sqrt_nn+1, 1].legend(handles, labels, fontsize=12, ncol=3,
+    borderaxespad=0., bbox_to_anchor=[0, 0], fancybox=True, loc="upper left")
+  for line in legend.get_lines():
+    line.set_linewidth(3)
+  plt.show()
   return fig
 
 def pad_data(data, pad_values=1):
@@ -654,7 +726,9 @@ def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, **kwargs):
   current_ax = plt.gca()
   cax = divider.append_axes("right", size=width, pad=pad)
   plt.sca(current_ax)
-  return im.axes.figure.colorbar(im, cax=cax, **kwargs)
+  cbar = im.axes.figure.colorbar(im, cax=cax, **kwargs)
+  cbar.ax.tick_params(labelsize=16)
+  return cbar
 
 def clear_axis(ax, spines="none"):
   ax.spines["right"].set_color(spines)

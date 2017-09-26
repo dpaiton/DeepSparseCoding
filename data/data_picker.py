@@ -27,13 +27,16 @@ Outputs:
 """
 def get_data(dataset_type, params):
   if dataset_type.lower() == "vanhateren":
-    params["data_dir"] += "/vanHateren/"
+    if "vanHateren" not in params["data_dir"]:
+      params["data_dir"] += "/vanHateren/"
     dataset = load_vanHateren(params)
   if dataset_type.lower() == "mnist":
-    params["data_dir"] += "/MNIST/"
+    if "MNIST" not in params["data_dir"]:
+      params["data_dir"] += "/MNIST/"
     dataset = load_MNIST(params)
   if dataset_type.lower() == "cifar10" or dataset_type.lower() == "cifar100":
-    params["data_dir"] += "/CIFAR/"
+    if "CIFAR" not in params["data_dir"]:
+      params["data_dir"] += "/CIFAR/"
     params["num_classes"] = int(dataset_type[5:len(dataset_type)])
     dataset = load_CIFAR(params)
   if dataset_type.lower() == "synthetic":
