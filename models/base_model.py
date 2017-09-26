@@ -81,22 +81,23 @@ class Model(object):
     self.cp_int = int(params["cp_int"])
     self.max_cp_to_keep = int(params["max_cp_to_keep"])
     self.cp_load = bool(params["cp_load"])
-    self.cp_load_name = str(params["cp_load_name"])
-    self.cp_load_step = int(params["cp_load_step"])
-    self.cp_load_ver = str(params["cp_load_ver"])
-    if "cp_load_var" in params:
-      self.cp_load_var = [str(var) for var in params["cp_load_var"]]
-    else:
-      self.cp_load_var = []
-    if "cp_set_var" in params:
-      self.cp_set_var = [str(var) for var in params["cp_set_var"]]
-    else:
-      self.cp_set_var = []
+    if self.cp_load:
+      self.cp_load_name = str(params["cp_load_name"])
+      self.cp_load_step = int(params["cp_load_step"])
+      self.cp_load_ver = str(params["cp_load_ver"])
+      if "cp_load_var" in params:
+        self.cp_load_var = [str(var) for var in params["cp_load_var"]]
+      else:
+        self.cp_load_var = []
+      if "cp_set_var" in params:
+        self.cp_set_var = [str(var) for var in params["cp_set_var"]]
+      else:
+        self.cp_set_var = []
+      self.cp_load_dir = (str(params["out_dir"]) + self.cp_load_name
+        + "/checkpoints/")
     # Directories
     self.out_dir = str(params["out_dir"]) + self.model_name
     self.cp_save_dir = self.out_dir + "/checkpoints/"
-    self.cp_load_dir = (str(params["out_dir"]) + self.cp_load_name
-      + "/checkpoints/")
     self.log_dir = self.out_dir + "/logfiles/"
     self.save_dir = self.out_dir + "/savefiles/"
     self.disp_dir = self.out_dir + "/vis/"
