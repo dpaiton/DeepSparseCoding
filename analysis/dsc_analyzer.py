@@ -3,7 +3,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 from analysis.base_analysis import Analyzer
 
-class dsc(Analyzer):
+class DSC(Analyzer):
   def __init__(self, params, schedule, log_text):
     Analyzer.__init__(self, params, schedule, log_text)
 

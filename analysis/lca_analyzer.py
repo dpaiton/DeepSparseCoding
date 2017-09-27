@@ -3,7 +3,7 @@ import numpy as np
 import tensorflow as tf
 from analysis.base_analysis import Analyzer
 
-class lca(Analyzer):
+class LCA(Analyzer):
   def __init__(self, params):
     Analyzer.__init__(self, params)
 
@@ -12,6 +12,12 @@ class lca(Analyzer):
 
   def run_analysis(self, images, save_info=""):
     self.run_stats = self.get_log_stats()
+    var_names = [
+      "weights/phi:0",
+      "inference/u:0",
+      "inference/activity:0",
+      "output/image_estimate/reconstruction:0",
+      "performance_metrics/reconstruction_quality/recon_quality:0"]
     self.evals = self.evaluate_model(images)
     self.atas = self.compute_atas(self.evals["weights/phi:0"],
       self.evals["inference/activity:0"], images)
@@ -25,43 +31,6 @@ class lca(Analyzer):
     self.run_stats = analysis.item().get("run_stats")
     self.evals = analysis.item().get("evals")
     self.atas = analysis.item().get("atas")
-
-  def evaluate_model(self, images):
-    var_names = [
-      "weights/phi:0",
-      "inference/u:0",
-      "inference/activity:0",
-      "output/image_estimate/reconstruction:0",
-      "performance_metrics/reconstruction_quality/recon_quality:0"]
-    feed_dict = self.model.get_feed_dict(images)
-    with tf.Session(graph=self.model.graph) as tmp_sess:
-      tmp_sess.run(self.model.init_op, feed_dict)
-      self.model.load_weights(tmp_sess, self.cp_loc)
-      tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
-      eval_list = tmp_sess.run(tensors, feed_dict)
-    evals = dict(zip(var_names, eval_list))
-    return evals
-
-  def compute_atas(self, weights, activities, images):
-    """
-    Returns activity triggered averages
-    Outputs:
-      atas [np.ndarray] of the same shape as 'weights' input
-    Inputs:
-      weights [np.ndarray] model weights of shape (num_img_pixels, num_neurons)
-      activities [np.ndarray] of shape (num_imgs, num_neurons)
-      images [np.ndarray] of shape (num_imgs, num_img_pixels)
-    """
-    num_imgs, num_neurons = activities.shape
-    num_pixels = images.shape[1]
-    atas = np.zeros((num_pixels, num_neurons))
-    norm_activities = activities / np.max(activities, axis=0)[None, :] #max is across images
-    for img_idx in range(num_imgs):
-      for neuron_idx in range(num_neurons):
-        if norm_activities[img_idx, neuron_idx] > 0:
-          atas[:, neuron_idx] += norm_activities[img_idx, neuron_idx] * images[img_idx, :]
-    avg_atas = atas / num_imgs
-    return avg_atas
 
   def evaluate_inference(self, images, num_inference_steps=None):
     if num_inference_steps is None:

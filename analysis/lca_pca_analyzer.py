@@ -1,0 +1,73 @@
+import numpy as np
+import tensorflow as tf
+from analysis.lca_analyzer import LCA
+import utils.image_processing as ip
+import utils.notebook as nb
+
+class LCA_PCA(LCA):
+  def __init__(self, params):
+    super(LCA_PCA, self).__init__(params)
+
+  def load_params(self, params):
+    super(LCA_PCA, self).load_params(params)
+    if "rand_seed" in params.keys():
+      self.rand_seed = params["rand_seed"]
+      self.rand_state = np.random.RandomState(self.rand_seed)
+    self.cov_num_images = params["cov_num_images"]
+    self.ft_padding = params["ft_padding"]
+    self.num_gauss_fits = 20
+    self.gauss_thresh = 0.2
+
+  def run_analysis(self, images, save_info=""):
+    self.run_stats = self.get_log_stats()
+    var_names = [
+      "weights/phi:0",
+      "inference/u:0",
+      "inference/activity:0",
+      "inference/b:0",
+      "output/image_estimate/reconstruction:0",
+      "performance_metrics/reconstruction_quality/recon_quality:0"]
+    self.evals = self.evaluate_model(images, var_names)
+    self.atas = self.compute_atas(self.evals["weights/phi:0"],
+      self.evals["inference/activity:0"], images)
+    self.cov = self.analyze_cov(images)
+    self.evec_atas = self.compute_atas(self.cov["a_eigvecs"], self.evals["inference/b:0"], images)
+    self.bf_stats = ip.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
+      num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
+    np.savez(self.out_dir+"analysis_"+save_info+".npz",
+      data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas})
+    np.savez(self.out_dir+"act_cov_"+save_info+".npz", data=self.cov)
+    np.savez(self.out_dir+"bf_stats"+save_info+".npz", data=self.bf_stats)
+
+  def load_analysis(self, save_info=""):
+    file_loc = self.out_dir+"analysis_"+save_info+".npz"
+    assert os.path.exists(file_loc), "Cannot find file "+file_loc
+    analysis = np.load(file_loc)["data"]
+    self.run_stats = analysis.item().get("run_stats")
+    self.evals = analysis.item().get("evals")
+    self.atas = analysis.item().get("atas")
+    self.cov = np.load(self.out_dir+"act_cov.npz")["data"]
+    self.bf_stats = np.load(self.out_dir+"bf_stats.npz")["data"]
+
+  def analyze_cov(self, images):
+    num_imgs, num_pixels = images.shape
+    with tf.Session(graph=self.self.model.graph) as sess:
+      sess.run(self.model.init_op, feed_dict={self.model.x:np.zeros([num_imgs, num_pixels],
+        dtype=np.float32)})
+      self.model.load_weights(sess, tf.train.latest_checkpoint(self.model.cp_save_dir))
+      act_cov = None
+      num_cov_in_avg = 0
+      for cov_batch_idx  in nb.log_progress(range(0, self.cov_num_images, num_imgs), every=1):
+        feed_dict = self.model.get_feed_dict(images)
+        if act_cov is None:
+          act_cov = sess.run(self.model.act_cov, feed_dict)
+        else:
+          act_cov += sess.run(self.model.act_cov, feed_dict)
+        num_cov_in_avg += 1
+      act_cov /= num_cov_in_avg
+      feed_dict[self.model.full_cov] = act_cov
+      run_list = [self.model.eigen_vals, self.model.eigen_vecs, self.model.pooling_filters]
+      a_eigvals, a_eigvecs, pooling_filters  = sess.run(run_list, feed_dict) 
+  return {"act_cov": act_cov, "a_eigvals": a_eigvals, "a_eigvecs":a_eigvecs,
+    "pooling_filters": pooling_filters} 
+

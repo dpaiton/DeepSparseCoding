@@ -64,8 +64,6 @@ class LCA_PCA_FB(LCA_PCA):
 
   def build_graph(self):
     super(LCA_PCA_FB, self).build_graph()
-    with tf.name_scope("inference") as scope:
-      self.b = tf.matmul(self.a, self.eigen_vecs)
 
   def print_update(self, input_data, input_labels=None, batch_step=0):
     """

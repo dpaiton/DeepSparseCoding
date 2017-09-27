@@ -23,8 +23,8 @@ class Analyzer(object):
   def load_params(self, params):
     """Load analysis parameters into object"""
     # Model details
-    self.version = params["version"]
     self.model_name = params["model_name"]
+    self.version = params["version"]
     self.device = params["device"]
     self.out_dir = params["model_dir"]+"/analysis/"+self.version+"/"
     if "cp_idx" in params.keys():
@@ -50,3 +50,34 @@ class Analyzer(object):
   def get_log_stats(self):
     """Wrapper function for parsing the log statistics"""
     return lp.read_stats(self.log_text)
+
+  def evaluate_model(self, images, var_names):
+    feed_dict = self.model.get_feed_dict(images)
+    with tf.Session(graph=self.model.graph) as tmp_sess:
+      tmp_sess.run(self.model.init_op, feed_dict)
+      self.model.load_weights(tmp_sess, self.cp_loc)
+      tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
+      eval_list = tmp_sess.run(tensors, feed_dict)
+    evals = dict(zip(var_names, eval_list))
+    return evals
+
+  def compute_atas(self, weights, activities, images):
+    """
+    Returns activity triggered averages
+    Outputs:
+      atas [np.ndarray] of the same shape as 'weights' input
+    Inputs:
+      weights [np.ndarray] model weights of shape (num_img_pixels, num_neurons)
+      activities [np.ndarray] of shape (num_imgs, num_neurons)
+      images [np.ndarray] of shape (num_imgs, num_img_pixels)
+    """
+    num_imgs, num_neurons = activities.shape
+    num_pixels = images.shape[1]
+    atas = np.zeros((num_pixels, num_neurons))
+    norm_activities = activities / np.max(activities, axis=0)[None, :] #max is across images
+    for img_idx in range(num_imgs):
+      for neuron_idx in range(num_neurons):
+        if norm_activities[img_idx, neuron_idx] > 0:
+          atas[:, neuron_idx] += norm_activities[img_idx, neuron_idx] * images[img_idx, :]
+    avg_atas = atas / num_imgs
+    return avg_atas

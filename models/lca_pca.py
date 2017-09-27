@@ -9,19 +9,19 @@ class LCA_PCA(LCA):
     new_params.update(params)
     super(LCA_PCA, self).__init__(new_params, schedule)
 
-  """
-  Load parameters into object
-  Inputs:
-   params: [dict] model parameters
-  Modifiable Parameters:
-    num_pooling_units [int] indicating the number of 2nd layer units
-  """
   def load_params(self, params):
+    """
+    Load parameters into object
+    Inputs:
+     params: [dict] model parameters
+    Modifiable Parameters:
+      num_pooling_units [int] indicating the number of 2nd layer units
+    """
     super(LCA_PCA, self).load_params(params)
     self.num_pooling_units = int(params["num_pooling_units"])
 
-  """Build the TensorFlow graph object"""
   def build_graph(self):
+    """Build the TensorFlow graph object"""
     super(LCA_PCA, self).build_graph()
     with self.graph.as_default():
       with tf.name_scope("covariance") as scope:
@@ -35,8 +35,11 @@ class LCA_PCA(LCA):
         self.full_cov = tf.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),
           name="full_covariance_matrix")
         s, u, v = tf.svd(self.full_cov, full_matrices=True, name="a_svd")
-        self.eigen_vals = s
-        self.eigen_vecs = u
+        self.eigen_vals = tf.identity(s, name="eigen_vals")
+        self.eigen_vecs = tf.identity(u, name="eigen_vecs")
         top_vecs = self.eigen_vecs[:, :self.num_pooling_units]
         self.pooling_filters = tf.transpose(tf.matmul(top_vecs, tf.transpose(top_vecs)),
           name="pooling_filters")
+
+      with tf.name_scope("inference") as scope:
+        self.b = tf.matmul(self.a, self.eigen_vecs, name="b")
