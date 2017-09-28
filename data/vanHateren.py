@@ -7,10 +7,8 @@ class vanHateren(object):
   def __init__(self, img_dir, whiten_data=False, contrast_normalize=False,
     num_images=50, num_examples=None, patch_edge_size=None, overlapping=None,
     var_thresh=None, rand_state=np.random.RandomState()):
-    full_img_data = self.extract_images(img_dir, num_images,
-      rand_state=rand_state)
-    full_img_data = ip.downsample_data(full_img_data, factor=[1, 0.5, 0.5],
-      order=2)
+    full_img_data = self.extract_images(img_dir, num_images, rand_state=rand_state)
+    full_img_data = ip.downsample_data(full_img_data, factor=[1, 0.5, 0.5], order=2)
 
     if whiten_data:
       full_img_data = ip.whiten_data(full_img_data, method="FT")
@@ -58,8 +56,10 @@ def load_vanHateren(kwargs):
     if "rand_state" in kwargs.keys() else np.random.RandomState())
   patch_edge_size = (np.int(kwargs["patch_edge_size"])
     if "patch_edge_size" in kwargs.keys() else None)
+  # Number of images to pull from vh dataset
   num_images = (np.int(kwargs["num_images"])
     if "num_images"in kwargs.keys() else 50)
+  # Number of patches (data examples) to draw from the set of num_images images
   num_examples = (np.int(kwargs["epoch_size"])
     if "epoch_size" in kwargs.keys() else None)
   overlapping = (kwargs["overlapping_patches"]

@@ -24,14 +24,12 @@ class LCA_PCA(LCA):
       "weights/phi:0",
       "inference/u:0",
       "inference/activity:0",
-      "inference/b:0",
       "output/image_estimate/reconstruction:0",
       "performance_metrics/reconstruction_quality/recon_quality:0"]
     self.evals = self.evaluate_model(images, var_names)
-    self.atas = self.compute_atas(self.evals["weights/phi:0"],
-      self.evals["inference/activity:0"], images)
+    self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
     self.cov = self.analyze_cov(images)
-    self.evec_atas = self.compute_atas(self.cov["a_eigvecs"], self.evals["inference/b:0"], images)
+    self.evec_atas = self.compute_atas(self.cov["b"], images)
     self.bf_stats = ip.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     np.savez(self.out_dir+"analysis_"+save_info+".npz",
@@ -47,18 +45,26 @@ class LCA_PCA(LCA):
     self.evals = analysis.item().get("evals")
     self.atas = analysis.item().get("atas")
     self.cov = np.load(self.out_dir+"act_cov.npz")["data"]
+    #cov_items = np.load(self.out_dir+"act_cov.npz")["data"]
+    #self.cov = {"act_cov":cov_items.item().get("act_cov"),
+    #  "a_eigvals":cov_items.item().get("a_eigvals"),
+    #  "a_eigvecs":cov_items.item().get("a_eigvecs"),
+    #  "pooling_filters":cov_items.item().get("pooling_filters"),
+    #  "b":cov_items.item().get("b")}
     self.bf_stats = np.load(self.out_dir+"bf_stats.npz")["data"]
 
   def analyze_cov(self, images):
     num_imgs, num_pixels = images.shape
-    with tf.Session(graph=self.self.model.graph) as sess:
-      sess.run(self.model.init_op, feed_dict={self.model.x:np.zeros([num_imgs, num_pixels],
-        dtype=np.float32)})
-      self.model.load_weights(sess, tf.train.latest_checkpoint(self.model.cp_save_dir))
+    with tf.Session(graph=self.model.graph) as sess:
+      sess.run(self.model.init_op,
+        feed_dict={self.model.x:np.zeros([num_imgs, num_pixels], dtype=np.float32)})
+      self.model.load_weights(sess, self.cp_loc)
       act_cov = None
       num_cov_in_avg = 0
-      for cov_batch_idx  in nb.log_progress(range(0, self.cov_num_images, num_imgs), every=1):
-        feed_dict = self.model.get_feed_dict(images)
+      for cov_batch_idx  in nb.log_progress(range(0, self.cov_num_images, self.model.batch_size),
+        every=1):
+        input_data = images[cov_batch_idx:cov_batch_idx+self.model.batch_size, ...]
+        feed_dict = self.model.get_feed_dict(input_data)
         if act_cov is None:
           act_cov = sess.run(self.model.act_cov, feed_dict)
         else:
@@ -66,8 +72,8 @@ class LCA_PCA(LCA):
         num_cov_in_avg += 1
       act_cov /= num_cov_in_avg
       feed_dict[self.model.full_cov] = act_cov
-      run_list = [self.model.eigen_vals, self.model.eigen_vecs, self.model.pooling_filters]
-      a_eigvals, a_eigvecs, pooling_filters  = sess.run(run_list, feed_dict) 
-  return {"act_cov": act_cov, "a_eigvals": a_eigvals, "a_eigvecs":a_eigvecs,
-    "pooling_filters": pooling_filters} 
-
+      run_list = [self.model.eigen_vals, self.model.eigen_vecs, self.model.pooling_filters,
+        self.model.b]
+      a_eigvals, a_eigvecs, pooling_filters, b = sess.run(run_list, feed_dict)
+    return {"act_cov": act_cov, "a_eigvals": a_eigvals, "a_eigvecs":a_eigvecs,
+      "pooling_filters": pooling_filters, "b":b}

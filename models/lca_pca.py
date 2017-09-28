@@ -41,5 +41,5 @@ class LCA_PCA(LCA):
         self.pooling_filters = tf.transpose(tf.matmul(top_vecs, tf.transpose(top_vecs)),
           name="pooling_filters")
 
-      with tf.name_scope("inference") as scope:
+      with tf.variable_scope("inference") as scope:
         self.b = tf.matmul(self.a, self.eigen_vecs, name="b")

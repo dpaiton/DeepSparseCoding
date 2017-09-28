@@ -19,8 +19,7 @@ class LCA(Analyzer):
       "output/image_estimate/reconstruction:0",
       "performance_metrics/reconstruction_quality/recon_quality:0"]
     self.evals = self.evaluate_model(images)
-    self.atas = self.compute_atas(self.evals["weights/phi:0"],
-      self.evals["inference/activity:0"], images)
+    self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
     np.savez(self.out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas})
 
@@ -37,7 +36,6 @@ class LCA(Analyzer):
       num_inference_steps = self.model_params["num_steps"]
     num_imgs, num_pixels = images.shape
     num_neurons = self.model_params["num_neurons"]
-    #out_shape = (num_imgs, num_inference_steps, num_neurons)
     b = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)
     ga = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)
     u = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)
@@ -46,19 +44,20 @@ class LCA(Analyzer):
     #psnr = np.zeros((num_imgs, num_inference_steps))
     #recon_loss = np.zeros((num_imgs, num_inference_steps))
     #sparse_loss = np.zeros((num_imgs, num_inference_steps))
-    with tf.Session(graph=self.model.graph) as tmp_sess:
-      tmp_sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
+    with tf.Session(graph=self.model.graph) as sess:
+      sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
+      self.model.load_weights(sess, self.cp_loc)
       for img_idx in range(num_imgs):
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
-        lca_b = tmp_sess.run(self.model.compute_excitatory_current(), feed_dict)
-        lca_g = tmp_sess.run(self.model.compute_inhibitory_connectivity(), feed_dict)
+        lca_b = sess.run(self.model.compute_excitatory_current(), feed_dict)
+        lca_g = sess.run(self.model.compute_inhibitory_connectivity(), feed_dict)
         for step in range(1, num_inference_steps):
           current_u = u[img_idx, step-1, :][None, ...]
           current_a = a[img_idx, step-1, :][None, ...]
           run_list = [self.model.step_inference(current_u, current_a, lca_b, lca_g, step),
             self.model.compute_total_loss(current_a)]
-          [lca_u_and_ga, current_loss] = tmp_sess.run(run_list, feed_dict)
-          lca_a = tmp_sess.run(self.model.threshold_units(lca_u_and_ga[0]), feed_dict)
+          [lca_u_and_ga, current_loss] = sess.run(run_list, feed_dict)
+          lca_a = sess.run(self.model.threshold_units(lca_u_and_ga[0]), feed_dict)
           b[img_idx, step, :] = lca_b
           u[img_idx, step, :] = lca_u_and_ga[0]
           ga[img_idx, step, :] = lca_u_and_ga[1]

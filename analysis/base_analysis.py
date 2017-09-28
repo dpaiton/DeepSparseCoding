@@ -53,28 +53,27 @@ class Analyzer(object):
 
   def evaluate_model(self, images, var_names):
     feed_dict = self.model.get_feed_dict(images)
-    with tf.Session(graph=self.model.graph) as tmp_sess:
-      tmp_sess.run(self.model.init_op, feed_dict)
-      self.model.load_weights(tmp_sess, self.cp_loc)
+    with tf.Session(graph=self.model.graph) as sess:
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_weights(sess, self.cp_loc)
       tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
-      eval_list = tmp_sess.run(tensors, feed_dict)
+      eval_list = sess.run(tensors, feed_dict)
     evals = dict(zip(var_names, eval_list))
     return evals
 
-  def compute_atas(self, weights, activities, images):
+  def compute_atas(self, activities, images):
     """
     Returns activity triggered averages
     Outputs:
       atas [np.ndarray] of the same shape as 'weights' input
     Inputs:
-      weights [np.ndarray] model weights of shape (num_img_pixels, num_neurons)
       activities [np.ndarray] of shape (num_imgs, num_neurons)
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
     """
     num_imgs, num_neurons = activities.shape
     num_pixels = images.shape[1]
     atas = np.zeros((num_pixels, num_neurons))
-    norm_activities = activities / np.max(activities, axis=0)[None, :] #max is across images
+    norm_activities = activities / (np.max(activities, axis=0)[None, :]+1e-6) #max is across images
     for img_idx in range(num_imgs):
       for neuron_idx in range(num_neurons):
         if norm_activities[img_idx, neuron_idx] > 0:

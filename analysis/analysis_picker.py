@@ -1,7 +1,7 @@
 from analysis.lca_analyzer import LCA as lca_analyzer
 from analysis.lca_pca_analyzer import LCA_PCA as lca_pca_analyzer
 from analysis.dsc_analyzer import DSC as dsc_analyzer
-from analysidscs.density_analyzer import density_analyzer as density_analyzer
+from analysis.density_analyzer import density_analyzer as density_analyzer
 
 def get_analyzer(params):
   if params["model_type"].lower() == "lca":

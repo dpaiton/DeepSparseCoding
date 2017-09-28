@@ -134,7 +134,7 @@ class LCA(Model):
           self.norm_weights = tf.group(self.norm_phi,
             name="l2_normalization")
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
          u_list, a_list = self.infer_coefficients()
          self.u = tf.identity(u_list[-1], name="u")
          self.a = tf.identity(a_list[-1], name="activity")
