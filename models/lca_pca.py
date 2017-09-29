@@ -43,3 +43,4 @@ class LCA_PCA(LCA):
 
       with tf.variable_scope("inference") as scope:
         self.b = tf.matmul(self.a, self.eigen_vecs, name="b")
+        self.pooled_activity = tf.matmul(self.a, self.pooling_filters, name="pooled_act")

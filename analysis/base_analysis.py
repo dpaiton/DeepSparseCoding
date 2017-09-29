@@ -65,18 +65,20 @@ class Analyzer(object):
     """
     Returns activity triggered averages
     Outputs:
-      atas [np.ndarray] of the same shape as 'weights' input
+      atas [np.ndarray] of shape (num_pixels, num_neurons)
     Inputs:
       activities [np.ndarray] of shape (num_imgs, num_neurons)
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
     """
-    num_imgs, num_neurons = activities.shape
-    num_pixels = images.shape[1]
-    atas = np.zeros((num_pixels, num_neurons))
-    norm_activities = activities / (np.max(activities, axis=0)[None, :]+1e-6) #max is across images
-    for img_idx in range(num_imgs):
-      for neuron_idx in range(num_neurons):
-        if norm_activities[img_idx, neuron_idx] > 0:
-          atas[:, neuron_idx] += norm_activities[img_idx, neuron_idx] * images[img_idx, :]
-    avg_atas = atas / num_imgs
+    #num_imgs, num_neurons = activities.shape
+    #num_pixels = images.shape[1]
+    #atas = np.zeros((num_pixels, num_neurons))
+    #norm_activities = activities# / (np.max(activities, axis=0)[None, :]+1e-6) #max is across images
+    #for img_idx in range(num_imgs):
+    #  for neuron_idx in range(num_neurons):
+    #    #if norm_activities[img_idx, neuron_idx] > 0:
+    #    atas[:, neuron_idx] += norm_activities[img_idx, neuron_idx] * images[img_idx, :]
+    #avg_atas = atas / num_imgs
+    atas = np.dot(images.T, activities)
+    avg_atas = atas / images.shape[1]
     return avg_atas

@@ -30,6 +30,7 @@ class LCA_PCA(LCA):
     self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
     self.cov = self.analyze_cov(images)
     self.evec_atas = self.compute_atas(self.cov["b"], images)
+    self.pool_atas = self.compute_atas(self.cov["pooled_act"], images)
     self.bf_stats = ip.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     np.savez(self.out_dir+"analysis_"+save_info+".npz",
@@ -71,9 +72,10 @@ class LCA_PCA(LCA):
           act_cov += sess.run(self.model.act_cov, feed_dict)
         num_cov_in_avg += 1
       act_cov /= num_cov_in_avg
+      feed_dict = self.model.get_feed_dict(images)
       feed_dict[self.model.full_cov] = act_cov
       run_list = [self.model.eigen_vals, self.model.eigen_vecs, self.model.pooling_filters,
-        self.model.b]
-      a_eigvals, a_eigvecs, pooling_filters, b = sess.run(run_list, feed_dict)
+        self.model.b, self.model.pooled_activity]
+      a_eigvals, a_eigvecs, pooling_filters, b, pooled_act = sess.run(run_list, feed_dict)
     return {"act_cov": act_cov, "a_eigvals": a_eigvals, "a_eigvecs":a_eigvecs,
-      "pooling_filters": pooling_filters, "b":b}
+      "pooling_filters": pooling_filters, "b":b, "pooled_act":pooled_act}
