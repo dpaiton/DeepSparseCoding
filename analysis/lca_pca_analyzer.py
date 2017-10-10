@@ -45,7 +45,7 @@ class LCA_PCA(LCA):
     self.run_stats = analysis.item().get("run_stats")
     self.evals = analysis.item().get("evals")
     self.atas = analysis.item().get("atas")
-    self.cov = np.load(self.out_dir+"act_cov.npz")["data"]
+    self.cov = np.load(self.out_dir+"act_cov_"+save_info+".npz")["data"]
     #cov_items = np.load(self.out_dir+"act_cov.npz")["data"]
     #self.cov = {"act_cov":cov_items.item().get("act_cov"),
     #  "a_eigvals":cov_items.item().get("a_eigvals"),

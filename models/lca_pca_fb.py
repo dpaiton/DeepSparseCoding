@@ -21,7 +21,6 @@ class LCA_PCA_FB(LCA_PCA):
     """
     super(LCA_PCA_FB, self).load_params(params)
     self.num_pooling_units = int(params["num_pooling_units"])
-    self.fb_mult = int(params["fb_mult"])
 
   def compute_feedback_loss(self, a_in):
     current_b = tf.matmul(a_in, self.eigen_vecs)
@@ -51,19 +50,22 @@ class LCA_PCA_FB(LCA_PCA):
    return (u_list[-1], a_list[-1])
 
   def compute_total_loss(self, a_in):
-      with tf.name_scope("unsupervised"):
-        self.recon_loss = tf.reduce_mean(0.5 *
-          tf.reduce_sum(tf.pow(tf.subtract(self.x, self.compute_recon(a_in)), 2.0),
-          axis=[1]), name="recon_loss")
-        self.sparse_loss = self.sparse_mult * tf.reduce_mean(
-          tf.reduce_sum(tf.abs(a_in), axis=[1]), name="sparse_loss")
-        self.feedback_loss = self.compute_feedback_loss(a_in)[1]
-        self.unsupervised_loss = (self.recon_loss + self.sparse_loss + self.feedback_loss)
-      total_loss = self.unsupervised_loss
-      return total_loss
+    with tf.name_scope("unsupervised"):
+      self.recon_loss = tf.reduce_mean(0.5 *
+        tf.reduce_sum(tf.pow(tf.subtract(self.x, self.compute_recon(a_in)), 2.0),
+        axis=[1]), name="recon_loss")
+      self.sparse_loss = self.sparse_mult * tf.reduce_mean(
+        tf.reduce_sum(tf.abs(a_in), axis=[1]), name="sparse_loss")
+      self.feedback_loss = self.compute_feedback_loss(a_in)[1]
+      self.unsupervised_loss = (self.recon_loss + self.sparse_loss + self.feedback_loss)
+    total_loss = self.unsupervised_loss
+    return total_loss
 
   def build_graph(self):
     super(LCA_PCA_FB, self).build_graph()
+    with self.graph.as_default():
+      with tf.name_scope("placeholders") as scope:
+        self.fb_mult = tf.placeholder(tf.float32, shape=(), name="fb_mult")
 
   def print_update(self, input_data, input_labels=None, batch_step=0):
     """

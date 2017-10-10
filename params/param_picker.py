@@ -39,8 +39,8 @@ def get_params(model_type):
     lca_pca_params.params["conv"] = False
     return lca_pca_params.params, lca_pca_params.schedule
   if model_type.lower() == "lca_pca_fb":
-    lca_pca_params.params["conv"] = False
-    return lca_pca_params.params, None
+    lca_pca_fb_params.params["conv"] = False
+    return lca_pca_fb_params.params, lca_pca_fb_params.schedule
   if model_type.lower() == "conv_lca":
     conv_lca_params.params["conv"] = True
     return conv_lca_params.params, conv_lca_params.schedule
