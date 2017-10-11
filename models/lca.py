@@ -1,5 +1,4 @@
 import numpy as np
-import logging
 import json as js
 import tensorflow as tf
 import utils.plot_functions as pf
@@ -102,7 +101,6 @@ class LCA(Model):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    self.graph = tf.Graph()
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:

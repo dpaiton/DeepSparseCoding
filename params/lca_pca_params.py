@@ -16,7 +16,7 @@ params = {
   "batch_size": 100,
   "num_neurons": 512, #1024,#2560,
   "num_pooling_units": 25,
-  "num_inference_steps": 20,
+  "num_steps": 30,
   "dt": 0.001,
   "tau": 0.03,
   "thresh_type": "soft",

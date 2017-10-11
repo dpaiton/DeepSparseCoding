@@ -1,3 +1,5 @@
+import numpy as np
+import json as js
 import tensorflow as tf
 import params.param_picker as pp
 from models.lca_pca import LCA_PCA
@@ -47,7 +49,7 @@ class LCA_PCA_FB(LCA_PCA):
      u, _ = self.step_inference(u_list[step], a_list[step], lca_b, lca_g)
      u_list.append(u)
      a_list.append(self.threshold_units(u_list[step+1]))
-   return (u_list[-1], a_list[-1])
+   return (u_list, a_list)
 
   def compute_total_loss(self, a_in):
     with tf.name_scope("unsupervised"):
@@ -62,20 +64,22 @@ class LCA_PCA_FB(LCA_PCA):
     return total_loss
 
   def build_graph(self):
-    super(LCA_PCA_FB, self).build_graph()
     with self.graph.as_default():
       with tf.name_scope("placeholders") as scope:
         self.fb_mult = tf.placeholder(tf.float32, shape=(), name="fb_mult")
+    super(LCA_PCA_FB, self).build_graph()
 
-  def print_update(self, input_data, input_labels=None, batch_step=0):
+  def print_update(self, input_data, activity_cov, input_labels=None, batch_step=0):
     """
     Log train progress information
     Inputs:
       input_data: data object containing the current image batch
+      activity_cov: covariance matrix of shape [num_neurons, num_neurons] for computing total loss
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
+    feed_dict[self.full_cov] = activity_cov
     current_step = np.array(self.global_step.eval()).tolist()
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
     sparse_loss = np.array(self.sparse_loss.eval(feed_dict)).tolist()
@@ -102,7 +106,7 @@ class LCA_PCA_FB(LCA_PCA):
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     self.log_info("<stats>"+js_str+"</stats>")
 
-  def generate_plots(self, input_data, input_labels=None):
+  def generate_plots(self, input_data, activity_cov, input_labels=None):
     """
     Plot weights, reconstruction, and gradients
     Inputs:
@@ -110,6 +114,7 @@ class LCA_PCA_FB(LCA_PCA):
       input_labels: data object containing the current label batch
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
+    feed_dict[self.full_cov] = activity_cov
     current_step = str(self.global_step.eval())
     recon = tf.get_default_session().run(self.x_, feed_dict)
     pf.plot_data_tiled(input_data.reshape((self.batch_size,

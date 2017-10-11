@@ -22,15 +22,7 @@ class LCA_PCA(LCA):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    super(LCA_PCA, self).build_graph()
     with self.graph.as_default():
-      with tf.name_scope("covariance") as scope:
-        self.act_corr = tf.divide(tf.matmul(tf.transpose(self.a), self.a),
-          tf.to_float(tf.shape(self.x)[0]), name="a_corr_matrix")
-        act_centered = self.a - tf.reduce_mean(self.a, axis=[1], keep_dims=True)
-        self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
-          tf.to_float(tf.shape(self.x)[0]), name="a_cov_matrix")
-
       with tf.name_scope("pooling_filters") as scope:
         self.full_cov = tf.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),
           name="full_covariance_matrix")
@@ -40,6 +32,16 @@ class LCA_PCA(LCA):
         top_vecs = self.eigen_vecs[:, :self.num_pooling_units]
         self.pooling_filters = tf.transpose(tf.matmul(top_vecs, tf.transpose(top_vecs)),
           name="pooling_filters")
+
+    super(LCA_PCA, self).build_graph()
+
+    with self.graph.as_default():
+      with tf.name_scope("covariance") as scope:
+        self.act_corr = tf.divide(tf.matmul(tf.transpose(self.a), self.a),
+          tf.to_float(tf.shape(self.x)[0]), name="a_corr_matrix")
+        act_centered = self.a - tf.reduce_mean(self.a, axis=[1], keep_dims=True)
+        self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
+          tf.to_float(tf.shape(self.x)[0]), name="a_cov_matrix")
 
       with tf.variable_scope("inference") as scope:
         self.b = tf.matmul(self.a, self.eigen_vecs, name="b")

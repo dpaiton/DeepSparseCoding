@@ -10,7 +10,7 @@ import data.data_picker as dp
 ## Specify training run params
 model_type = "lca_pca_fb"
 data_type = "vanhateren"
-cov_suffix = "300_imgs"
+cov_suffix = "300k_imgs"
 
 ## Import params
 params, schedule = pp.get_params(model_type)
@@ -46,20 +46,22 @@ with tf.Session(graph=model.graph) as sess:
   model.write_graph(sess.graph_def)
 
   # Load model weights from pretrained session
-  model.load_weights(sess, model.cp_load_dir)
+  model.load_weights(sess, tf.train.latest_checkpoint(model.cp_load_dir))
 
   # Load activity covariance matrix from previously run analysis
-  act_loc = model.out_dir+"/analysis/"+model.version+"/act_"+cov_suffix+".npz"
-  act_cov = np.load(act_loc)["data"]["act_cov"]
-  feed_dict = model.get_feed_dict(input_data, input_labels)
-  feed_dict[self.model.full_cov] = act_cov
+  act_loc = ("/home/dpaiton/Work/Projects/lca_pca_512/analysis/"
+    +model.version+"/act_cov_"+cov_suffix+".npz")
+  cov_items = np.load(act_loc)["data"]
+  act_cov = cov_items.item().get("act_cov")
 
   # Fine tune weights using feedback
-  model.log_info("Beginning schedule "+str(model.sch_idx))
+  model.log_info("Beginning schedule "+str(model.sched_idx))
   for b_step in range(model.get_sched("num_batches")):
     data_batch = data["train"].next_batch(model.batch_size)
     input_data = data_batch[0]
     input_labels = data_batch[1]
+    feed_dict = model.get_feed_dict(input_data, input_labels)
+    feed_dict[model.full_cov] = act_cov
 
     ## Normalize weights
     if hasattr(model, "norm_weights"):
@@ -72,19 +74,19 @@ with tf.Session(graph=model.graph) as sess:
 
     ## Update weights
     for w_idx in range(len(model.get_sched("weights"))):
-      sess.run(model.apply_grads[model.sch_idx][w_idx], feed_dict)
+      sess.run(model.apply_grads[model.sched_idx][w_idx], feed_dict)
 
     ## Generate logs
     current_step = sess.run(model.global_step)
     if (current_step % model.log_int == 0
       and model.log_int > 0):
-      model.print_update(input_data=input_data, input_labels=input_labels,
+      model.print_update(input_data=input_data, activity_cov=act_cov, input_labels=input_labels,
         batch_step=b_step+1)
 
     ## Plot weights & gradients
     if (current_step % model.gen_plot_int == 0
       and model.gen_plot_int > 0):
-      model.generate_plots(input_data=input_data, input_labels=input_labels)
+      model.generate_plots(input_data=input_data, activity_cov=act_cov, input_labels=input_labels)
 
     ## Checkpoint
     if (current_step % model.cp_int == 0
