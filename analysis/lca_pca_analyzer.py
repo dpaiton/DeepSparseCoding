@@ -33,26 +33,29 @@ class LCA_PCA(LCA):
     self.pool_atas = self.compute_atas(self.cov["pooled_act"], images)
     self.bf_stats = ip.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
+    self.inference_stats = self.evaluate_inference(images[0:1])
     np.savez(self.out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas})
     np.savez(self.out_dir+"act_cov_"+save_info+".npz", data=self.cov)
-    np.savez(self.out_dir+"bf_stats"+save_info+".npz", data=self.bf_stats)
+    np.savez(self.out_dir+"bf_stats_"+save_info+".npz", data=self.bf_stats)
+    np.savez(self.out_dir+"inference_stats_"+save_info+".npz", data=self.inference_stats)
 
   def load_analysis(self, save_info=""):
     file_loc = self.out_dir+"analysis_"+save_info+".npz"
-    assert os.path.exists(file_loc), "Cannot find file "+file_loc
     analysis = np.load(file_loc)["data"]
     self.run_stats = analysis.item().get("run_stats")
     self.evals = analysis.item().get("evals")
     self.atas = analysis.item().get("atas")
-    self.cov = np.load(self.out_dir+"act_cov_"+save_info+".npz")["data"]
-    #cov_items = np.load(self.out_dir+"act_cov.npz")["data"]
-    #self.cov = {"act_cov":cov_items.item().get("act_cov"),
-    #  "a_eigvals":cov_items.item().get("a_eigvals"),
-    #  "a_eigvecs":cov_items.item().get("a_eigvecs"),
-    #  "pooling_filters":cov_items.item().get("pooling_filters"),
-    #  "b":cov_items.item().get("b")}
-    self.bf_stats = np.load(self.out_dir+"bf_stats.npz")["data"]
+    #self.cov = np.load(self.out_dir+"act_cov_"+save_info+".npz")["data"]
+    cov_items = np.load(self.out_dir+"act_cov_"+save_info+".npz")["data"]
+    self.cov = {"act_cov":cov_items.item().get("act_cov"),
+      "a_eigvals":cov_items.item().get("a_eigvals"),
+      "a_eigvecs":cov_items.item().get("a_eigvecs"),
+      "pooling_filters":cov_items.item().get("pooling_filters"),
+      "b":cov_items.item().get("b"),
+      "pooled_act":cov_items.item().get("pooled_act")}
+    self.bf_stats = np.load(self.out_dir+"bf_stats_"+save_info+".npz")["data"]
+    self.inference_stats = np.load(self.out_dir+"inference_stats_"+save_info+".npz")["data"]
 
   def analyze_cov(self, images):
     num_imgs, num_pixels = images.shape
