@@ -34,7 +34,6 @@ class ICA(Model):
 
   """Build the TensorFlow graph object"""
   def build_graph(self):
-    self.graph = tf.Graph()
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:

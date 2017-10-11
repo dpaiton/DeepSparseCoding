@@ -16,6 +16,7 @@ class Model(object):
     self.init_logging()
     self.log_params()
     self.log_schedule()
+    self.graph = tf.Graph()
     self.setup_graph()
 
   """
@@ -355,15 +356,12 @@ class Model(object):
     input_labels: label to be placed in self.y
   """
   def get_feed_dict(self, input_data, input_labels=None):
-    if hasattr(self, "y") and input_labels is not None:
-      skip_num = 2
-    else:
-      skip_num = 1
-      input_labels = None
     placeholders = [op.name
       for op
       in self.graph.get_operations()
-      if "placeholders" in op.name][skip_num:]
+      if ("placeholders" in op.name
+      and "input_data" not in op.name
+      and "input_label" not in op.name)]
     if input_labels is not None and hasattr(self, "y"):
       feed_dict = {self.x:input_data, self.y:input_labels}
     else:

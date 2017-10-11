@@ -53,7 +53,6 @@ class MLP(Model):
   Build an MLP TensorFlow Graph.
   """
   def build_graph(self):
-    self.graph = tf.Graph()
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
