@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import tensorflow as tf
 from analysis.base_analysis import Analyzer
@@ -25,11 +24,10 @@ class LCA(Analyzer):
 
   def load_analysis(self, save_info=""):
     file_loc = self.out_dir+"analysis_"+save_info+".npz"
-    assert os.path.exists(file_loc), "Cannot find file "+file_loc
-    analysis = np.load(file_loc)["data"]
-    self.run_stats = analysis.item().get("run_stats")
-    self.evals = analysis.item().get("evals")
-    self.atas = analysis.item().get("atas")
+    analysis = np.load(file_loc)["data"].item()
+    self.run_stats = analysis["run_stats"]
+    self.evals = analysis["evals"]
+    self.atas = analysis["atas"]
 
   def evaluate_inference(self, images, num_inference_steps=None):
     if num_inference_steps is None:
