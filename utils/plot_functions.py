@@ -237,8 +237,7 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
         flatten=False)[0])
       ax = plt.subplot(gs[x_id, y_id+1])
       ax.imshow(bf, cmap="Greys_r", interpolation="nearest")
-      ax.tick_params(axis="both", bottom="off", top="off",
-        left="off", right="off")
+      ax.tick_params(axis="both", bottom="off", top="off", left="off", right="off")
       ax.get_xaxis().set_visible(False)
       ax.get_yaxis().set_visible(False)
       strengths.append(a_cov[primary_bf_idx, bf_idx])
@@ -257,8 +256,10 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
         tick.set_verticalalignment("bottom")
       else:
         tick.set_verticalalignment("top")
-  plt.subplot(gs[0,0]).set_title("rand bf");
-  plt.subplot(gs[0,1]).set_title("strongest corr --> weakest corr", horizontalalignment="left");
+  plt.subplot(gs[0,0]).set_title("rand bf", horizontalalignment="center", fontsize=18);
+  plt.subplot(gs[0,1]).set_title("stronger correlation --$>$ weaker correlation",
+    horizontalalignment="left", fontsize=18);
+  plt.subplot(gs[0,-1]).set_title("activity covariance", horizontalalignment="center", fontsize=18)
   plt.show()
   return fig
 
@@ -654,8 +655,11 @@ def plot_inference_traces(data, activation_threshold, img_idx=0):
       l3, = axis.plot(t, ga, linewidth=0.25, color="r", label="Ga")
       l4, = axis.plot(t, [0 for _ in t], linewidth=0.25, color="k", linestyle="-",
         label="zero")
-      l5 = axis.plot(t, [activation_threshold for _ in t], linewidth=0.25, color="k",
+      l5, = axis.plot(t, [activation_threshold for _ in t], linewidth=0.25, color="k",
         linestyle=":", dashes=(1,1), label=r"$\lambda$")
+      if "fb" in data.keys():
+        fb = data["fb"][img_idx,:,axis_idx]
+        l6, = axis.plot(t, fb, linewidth=0.25, color="darkorange", label="fb")
       max_val = np.max(np.abs([b, ga, u, a]))
       scale_ratio = max_val / global_max_val
       transFigure = fig.transFigure.inverted()
