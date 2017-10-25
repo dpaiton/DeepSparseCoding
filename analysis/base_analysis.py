@@ -11,7 +11,8 @@ class Analyzer(object):
       +"_v"+params["version"]+".log")
     self.log_text = lp.load_file(self.log_file)
     self.model_params = lp.read_params(self.log_text)
-    assert self.model_params["model_type"] == params["model_type"]
+    assert self.model_params["model_type"] == params["model_type"], (
+      "Model type defined in log text must match model type given in params.")
     self.model_params["rand_state"] = np.random.RandomState(
       self.model_params["rand_seed"])
     self.model_schedule = lp.read_schedule(self.log_text)
@@ -26,21 +27,21 @@ class Analyzer(object):
     self.model_name = params["model_name"]
     self.version = params["version"]
     self.device = params["device"]
-    self.out_dir = params["model_dir"]+"/analysis/"+self.version+"/"
+    self.analysis_out_dir = params["model_dir"]+"/analysis/"+self.version+"/"
     if "cp_idx" in params.keys():
       self.cp_idx = params["cp_idx"]
       self.cp_loc = (params["model_dir"]+"/checkpoints/"+params["model_name"]
         +"_v"+params["version"]+"_full-"+str(self.cp_idx))
     else:
       self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/")
-    self.model_params["out_dir"] = self.out_dir
+    self.model_params["model_out_dir"] = self.analysis_out_dir
     if "data_dir" in params.keys():
       self.model_params["data_dir"] = params["data_dir"]
 
   def make_dirs(self):
     """Make output directories"""
-    if not os.path.exists(self.out_dir):
-      os.makedirs(self.out_dir)
+    if not os.path.exists(self.analysis_out_dir):
+      os.makedirs(self.analysis_out_dir)
 
   def load_model(self):
     """Load model object into analysis object"""

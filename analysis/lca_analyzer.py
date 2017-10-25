@@ -19,11 +19,11 @@ class LCA(Analyzer):
       "performance_metrics/reconstruction_quality/recon_quality:0"]
     self.evals = self.evaluate_model(images)
     self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
-    np.savez(self.out_dir+"analysis_"+save_info+".npz",
+    np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas})
 
   def load_analysis(self, save_info=""):
-    file_loc = self.out_dir+"analysis_"+save_info+".npz"
+    file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
     analysis = np.load(file_loc)["data"].item()
     self.run_stats = analysis["run_stats"]
     self.evals = analysis["evals"]

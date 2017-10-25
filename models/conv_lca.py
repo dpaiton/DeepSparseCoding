@@ -7,27 +7,27 @@ from models.base_model import Model
 
 class CONV_LCA(Model):
   def __init__(self, params, schedule):
-    Model.__init__(self, params, schedule)
+    super(CONV_LCA, self).__init__(params, schedule)
 
-  """
-  Load parameters into object
-  Inputs:
-   params: [dict] model parameters
-  Modifiable Parameters:
-    norm_weights [bool] If set, l2 normalize weights after updates
-    batch_size   [int] Number of images in a training batch
-    input_shape
-    stride_x
-    stride_y
-    patch_size_y
-    patch_size_x
-    num_neurons  [int] Number of LCA neurons
-    num_steps    [int] Number of inference steps
-    dt           [float] Discrete global time constant
-    tau          [float] LCA time constant
-  """
   def load_params(self, params):
-    Model.load_params(self, params)
+    """
+    Load parameters into object
+    Inputs:
+     params: [dict] model parameters
+    Modifiable Parameters:
+      norm_weights [bool] If set, l2 normalize weights after updates
+      batch_size   [int] Number of images in a training batch
+      input_shape
+      stride_x
+      stride_y
+      patch_size_y
+      patch_size_x
+      num_neurons  [int] Number of LCA neurons
+      num_steps    [int] Number of inference steps
+      dt           [float] Discrete global time constant
+      tau          [float] LCA time constant
+    """
+    super(CONV_LCA, self).load_params(params)
     # Meta parameters
     self.norm_weights = bool(params["norm_weights"])
     # Network Size
@@ -53,8 +53,8 @@ class CONV_LCA(Model):
     self.tau = float(params["tau"])
     self.eta = self.dt / self.tau
 
-  """Build the TensorFlow graph object"""
   def build_graph(self):
+    """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
@@ -127,20 +127,20 @@ class CONV_LCA(Model):
               2.0), MSE)), name="recon_quality")
     self.graph_built = True
 
-  """
-  Log train progress information
-  Inputs:
-    input_data: data object containing the current image batch
-    input_labels: data object containing the current label batch
-    batch_step: current batch number within the schedule
-  NOTE: Casting tf.eval output to an np.array and then to a list is required to
-    ensure that the data type is valid for js.dumps(). An alternative would be
-    to write a numpy function that converts numpy types to their corresponding
-    python types.
-  """
   def print_update(self, input_data, input_labels=None, batch_step=0):
+    """
+    Log train progress information
+    Inputs:
+      input_data: data object containing the current image batch
+      input_labels: data object containing the current label batch
+      batch_step: current batch number within the schedule
+    NOTE: Casting tf.eval output to an np.array and then to a list is required to
+      ensure that the data type is valid for js.dumps(). An alternative would be
+      to write a numpy function that converts numpy types to their corresponding
+      python types.
+    """
     # TODO: When is it required to get defult session?
-    Model.print_update(self, input_data, input_labels, batch_step)
+    super(CONV_LCA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
@@ -167,14 +167,14 @@ class CONV_LCA(Model):
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     self.log_info("<stats>"+js_str+"</stats>")
 
-  """
-  Plot weights, reconstruction, and gradients
-  Inputs:
-    input_data: data object containing the current image batch
-    input_labels: data object containing the current label batch
-  """
   def generate_plots(self, input_data, input_labels=None):
-    Model.generate_plots(self, input_data, input_labels)
+    """
+    Plot weights, reconstruction, and gradients
+    Inputs:
+      input_data: data object containing the current image batch
+      input_labels: data object containing the current label batch
+    """
+    super(CONV_LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     pf.plot_data_tiled(

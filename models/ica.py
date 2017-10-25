@@ -7,19 +7,19 @@ from models.base_model import Model
 
 class ICA(Model):
   def __init__(self, params, schedule):
-    Model.__init__(self, params, schedule)
+    super(ICA, self).__init__(params, schedule)
 
-  """
-  Load parameters into object
-  Inputs:
-   params: [dict] model parameters
-  Modifiable Parameters:
-    prior        [str] Prior for ICA - can be "laplacian" or "cauchy"
-    batch_size   [int] Number of images in a training batch
-    num_pixels   [int] Number of pixels
-  """
   def load_params(self, params):
-    Model.load_params(self, params)
+    """
+    Load parameters into object
+    Inputs:
+     params: [dict] model parameters
+    Modifiable Parameters:
+      prior        [str] Prior for ICA - can be "laplacian" or "cauchy"
+      batch_size   [int] Number of images in a training batch
+      num_pixels   [int] Number of pixels
+    """
+    super(ICA, self).load_params(params)
     ## Meta parameters
     self.prior = str(params["prior"])
     assert (True if self.prior.lower() in ("laplacian", "cauchy") else False), (
@@ -32,8 +32,8 @@ class ICA(Model):
     self.num_neurons = self.num_patch_pixels
     self.a_shape = [self.num_neurons, self.num_patch_pixels]
 
-  """Build the TensorFlow graph object"""
   def build_graph(self):
+    """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
@@ -67,13 +67,13 @@ class ICA(Model):
 
     self.graph_built = True
 
-  """
-  Returns the natural gradient for the ICA weight matrix
-  NOTE:
-    This child function does not use optimizer input
-    weight_op must be a list with a single matrix ("self.a") in it
-  """
   def compute_weight_gradients(self, optimizer, weight_op=None):
+    """
+    Returns the natural gradient for the ICA weight matrix
+    NOTE:
+      This child function does not use optimizer input
+      weight_op must be a list with a single matrix ("self.a") in it
+    """
     assert len(weight_op) == 1, ("ICA should only have one weight matrix")
     weight_name = weight_op[0].name.split('/')[1].split(':')[0]#np.split
     z_u_avg = tf.divide(tf.matmul(tf.transpose(self.u), self.z),
@@ -82,18 +82,18 @@ class ICA(Model):
       name=weight_name+"_gradient")
     return [(gradient, weight_op[0])]
 
-  """
-  Logs progress information
-    input_data: data object containing the current image batch
-    input_labels: data object containing the current label batch
-    batch_step: current batch number within the schedule
-  NOTE: Casting tf.eval output to an np.array and then to a list is required to
-    ensure that the data type is valid for js.dumps(). An alternative would be
-    to write an np function that converts numpy types to their corresponding
-    python types.
-  """
   def print_update(self, input_data, input_labels=None, batch_step=0):
-    Model.print_update(self, input_data, input_labels, batch_step)
+    """
+    Logs progress information
+      input_data: data object containing the current image batch
+      input_labels: data object containing the current label batch
+      batch_step: current batch number within the schedule
+    NOTE: Casting tf.eval output to an np.array and then to a list is required to
+      ensure that the data type is valid for js.dumps(). An alternative would be
+      to write an np function that converts numpy types to their corresponding
+      python types.
+    """
+    super(ICA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
     u_vals = tf.get_default_session().run(self.u, feed_dict)
@@ -120,14 +120,14 @@ class ICA(Model):
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     self.log_info("<stats>"+js_str+"</stats>")
 
-  """
-  Plot weights, reconstruction, and gradients
-  Inputs:
-    input_data: data object containing the current image batch
-    input_labels: data object containing the current label batch
-  """
   def generate_plots(self, input_data, input_labels=None):
-    Model.generate_plots(self, input_data, input_labels)
+    """
+    Plot weights, reconstruction, and gradients
+    Inputs:
+      input_data: data object containing the current image batch
+      input_labels: data object containing the current label batch
+    """
+    super(ICA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     weights = tf.get_default_session().run(self.a, feed_dict)
     current_step = str(self.global_step.eval())

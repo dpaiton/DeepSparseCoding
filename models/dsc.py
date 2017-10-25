@@ -8,23 +8,23 @@ import os
 
 class dsc(Model):
   def __init__(self, params, schedule):
-    Model.__init__(self, params, schedule)
+    super(dsc, self).__init__(params, schedule)
 
-  """
-  Load parameters into object
-  Inputs:
-   params: [dict] model parameters
-  Modifiable Parameters:
-    rectify_v      [bool] If set, rectify layer 2 activity
-    norm_weights   [bool] If set, l2 normalize weights after updates
-    batch_size     [int] Number of images in a training batch
-    num_pixels     [int] Number of pixels
-    num_u          [int] Number of layer 1 elements
-    num_v          [int] Number of layer 2 elements
-    num_steps      [int] Number of inference steps
-  """
   def load_params(self, params):
-    Model.load_params(self, params)
+    """
+    Load parameters into object
+    Inputs:
+     params: [dict] model parameters
+    Modifiable Parameters:
+      rectify_v      [bool] If set, rectify layer 2 activity
+      norm_weights   [bool] If set, l2 normalize weights after updates
+      batch_size     [int] Number of images in a training batch
+      num_pixels     [int] Number of pixels
+      num_u          [int] Number of layer 1 elements
+      num_v          [int] Number of layer 2 elements
+      num_steps      [int] Number of inference steps
+    """
+    super(dsc, self).load_params(params)
     # Meta parameters
     self.rectify_u = bool(params["rectify_u"])
     self.rectify_v = bool(params["rectify_v"])
@@ -40,22 +40,22 @@ class dsc(Model):
     # Hyper Parameters
     self.num_steps = int(params["num_steps"])
 
-  """Check parameters with assertions"""
   def check_params(self):
-    Model.check_params(self)
+    """Check parameters with assertions"""
+    super(dsc, self).check_params()
     assert np.sqrt(self.num_u) == np.floor(np.sqrt(self.num_u)), (
       "The parameter `num_u` must have an even square-root for plotting.")
 
-  """
-  Returns total loss function for given input
-  Outputs:
-    total_loss [float32] loss adapted from Karklin & Lewicki
-  Inputs:
-    input_data []
-    u_state []
-    v_state []
-  """
   def compute_loss(self, input_data, u_state, v_state):
+    """
+    Returns total loss function for given input
+    Outputs:
+      total_loss [float32] loss adapted from Karklin & Lewicki
+    Inputs:
+      input_data []
+      u_state []
+      v_state []
+    """
     with tf.variable_scope("weights", reuse=True) as scope:
       a_state = tf.get_variable(name="a")
       b_state = tf.get_variable(name="b")
@@ -96,18 +96,18 @@ class dsc(Model):
       v_out = tf.nn.relu(v_update) if v_relu else v_update
       return u_out, v_out
 
-  """
-  Based on the neworks described in:
-    Y Karklin, MS Lewicki (2005) - A Hierarchical Bayesian Model for Learning
-      Nonlinear Statistical Regularities in Nonstationary Natural Signals
-    TS Lee, D Mumford (2003) - Hierarchical Bayesian Inference in the Visual
-      Cortex
-  Method for unrolling inference into the graph
-    # compute loss for current sate
-    # take gradient of loss wrt current state
-    # compute new state = current state + eta * gradient
-  """
   def build_graph(self):
+    """
+    Based on the neworks described in:
+      Y Karklin, MS Lewicki (2005) - A Hierarchical Bayesian Model for Learning
+        Nonlinear Statistical Regularities in Nonstationary Natural Signals
+      TS Lee, D Mumford (2003) - Hierarchical Bayesian Inference in the Visual
+        Cortex
+    Method for unrolling inference into the graph
+      # compute loss for current sate
+      # take gradient of loss wrt current state
+      # compute new state = current state + eta * gradient
+    """
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
@@ -191,20 +191,20 @@ class dsc(Model):
 
     self.graph_built = True
 
-  """
-  Log train progress information
-  Inputs:
-    input_data: data object containing the current image batch
-    input_labels: data object containing the current label batch
-    batch_step: current batch number within the schedule
-  NOTE: Casting tf.eval output to an np.array and then to a list is required to
-    ensure that the data type is valid for js.dumps(). An alternative would be
-    to write an np function that converts numpy types to their corresponding
-    python types.
-  """
   def print_update(self, input_data, input_labels=None, batch_step=0):
+    """
+    Log train progress information
+    Inputs:
+      input_data: data object containing the current image batch
+      input_labels: data object containing the current label batch
+      batch_step: current batch number within the schedule
+    NOTE: Casting tf.eval output to an np.array and then to a list is required to
+      ensure that the data type is valid for js.dumps(). An alternative would be
+      to write an np function that converts numpy types to their corresponding
+      python types.
+    """
     # TODO: When is it required to get defult session?
-    Model.print_update(self, input_data, input_labels, batch_step)
+    super(dsc, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
@@ -244,14 +244,14 @@ class dsc(Model):
     self.log_info("<stats>"+js_str+"</stats>")
     #print(self.input_stddev.eval(feed_dict))
 
-  """
-  Plot weights, reconstruction, and gradients
-  Inputs:
-    input_data: data object containing the current image batch
-    input_labels: data object containing the current label batch
-  """
   def generate_plots(self, input_data, input_labels=None):
-    Model.generate_plots(self, input_data, input_labels)
+    """
+    Plot weights, reconstruction, and gradients
+    Inputs:
+      input_data: data object containing the current image batch
+      input_labels: data object containing the current label batch
+    """
+    super(dsc, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     recon = tf.get_default_session().run(self.x_, feed_dict)

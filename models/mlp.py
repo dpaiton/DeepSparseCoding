@@ -7,25 +7,25 @@ from models.base_model import Model
 
 class MLP(Model):
   def __init__(self, params, schedule):
-    Model.__init__(self, params, schedule)
+    super(MLP, self).__init__(params, schedule)
 
-  """
-  Load parameters into object
-  Inputs:
-   params: [dict] model parameters
-  Modifiable Parameters:
-    rectify_a      [bool] If set, rectify layer 1 activity
-    norm_a         [bool] If set, l2 normalize layer 1 activity
-    norm_weights   [bool] If set, l2 normalize weights after updates
-    batch_size     [int] Number of images in a training batch
-    num_pixels     [int] Number of pixels
-    num_hidden     [int] Number of layer 1 elements (# hidden units)
-    num_classes    [int] Number of layer 2 elements (# categories)
-    num_val        [int] Number of validation images
-    val_on_cp      [bool] If set, compute validation performance on checkpoint
-  """
   def load_params(self, params):
-    Model.load_params(self, params)
+    """
+    Load parameters into object
+    Inputs:
+     params: [dict] model parameters
+    Modifiable Parameters:
+      rectify_a      [bool] If set, rectify layer 1 activity
+      norm_a         [bool] If set, l2 normalize layer 1 activity
+      norm_weights   [bool] If set, l2 normalize weights after updates
+      batch_size     [int] Number of images in a training batch
+      num_pixels     [int] Number of pixels
+      num_hidden     [int] Number of layer 1 elements (# hidden units)
+      num_classes    [int] Number of layer 2 elements (# categories)
+      num_val        [int] Number of validation images
+      val_on_cp      [bool] If set, compute validation performance on checkpoint
+    """
+    super(MLP, self).load_params(params)
     if "rectify_a" in params.keys():
       self.rectify_a = bool(params["rectify_a"])
     self.norm_a = bool(params["norm_a"])
@@ -49,10 +49,10 @@ class MLP(Model):
     self.w1_shape = [self.num_pixels, self.num_hidden]
     self.w2_shape = [self.num_hidden, self.num_classes]
 
-  """
-  Build an MLP TensorFlow Graph.
-  """
   def build_graph(self):
+    """
+    Build an MLP TensorFlow Graph.
+    """
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
@@ -135,15 +135,15 @@ class MLP(Model):
               tf.float32), name="avg_accuracy")
     self.graph_built = True
 
-  """
-  Log train progress information
-  Inputs:
-    input_data: load_MNIST data object containing the current image batch
-    input_labels: load_MNIST data object containing the current label batch
-    batch_step: current batch number within the schedule
-  """
   def print_update(self, input_data, input_labels=None, batch_step=0):
-    Model.print_update(self, input_data, input_labels, batch_step)
+    """
+    Log train progress information
+    Inputs:
+      input_data: load_MNIST data object containing the current image batch
+      input_labels: load_MNIST data object containing the current label batch
+      batch_step: current batch number within the schedule
+    """
+    super(MLP, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
     total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
@@ -163,12 +163,12 @@ class MLP(Model):
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     self.log_info("<stats>"+js_str+"</stats>")
 
-  """
-  Plot weights, reconstruction, and gradients
-  Inputs: input_data and input_labels used for the session
-  """
   def generate_plots(self, input_data, input_labels=None):
-    Model.generate_plots(self, input_data, input_labels)
+    """
+    Plot weights, reconstruction, and gradients
+    Inputs: input_data and input_labels used for the session
+    """
+    super(MLP, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     pf.plot_data_tiled(

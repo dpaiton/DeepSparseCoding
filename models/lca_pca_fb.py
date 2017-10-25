@@ -1,7 +1,9 @@
 import numpy as np
 import json as js
+import os
 import tensorflow as tf
 import params.param_picker as pp
+import utils.plot_functions as pf
 from models.lca_pca import LCA_PCA
 
 class LCA_PCA_FB(LCA_PCA):
@@ -20,25 +22,73 @@ class LCA_PCA_FB(LCA_PCA):
      params: [dict] model parameters
     Modifiable Parameters:
       num_pooling_units [int] indicating the number of 2nd layer units
+      activity_covariance [str] full path to pre-computed covariances of first layer activations
+        to be placed in self.full_cov, defined in models/lca_pca.py
     """
     super(LCA_PCA_FB, self).load_params(params)
     self.num_pooling_units = int(params["num_pooling_units"])
+    self.act_cov_suffix = str(params["activity_covariance_suffix"])
+    self.act_cov_loc = (params["out_dir"]+self.cp_load_name+"/analysis/"+self.cp_load_ver
+      +"/act_cov_"+self.act_cov_suffix+".npz")
+    assert os.path.exists(self.act_cov_loc), ("Can't find activity covariance file. "
+      +"Maybe you didn't run the analysis? file location: "+self.act_cov_loc)
+
+  def get_feed_dict(self, input_data, input_labels=None):
+    """
+    Return dictionary containing all placeholders
+    Inputs:
+      input_data: data to be placed in self.x
+      input_labels: label to be placed in self.y
+    """
+    placeholders = [op.name
+      for op
+      in self.graph.get_operations()
+      if ("placeholders" in op.name
+      and "full_covariance_matrix" not in op.name
+      and "input_data" not in op.name
+      and "input_label" not in op.name)]
+    activity_covariance = np.load(self.act_cov_loc)["data"].item().get("act_cov")
+    if input_labels is not None and hasattr(self, "y"):
+      feed_dict = {self.full_cov:activity_covariance, self.x:input_data, self.y:input_labels}
+    else:
+      feed_dict = {self.full_cov:activity_covariance, self.x:input_data}
+    for placeholder in placeholders:
+      feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
+        self.get_sched(placeholder.split("/")[1]))
+    return feed_dict
 
   def compute_feedback_loss(self, a_in):
+    # TF produces SORTED eig vecs / vals -> indices do not match up with a values?
+    #  for this inner product...
+    #  eigen_vecs is square, of course, since act_cov is square (neurons x neurons)
+    #  it is also still inputs x outputs
+    #  vals & vecs are sorted the same, but does this sort outputs or inputs? Presumably outputs...
     current_b = tf.matmul(a_in, self.eigen_vecs)
     #TODO:  verify eigen_vals is broadcasting properly - should be 1 x num_pooling_filters
-    fb = tf.reduce_sum(tf.divide(current_b, self.eigen_vals), axis=1, name="feedback")
-    fb_loss = tf.reduce_mean(tf.multiply(self.fb_mult, tf.square(fb)), axis=0,
-      name="feedback_loss")
-    return (fb, fb_loss)
+    # how to better normalize the fb strength?
+    # It seems as though TF is producing normalized eigenvalues, need to compensate for that?
+    #   can denormalize by comparing sum of eig vals to trace of cov matrix?
+    #     data proj onto first PC should = first eig val
+    #     so multiply all eigvals by data on first PC & get unnormalized
+    #     not clear that we actually need to denormalize, though
+    # Some eigenvals are very close to 0 - not good for division, results in massive loss.
+    # Probably need to truncate the eigenvalues - minimum is close to zero (actually zero somehow?)
+    masked_vals = tf.where(tf.greater(self.eigen_vals, 1e-3), self.eigen_vals,
+      tf.multiply(1e-3, tf.ones_like(self.eigen_vals)))
+    fb_loss = tf.multiply(self.fb_mult,
+      tf.reduce_sum(tf.square(tf.divide(current_b, masked_vals)), axis=1),
+      name="feedback")
+    return fb_loss
 
-  def step_inference(self, u_in, a_in, b, g):
-    with tf.name_scope("update_u") as scope:
+  def step_inference(self, u_in, a_in, b, g, step):
+    with tf.name_scope("update_u"+str(step)) as scope:
       lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
-      lca_fb = tf.gradients(self.compute_feedback_loss(a_in)[1], a_in)[0]
+      lca_fb_grad = tf.gradients(self.compute_feedback_loss(a_in), a_in)[0]
+      # TODO: Figure out why it would be zero at all?
+      lca_fb = lca_fb_grad if lca_fb_grad is not None else tf.zeros_like(a_in)
       du = tf.identity(b - lca_explain_away - u_in - lca_fb, name="du")
       u_out = tf.add(u_in, tf.multiply(self.eta, du))
-    return (u_out, lca_explain_away)
+    return (u_out, lca_explain_away, lca_fb)
 
   def infer_coefficients(self):
    lca_b = self.compute_excitatory_current()
@@ -46,8 +96,8 @@ class LCA_PCA_FB(LCA_PCA):
    u_list = [self.u_zeros]
    a_list = [self.threshold_units(u_list[0])]
    for step in range(self.num_steps-1):
-     u, _ = self.step_inference(u_list[step], a_list[step], lca_b, lca_g)
-     u_list.append(u)
+     inf_out = self.step_inference(u_list[step], a_list[step], lca_b, lca_g, step)
+     u_list.append(inf_out[0])
      a_list.append(self.threshold_units(u_list[step+1]))
    return (u_list, a_list)
 
@@ -58,7 +108,8 @@ class LCA_PCA_FB(LCA_PCA):
         axis=[1]), name="recon_loss")
       self.sparse_loss = self.sparse_mult * tf.reduce_mean(
         tf.reduce_sum(tf.abs(a_in), axis=[1]), name="sparse_loss")
-      self.feedback_loss = self.compute_feedback_loss(a_in)[1]
+      self.feedback_loss = tf.reduce_mean(self.compute_feedback_loss(a_in), axis=0,
+        name="feedback_loss")
       self.unsupervised_loss = (self.recon_loss + self.sparse_loss + self.feedback_loss)
     total_loss = self.unsupervised_loss
     return total_loss
@@ -69,7 +120,7 @@ class LCA_PCA_FB(LCA_PCA):
         self.fb_mult = tf.placeholder(tf.float32, shape=(), name="fb_mult")
     super(LCA_PCA_FB, self).build_graph()
 
-  def print_update(self, input_data, activity_cov, input_labels=None, batch_step=0):
+  def print_update(self, input_data, input_labels=None, batch_step=0):
     """
     Log train progress information
     Inputs:
@@ -79,7 +130,6 @@ class LCA_PCA_FB(LCA_PCA):
       batch_step: current batch number within the schedule
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    feed_dict[self.full_cov] = activity_cov
     current_step = np.array(self.global_step.eval()).tolist()
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
     sparse_loss = np.array(self.sparse_loss.eval(feed_dict)).tolist()
@@ -98,6 +148,7 @@ class LCA_PCA_FB(LCA_PCA):
       "schedule_index":self.sched_idx,
       "recon_loss":recon_loss,
       "sparse_loss":sparse_loss,
+      "feedback_loss":feedback_loss,
       "total_loss":total_loss,
       "a_max":a_vals_max,
       "a_fraction_active":a_frac_act,
@@ -106,7 +157,7 @@ class LCA_PCA_FB(LCA_PCA):
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     self.log_info("<stats>"+js_str+"</stats>")
 
-  def generate_plots(self, input_data, activity_cov, input_labels=None):
+  def generate_plots(self, input_data, input_labels=None):
     """
     Plot weights, reconstruction, and gradients
     Inputs:
@@ -114,14 +165,26 @@ class LCA_PCA_FB(LCA_PCA):
       input_labels: data object containing the current label batch
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    feed_dict[self.full_cov] = activity_cov
     current_step = str(self.global_step.eval())
     recon = tf.get_default_session().run(self.x_, feed_dict)
+    weights = tf.get_default_session().run(self.phi, feed_dict)
+    pf.plot_data_tiled(weights.T.reshape(self.num_neurons,
+      int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
+      normalize=False, title="Dictionary at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".png"))
     pf.plot_data_tiled(input_data.reshape((self.batch_size,
       np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
       normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".pdf"))
+      save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".png"))
     pf.plot_data_tiled(recon.reshape((self.batch_size,
       np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
       normalize=False, title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
+    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+      grad = weight_grad_var[0][0].eval(feed_dict)
+      shape = grad.shape
+      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+      pf.plot_data_tiled(grad.T.reshape(self.num_neurons,
+        int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
+        normalize=True, title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))

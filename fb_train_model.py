@@ -17,6 +17,7 @@ params, schedule = pp.get_params(model_type)
 if "rand_seed" in params.keys():
   params["rand_state"] = np.random.RandomState(params["rand_seed"])
 params["data_type"] = data_type
+params["cov_suffix"] = cov_suffix
 
 ## Import data
 data = dp.get_data(data_type, params)
@@ -48,12 +49,6 @@ with tf.Session(graph=model.graph) as sess:
   # Load model weights from pretrained session
   model.load_weights(sess, tf.train.latest_checkpoint(model.cp_load_dir))
 
-  # Load activity covariance matrix from previously run analysis
-  act_loc = ("/home/dpaiton/Work/Projects/lca_pca_512/analysis/"
-    +model.version+"/act_cov_"+cov_suffix+".npz")
-  cov_items = np.load(act_loc)["data"]
-  act_cov = cov_items.item().get("act_cov")
-
   # Fine tune weights using feedback
   model.log_info("Beginning schedule "+str(model.sched_idx))
   for b_step in range(model.get_sched("num_batches")):
@@ -61,7 +56,6 @@ with tf.Session(graph=model.graph) as sess:
     input_data = data_batch[0]
     input_labels = data_batch[1]
     feed_dict = model.get_feed_dict(input_data, input_labels)
-    feed_dict[model.full_cov] = act_cov
 
     ## Normalize weights
     if hasattr(model, "norm_weights"):
@@ -80,13 +74,13 @@ with tf.Session(graph=model.graph) as sess:
     current_step = sess.run(model.global_step)
     if (current_step % model.log_int == 0
       and model.log_int > 0):
-      model.print_update(input_data=input_data, activity_cov=act_cov, input_labels=input_labels,
+      model.print_update(input_data=input_data, input_labels=input_labels,
         batch_step=b_step+1)
 
     ## Plot weights & gradients
     if (current_step % model.gen_plot_int == 0
       and model.gen_plot_int > 0):
-      model.generate_plots(input_data=input_data, activity_cov=act_cov, input_labels=input_labels)
+      model.generate_plots(input_data=input_data, input_labels=input_labels)
 
     ## Checkpoint
     if (current_step % model.cp_int == 0

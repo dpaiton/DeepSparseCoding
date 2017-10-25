@@ -6,7 +6,7 @@ from models.base_model import Model
 
 class LCA(Model):
   def __init__(self, params, schedule):
-    Model.__init__(self, params, schedule)
+    super(LCA, self).__init__(params, schedule)
 
   def load_params(self, params):
     """
@@ -24,7 +24,7 @@ class LCA(Model):
       tau          [float] LCA time constant
       thresh_type  [str] "hard" or "soft" - LCA threshold function specification
     """
-    Model.load_params(self, params)
+    super(LCA, self).load_params(params)
     # Meta parameters
     self.rectify_a = bool(params["rectify_a"])
     self.norm_weights = bool(params["norm_weights"])
@@ -165,7 +165,7 @@ class LCA(Model):
       python types.
     """
     # TODO: When is it required to get defult session?
-    Model.print_update(self, input_data, input_labels, batch_step)
+    super(LCA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
@@ -198,7 +198,7 @@ class LCA(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    Model.generate_plots(self, input_data, input_labels)
+    super(LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     recon = tf.get_default_session().run(self.x_, feed_dict)

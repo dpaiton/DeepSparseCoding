@@ -33,25 +33,25 @@ class LCA_PCA(LCA):
     self.pool_atas = self.compute_atas(self.cov["pooled_act"], images)
     self.bf_stats = ip.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
-    self.inference_stats = self.evaluate_inference(images[0:1])
-    np.savez(self.out_dir+"analysis_"+save_info+".npz",
+    self.inference_stats = self.evaluate_inference(images[73:74])
+    np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
           "evec_atas":self.evec_atas, "pool_atas":self.pool_atas})
-    np.savez(self.out_dir+"act_cov_"+save_info+".npz", data=self.cov)
-    np.savez(self.out_dir+"bf_stats_"+save_info+".npz", data=self.bf_stats)
-    np.savez(self.out_dir+"inference_stats_"+save_info+".npz", data=self.inference_stats)
+    np.savez(self.analysis_out_dir+"act_cov_"+save_info+".npz", data=self.cov)
+    np.savez(self.analysis_out_dir+"bf_stats_"+save_info+".npz", data=self.bf_stats)
+    np.savez(self.analysis_out_dir+"inference_stats_"+save_info+".npz", data=self.inference_stats)
 
   def load_analysis(self, save_info=""):
-    file_loc = self.out_dir+"analysis_"+save_info+".npz"
+    file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
     analysis = np.load(file_loc)["data"].item()
     self.run_stats = analysis["run_stats"]
     self.evals = analysis["evals"]
     self.atas = analysis["atas"]
     self.evec_atas = analysis["evec_atas"]
     self.pool_atas = analysis["pool_atas"]
-    self.cov = np.load(self.out_dir+"act_cov_"+save_info+".npz")["data"].item()
-    self.bf_stats = np.load(self.out_dir+"bf_stats_"+save_info+".npz")["data"].item()
-    self.inference_stats  = np.load(self.out_dir+"inference_stats_"+save_info+".npz")["data"].item()
+    self.cov = np.load(self.analysis_out_dir+"act_cov_"+save_info+".npz")["data"].item()
+    self.bf_stats = np.load(self.analysis_out_dir+"bf_stats_"+save_info+".npz")["data"].item()
+    self.inference_stats  = np.load(self.analysis_out_dir+"inference_stats_"+save_info+".npz")["data"].item()
 
   def analyze_cov(self, images):
     num_imgs, num_pixels = images.shape

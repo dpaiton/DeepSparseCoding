@@ -26,7 +26,7 @@ class DSC(Analyzer):
      "sparse_loss":stats["sparse_loss"],
      "feedback_loss":stats["feedback_loss"],
      "total_loss":stats["total_loss"]}
-    loss_filename = self.out_dir+"log_stats_v"+self.version+self.file_ext
+    loss_filename = self.analysis_out_dir+"log_stats_v"+self.version+self.file_ext
     pf.plot_stats(data=losses, labels=None, save_filename=loss_filename)
 
   """
@@ -35,7 +35,7 @@ class DSC(Analyzer):
   def save_data(self, data, datatype):
     fig_title = "Activity triggered averages on "+datatype+" data"
     for layer_idx, layer in enumerate(data):
-      ata_filename = (self.out_dir+"act_trig_avg_layer_"+str(layer_idx)+"_"
+      ata_filename = (self.analysis_out_dir+"act_trig_avg_layer_"+str(layer_idx)+"_"
         +datatype+"_v"+self.version+self.file_ext)
       ata = layer.reshape(layer.shape[0], int(np.sqrt(
         layer.shape[1])), int(np.sqrt(layer.shape[1])))

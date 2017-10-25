@@ -97,11 +97,12 @@ class Model(object):
       self.cp_load_dir = (str(params["out_dir"]) + self.cp_load_name
         + "/checkpoints/")
     # Directories
-    self.out_dir = str(params["out_dir"]) + self.model_name
-    self.cp_save_dir = self.out_dir + "/checkpoints/"
-    self.log_dir = self.out_dir + "/logfiles/"
-    self.save_dir = self.out_dir + "/savefiles/"
-    self.disp_dir = self.out_dir + "/vis/"
+    self.out_dir = str(params["out_dir"])
+    self.model_out_dir = self.out_dir + self.model_name
+    self.cp_save_dir = self.model_out_dir + "/checkpoints/"
+    self.log_dir = self.model_out_dir + "/logfiles/"
+    self.save_dir = self.model_out_dir + "/savefiles/"
+    self.disp_dir = self.model_out_dir + "/vis/"
     # Other
     self.eps = float(params["eps"])
     self.device = str(params["device"])
@@ -135,8 +136,8 @@ class Model(object):
 
   def make_dirs(self):
     """Make output directories"""
-    if not os.path.exists(self.out_dir):
-      os.makedirs(self.out_dir)
+    if not os.path.exists(self.model_out_dir):
+      os.makedirs(self.model_out_dir)
     if not os.path.exists(self.log_dir):
       os.makedirs(self.log_dir)
     if not os.path.exists(self.cp_save_dir):
