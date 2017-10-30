@@ -8,7 +8,7 @@ from data.field import load_field
 Get function that returns the corresponding dataset
 Inputs:
   dataset_type: [str] containing the name of the dataset to return
-    Current allowed values are: vanHateren, mnist, laplacian
+    Current allowed values are: vanHateren, field, MNIST, CIFAR10, synthetic
   params: [dict] containing params returned from params/param_picker.py
     data_dir (cifar, field, mnist, vanhateren)
     num_classes (cifar)
@@ -45,5 +45,5 @@ def get_data(dataset_type, params):
   return dataset
 
 def get_dataset_list():
-  data_list = ["vanHateren", "field", "MNIST", "CIFAR-10", "synthetic"]
+  data_list = ["vanHateren", "field", "MNIST", "CIFAR10", "synthetic"]
   return data_list

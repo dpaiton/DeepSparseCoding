@@ -417,8 +417,8 @@ def standardize_data(data):
   """
   data = data[np.newaxis, ...] if data.ndim == 1 else data
   for idx in range(data.shape[0]):
-    data[idx, ...] -= np.mean(data[idx, ...])
-    data[idx, ...] = data[idx, ...] / np.std(data[idx, ...])
+    data[idx,...] -= np.mean(data[idx, ...])
+    data[idx,...] = data[idx,...] / np.std(data[idx,...])
   return data.squeeze()
 
 def norm_data_by_var(data):
