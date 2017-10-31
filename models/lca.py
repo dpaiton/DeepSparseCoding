@@ -88,16 +88,40 @@ class LCA(Model):
   def compute_recon(self, a_in):
     return tf.matmul(a_in, tf.transpose(self.phi), name="reconstruction")
 
-  def compute_total_loss(self, a_in):
-      with tf.name_scope("unsupervised"):
-        self.recon_loss = tf.reduce_mean(0.5 *
-          tf.reduce_sum(tf.pow(tf.subtract(self.x, self.compute_recon(a_in)), 2.0),
-          axis=[1]), name="recon_loss")
-        self.sparse_loss = self.sparse_mult * tf.reduce_mean(
-          tf.reduce_sum(tf.abs(a_in), axis=[1]), name="sparse_loss")
-        self.unsupervised_loss = (self.recon_loss + self.sparse_loss)
-      total_loss = self.unsupervised_loss
-      return total_loss
+  def compute_recon_loss(self, a_in):
+    with tf.name_scope("unsupervised"):
+      recon_loss = tf.reduce_mean(0.5 *
+        tf.reduce_sum(tf.pow(tf.subtract(self.x, self.compute_recon(a_in)), 2.0),
+        axis=[1]), name="recon_loss")
+    return recon_loss
+
+  def compute_sparse_loss(self, a_in):
+    with tf.name_scope("unsupervised"):
+      sparse_loss = self.sparse_mult * tf.reduce_mean(
+        tf.reduce_sum(tf.abs(a_in), axis=[1]), name="sparse_loss")
+    return sparse_loss
+
+  def compute_total_loss(self, a_in, loss_funcs):
+    """
+    Returns sum of all loss functions defined in loss_funcs for given a_in
+    Inputs:
+      a_in [tf.Variable] containing the sparse coding activity values
+      loss_funcs [dict] containing keys that correspond to names of loss functions and values that 
+        point to the functions themselves
+    """
+    total_loss = tf.add_n([func(a_in) for func in loss_funcs.values()], name="total_loss")
+    #with tf.name_scope("unsupervised"):
+    #  self.recon_loss = tf.reduce_mean(0.5 *
+    #    tf.reduce_sum(tf.pow(tf.subtract(self.x, self.compute_recon(a_in)), 2.0),
+    #    axis=[1]), name="recon_loss")
+    #  self.sparse_loss = self.sparse_mult * tf.reduce_mean(
+    #    tf.reduce_sum(tf.abs(a_in), axis=[1]), name="sparse_loss")
+    #  self.unsupervised_loss = (self.recon_loss + self.sparse_loss)
+    #total_loss = self.unsupervised_loss
+    return total_loss
+ 
+  def get_loss_funcs(self):
+    return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
@@ -142,7 +166,10 @@ class LCA(Model):
             self.x_ = self.compute_recon(self.a)
 
         with tf.name_scope("loss") as scope:
-          self.total_loss = self.compute_total_loss(self.a)
+          loss_funcs = self.get_loss_funcs()
+          self.loss_dict = dict(zip(
+            [key for key in loss_funcs.keys()], [func(self.a) for func in loss_funcs.values()]))
+          self.total_loss = self.compute_total_loss(self.a, loss_funcs)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -168,8 +195,8 @@ class LCA(Model):
     super(LCA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
-    recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
-    sparse_loss = np.array(self.sparse_loss.eval(feed_dict)).tolist()
+    recon_loss = np.array(self.loss_dict["recon_loss"].eval(feed_dict)).tolist()
+    sparse_loss = np.array(self.loss_dict["sparse_loss"].eval(feed_dict)).tolist()
     total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
     a_vals = tf.get_default_session().run(self.a, feed_dict)
     a_vals_max = np.array(a_vals.max()).tolist()

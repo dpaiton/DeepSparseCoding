@@ -8,7 +8,7 @@ from data.field import load_field
 Get function that returns the corresponding dataset
 Inputs:
   kwargs: [dict] containing params returned from params/param_picker.py
-    dataset_type: [str] containing the name of the dataset to return
+    data_type: [str] containing the name of the dataset to return
       Current allowed values are obtained from get_dataset_list()
     data_dir (cifar, field, mnist, vanhateren)
     num_classes (cifar)
@@ -26,24 +26,24 @@ Outputs:
   dataset: [dataset] object containing the dataset
 """
 def get_data(kwargs):
-  if kwargs["dataset_type"].lower() == "vanhateren":
+  if kwargs["data_type"].lower() == "vanhateren":
     if "vanHateren" not in kwargs["data_dir"]:
       kwargs["data_dir"] += "/vanHateren/"
     dataset = load_vanHateren(kwargs)
-  if kwargs["dataset_type"].lower() == "mnist":
+  if kwargs["data_type"].lower() == "mnist":
     if "MNIST" not in kwargs["data_dir"]:
       kwargs["data_dir"] += "/MNIST/"
     dataset = load_MNIST(kwargs)
-  if kwargs["dataset_type"].lower() == "cifar10" or kwargs["dataset_type"].lower() == "cifar100":
+  if kwargs["data_type"].lower() == "cifar10" or kwargs["data_type"].lower() == "cifar100":
     if "CIFAR" not in kwargs["data_dir"]:
       kwargs["data_dir"] += "/CIFAR/"
-    kwargs["num_classes"] = int(kwargs["dataset_type"][5:len(kwargs["dataset_type"])])
+    kwargs["num_classes"] = int(kwargs["data_type"][5:len(kwargs["data_type"])])
     dataset = load_CIFAR(kwargs)
-  if kwargs["dataset_type"].lower() == "synthetic":
+  if kwargs["data_type"].lower() == "synthetic":
     assert "epoch_size" in kwargs.keys(), (
       "Params must include 'epoch_size'")
     dataset = load_synthetic(kwargs)
-  if kwargs["dataset_type"].lower() == "field":
+  if kwargs["data_type"].lower() == "field":
     dataset = load_field(kwargs)
   return dataset
 

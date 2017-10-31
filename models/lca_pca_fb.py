@@ -22,8 +22,7 @@ class LCA_PCA_FB(LCA_PCA):
      params: [dict] model parameters
     Modifiable Parameters:
       num_pooling_units [int] indicating the number of 2nd layer units
-      activity_covariance [str] full path to pre-computed covariances of first layer activations
-        to be placed in self.full_cov, defined in models/lca_pca.py
+      act_cov_suffix [str] suffix appended to activity covariance matrix
     """
     super(LCA_PCA_FB, self).load_params(params)
     self.num_pooling_units = int(params["num_pooling_units"])
@@ -31,14 +30,15 @@ class LCA_PCA_FB(LCA_PCA):
     self.act_cov_loc = (params["out_dir"]+self.cp_load_name+"/analysis/"+self.cp_load_ver
       +"/act_cov_"+self.act_cov_suffix+".npz")
     assert os.path.exists(self.act_cov_loc), ("Can't find activity covariance file. "
-      +"Maybe you didn't run the analysis? file location: "+self.act_cov_loc)
+      +"Maybe you didn't run the analysis? File location: "+self.act_cov_loc)
 
-  def get_feed_dict(self, input_data, input_labels=None):
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None):
     """
     Return dictionary containing all placeholders
     Inputs:
       input_data: data to be placed in self.x
       input_labels: label to be placed in self.y
+      dict_args: optional dictionary to be appended to the automatically generated feed_dict
     """
     placeholders = [op.name
       for op
@@ -101,18 +101,15 @@ class LCA_PCA_FB(LCA_PCA):
      a_list.append(self.threshold_units(u_list[step+1]))
    return (u_list, a_list)
 
-  def compute_total_loss(self, a_in):
+  def compute_mean_feedback_loss(self, a_in):
     with tf.name_scope("unsupervised"):
-      self.recon_loss = tf.reduce_mean(0.5 *
-        tf.reduce_sum(tf.pow(tf.subtract(self.x, self.compute_recon(a_in)), 2.0),
-        axis=[1]), name="recon_loss")
-      self.sparse_loss = self.sparse_mult * tf.reduce_mean(
-        tf.reduce_sum(tf.abs(a_in), axis=[1]), name="sparse_loss")
-      self.feedback_loss = tf.reduce_mean(self.compute_feedback_loss(a_in), axis=0,
+      feedback_loss = tf.reduce_mean(self.compute_feedback_loss(a_in), axis=0,
         name="feedback_loss")
-      self.unsupervised_loss = (self.recon_loss + self.sparse_loss + self.feedback_loss)
-    total_loss = self.unsupervised_loss
-    return total_loss
+    return feedback_loss
+
+  def get_loss_funcs(self):
+    return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss,
+        "feedback_loss":self.compute_mean_feedback_loss}
 
   def build_graph(self):
     with self.graph.as_default():
@@ -131,9 +128,9 @@ class LCA_PCA_FB(LCA_PCA):
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
-    recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
-    sparse_loss = np.array(self.sparse_loss.eval(feed_dict)).tolist()
-    feedback_loss = np.array(self.feedback_loss.eval(feed_dict)).tolist()
+    recon_loss = np.array(self.loss_dict["recon_loss"].eval(feed_dict)).tolist()
+    sparse_loss = np.array(self.loss_dict["sparse_loss"].eval(feed_dict)).tolist()
+    feedback_loss = np.array(self.loss_dict["feedback_loss"].eval(feed_dict)).tolist()
     total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
     a_vals = tf.get_default_session().run(self.a, feed_dict)
     a_vals_max = np.array(a_vals.max()).tolist()
