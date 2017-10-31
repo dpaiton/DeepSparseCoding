@@ -6,7 +6,7 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits import axes_grid1
 import utils.image_processing as ip
 
-def plot_ellipse(axis, center, shape, angle, colorVal='auto', alpha=1.0, lines=False):
+def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=False):
   """
   Add an ellipse to given axis
   Inputs:
@@ -14,12 +14,13 @@ def plot_ellipse(axis, center, shape, angle, colorVal='auto', alpha=1.0, lines=F
     center [tuple or list] specifying [y, x] center coordinates
     shape [tuple or list] specifying [width, height] shape of ellipse
     angle [float] specifying angle of ellipse
-    colorVal [matplotlib color spec] specifying the color of the edge & face of the ellipse
+    color_val [matplotlib color spec] specifying the color of the edge & face of the ellipse
     alpha [float] specifying the transparency of the ellipse
     lines [bool] if true, output will be a line, where the secondary axis of the ellipse is collapsed
   Outputs:
     ellipse [matplotlib.patches.ellipse] ellipse object
   """
+  face_color_val = "none" if color_val == "auto" else color_val
   y_cen, x_cen = center
   width, height = shape
   if lines:
@@ -32,7 +33,7 @@ def plot_ellipse(axis, center, shape, angle, colorVal='auto', alpha=1.0, lines=F
       elif width > height:
         height = min_length
   ellipse = matplotlib.patches.Ellipse(xy=[x_cen, y_cen], width=width,
-    height=height, angle=angle, edgecolor=colorVal, facecolor=colorVal,
+    height=height, angle=angle, edgecolor=color_val, facecolor=face_color_val,
     alpha=alpha, fill=True)
   axis.add_artist(ellipse)
   ellipse.set_clip_box(axis.bbox)
@@ -65,7 +66,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False):
       orientations = bf_stats["fourier_centers"][filter_idx]
       angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
       alpha = 1.0
-      ellipse = plot_ellipse(ax, center, evals, angle, colorVal="b", alpha=alpha, lines=lines)
+      ellipse = plot_ellipse(ax, center, evals, angle, color_val="b", alpha=alpha, lines=lines)
       filter_idx += 1
     ax.set_aspect("equal")
   plt.show()
@@ -110,7 +111,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
       # Plot weakest of the top connected filters first because of occlusion
       for bf_idx in top_indices[:num_connected_weights][::-1]:
         connection_strength = example_filter[bf_idx]/filter_norm
-        colorVal = scalarMap.to_rgba(connection_strength)
+        color_val = scalarMap.to_rgba(connection_strength)
         center = bf_stats["gauss_centers"][bf_idx]
         evals, evecs = bf_stats["gauss_orientations"][bf_idx]
         orientations = bf_stats["fourier_centers"][bf_idx]
@@ -119,7 +120,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
         #spatial_freq = SFs[bf_idx] / sf_norm
         #alpha = spatial_freq
         alpha = 1.0#np.abs(connection_strength)
-        ellipse = plot_ellipse(ax, center, evals, angle, colorVal, alpha=alpha, lines=lines)
+        ellipse = plot_ellipse(ax, center, evals, angle, color_val, alpha=alpha, lines=lines)
       ax.set_xlim(0, patch_edge_size-1)
       ax.set_ylim(patch_edge_size-1, 0)
       filter_total += 1
@@ -302,12 +303,12 @@ def plot_bf_stats(bf_stats, num_bf=2):
     orientation = bf_stats["fourier_centers"][bf_idx]
     angle = np.rad2deg(np.pi/2 + np.arctan2(*orientation))
     alpha = 1.0
-    colorVal = "b"
-    ellipse = plot_ellipse(sub_ax[plot_id, 3], center, evals, angle, colorVal, alpha)
+    color_val = "b"
+    ellipse = plot_ellipse(sub_ax[plot_id, 3], center, evals, angle, color_val, alpha)
     sub_ax[plot_id, 3] = clear_axis(sub_ax[plot_id, 3], spines="k")
     sub_ax[plot_id, 4].imshow(bf, interpolation="Nearest", cmap="Greys_r")
     sub_ax[plot_id, 4] = clear_axis(sub_ax[plot_id, 4], spines="k")
-    ellipse = plot_ellipse(sub_ax[plot_id, 4], center, evals, angle, colorVal, alpha, lines=True)
+    ellipse = plot_ellipse(sub_ax[plot_id, 4], center, evals, angle, color_val, alpha, lines=True)
   sub_ax[0,0].set_title("Basis function", fontsize=12)
   sub_ax[0,1].set_title("Envelope", fontsize=12)
   sub_ax[0,2].set_title("Fourier map", fontsize=12)
@@ -402,7 +403,7 @@ def plot_cov_matrix(cov_matrix, num_cov_images=""):
   """
   fig, ax = plt.subplots(1, figsize=(10,10))
   im = ax.imshow(cov_matrix, cmap="Greys_r", interpolation="nearest")
-  im.set_clim(vmin=0, vmax=np.max(cov_matrix))
+  im.set_clim(vmin=np.min(cov_matrix), vmax=np.max(cov_matrix))
   ax.set_title("Activity covariance matrix averaged from "+str(num_cov_images)+" image patches",
     fontsize=14)
   add_colorbar_to_im(im)
