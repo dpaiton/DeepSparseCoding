@@ -4,7 +4,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits import axes_grid1
-import utils.image_processing as ip
+import utils.data_processing as dp
 
 def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=False):
   """
@@ -43,7 +43,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False):
   """
   Plot basis functions with summary ellipses drawn over them
   Inputs:
-    bf_stats [dict] output of ip.get_dictionary_stats()
+    bf_stats [dict] output of dp.get_dictionary_stats()
     num_bf [int] number of basis functions to plot (<=0 is all; >total is all)
     lines [bool] If true, will plot lines instead of ellipses
   """
@@ -76,7 +76,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
   """
   Plot 2nd layer (fully-connected) weights in terms of connection strengths to 1st layer weights
   Inputs:
-    bf_stats [dict] output of ip.get_dictionary_stats() which was run on the 1st layer weights
+    bf_stats [dict] output of dp.get_dictionary_stats() which was run on the 1st layer weights
     pooling_filters [np.ndarray] 2nd layer weights, of shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
     num_connected_weights [int] How many 1st layer weight summaries to include for a given 2nd layer neuron
@@ -137,7 +137,7 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_siz
   """
   Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of 1st layer weights
   Inputs:
-    bf_stats [dict] Output of ip.get_dictionary_stats() which was run on the 1st layer weights
+    bf_stats [dict] Output of dp.get_dictionary_stats() which was run on the 1st layer weights
     pooling_filters [np.ndarray] 2nd layer weights, of shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
     fig_size [tuple] Containing the (width, height) of the figure, in inches
@@ -223,7 +223,7 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
     primary_bf_idx = bf_indices[x_id]
     a_cov_row = a_cov[primary_bf_idx, :]
     sorted_cov_indices = np.argsort(a_cov[primary_bf_idx, :])[-2::-1]
-    primary_bf = np.squeeze(ip.reshape_data(weights.T[primary_bf_idx,...],
+    primary_bf = np.squeeze(dp.reshape_data(weights.T[primary_bf_idx,...],
       flatten=False)[0])
     ax = plt.subplot(gs[x_id,0])
     ax.imshow(primary_bf, cmap="Greys_r", interpolation="nearest")
@@ -234,7 +234,7 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
     [i.set_linewidth(3.0) for i in ax.spines.values()]
     strengths = []
     for y_id, bf_idx in enumerate(sorted_cov_indices[:num_top_cov_bases]):
-      bf = np.squeeze(ip.reshape_data(weights.T[bf_idx,...],
+      bf = np.squeeze(dp.reshape_data(weights.T[bf_idx,...],
         flatten=False)[0])
       ax = plt.subplot(gs[x_id, y_id+1])
       ax.imshow(bf, cmap="Greys_r", interpolation="nearest")
@@ -266,9 +266,9 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
 
 def plot_bf_stats(bf_stats, num_bf=2):
   """
-  Plot outputs of the ip.get_dictionary_stats()
+  Plot outputs of the dp.get_dictionary_stats()
   Inputs:
-    bf_stats [dict] output of ip.get_dictionary_stats()
+    bf_stats [dict] output of dp.get_dictionary_stats()
     num_bf [int] number of basis functions to plot
   """
   tot_num_bf = len(bf_stats["basis_functions"])
@@ -353,7 +353,7 @@ def plot_hilbert_analysis(weights, padding=None):
     weights: [np.ndarray] with shape [num_inputs, num_outputs]
       num_inputs must have even square root.
   """
-  Envelope, bff_filt, Hil_filter, bff = ip.hilbert_amplitude(weights, padding)
+  Envelope, bff_filt, Hil_filter, bff = dp.hilbert_amplitude(weights, padding)
   num_inputs, num_outputs = weights.shape
   assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
     "weights.shape[0] must have an even square root.")
@@ -433,7 +433,7 @@ def plot_gaussian_contours(bf_stats, num_plots):
   """
   Plot basis functions with contour lines for Gaussian fits
   Inputs:
-    bf_stats [dict] output from ip.get_dictionary_stats()
+    bf_stats [dict] output from dp.get_dictionary_stats()
     num_plots [int] indicating the number of random BFs to plot
   """
   num_bf = bf_stats["num_outputs"]
@@ -558,7 +558,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
       figures will not display with GUI if set
   """
   if normalize:
-    data = ip.normalize_data_with_max(data)
+    data = dp.normalize_data_with_max(data)
     vmin = -1.0
     vmax = 1.0
   if vmin is None:

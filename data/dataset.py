@@ -1,5 +1,4 @@
 import numpy as np
-import utils.image_processing as ip
 
 class Dataset(object):
   def __init__(self, imgs, lbls, ignore_lbls=None, vectorize=True,

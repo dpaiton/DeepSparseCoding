@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import params.param_picker as pp
 import models.model_picker as mp
-import data.data_picker as dp
+import data.data_selector as ds
 
 ## Specify training run params
 model_type = "lca_pca_fb"
@@ -20,7 +20,7 @@ params["data_type"] = data_type
 params["cov_suffix"] = cov_suffix
 
 ## Import data
-data = dp.get_data(data_type, params)
+data = ds.get_data(params)
 if params["conv"]: # conv param is set in the param picker
   params["input_shape"] = [data["train"].num_rows, data["train"].num_cols,
     data["train"].num_channels]

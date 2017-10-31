@@ -1,25 +1,25 @@
 import h5py
 import numpy as np
 from data.dataset import Dataset
-import utils.image_processing as ip
+import utils.data_processing as dp
 
 class vanHateren(object):
   def __init__(self, img_dir, whiten_data=False, contrast_normalize=False,
     num_images=50, num_examples=None, patch_edge_size=None, overlapping=None,
     var_thresh=None, rand_state=np.random.RandomState()):
     full_img_data = self.extract_images(img_dir, num_images, rand_state=rand_state)
-    full_img_data = ip.downsample_data(full_img_data, factor=[1, 0.5, 0.5], order=2)
+    full_img_data = dp.downsample_data(full_img_data, factor=[1, 0.5, 0.5], order=2)
 
     if whiten_data:
-      full_img_data = ip.whiten_data(full_img_data, method="FT")
+      full_img_data = dp.whiten_data(full_img_data, method="FT")
     else:
-      full_img_data = ip.standardize_data(full_img_data)
+      full_img_data = dp.standardize_data(full_img_data)
     if contrast_normalize:
-      full_img_data = ip.contrast_normalize(full_img_data)
+      full_img_data = dp.contrast_normalize(full_img_data)
     if all(param is not None for param in (num_examples, patch_edge_size,
       overlapping, var_thresh)):
       out_shape = (num_examples, patch_edge_size, patch_edge_size)
-      self.images = ip.extract_patches(full_img_data, out_shape, overlapping,
+      self.images = dp.extract_patches(full_img_data, out_shape, overlapping,
         var_thresh, rand_state)
     else:
       self.images = full_img_data

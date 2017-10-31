@@ -141,7 +141,7 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     fy_cen = (max_fys[max_fx] - (N/2)) * (patch_edge_size/N)
     fx_cen = (max_fx - (N/2)) * (patch_edge_size/N)
     fourier_centers[bf_idx] = [fy_cen, fx_cen]
-  output = {"basis_functions":basis_funcs, "envelopes":envelopes, "gauss_fits":gauss_fits, 
+  output = {"basis_functions":basis_funcs, "envelopes":envelopes, "gauss_fits":gauss_fits,
     "gauss_centers":gauss_centers, "gauss_orientations":gauss_orientations,
     "fourier_centers":fourier_centers, "fourier_maps":fourier_maps, "envelope_centers":envelope_centers,
     "num_inputs":num_inputs, "num_outputs":num_outputs, "patch_edge_size":patch_edge_size}

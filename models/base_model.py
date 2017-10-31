@@ -350,12 +350,13 @@ class Model(object):
     """
     self.weight_saver.restore(session, model_dir)
 
-  def get_feed_dict(self, input_data, input_labels=None):
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None):
     """
     Return dictionary containing all placeholders
     Inputs:
       input_data: data to be placed in self.x
       input_labels: label to be placed in self.y
+      dict_args: optional dictionary to be appended to the automatically generated feed_dict
     """
     placeholders = [op.name
       for op
@@ -370,6 +371,8 @@ class Model(object):
     for placeholder in placeholders:
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
         self.get_sched(placeholder.split("/")[1]))
+    if dict_args is not None:
+      feed_dict.update(dict_args)
     return feed_dict
 
   def setup_graph(self):

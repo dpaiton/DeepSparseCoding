@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from analysis.lca_analyzer import LCA
-import utils.image_processing as ip
+import utils.data_processing as dp
 import utils.notebook as nb
 
 class LCA_PCA(LCA):
@@ -31,7 +31,7 @@ class LCA_PCA(LCA):
     self.cov = self.analyze_cov(images)
     self.evec_atas = self.compute_atas(self.cov["b"], images)
     self.pool_atas = self.compute_atas(self.cov["pooled_act"], images)
-    self.bf_stats = ip.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
+    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     self.inference_stats = self.evaluate_inference(images[73:74])
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",

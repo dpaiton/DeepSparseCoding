@@ -6,7 +6,7 @@ import tensorflow as tf
 import json as js
 import params.param_picker as pp
 import models.model_picker as mp
-import data.data_picker as dp
+import data.data_selector as ds
 
 ## Specify model type and data type
 #model_type = "mlp"
@@ -31,7 +31,7 @@ if "rand_seed" in params.keys():
 params["data_type"] = data_type
 
 ## Import data
-data = dp.get_data(data_type, params)
+data = ds.get_data(params)
 if params["conv"]: # conv param is set in the param picker
   params["input_shape"] = [data["train"].num_rows, data["train"].num_cols,
     data["train"].num_channels]
