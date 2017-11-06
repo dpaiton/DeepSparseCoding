@@ -1,6 +1,6 @@
 import numpy as np
 from data.dataset import Dataset
-import utils.image_processing as ip
+import utils.data_processing as dp
 
 class field(object):
   def __init__(self, img_dir, num_examples=None, patch_edge_size=None,
@@ -9,7 +9,7 @@ class field(object):
     if all(param is not None for param in (num_examples, patch_edge_size,
       overlapping, var_thresh)):
       out_shape = (num_examples, patch_edge_size, patch_edge_size)
-      self.images = ip.extract_patches(full_img_data, out_shape, overlapping,
+      self.images = dp.extract_patches(full_img_data, out_shape, overlapping,
         var_thresh, rand_state)
     else:
       self.images = full_img_data
@@ -45,7 +45,7 @@ def load_field(kwargs):
     if "overlapping_patches" in kwargs.keys() else None)
   var_thresh = (kwargs["patch_variance_threshold"]
     if "patch_variance_threshold" in kwargs.keys() else None)
-  vectorize = not kwargs["conv"] #conv models need a devectorized images
+  vectorize = kwargs["vectorize"] if "vectorize" in kwargs.keys() else True
 
   ## Training set
   if whiten_images:

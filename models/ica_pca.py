@@ -10,19 +10,19 @@ class ICA_PCA(ICA):
     new_params.update(params)
     super(ICA_PCA, self).__init__(new_params, schedule)
 
-  """
-  Load parameters into object
-  Inputs:
-   params: [dict] model parameters
-  Modifiable Parameters:
-    num_pooling_units [int] indicating the number of 2nd layer units
-  """
   def load_params(self, params):
+    """
+    Load parameters into object
+    Inputs:
+     params: [dict] model parameters
+    Modifiable Parameters:
+      num_pooling_units [int] indicating the number of 2nd layer units
+    """
     super(ICA_PCA, self).load_params(params)
     self.num_pooling_units = int(params["num_pooling_units"])
 
-  """Build the TensorFlow graph object"""
   def build_graph(self):
+    """Build the TensorFlow graph object"""
     super(ICA_PCA, self).build_graph()
     with self.graph.as_default():
       with tf.variable_scope("weights") as scope:

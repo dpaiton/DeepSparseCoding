@@ -3,6 +3,7 @@ import numpy as np
 import utils.log_parser as lp
 import utils.plot_functions as pf
 import models.model_picker as mp
+import tensorflow as tf
 
 class Analyzer(object):
   def __init__(self, params):
@@ -10,63 +11,66 @@ class Analyzer(object):
       +"_v"+params["version"]+".log")
     self.log_text = lp.load_file(self.log_file)
     self.model_params = lp.read_params(self.log_text)
-    assert self.model_params["model_type"] == params["model_type"]
+    assert self.model_params["model_type"] == params["model_type"], (
+      "Model type defined in log text must match model type given in params.")
     self.model_params["rand_state"] = np.random.RandomState(
       self.model_params["rand_seed"])
     self.model_schedule = lp.read_schedule(self.log_text)
-
-    ## Determine which checkpoint to load
-    if "batch_index" in  params:
-      assert params["batch_index"] > 0
-      self.batch_index = params["batch_index"]
-    else:
-      batch_idx = 0
-      for schedule in self.model_schedule:
-        batch_idx += schedule["num_batches"]
-      self.batch_index = batch_idx
-
     self.load_params(params)
-    self.model_params["out_dir"] = self.out_dir
-    self.model_params["data_dir"] = params["data_dir"]
     self.make_dirs()
     self.load_model()
     self.model.log_params(params)
 
-  """Load analysis parameters into object"""
   def load_params(self, params):
+    """Load analysis parameters into object"""
     # Model details
-    self.version = params["version"]
     self.model_name = params["model_name"]
-    # Analysis details
-    self.save_weights = params["save_weights"]
-    self.eval_train = params["eval_train"]
-    self.eval_val = params["eval_val"]
-    self.eval_test = params["eval_test"]
-    self.act_trig_avgs = params["act_trig_avgs"]
-    # Output details
-    self.file_ext = params["file_ext"]
+    self.version = params["version"]
     self.device = params["device"]
-    self.out_dir = params["model_dir"]+"/analysis/"+self.version+"/"
-    self.cp_loc = (params["model_dir"]+"/checkpoints/"+params["model_name"]
-      +"_v"+params["version"]+"_full-"+str(self.batch_index))
+    self.analysis_out_dir = params["model_dir"]+"/analysis/"+self.version+"/"
+    if "cp_idx" in params.keys():
+      self.cp_idx = params["cp_idx"]
+      self.cp_loc = (params["model_dir"]+"/checkpoints/"+params["model_name"]
+        +"_v"+params["version"]+"_full-"+str(self.cp_idx))
+    else:
+      self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/")
+    self.model_params["model_out_dir"] = self.analysis_out_dir
+    if "data_dir" in params.keys():
+      self.model_params["data_dir"] = params["data_dir"]
 
-  """Make output directories"""
   def make_dirs(self):
-    if not os.path.exists(self.out_dir):
-      os.makedirs(self.out_dir)
+    """Make output directories"""
+    if not os.path.exists(self.analysis_out_dir):
+      os.makedirs(self.analysis_out_dir)
 
   def load_model(self):
+    """Load model object into analysis object"""
     self.model = mp.get_model(self.model_params["model_type"],
       self.model_params, self.model_schedule)
 
-  """Save a plot of statistics from the log file"""
-  def save_log_stats(self):
-    stats = lp.read_stats(self.log_text)
-    loss_filename = self.out_dir+"log_stats_v"+self.version+self.file_ext
-    pf.save_stats(data=stats, labels=None, out_filename=loss_filename)
+  def get_log_stats(self):
+    """Wrapper function for parsing the log statistics"""
+    return lp.read_stats(self.log_text)
 
-  def evaluate_model(self, images):
-    pass
+  def evaluate_model(self, images, var_names):
+    feed_dict = self.model.get_feed_dict(images)
+    with tf.Session(graph=self.model.graph) as sess:
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_weights(sess, self.cp_loc)
+      tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
+      eval_list = sess.run(tensors, feed_dict)
+    evals = dict(zip(var_names, eval_list))
+    return evals
 
-  def compute_atas(self, weights, activities, images):
-    pass
+  def compute_atas(self, activities, images):
+    """
+    Returns activity triggered averages
+    Outputs:
+      atas [np.ndarray] of shape (num_pixels, num_neurons)
+    Inputs:
+      activities [np.ndarray] of shape (num_imgs, num_neurons)
+      images [np.ndarray] of shape (num_imgs, num_img_pixels)
+    """
+    atas = np.dot(images.T, activities)
+    avg_atas = atas / images.shape[1]
+    return avg_atas

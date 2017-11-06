@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 from data.dataset import Dataset
-import utils.image_processing as ip
+import utils.data_processing as dp
 
 class CIFAR(object):
   def __init__(self,
@@ -114,7 +114,7 @@ def load_CIFAR(kwargs):
   else:
     assert False, (
     "'num_classes' key must be 10 or 100 for CIFAR-10 or CIFAR-100")
-  vectorize = not kwargs["conv"] #conv models need a devectorized images
+  vectorize = kwargs["vectorize"] if "vectorize" in kwargs.keys() else True
 
   train_val_test = CIFAR(
     data_dir,
@@ -122,13 +122,13 @@ def load_CIFAR(kwargs):
     num_labeled=num_labeled,
     rand_state=rand_state)
 
-  train = Dataset(ip.standardize_data(train_val_test.train_images),
+  train = Dataset(dp.standardize_data(train_val_test.train_images),
     train_val_test.train_labels, train_val_test.ignore_labels,
     vectorize=vectorize, rand_state=rand_state)
-  val = Dataset(ip.standardize_data(train_val_test.val_images),
+  val = Dataset(dp.standardize_data(train_val_test.val_images),
     train_val_test.val_labels, None, vectorize=vectorize,
     rand_state=rand_state)
-  test = Dataset(ip.standardize_data(train_val_test.test_images),
+  test = Dataset(dp.standardize_data(train_val_test.test_images),
     train_val_test.test_labels, None, vectorize=vectorize,
     rand_state=rand_state)
 

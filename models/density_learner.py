@@ -9,25 +9,25 @@ import os
 
 class density_learner(Model):
   def __init__(self, params, schedule):
-    Model.__init__(self, params, schedule)
+    super(density_learner, self).__init__(params, schedule)
 
-  """
-  Load parameters into object
-  Inputs:
-   params: [dict] model parameters
-  Modifiable Parameters:
-    rectify_a    [bool] If set, rectify layer 1 activity
-    norm_weights [bool] If set, rescale the density weights using an l2 norm
-    batch_size   [int] Number of images in a training batch
-    num_pixels   [int] Number of pixels
-    num_neurons  [int] Number of LCA neurons
-    num_u_steps  [int] Number of u inference steps
-    num_v_steps  [int] Number of v inference steps
-    dt           [float] Discrete global time constant
-    tau          [float] LCA time constant
-  """
   def load_params(self, params):
-    Model.load_params(self, params)
+    """
+    Load parameters into object
+    Inputs:
+     params: [dict] model parameters
+    Modifiable Parameters:
+      rectify_a    [bool] If set, rectify layer 1 activity
+      norm_weights [bool] If set, rescale the density weights using an l2 norm
+      batch_size   [int] Number of images in a training batch
+      num_pixels   [int] Number of pixels
+      num_neurons  [int] Number of LCA neurons
+      num_u_steps  [int] Number of u inference steps
+      num_v_steps  [int] Number of v inference steps
+      dt           [float] Discrete global time constant
+      tau          [float] LCA time constant
+    """
+    super(density_learner, self).load_params(params)
     # Meta parameters
     self.rectify_a = bool(params["rectify_a"])
     self.rectify_v = bool(params["rectify_v"])
@@ -49,9 +49,8 @@ class density_learner(Model):
     self.v_step_size = self.v_step_scale# * self.eta
 
 
-  """Build the TensorFlow graph object"""
   def build_graph(self):
-    self.graph = tf.Graph()
+    """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
@@ -179,13 +178,13 @@ class density_learner(Model):
                2.0), MSE)), name="recon_quality")
     self.graph_built = True
 
-  #"""
-  #Returns the manually-computed gradient
-  #NOTE:
-  #  This child function does not use optimizer input
-  #  weight_op must be a list with a single matrix ("self.b") in it
-  #"""
   #def compute_weight_gradients(self, optimizer, weight_op=None):
+  #  """
+  #  Returns the manually-computed gradient
+  #  NOTE:
+  #    This child function does not use optimizer input
+  #    weight_op must be a list with a single matrix ("self.b") in it
+  #  """
   #  assert len(weight_op) == 1, ("density_learner should only have one"
   #    +"weight matrix")
   #  weight_name = weight_op[0].name.split('/')[1].split(':')[0]#np.split
@@ -199,19 +198,19 @@ class density_learner(Model):
   #  #  self.sigma), 1.0)), self.v)), name=weight_name+"_gradient")
   #  return [(gradient, weight_op[0])]
 
-  """
-  Log train progress information
-  Inputs:
-    input_data: data object containing the current image batch
-    input_labels: data object containing the current label batch
-    batch_step: current batch number within the schedule
-  NOTE: Casting tf.eval output to an np.array and then to a list is required to
-    ensure that the data type is valid for js.dumps(). An alternative would be
-    to write a numpy function that converts numpy types to their corresponding
-    python types.
-  """
   def print_update(self, input_data, input_labels=None, batch_step=0):
-    Model.print_update(self, input_data, input_labels, batch_step)
+    """
+    Log train progress information
+    Inputs:
+      input_data: data object containing the current image batch
+      input_labels: data object containing the current label batch
+      batch_step: current batch number within the schedule
+    NOTE: Casting tf.eval output to an np.array and then to a list is required to
+      ensure that the data type is valid for js.dumps(). An alternative would be
+      to write a numpy function that converts numpy types to their corresponding
+      python types.
+    """
+    super(density_learner, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval()).tolist()
     recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
@@ -247,67 +246,57 @@ class density_learner(Model):
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     self.log_info("<stats>"+js_str+"</stats>")
 
-  """
-  Plot weights, reconstruction, and gradients
-  Inputs:
-    input_data: data object containing the current image batch
-    input_labels: data object containing the current label batch
-  """
   def generate_plots(self, input_data, input_labels=None):
-    Model.generate_plots(self, input_data, input_labels)
+    """
+    Plot weights, reconstruction, and gradients
+    Inputs:
+      input_data: data object containing the current image batch
+      input_labels: data object containing the current label batch
+    """
+    super(density_learner, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
     #recon = tf.get_default_session().run(self.x_, feed_dict)
     #weights = tf.get_default_session().run(self.phi, feed_dict)
     b_weights = tf.get_default_session().run(self.b, feed_dict)
     v_vals = tf.get_default_session().run(self.v, feed_dict)
-    #pf.save_data_tiled(input_data.reshape((self.batch_size,
-    #  np.int(np.sqrt(self.num_pixels)),
-    #  np.int(np.sqrt(self.num_pixels)))),
-    #  normalize=False, title="Images at step "+current_step,
-    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
-    #  +current_step.zfill(5)+".pdf"))
-    #pf.save_data_tiled(weights.T.reshape(self.num_neurons,
+    #pf.plot_data_tiled(input_data.reshape((self.batch_size,
+    #  np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
+    #  normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    #pf.plot_data_tiled(weights.T.reshape(self.num_neurons,
     #  int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-    #  normalize=False, title="Dictionary at step "+current_step,
-    #  save_filename=(self.disp_dir+"phi_v"+self.version+"_"
-    #  +current_step.zfill(5)+".pdf"))
-    pf.save_data_tiled(b_weights.T.reshape(self.num_v,
+    #  normalize=False, title="Dictionary at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+    pf.plot_data_tiled(b_weights.T.reshape(self.num_v,
       int(np.sqrt(self.num_neurons)), int(np.sqrt(self.num_neurons))),
-      normalize=True, title="Density weights at step "+current_step,
-      save_filename=(self.disp_dir+"b_v"+self.version+"_"
-      +current_step.zfill(5)+".pdf"))
-    #pf.save_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
-    #  title="phi l2 norm", save_filename=(self.disp_dir+"phi_norm_v"
-    #  +self.version+"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
-    #  ylabel="L2 Norm")
-    pf.save_bar(np.linalg.norm(b_weights, axis=1, ord=1, keepdims=False),
-      num_xticks=5, title="b l1 norm", save_filename=(self.disp_dir+"b_norm_v"
-      +self.version+"-"+current_step.zfill(5)+".pdf"), xlabel="Basis Index",
-      ylabel="L1 Norm")
-    pf.save_activity_hist(v_vals, num_bins=1000,
+      normalize=True, title="Density weights at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"b_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+    #pf.plot_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
+    #  title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+    #  save_filename=(self.disp_dir+"phi_norm_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    pf.plot_bar(np.linalg.norm(b_weights, axis=1, ord=1, keepdims=False),
+      num_xticks=5, title="b l1 norm", xlabel="Basis Index", ylabel="L1 Norm",
+      save_filename=(self.disp_dir+"b_norm_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+    pf.plot_activity_hist(v_vals, num_bins=1000,
       title="v Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"v_hist_v"+self.version+"-"
       +current_step.zfill(5)+".pdf"))
-    #pf.save_data_tiled(recon.reshape((self.batch_size,
-    #  np.int(np.sqrt(self.num_pixels)),
-    #  np.int(np.sqrt(self.num_pixels)))),
-    #  normalize=False, title="Recons at step "+current_step,
-    #  save_filename=(self.disp_dir+"recons_v"+self.version+"-"
-    #  +current_step.zfill(5)+".pdf"))
+    #pf.plot_data_tiled(recon.reshape((self.batch_size,
+    #  np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
+    #  normalize=False, title="Recons at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       if name == "phi":
-        pf.save_data_tiled(grad.T.reshape(self.num_neurons,
+        pf.plot_data_tiled(grad.T.reshape(self.num_neurons,
           int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-          normalize=True, title="Gradient for phi at step "+current_step,
-          save_filename=(self.disp_dir+"dphi_v"+self.version+"_"
-          +current_step.zfill(5)+".pdf"))
+          normalize=True, title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+          save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
       elif name == "b":
-        pf.save_data_tiled(grad.T.reshape(self.num_v,
+        pf.plot_data_tiled(grad.T.reshape(self.num_v,
           int(np.sqrt(self.num_neurons)), int(np.sqrt(self.num_neurons))),
-          normalize=True, title="Gradient for b at step "+current_step,
-          save_filename=(self.disp_dir+"db_v"+self.version+"_"
-          +current_step.zfill(5)+".pdf"))
+          normalize=True, title="Gradient for b at step "+current_step, vmin=None, vmax=None,
+          save_filename=(self.disp_dir+"db_v"+self.version+"_"+current_step.zfill(5)+".pdf"))

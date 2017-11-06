@@ -3,7 +3,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 from analysis.base_analysis import Analyzer
 
-class dsc(Analyzer):
+class DSC(Analyzer):
   def __init__(self, params, schedule, log_text):
     Analyzer.__init__(self, params, schedule, log_text)
 
@@ -26,8 +26,8 @@ class dsc(Analyzer):
      "sparse_loss":stats["sparse_loss"],
      "feedback_loss":stats["feedback_loss"],
      "total_loss":stats["total_loss"]}
-    loss_filename = self.out_dir+"log_stats_v"+self.version+self.file_ext
-    pf.save_stats(data=losses, labels=None, out_filename=loss_filename)
+    loss_filename = self.analysis_out_dir+"log_stats_v"+self.version+self.file_ext
+    pf.plot_stats(data=losses, labels=None, save_filename=loss_filename)
 
   """
   plot activity triggered averages
@@ -35,12 +35,12 @@ class dsc(Analyzer):
   def save_data(self, data, datatype):
     fig_title = "Activity triggered averages on "+datatype+" data"
     for layer_idx, layer in enumerate(data):
-      ata_filename = (self.out_dir+"act_trig_avg_layer_"+str(layer_idx)+"_"
+      ata_filename = (self.analysis_out_dir+"act_trig_avg_layer_"+str(layer_idx)+"_"
         +datatype+"_v"+self.version+self.file_ext)
       ata = layer.reshape(layer.shape[0], int(np.sqrt(
         layer.shape[1])), int(np.sqrt(layer.shape[1])))
-      pf.save_data_tiled(ata, normalize=True, title=fig_title,
-        save_filename=ata_filename, vmin=-1.0, vmax=1.0)
+      pf.plot_data_tiled(ata, normalize=True, title=fig_title, vmin=-1.0, vmax=1.0,
+        save_filename=ata_filename)
 
   """
   Evaluate model and return activations & weights

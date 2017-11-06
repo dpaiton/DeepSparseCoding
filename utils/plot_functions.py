@@ -4,9 +4,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits import axes_grid1
-import utils.image_processing as ip
+import utils.data_processing as dp
 
-def plot_ellipse(axis, center, shape, angle, colorVal='auto', alpha=1.0, lines=False):
+def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=False):
   """
   Add an ellipse to given axis
   Inputs:
@@ -14,12 +14,13 @@ def plot_ellipse(axis, center, shape, angle, colorVal='auto', alpha=1.0, lines=F
     center [tuple or list] specifying [y, x] center coordinates
     shape [tuple or list] specifying [width, height] shape of ellipse
     angle [float] specifying angle of ellipse
-    colorVal [matplotlib color spec] specifying the color of the edge & face of the ellipse
+    color_val [matplotlib color spec] specifying the color of the edge & face of the ellipse
     alpha [float] specifying the transparency of the ellipse
     lines [bool] if true, output will be a line, where the secondary axis of the ellipse is collapsed
   Outputs:
     ellipse [matplotlib.patches.ellipse] ellipse object
   """
+  face_color_val = "none" if color_val == "auto" else color_val
   y_cen, x_cen = center
   width, height = shape
   if lines:
@@ -32,7 +33,7 @@ def plot_ellipse(axis, center, shape, angle, colorVal='auto', alpha=1.0, lines=F
       elif width > height:
         height = min_length
   ellipse = matplotlib.patches.Ellipse(xy=[x_cen, y_cen], width=width,
-    height=height, angle=angle, edgecolor=colorVal, facecolor=colorVal,
+    height=height, angle=angle, edgecolor=color_val, facecolor=face_color_val,
     alpha=alpha, fill=True)
   axis.add_artist(ellipse)
   ellipse.set_clip_box(axis.bbox)
@@ -42,7 +43,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False):
   """
   Plot basis functions with summary ellipses drawn over them
   Inputs:
-    bf_stats [dict] output of ip.get_dictionary_stats()
+    bf_stats [dict] output of dp.get_dictionary_stats()
     num_bf [int] number of basis functions to plot (<=0 is all; >total is all)
     lines [bool] If true, will plot lines instead of ellipses
   """
@@ -65,7 +66,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False):
       orientations = bf_stats["fourier_centers"][filter_idx]
       angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
       alpha = 1.0
-      ellipse = plot_ellipse(ax, center, evals, angle, colorVal="b", alpha=alpha, lines=lines)
+      ellipse = plot_ellipse(ax, center, evals, angle, color_val="b", alpha=alpha, lines=lines)
       filter_idx += 1
     ax.set_aspect("equal")
   plt.show()
@@ -75,7 +76,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
   """
   Plot 2nd layer (fully-connected) weights in terms of connection strengths to 1st layer weights
   Inputs:
-    bf_stats [dict] output of ip.get_dictionary_stats() which was run on the 1st layer weights
+    bf_stats [dict] output of dp.get_dictionary_stats() which was run on the 1st layer weights
     pooling_filters [np.ndarray] 2nd layer weights, of shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
     num_connected_weights [int] How many 1st layer weight summaries to include for a given 2nd layer neuron
@@ -110,7 +111,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
       # Plot weakest of the top connected filters first because of occlusion
       for bf_idx in top_indices[:num_connected_weights][::-1]:
         connection_strength = example_filter[bf_idx]/filter_norm
-        colorVal = scalarMap.to_rgba(connection_strength)
+        color_val = scalarMap.to_rgba(connection_strength)
         center = bf_stats["gauss_centers"][bf_idx]
         evals, evecs = bf_stats["gauss_orientations"][bf_idx]
         orientations = bf_stats["fourier_centers"][bf_idx]
@@ -119,7 +120,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
         #spatial_freq = SFs[bf_idx] / sf_norm
         #alpha = spatial_freq
         alpha = 1.0#np.abs(connection_strength)
-        ellipse = plot_ellipse(ax, center, evals, angle, colorVal, alpha=alpha, lines=lines)
+        ellipse = plot_ellipse(ax, center, evals, angle, color_val, alpha=alpha, lines=lines)
       ax.set_xlim(0, patch_edge_size-1)
       ax.set_ylim(patch_edge_size-1, 0)
       filter_total += 1
@@ -131,12 +132,12 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
   cbar = fig.colorbar(scalarMap, ax=ax, ticks=[-1, 0, 1])
   plt.show()
   return fig
-    
+
 def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_size=(17,17), spot_size=10):
   """
   Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of 1st layer weights
   Inputs:
-    bf_stats [dict] Output of ip.get_dictionary_stats() which was run on the 1st layer weights
+    bf_stats [dict] Output of dp.get_dictionary_stats() which was run on the 1st layer weights
     pooling_filters [np.ndarray] 2nd layer weights, of shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
     fig_size [tuple] Containing the (width, height) of the figure, in inches
@@ -175,10 +176,10 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_siz
         for bf_idx in range(bf_stats["num_outputs"])]
       (y_id, x_id) = plot_id
       if x_id == 0:
-        ax_l = 0  
+        ax_l = 0
         ax_b = - y_id * (plt_h+h_gap)
       else:
-        bbox = axes[-1].get_position().get_points()[0]#bbox is [[x0,y0],[x1,y1]] 
+        bbox = axes[-1].get_position().get_points()[0]#bbox is [[x0,y0],[x1,y1]]
         prev_l = bbox[0]
         prev_b = bbox[1]
         ax_l = prev_l + plt_w + group_w_gap
@@ -222,7 +223,7 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
     primary_bf_idx = bf_indices[x_id]
     a_cov_row = a_cov[primary_bf_idx, :]
     sorted_cov_indices = np.argsort(a_cov[primary_bf_idx, :])[-2::-1]
-    primary_bf = np.squeeze(ip.reshape_data(weights.T[primary_bf_idx,...],
+    primary_bf = np.squeeze(dp.reshape_data(weights.T[primary_bf_idx,...],
       flatten=False)[0])
     ax = plt.subplot(gs[x_id,0])
     ax.imshow(primary_bf, cmap="Greys_r", interpolation="nearest")
@@ -233,12 +234,11 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
     [i.set_linewidth(3.0) for i in ax.spines.values()]
     strengths = []
     for y_id, bf_idx in enumerate(sorted_cov_indices[:num_top_cov_bases]):
-      bf = np.squeeze(ip.reshape_data(weights.T[bf_idx,...],
+      bf = np.squeeze(dp.reshape_data(weights.T[bf_idx,...],
         flatten=False)[0])
       ax = plt.subplot(gs[x_id, y_id+1])
       ax.imshow(bf, cmap="Greys_r", interpolation="nearest")
-      ax.tick_params(axis="both", bottom="off", top="off",
-        left="off", right="off")
+      ax.tick_params(axis="both", bottom="off", top="off", left="off", right="off")
       ax.get_xaxis().set_visible(False)
       ax.get_yaxis().set_visible(False)
       strengths.append(a_cov[primary_bf_idx, bf_idx])
@@ -257,16 +257,18 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
         tick.set_verticalalignment("bottom")
       else:
         tick.set_verticalalignment("top")
-  plt.subplot(gs[0,0]).set_title("rand bf");
-  plt.subplot(gs[0,1]).set_title("strongest corr --> weakest corr", horizontalalignment="left");
+  plt.subplot(gs[0,0]).set_title("rand bf", horizontalalignment="center", fontsize=18);
+  plt.subplot(gs[0,1]).set_title("stronger correlation --$>$ weaker correlation",
+    horizontalalignment="left", fontsize=18);
+  plt.subplot(gs[0,-1]).set_title("activity covariance", horizontalalignment="center", fontsize=18)
   plt.show()
   return fig
 
 def plot_bf_stats(bf_stats, num_bf=2):
   """
-  Plot outputs of the ip.get_dictionary_stats()
+  Plot outputs of the dp.get_dictionary_stats()
   Inputs:
-    bf_stats [dict] output of ip.get_dictionary_stats()
+    bf_stats [dict] output of dp.get_dictionary_stats()
     num_bf [int] number of basis functions to plot
   """
   tot_num_bf = len(bf_stats["basis_functions"])
@@ -301,12 +303,12 @@ def plot_bf_stats(bf_stats, num_bf=2):
     orientation = bf_stats["fourier_centers"][bf_idx]
     angle = np.rad2deg(np.pi/2 + np.arctan2(*orientation))
     alpha = 1.0
-    colorVal = "b"
-    ellipse = plot_ellipse(sub_ax[plot_id, 3], center, evals, angle, colorVal, alpha)
+    color_val = "b"
+    ellipse = plot_ellipse(sub_ax[plot_id, 3], center, evals, angle, color_val, alpha)
     sub_ax[plot_id, 3] = clear_axis(sub_ax[plot_id, 3], spines="k")
     sub_ax[plot_id, 4].imshow(bf, interpolation="Nearest", cmap="Greys_r")
     sub_ax[plot_id, 4] = clear_axis(sub_ax[plot_id, 4], spines="k")
-    ellipse = plot_ellipse(sub_ax[plot_id, 4], center, evals, angle, colorVal, alpha, lines=True)
+    ellipse = plot_ellipse(sub_ax[plot_id, 4], center, evals, angle, color_val, alpha, lines=True)
   sub_ax[0,0].set_title("Basis function", fontsize=12)
   sub_ax[0,1].set_title("Envelope", fontsize=12)
   sub_ax[0,2].set_title("Fourier map", fontsize=12)
@@ -351,7 +353,7 @@ def plot_hilbert_analysis(weights, padding=None):
     weights: [np.ndarray] with shape [num_inputs, num_outputs]
       num_inputs must have even square root.
   """
-  Envelope, bff_filt, Hil_filter, bff = ip.hilbert_amplitude(weights, padding)
+  Envelope, bff_filt, Hil_filter, bff = dp.hilbert_amplitude(weights, padding)
   num_inputs, num_outputs = weights.shape
   assert np.sqrt(num_inputs) == np.floor(np.sqrt(num_inputs)), (
     "weights.shape[0] must have an even square root.")
@@ -401,7 +403,7 @@ def plot_cov_matrix(cov_matrix, num_cov_images=""):
   """
   fig, ax = plt.subplots(1, figsize=(10,10))
   im = ax.imshow(cov_matrix, cmap="Greys_r", interpolation="nearest")
-  im.set_clim(vmin=0, vmax=np.max(cov_matrix))
+  im.set_clim(vmin=np.min(cov_matrix), vmax=np.max(cov_matrix))
   ax.set_title("Activity covariance matrix averaged from "+str(num_cov_images)+" image patches",
     fontsize=14)
   add_colorbar_to_im(im)
@@ -423,7 +425,7 @@ def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
   ax.set_xlim(xlim[0], xlim[1]) # Ignore first eigenvalue
   ax.set_ylim(ylim[0], ylim[1])
   ax.set_yscale("log")
-  ax.set_title("Sorted eigenvalues of covariance matrix", fontsize=16)
+  ax.set_title("Sorted eigenvalues of covariance matrix", fontsize=18)
   plt.show()
   return fig
 
@@ -431,7 +433,7 @@ def plot_gaussian_contours(bf_stats, num_plots):
   """
   Plot basis functions with contour lines for Gaussian fits
   Inputs:
-    bf_stats [dict] output from ip.get_dictionary_stats()
+    bf_stats [dict] output from dp.get_dictionary_stats()
     num_plots [int] indicating the number of random BFs to plot
   """
   num_bf = bf_stats["num_outputs"]
@@ -463,14 +465,14 @@ def plot_gaussian_contours(bf_stats, num_plots):
   plt.show()
   return fig
 
-def save_bar(data, num_xticks=5, title="", save_filename="./bar_fig.pdf",
-  xlabel="", ylabel=""):
+def plot_bar(data, num_xticks=5, title="", xlabel="", ylabel="", save_filename=None):
   """
   Generate a bar graph of data
   Inputs:
     data: [np.ndarray] of shape (N,)
     xticklabels: [list of N str] indicating the labels for the xticks
     save_filename: [str] indicating where the file should be saved
+      if None, don't save the file
     xlabel: [str] indicating the x-axis label
     ylabel: [str] indicating the y-axis label
     title: [str] indicating the plot title
@@ -484,10 +486,14 @@ def save_bar(data, num_xticks=5, title="", save_filename="./bar_fig.pdf",
   ax.set_xlabel(xlabel)
   ax.set_ylabel(ylabel)
   fig.suptitle(title, y=1.0, x=0.5)
-  fig.savefig(save_filename, transparent=True)
-  plt.close(fig)
+  if save_filename is not None:
+    fig.savefig(save_filename, transparent=True)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
 
-def save_activity_hist(data, num_bins="auto", title="", save_filename="./hist.pdf"):
+def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   """
   Histogram activity matrix
   Inputs:
@@ -508,10 +514,14 @@ def save_activity_hist(data, num_bins="auto", title="", save_filename="./hist.pd
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
   fig.tight_layout()
-  fig.savefig(save_filename)
-  plt.close(fig)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
+  plt.show()
+  return fig
 
-def save_phase_avg_power_spec(data, title="", save_filename="./pow_spec.pdf"):
+def plot_phase_avg_power_spec(data, title="", save_filename=None):
   """
   Plot phase averaged power spectrum for a set of images
   Inputs:
@@ -523,11 +533,35 @@ def save_phase_avg_power_spec(data, title="", save_filename="./pow_spec.pdf"):
   (fig, ax) = plt.subplots(1)
   ax.loglog(range(data[data>1].shape[0]), data[data>1])
   fig.suptitle(title, y=1.0, x=0.5)
-  fig.savefig(save_filename)
-  plt.close(fig)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
+  plt.show()
+  return fig
 
-def save_data_tiled(data, normalize=False, title="", save_filename="",
-  vmin=None, vmax=None):
+def plot_weights(weights, title="", save_filename=None):
+  num_plots = weights.shape[0]
+  num_plots_y = int(np.ceil(np.sqrt(num_plots))+1)
+  num_plots_x = int(np.floor(np.sqrt(num_plots)))
+  fig, sub_ax = plt.subplots(num_plots_y, num_plots_x, figsize=(18,18))
+  filter_total = 0
+  for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
+    if filter_total < num_plots:
+      sub_ax[plot_id].imshow(weights[filter_total, ...], cmap="Greys_r")
+      filter_total += 1
+    clear_axis(sub_ax[plot_id])
+    sub_ax[plot_id].set_aspect("equal")
+  fig.suptitle(title, y=1.0, x=0.5, fontsize=24)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
+  plt.show()
+  return fig
+
+def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
+  save_filename=None):
   """
   Save figure for input data as a tiled image
   Inpus:
@@ -539,12 +573,12 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
     normalize: [bool] indicating whether the data should be streched (normalized)
       This is recommended for dictionary plotting.
     title: [str] for title of figure
+    vmin, vmax: [int] the min and max of the color range
     save_filename: [str] holding output directory for writing,
       figures will not display with GUI if set
-    vmin, vmax: [int] the min and max of the color range
   """
   if normalize:
-    data = ip.normalize_data_with_max(data)
+    data = dp.normalize_data_with_max(data)
     vmin = -1.0
     vmax = 1.0
   if vmin is None:
@@ -553,53 +587,131 @@ def save_data_tiled(data, normalize=False, title="", save_filename="",
     vmax = np.max(data)
   if len(data.shape) >= 3:
     data = pad_data(data)
-  fig, sub_axis = plt.subplots(1)
+  fig, sub_axis = plt.subplots(1, figsize=(24, 24))
   axis_image = sub_axis.imshow(data, cmap="Greys_r", interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)
-  cbar = fig.colorbar(axis_image)
-  sub_axis.tick_params(
-   axis="both",
-   bottom="off",
-   top="off",
-   left="off",
-   right="off")
+  cbar = add_colorbar_to_im(axis_image)
+  #cbar = fig.colorbar(axis_image)
+  sub_axis.tick_params(axis="both", bottom="off", top="off", left="off", right="off")
   sub_axis.get_xaxis().set_visible(False)
   sub_axis.get_yaxis().set_visible(False)
-  sub_axis.set_title(title)
-  if save_filename == "":
-    save_filename = "./output.ps"
-  fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad_inches=0.01)
-  plt.close(fig)
+  sub_axis.set_title(title, fontsize=24)
+  if save_filename is not None:
+    if save_filename == "":
+      save_filename = "./output.png"
+    fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad_inches=0.01)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
 
-def save_stats(data, labels=None, save_filename="./Fig.pdf"):
+def plot_stats(data, keys=None, labels=None, save_filename=None):
   """
   Generate time-series plots of stats specified by keys
   Inputs:
     data: [dict] containing data to be plotted. len of all values should be equal
-          data must have the key "batch_step"
-    labels: [list of str] optional list of labels, should be same len as
-            data.keys(). If nothing is given, data.keys() will be used as labels
+      data must have the key "batch_step"
+    keys: [list of str] optional list of keys to plot, each should exist in data.keys()
+      If nothing is given, data.keys() will be used
+    labels: [list of str] optional list of labels, should be the same length as keys input
+      If nothing is given, data.keys() will be used
     save_filename: [str] containing the complete output filename.
   """
-  data_keys = list(data.keys())
-  data_keys.remove("batch_step")
+  if keys is None:
+    keys = list(data.keys())
+  else:
+    assert all([key in data.keys() for key in keys]), (
+      "All input keys must exist as keys in the data dictionary")
+  if "batch_step" in keys:
+    keys.remove("batch_step")
   if labels is None:
-    labels = data_keys
-  num_keys = len(data_keys)
+    labels = keys
+  else:
+    assert len(labels) == len(keys), (
+      "The number of labels must match the number of keys")
+  num_keys = len(keys)
   fig, sub_ax = plt.subplots(num_keys)
   axis_image = [None]*num_keys
-  for key_idx, key in enumerate(data_keys):
+  for key_idx, key in enumerate(keys):
     axis_image[key_idx] = sub_ax[key_idx].plot(data["batch_step"], data[key])
-    if key_idx < len(data_keys)-1:
+    if key_idx < len(keys)-1:
       sub_ax[key_idx].get_xaxis().set_ticklabels([])
     sub_ax[key_idx].locator_params(axis="y", nbins=5)
     sub_ax[key_idx].set_ylabel(labels[key_idx])
-    ylabel_xpos = -0.1
+    ylabel_xpos = -0.15
     sub_ax[key_idx].yaxis.set_label_coords(ylabel_xpos, 0.5)
   sub_ax[-1].set_xlabel("Batch Number")
   fig.suptitle("Stats per Batch", y=1.0, x=0.5)
-  fig.savefig(save_filename, transparent=True)
-  plt.close(fig)
+  if save_filename is not None:
+      fig.savefig(save_filename, transparent=True)
+      plt.close(fig)
+      return None
+  plt.show()
+  return fig
+
+def plot_inference_traces(data, activation_threshold, img_idx=0):
+  """
+  Plot of model neuron inputs over time
+  Args:
+    data: [dict] with each trace, with keys [b, u, a, ga, images]
+      Dictionary is created by analyze_lca.evaluate_inference()
+    img_idx: [int] which image in data["images"] to run analysis on
+  """
+  plt.rc('text', usetex=True)
+  (num_images, num_timesteps, num_neurons) = data["b"].shape
+  sqrt_nn = int(np.sqrt(num_neurons))
+  global_max_val = float(np.max(np.abs([data["b"][img_idx,...],
+    data["u"][img_idx,...], data["ga"][img_idx,...], data["a"][img_idx,...]])))
+  fig, sub_axes = plt.subplots(sqrt_nn+2, sqrt_nn+1, figsize=(20, 20))
+  fig.subplots_adjust(hspace=0.20, wspace=0.20)
+  for (axis_idx, axis) in enumerate(fig.axes): # one axis per neuron
+    if axis_idx < num_neurons:
+      t = np.arange(data["b"].shape[1])
+      b = data["b"][img_idx,:,axis_idx]
+      u = data["u"][img_idx,:,axis_idx]
+      ga = data["ga"][img_idx,:,axis_idx]
+      a = data["a"][img_idx,:,axis_idx]
+      l1, = axis.plot(t, b, linewidth=0.25, color="g", label="b")
+      l2, = axis.plot(t, u, linewidth=0.25, color="b", label="u")
+      l3, = axis.plot(t, ga, linewidth=0.25, color="r", label="Ga")
+      l4, = axis.plot(t, [0 for _ in t], linewidth=0.25, color="k", linestyle="-",
+        label="zero")
+      l5, = axis.plot(t, [activation_threshold for _ in t], linewidth=0.25, color="k",
+        linestyle=":", dashes=(1,1), label=r"$\lambda$")
+      if "fb" in data.keys():
+        fb = data["fb"][img_idx,:,axis_idx]
+        l6, = axis.plot(t, fb, linewidth=0.25, color="darkorange", label="fb")
+      max_val = np.max(np.abs([b, ga, u, a]))
+      scale_ratio = max_val / global_max_val
+      transFigure = fig.transFigure.inverted()
+      axis_height = axis.get_window_extent().transformed(transFigure).height
+      line_length = axis_height * scale_ratio
+      x_offset = 0.003
+      axis_origin = transFigure.transform(axis.transAxes.transform([0,0]))
+      coord1 = [axis_origin[0] - x_offset, axis_origin[1]]
+      coord2 = [coord1[0], coord1[1] + line_length]
+      line = matplotlib.lines.Line2D((coord1[0], coord2[0]), (coord1[1],
+        coord2[1]), transform=fig.transFigure, color="0.3")
+      fig.lines.append(line)
+      if (a[-1] > 0):
+        clear_axis(axis, spines="magenta")
+      else:
+        clear_axis(axis, spines="black")
+    else:
+      clear_axis(axis)
+  num_pixels = np.size(data["images"][img_idx])
+  image = data["images"][img_idx,...].reshape(int(np.sqrt(num_pixels)), int(np.sqrt(num_pixels)))
+  sub_axes[sqrt_nn+1, 0].imshow(image, cmap="Greys", interpolation="nearest")
+  for plot_col in range(sqrt_nn):
+    clear_axis(sub_axes[sqrt_nn+1, plot_col])
+  fig.suptitle("LCA Activity", y=0.9, fontsize=18)
+  handles, labels = sub_axes[0,0].get_legend_handles_labels()
+  legend = sub_axes[sqrt_nn+1, 1].legend(handles, labels, fontsize=12, ncol=3,
+    borderaxespad=0., bbox_to_anchor=[0, 0], fancybox=True, loc="upper left")
+  for line in legend.get_lines():
+    line.set_linewidth(3)
+  plt.show()
+  return fig
 
 def pad_data(data, pad_values=1):
   """
@@ -639,7 +751,9 @@ def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, **kwargs):
   current_ax = plt.gca()
   cax = divider.append_axes("right", size=width, pad=pad)
   plt.sca(current_ax)
-  return im.axes.figure.colorbar(im, cax=cax, **kwargs)
+  cbar = im.axes.figure.colorbar(im, cax=cax, **kwargs)
+  cbar.ax.tick_params(labelsize=16)
+  return cbar
 
 def clear_axis(ax, spines="none"):
   ax.spines["right"].set_color(spines)

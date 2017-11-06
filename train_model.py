@@ -6,14 +6,15 @@ import tensorflow as tf
 import json as js
 import params.param_picker as pp
 import models.model_picker as mp
-import data.data_picker as dp
+import data.data_selector as ds
 
 ## Specify model type and data type
 #model_type = "mlp"
 #model_type = "ica"
-model_type = "ica_pca"
+#model_type = "ica_pca"
 #model_type = "lca"
-#model_type = "lca_pca"
+model_type = "lca_pca"
+#model_type = "lca_pca_fb"
 #model_type = "conv_lca"
 #model_type = "dsc"
 #model_type = "density_learner"
@@ -31,13 +32,8 @@ if "rand_seed" in params.keys():
 params["data_type"] = data_type
 
 ## Import data
-data = dp.get_data(data_type, params)
-if params["conv"]: # conv param is set in the param picker
-  params["input_shape"] = [data["train"].num_rows, data["train"].num_cols,
-    data["train"].num_channels]
-else:
-  params["input_shape"] = [
-    data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
+data = ds.get_data(params)
+params["input_shape"] = list(data["train"].images.shape[1:])
 params["num_pixels"] = data["train"].num_pixels
 
 ## Import model
@@ -47,10 +43,9 @@ model = mp.get_model(model_type, params, schedule)
 model.write_saver_defs()
 
 with tf.Session(graph=model.graph) as sess:
-  # Need to provide shape if batch_size is used in graph
+  ## Need to provide shape if batch_size is used in graph
   sess.run(model.init_op,
-    feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"],
-    dtype=np.float32)})
+    feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"], dtype=np.float32)})
 
   sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)
@@ -81,12 +76,6 @@ with tf.Session(graph=model.graph) as sess:
       #if hasattr(model, "step_inference"): # op only does one step
       #  for step in range(model.num_steps):
       #    sess.run([model.step_inference], feed_dict)
-
-      ## Temporary for density learning
-      #for step in range(model.num_u_steps):
-      #  sess.run([model.step_u], feed_dict)
-      #for step in range(model.num_v_steps):
-      #  sess.run([model.step_v], feed_dict)
 
       ## Temporary for density learning
       #for step in range(model.num_u_steps):
