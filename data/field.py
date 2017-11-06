@@ -45,7 +45,7 @@ def load_field(kwargs):
     if "overlapping_patches" in kwargs.keys() else None)
   var_thresh = (kwargs["patch_variance_threshold"]
     if "patch_variance_threshold" in kwargs.keys() else None)
-  vectorize = not kwargs["conv"] #conv models need a devectorized images
+  vectorize = kwargs["vectorize"] if "vectorize" in kwargs.keys() else True
 
   ## Training set
   if whiten_images:

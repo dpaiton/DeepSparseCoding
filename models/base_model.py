@@ -158,10 +158,7 @@ class Model(object):
       logging.basicConfig(filename=log_filename, format=log_format,
         datefmt=date_format, filemode="w", level=logging.INFO)
     else:
-      #logging.basicConfig(format=log_format, datefmt=date_format, filemode="w",
-      #  level=logging.INFO)
-      logging.basicConfig(format=log_format, datefmt=date_format,
-        level=logging.INFO)
+      logging.basicConfig(format=log_format, datefmt=date_format, level=logging.INFO)
 
   def log_params(self, params=None):
     """Use logging to write model params"""
@@ -171,12 +168,12 @@ class Model(object):
       dump_obj = self.params
     if "rand_state" in dump_obj.keys():
       del dump_obj["rand_state"]
-    js_str = js.dumps(dump_obj, sort_keys=True, indent=2)
+    js_str = js.dumps(dump_obj, sort_keys=True, indent=2, cls=NumpyEncoder)
     logging.info("<params>"+js_str+"</params>")
 
   def log_schedule(self):
     """Use logging to write current schedule, as specified by self.sched_idx"""
-    js_str = js.dumps(self.sched, sort_keys=True, indent=2)
+    js_str = js.dumps(self.sched, sort_keys=True, indent=2, cls=NumpyEncoder)
     logging.info("<schedule>"+js_str+"</schedule>")
 
   def log_info(self, string):
@@ -408,3 +405,14 @@ class Model(object):
       input_labels: data object containing the current label batch
     """
     pass
+
+class NumpyEncoder(js.JSONEncoder):
+  def default(self, obj):
+    if isinstance(obj, np.integer):
+      return int(obj)
+    elif isinstance(obj, np.floating):
+      return float(obj)
+    elif isinstance(obj, np.ndarray):
+      return obj.tolist()
+    else:
+      return super(MyEncoder, self).default(obj)

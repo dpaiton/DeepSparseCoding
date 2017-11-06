@@ -24,7 +24,7 @@ class synthetic(object):
 def load_synthetic(kwargs):
   rand_state = (kwargs["rand_state"]
     if "rand_state" in kwargs.keys() else np.random.RandomState())
-  vectorize = not kwargs["conv"]
+  vectorize = kwargs["vectorize"] if "vectorize" in kwargs.keys() else True
   synth_data = synthetic(
     dist_type=kwargs["dist_type"],
     num_edge_pixels=np.int(np.sqrt(kwargs["patch_edge_size"])),

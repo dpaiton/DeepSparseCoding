@@ -13,8 +13,8 @@ import data.data_selector as ds
 #model_type = "ica"
 #model_type = "ica_pca"
 #model_type = "lca"
-#model_type = "lca_pca"
-model_type = "lca_pca_fb"
+model_type = "lca_pca"
+#model_type = "lca_pca_fb"
 #model_type = "conv_lca"
 #model_type = "dsc"
 #model_type = "density_learner"
@@ -33,14 +33,7 @@ params["data_type"] = data_type
 
 ## Import data
 data = ds.get_data(params)
-if params["conv"]: # conv param is set in the param picker
-  params["input_shape"] = [data["train"].num_rows, data["train"].num_cols,
-    data["train"].num_channels]
-  for key in data.keys():
-      data[key].devectorize_data()
-else:
-  params["input_shape"] = [
-    data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
+params["input_shape"] = list(data["train"].images.shape[1:])
 params["num_pixels"] = data["train"].num_pixels
 
 ## Import model
@@ -50,10 +43,9 @@ model = mp.get_model(model_type, params, schedule)
 model.write_saver_defs()
 
 with tf.Session(graph=model.graph) as sess:
-  # Need to provide shape if batch_size is used in graph
+  ## Need to provide shape if batch_size is used in graph
   sess.run(model.init_op,
-    feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"],
-    dtype=np.float32)})
+    feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"], dtype=np.float32)})
 
   sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)

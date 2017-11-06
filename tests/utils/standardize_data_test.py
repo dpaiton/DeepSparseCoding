@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import utils.data_processing as dp
+
 """
 Test for the standardize_data function.
 NOTE: Should be executed from the repository's root directory

@@ -114,7 +114,7 @@ def load_CIFAR(kwargs):
   else:
     assert False, (
     "'num_classes' key must be 10 or 100 for CIFAR-10 or CIFAR-100")
-  vectorize = not kwargs["conv"] #conv models need a devectorized images
+  vectorize = kwargs["vectorize"] if "vectorize" in kwargs.keys() else True
 
   train_val_test = CIFAR(
     data_dir,

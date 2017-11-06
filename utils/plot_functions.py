@@ -540,6 +540,26 @@ def plot_phase_avg_power_spec(data, title="", save_filename=None):
   plt.show()
   return fig
 
+def plot_weights(weights, title="", save_filename=None):
+  num_plots = weights.shape[0]
+  num_plots_y = int(np.ceil(np.sqrt(num_plots))+1)
+  num_plots_x = int(np.floor(np.sqrt(num_plots)))
+  fig, sub_ax = plt.subplots(num_plots_y, num_plots_x, figsize=(18,18))
+  filter_total = 0
+  for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
+    if filter_total < num_plots:
+      sub_ax[plot_id].imshow(weights[filter_total, ...], cmap="Greys_r")
+      filter_total += 1
+    clear_axis(sub_ax[plot_id])
+    sub_ax[plot_id].set_aspect("equal")
+  fig.suptitle(title, y=1.0, x=0.5, fontsize=24)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
+  plt.show()
+  return fig
+
 def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
   save_filename=None):
   """

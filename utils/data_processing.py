@@ -233,90 +233,240 @@ def get_gauss_fit(prob_map, num_attempts=1, perc_mean=0.33):
         assert False, ("get_gauss_fit: np.linalg.LinAlgError - Unable to fit gaussian.")
   return (gauss_fit, grid, gauss_mean, gauss_cov)
 
-def extract_patches(images, out_shape, overlapping=True, var_thresh=0,
+def extract_overlapping_patches(images, out_shape, var_thresh=0,
+  rand_state=np.random.RandomState()):
+  """
+  Extract randomly selected, overlapping patches from image dataset.
+  Inputs:
+    images [np.ndarray] of shape [num_images, im_height, im_width]
+    out_shape [tuple or list] containing the 2-d output shape
+      [num_patches, patch_size] where patch_size has an even sqrt
+    var_thresh [float] acceptance threshold for patch pixel variance. If it is
+      below threshold then reject the patch.
+    rand_state [np.random.RandomState()]
+  Outputs:
+    patches [np.ndarray] of patches of shape out_shape
+  """
+  num_patches, patch_size = out_shape
+  patch_edge_size = np.int32(np.sqrt(patch_size))
+  num_im, im_num_rows, im_num_cols = images.shape
+  patches = np.zeros(out_shape, dtype=np.float32)
+  i = 0
+  while i < num_patches:
+    row = rand_state.randint(im_num_rows - patch_edge_size)
+    col = rand_state.randint(im_num_cols - patch_edge_size)
+    patch = images[rand_state.randint(num_im), row:row+patch_edge_size, col:col+patch_edge_size]
+    if np.var(patch) > var_thresh:
+      patches[i, :] = np.reshape(patch, patch_size)
+      i = i+1
+  return patches
+
+def extract_random_tiled_patches(images, out_shape, var_thresh=0,
+  rand_state=np.random.RandomState()):
+  """
+  Extract randomly selected non-overlapping patches from image dataset.
+  Inputs:
+    images [np.ndarray] of shape [num_images, im_height, im_width]
+    out_shape [tuple or list] containing the 2-d output shape
+      [num_patches, patch_size] where patch_size has an even sqrt
+    var_thresh [float] acceptance threshold for patch pixel variance. If it is
+      below threshold then reject the patch.
+    rand_state [np.random.RandomState()]
+  Outputs:
+    patches [np.ndarray] of patches of shape out_shape
+  """
+  num_patches, patch_size = out_shape
+  patch_edge_size = np.int32(np.sqrt(patch_size))
+  num_im, im_num_rows, im_num_cols = images.shape
+  num_available_patches = num_im * np.floor(im_num_cols/patch_edge_size)**2
+  assert num_patches <= num_available_patches, (
+    "The number of requested patches (%g) must be less than or equal to %g"%(
+      num_patches, num_available_patches))
+  if im_num_rows % patch_edge_size != 0: # crop rows
+    crop_rows = im_num_rows % patch_edge_size
+    crop_edge = np.int32(np.floor(crop_rows/2.0))
+    images = images[:, crop_edge:im_num_rows-crop_edge, :]
+    im_num_rows = images.shape[1]
+  if im_num_cols % patch_edge_size != 0: # crop columns
+    crop_cols = im_num_cols % patch_edge_size
+    crop_edge = np.int32(np.floor(crop_cols/2.0))
+    images = images[:, :, crop_edge:im_num_cols-crop_edge]
+    im_num_cols = images.shape[2]
+  # Tile column-wise, then row-wise
+  patches = np.asarray(np.split(images, im_num_cols/patch_edge_size, axis=2))
+  # patches.shape = [im_num_cols/patch_edge_size, num_im, im_num_rows, patch_edge_size]
+  patches = np.asarray(np.split(patches, im_num_rows/patch_edge_size, axis=2))
+  # patches.shape = [im_num_rows/patch_edge_size, im_num_cols/patch_edge_size, num_im,
+  #   patch_edge_size, patch_edge_size]
+  patches = np.transpose(patches, axes=(3,4,0,1,2))
+  # patches.shape = [patch_edge_size, patch_edge_size, im_num_rows/patch_edge_size,
+  #   im_num_cols/patch_edge_size, num_im]
+  patches = np.reshape(patches, (patch_edge_size, patch_edge_size, -1))
+  # patches.shape = [patch_edge_size, patch_edge_size, num_patches]
+  patches = np.transpose(patches, axes=(2,0,1))
+  # patches.shape = [num_patches, patch_edge_size, patch_edge_size]
+  patches = patches[(np.var(patches, axis=(1,2)) > var_thresh)]
+  assert patches.shape[0] >= num_patches, (
+    "out_shape requres too many patches (%g); maximum available is %g."%(
+    num_patches, patches.shape[0]))
+  patch_keep_idx = rand_state.choice(patches.shape[0], num_patches, replace=False)
+  patch_keep_idx = np.arange(num_patches)
+  patches = patches[patch_keep_idx, ...]
+  return patches
+
+def extract_patches_from_single_image(image, patch_edge_size):
+  """
+  Extract patches from a single image
+  Inputs:
+    image [np.ndarray] of shape [num_cols, num_rows]
+    patch_edge_size [int] specifying the size of a patch edge (assumes patch is square)
+  """
+  im_num_rows, im_num_cols = image.shape
+  assert im_num_rows == im_num_cols, ("Input image must be square.")
+  im_edge_size = im_num_cols
+  num_patches_per_side = np.int32(im_edge_size/patch_edge_size)
+  num_patches = np.int32(num_patches_per_side**2)
+  patches = np.zeros((num_patches, patch_edge_size, patch_edge_size))
+  row_id = 0
+  col_id = 0
+  for patch_idx in range(num_patches):
+    patches[patch_idx, ...] = image[row_id:row_id+patch_edge_size, col_id:col_id+patch_edge_size]
+    row_id += patch_edge_size
+    if row_id >= im_edge_size:
+      row_id = 0
+      col_id += patch_edge_size
+    if col_id >= im_edge_size:
+      col_id = 0
+  return patches
+
+def extract_tiled_patches(images, out_shape):
+  """
+  Extract tiled patches from image dataset.
+  Inputs:
+    images [np.ndarray] of shape [num_images, num_rows, num_cols]
+    out_shape [tuple or list] containing the 2-d output shape
+      [num_patches, patch_size] where patch_size has an even sqrt
+  Outputs:
+    patches [np.ndarray] of patches of shape out_shape
+  """
+  num_patches, patch_size = out_shape
+  patch_edge_size = np.int32(np.sqrt(patch_size))
+  num_im, im_num_rows, im_num_cols = images.shape
+  assert im_num_rows == im_num_cols, ("Input images must be square.")
+  im_edge_size = im_num_cols
+  assert im_num_cols % patch_edge_size == 0, (
+    "Requested patch_edge_size, %g does not divide into image edge size, %g"%(
+    patch_edge_size, im_edge_size))
+  num_patches_per_side = np.int32(im_edge_size/patch_edge_size)
+  num_patches_per_im = np.int32(num_patches_per_side**2)
+  tot_num_patches =  np.int32(num_patches_per_im*num_im)
+  assert num_patches <= tot_num_patches, (
+    "The requested number of patches, %g, is less than the number of available patches, %g"%(
+    num_patches, tot_num_patches))
+  patch_list = [None,]*num_im
+  patch_id = 0
+  for im_id in range(num_im):
+    patch_list[patch_id] = extract_patches_from_single_image(images[im_id,...], patch_edge_size)
+    patch_id += 1
+  patches = np.stack(patch_list)
+  patches = np.transpose(patches, axes=(2,3,0,1))
+  patches = np.reshape(patches, (patch_edge_size, patch_edge_size, -1))
+  patches = np.transpose(patches, axes=(2, 0, 1))
+  return patches
+
+def extract_patches(images, out_shape, overlapping=False, randomize=False, var_thresh=0,
   rand_state=np.random.RandomState()):
   """
   Extract patches from image dataset.
   Inputs:
-    images [np.ndarray] of shape [num_images, img_height, img_width]
+    images [np.ndarray] of shape [num_images, im_height, im_width]
     out_shape [tuple or list] containing the 2-d output shape
       [num_patches, patch_size] where patch_size has an even sqrt
-      [num_patches, patch_edge_size, patch_edge_size]
     overlapping [bool] specify if the patches are evenly tiled or randomly drawn
+    randomize [bool] specify if the patches are drawn randomly (must be True for overlapping)
     var_thresh [float] acceptance threshold for patch pixel variance. If it is
       below threshold then reject the patch.
+    rand_state [np.random.RandomState()] for reproducibility
   Outputs:
     patches [np.ndarray] of patches
   """
-  images = reshape_data(images, flatten=False)[0]
-  num_im, im_sizey, im_sizex = images.shape
-  if len(out_shape) == 2:
-    (num_patches, patch_size) = out_shape
-    assert np.floor(np.sqrt(patch_size)) == np.ceil(np.sqrt(patch_size)), (
-      "Patch size must have an even square root.")
-    patch_edge_size = np.int32(np.sqrt(patch_size))
-  elif len(out_shape) == 3:
-    (num_patches, patch_y_size, patch_x_size) = out_shape
-    assert patch_y_size == patch_x_size, ("Patches must be square.")
-    patch_edge_size = patch_y_size
-    patch_size = patch_edge_size**2
-  else:
-    assert False, ("out_shape must have len 2 or 3.")
-  if (patch_edge_size <= 0 or patch_edge_size == im_sizey):
+  (images, orig_shape, num_im, im_num_rows, im_num_cols) = reshape_data(images, flatten=False)
+  (num_patches, patch_size) = out_shape
+  assert np.floor(np.sqrt(patch_size)) == np.ceil(np.sqrt(patch_size)), (
+    "Patch size must have an even square root.")
+  patch_edge_size = np.int32(np.sqrt(patch_size))
+  if (patch_edge_size <= 0 or patch_edge_size == im_num_rows):
     if num_patches < num_im:
-      im_keep_idx = rand_state.choice(images.shape[0], num_patches,
-        replace=False)
+      im_keep_idx = rand_state.choice(images.shape[0], num_patches, replace=False)
       return images[im_keep_idx, ...]
     elif num_patches == num_im:
       return images
     else:
       assert False, (
-        "The number of requested %g pixel patches must be less than or equal "
-        +"to %g"%(patch_size, num_im))
+        "The number of requested %g pixel patches must be less than or equal to %g"%(
+        num_patches, num_im))
   if overlapping:
-    patches = np.zeros((num_patches, patch_size), dtype=np.float32)
-    i = 0
-    while i < num_patches:
-      row = rand_state.randint(im_sizey - patch_edge_size)
-      col = rand_state.randint(im_sizex - patch_edge_size)
-      patch = images[rand_state.randint(num_im),
-        row:row+patch_edge_size, col:col+patch_edge_size]
-      if np.var(patch) > var_thresh:
-        patches[i, :] = np.reshape(patch, patch_size)
-        i = i+1
+    patches = extract_overlapping_patches(images, out_shape, var_thresh, rand_state)
   else:
-    num_available_patches = num_im * np.floor(im_sizex/patch_edge_size)**2
-    assert num_patches <= num_available_patches, (
-      "The number of requested patches (%g) must be less than or equal to %g"%(
-      num_patches, num_available_patches))
-    if im_sizex % patch_edge_size != 0: # crop columns
-      crop_x = im_sizex % patch_edge_size
-      crop_edge = np.int32(np.floor(crop_x/2.0))
-      images = images[:, crop_edge:im_sizex-crop_edge, :]
-      im_sizex = images.shape[1]
-    if im_sizey % patch_edge_size != 0: # crop rows
-      crop_y = im_sizey % patch_edge_size
-      crop_edge = np.int32(np.floor(crop_y/2.0))
-      images = images[:, :, crop_edge:im_sizey-crop_edge]
-      im_sizey = images.shape[2]
-    # Tile column-wise, then row-wise
-    patches = np.asarray(np.split(images, im_sizex/patch_edge_size, 2))
-    patches = np.asarray(np.split(patches, im_sizey/patch_edge_size, 2))
-    patches = np.transpose(np.reshape(np.transpose(patches, axes=(3,4,0,1,2)),
-      (patch_edge_size, patch_edge_size, -1)), axes=(2,0,1))
-    patches = patches[(np.var(patches, axis=(1,2)) > var_thresh)]
-    if patches.shape[0] < num_patches:
-      assert False, (
-        "out_shape requres too many patches (%g); maximum available is %g."%(
-        num_patches, patches.shape[0]))
+    if randomize:
+      patches = extract_random_tiled_patches(images, out_shape, var_thresh, rand_state)
     else:
-      patch_keep_idx = rand_state.choice(patches.shape[0], num_patches,
-        replace=False)
-      patches = patches[patch_keep_idx, ...]
-  if len(out_shape) == 2:
-    return patches
+      patches = extract_tiled_patches(images, out_shape)
+  if images.shape == orig_shape: #patches should be vectorized only if input images were
+    patches = reshape_data(patches, flatten=False)[0]
   else:
-    return patches.reshape(num_patches, patch_edge_size, patch_edge_size)
+    patches = reshape_data(patches, flatten=True)[0]
+  return patches
+
+def patches_to_single_image(patches, im_edge_size):
+  """
+  Convert patches input into a single ouput
+  Inputs:
+    patches [np.ndarray] of shape [num_patches, num_rows, num_cols]
+    im_edge_size [int] indicating the size of the edge of the output image (assumed square)
+  """
+  num_patches, patch_num_rows, patch_num_cols = patches.shape
+  assert patch_num_rows == patch_num_cols, ("Input image must be square.")
+  patch_edge_size = patch_num_rows
+  im = np.zeros((im_edge_size, im_edge_size))
+  row_id = 0
+  col_id = 0
+  for patch_idx in range(num_patches):
+    im[row_id:row_id+patch_edge_size, col_id:col_id+patch_edge_size] = patches[patch_idx,...]
+    row_id += patch_edge_size
+    if row_id >= im_edge_size:
+      row_id = 0
+      col_id += patch_edge_size
+    if col_id >= im_edge_size:
+      col_id = 0
+  return im
+
+def patches_to_image(data, num_im, im_edge_size):
+  """
+  Reassemble patches created from extract_tiled_patches() into image
+  Inputs:
+    data [np.ndarray] holding square patch data of shape
+      [num_patches, patch_edge_size, patch_edge_size]
+    num_im [int] number of images to compile patches into
+    patch_edge_size [int] size of one edge of square patches.
+      This must divide evenly into im_edge_size.
+    im_edge_size [int] size of one edge of square image output
+  Outputs:
+    images [np.ndarray] of images of shape [num_im, im_edge_size, im_edge_size]
+  """
+  num_patches, patch_edge_size, _ = data.shape
+  assert im_edge_size%patch_edge_size == 0, ("Patches must divide evenly into the image.")
+  (data, orig_shape, num_patches, num_rows, num_cols) = reshape_data(data, flatten=False)
+  num_patches_per_side = np.int(im_edge_size/patch_edge_size)
+  num_patches_per_im = np.int(num_patches_per_side**2)
+  im_list = [None,]*num_im
+  patch_id = 0
+  for im_id in range(num_im):
+    im_list[im_id] = patches_to_single_image(data[patch_id:patch_id+num_patches_per_im, ...],
+      im_edge_size)
+    patch_id += num_patches_per_im
+  images = np.stack(im_list)
+  return np.squeeze(images)
 
 def downsample_data(data, factor, order):
   """Downsample data"""
@@ -418,7 +568,8 @@ def standardize_data(data):
   data = data[np.newaxis, ...] if data.ndim == 1 else data
   for idx in range(data.shape[0]):
     data[idx,...] -= np.mean(data[idx, ...])
-    data[idx,...] = data[idx,...] / np.std(data[idx,...])
+    if np.std(data[idx, ...]) > 0:
+        data[idx,...] = data[idx,...] / np.std(data[idx,...])
   return data.squeeze()
 
 def norm_data_by_var(data):
@@ -445,14 +596,14 @@ def whiten_data(data, method="FT", num_dim=-1):
       (n, i, j) - n data points, each of shape (i,j)
       (n, k) - n data points, each of length k
       (k) - single data point of length k
-    method: [str] method to use, can be {FT, PCA}
+    method: [str] method to use, can be {FT, PCA, ZCA}
     num_dim: [int] specifies the number of PCs to use for PCA method
   Outputs:
-    whitened_data
+    whitened_data, filter used for whitening
   """
   if method == "FT":
-    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
-      flatten=False) # Need spatial dim for 2d-Fourier transform
+    flatten=False
+    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten) 
     data -= data.mean(axis=(1,2))[:,None,None]
     dataFT = np.fft.fftshift(np.fft.fft2(data, axes=(1, 2)), axes=(1, 2))
     nyq = np.int32(np.floor(num_rows/2))
@@ -460,23 +611,32 @@ def whiten_data(data, method="FT", num_dim=-1):
     fspace = np.meshgrid(freqs, freqs)
     rho = np.sqrt(np.square(fspace[0]) + np.square(fspace[1]))
     lpf = np.exp(-0.5 * np.square(rho / (0.7 * nyq)))
-    filtf = np.multiply(rho, lpf)
-    dataFT_wht = np.multiply(dataFT, filtf[None, :])
-    data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(dataFT_wht, axes=(1, 2)),
-      axes=(1, 2)))
-    if data_wht.shape != orig_shape:
-      data_wht = reshape_data(data_wht, flatten=True)[0]
+    w_filter = np.multiply(rho, lpf) # filter is in the frequency domain
+    dataFT_wht = np.multiply(dataFT, w_filter[None, :])
+    data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(dataFT_wht, axes=(1, 2)), axes=(1, 2)))
   elif method == "PCA":
-    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
-      flatten=True)
-    data -= data.mean(axis=(1))[:,None]
-    Cov = np.cov(data.T) # Covariace matrix
-    U, S, V = np.linalg.svd(Cov) # SVD decomposition
-    isqrtS = np.diag(1 / np.sqrt(S)) # Inverse sqrt of S
-    data_wht = np.dot(data, np.dot(np.dot(U, isqrtS), V))
+    flatten=True
+    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten)
+    data -= data.mean(axis=(1))[:, None]
+    cov = np.divide(np.dot(data.T, data), num_examples)
+    evals, evecs = np.linalg.eig(cov)
+    isqrtEval = np.diag(1 / np.sqrt(evals+1e-6)) # TODO: Should maybe threshold instead of adding eps?
+    w_filter = np.dot(np.dot(evecs, isqrtEval), evecs.T) # filter is in the spatial domain
+    data_wht = np.dot(data, w_filter)
+  elif method == "ZCA":
+    flatten=True
+    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten)
+    data -= data.mean(axis=(1))[:, None]
+    cov = np.divide(np.dot(data.T, data), num_examples)
+    u, s, v = np.linalg.svd(cov)
+    isqrtS = np.diag(1 / np.sqrt(s+1e-6)) # TODO: Should maybe threshold instead of adding eps?
+    w_filter = np.dot(u, np.dot(isqrtS, u.T))
+    data_wht = np.dot(data, w_filter.T)
   else:
-    assert False, ("whitening method must be 'FT' or 'PCA'")
-  return data_wht
+    assert False, ("whitening method must be 'FT', 'ZCA', or 'PCA'")
+  if data_wht.shape != orig_shape:
+    data_wht = reshape_data(data_wht, not flatten)[0]
+  return data_wht, w_filter
 
 def generate_local_contrast_normalizer(radius=12):
   """

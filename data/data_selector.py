@@ -15,7 +15,7 @@ Inputs:
     num_val (cifar, mnist)
     num_labeled (cifar, mnist)
     rand_state (cifar, field, mnist, synthetic, vanhateren)
-    conv (cifar, field, mnist, synthetic, vanhateren)
+    vectorize (cifar, field, mnist, synthetic, vanhateren)
     whiten_images (field, vanhateren)
     patch_edge_size (field, synthetic, vanhateren)
     epoch_size (field, synthetic, vanhateren)
