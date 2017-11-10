@@ -142,14 +142,14 @@ class CONV_LCA(Model):
     # TODO: When is it required to get defult session?
     super(CONV_LCA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    current_step = np.array(self.global_step.eval()).tolist()
-    recon_loss = np.array(self.recon_loss.eval(feed_dict)).tolist()
-    sparse_loss = np.array(self.sparse_loss.eval(feed_dict)).tolist()
-    total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
+    current_step = np.array(self.global_step.eval())
+    recon_loss = np.array(self.recon_loss.eval(feed_dict))
+    sparse_loss = np.array(self.sparse_loss.eval(feed_dict))
+    total_loss = np.array(self.total_loss.eval(feed_dict))
     a_vals = tf.get_default_session().run(self.a, feed_dict)
-    a_vals_max = np.array(a_vals.max()).tolist()
+    a_vals_max = np.array(a_vals.max())
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(a_vals.size)).tolist()
+      / float(a_vals.size))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "number_of_batch_steps":self.get_sched("num_batches"),
@@ -162,8 +162,8 @@ class CONV_LCA(Model):
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      stat_dict[name+"_max_grad"] = np.array(grad.max()).tolist()
-      stat_dict[name+"_min_grad"] = np.array(grad.min()).tolist()
+      stat_dict[name+"_max_grad"] = np.array(grad.max())
+      stat_dict[name+"_min_grad"] = np.array(grad.min())
     js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
     self.log_info("<stats>"+js_str+"</stats>")
 

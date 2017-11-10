@@ -38,7 +38,7 @@ def load_vanHateren(kwargs):
   # Number of images to pull from vh dataset
   num_images = (np.int(kwargs["num_images"])
     if "num_images"in kwargs.keys() else None)
-  vectorize = kwargs["vectorize"] if "vectorize" in kwargs.keys() else True
+  vectorize = kwargs["vectorize_data"] if "vectorize_data" in kwargs.keys() else True
 
   ## Training set
   img_filename = data_dir+"/img/images_curated.h5"

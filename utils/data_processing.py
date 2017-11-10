@@ -2,7 +2,6 @@ import numpy as np
 import scipy.signal
 import scipy.stats
 import scipy.ndimage
-import skimage.draw
 
 def hilbert_amplitude(weights, padding=None):
   """
@@ -588,7 +587,7 @@ def norm_data_by_var(data):
     data[idx, ...] /= np.var(data[idx, ...])
   return data.squeeze()
 
-def whiten_data(data, method="FT", num_dim=-1):
+def whiten_data(data, method="FT"):
   """
   Whiten data
   Inputs:
@@ -597,7 +596,6 @@ def whiten_data(data, method="FT", num_dim=-1):
       (n, k) - n data points, each of length k
       (k) - single data point of length k
     method: [str] method to use, can be {FT, PCA, ZCA}
-    num_dim: [int] specifies the number of PCs to use for PCA method
   Outputs:
     whitened_data, filter used for whitening
   """

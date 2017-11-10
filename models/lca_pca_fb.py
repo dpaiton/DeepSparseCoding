@@ -127,19 +127,19 @@ class LCA_PCA_FB(LCA_PCA):
       batch_step: current batch number within the schedule
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    current_step = np.array(self.global_step.eval()).tolist()
-    recon_loss = np.array(self.loss_dict["recon_loss"].eval(feed_dict)).tolist()
-    sparse_loss = np.array(self.loss_dict["sparse_loss"].eval(feed_dict)).tolist()
-    feedback_loss = np.array(self.loss_dict["feedback_loss"].eval(feed_dict)).tolist()
-    total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
+    current_step = np.array(self.global_step.eval())
+    recon_loss = np.array(self.loss_dict["recon_loss"].eval(feed_dict))
+    sparse_loss = np.array(self.loss_dict["sparse_loss"].eval(feed_dict))
+    feedback_loss = np.array(self.loss_dict["feedback_loss"].eval(feed_dict))
+    total_loss = np.array(self.total_loss.eval(feed_dict))
     a_vals = tf.get_default_session().run(self.a, feed_dict)
-    a_vals_max = np.array(a_vals.max()).tolist()
+    a_vals_max = np.array(a_vals.max())
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(self.batch_size * self.num_neurons)).tolist()
+      / float(self.batch_size * self.num_neurons))
     b_vals = tf.get_default_session().run(self.b, feed_dict)
-    b_vals_max = np.array(b_vals.max()).tolist()
+    b_vals_max = np.array(b_vals.max())
     b_frac_act = np.array(np.count_nonzero(b_vals)
-      / float(self.batch_size * self.num_neurons)).tolist()
+      / float(self.batch_size * self.num_neurons))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
@@ -151,7 +151,7 @@ class LCA_PCA_FB(LCA_PCA):
       "a_fraction_active":a_frac_act,
       "b_max":b_vals_max,
       "b_fraction_active":b_frac_act}
-    js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+    js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 
   def generate_plots(self, input_data, input_labels=None):

@@ -160,6 +160,10 @@ class Model(object):
     else:
       logging.basicConfig(format=log_format, datefmt=date_format, level=logging.INFO)
 
+  def js_dumpstring(self, obj):
+    """Dump json string with special NumpyEncoder"""
+    return js.dumps(obj, sort_keys=True, indent=2, cls=NumpyEncoder)
+
   def log_params(self, params=None):
     """Use logging to write model params"""
     if params is not None:
@@ -168,12 +172,12 @@ class Model(object):
       dump_obj = self.params
     if "rand_state" in dump_obj.keys():
       del dump_obj["rand_state"]
-    js_str = js.dumps(dump_obj, sort_keys=True, indent=2, cls=NumpyEncoder)
+    js_str = self.js_dumpstring(dump_obj)
     logging.info("<params>"+js_str+"</params>")
 
   def log_schedule(self):
     """Use logging to write current schedule, as specified by self.sched_idx"""
-    js_str = js.dumps(self.sched, sort_keys=True, indent=2, cls=NumpyEncoder)
+    js_str = self.js_dumpstring(self.sched)
     logging.info("<schedule>"+js_str+"</schedule>")
 
   def log_info(self, string):
@@ -390,10 +394,10 @@ class Model(object):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
-    NOTE: For the analysis code to parse update statistics, the js.dumps() call
-      must receive a dict object. Additionally, the js.dumps() output must be
+    NOTE: For the analysis code to parse update statistics, the self.js_dumpstring() call
+      must receive a dict object. Additionally, the self.js_dumpstring() output must be
       logged with <stats> </stats> tags.
-      For example: logging.info("<stats>"+js.dumps(output_dictionary)+"</stats>")
+      For example: logging.info("<stats>"+self.js_dumpstring(output_dictionary)+"</stats>")
     """
     pass
 
@@ -415,4 +419,4 @@ class NumpyEncoder(js.JSONEncoder):
     elif isinstance(obj, np.ndarray):
       return obj.tolist()
     else:
-      return super(MyEncoder, self).default(obj)
+      return super(NumpyEncoder, self).default(obj)

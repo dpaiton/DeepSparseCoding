@@ -4,7 +4,7 @@ params = {
   "model_name": "test",
   "version": "0.0",
   "optimizer": "annealed_sgd",
-  "vectorize_images": True,
+  "vectorize_data": True,
   "rectify_a": True,
   "norm_a": False,
   "norm_weights": True,

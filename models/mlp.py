@@ -145,13 +145,13 @@ class MLP(Model):
     """
     super(MLP, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    current_step = np.array(self.global_step.eval()).tolist()
-    total_loss = np.array(self.total_loss.eval(feed_dict)).tolist()
+    current_step = np.array(self.global_step.eval())
+    total_loss = np.array(self.total_loss.eval(feed_dict))
     a_vals = tf.get_default_session().run(self.a, feed_dict)
-    a_vals_max = np.array(a_vals.max()).tolist()
+    a_vals_max = np.array(a_vals.max())
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(self.batch_size * self.num_hidden)).tolist()
-    accuracy = np.array(self.accuracy.eval(feed_dict)).tolist()
+      / float(self.batch_size * self.num_hidden))
+    accuracy = np.array(self.accuracy.eval(feed_dict))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "number_of_batch_steps":self.get_sched("num_batches"),
