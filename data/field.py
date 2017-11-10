@@ -26,15 +26,15 @@ Load Field data and format as a Dataset object
 Inputs:
   kwargs [dict] containing keywords:
     data_dir [str] directory to van Hateren data
-    whiten_images [bool] whether or not images should be whitened(not implemented)
+    whiten_data [bool] whether or not images should be whitened(not implemented)
   rand_state [obj] numpy random state object
 """
 def load_field(kwargs):
   assert ("data_dir" in kwargs.keys()), (
     "function input must have 'data_dir' key")
   data_dir = kwargs["data_dir"]
-  whiten_images = (kwargs["whiten_images"]
-    if "whiten_images" in kwargs.keys() else False)
+  whiten_data = (kwargs["whiten_data"]
+    if "whiten_data" in kwargs.keys() else False)
   rand_state = (kwargs["rand_state"]
     if "rand_state" in kwargs.keys() else np.random.RandomState())
   patch_edge_size = (np.int(kwargs["patch_edge_size"])
@@ -45,10 +45,10 @@ def load_field(kwargs):
     if "overlapping_patches" in kwargs.keys() else None)
   var_thresh = (kwargs["patch_variance_threshold"]
     if "patch_variance_threshold" in kwargs.keys() else None)
-  vectorize = kwargs["vectorize"] if "vectorize" in kwargs.keys() else True
+  vectorize = kwargs["vectorize_data"] if "vectorize_data" in kwargs.keys() else True
 
   ## Training set
-  if whiten_images:
+  if whiten_data:
     img_filename = data_dir+"/field/IMAGES.npz"
   else:
     img_filename = data_dir+"/field/IMAGES_RAW.npz"

@@ -34,21 +34,27 @@ class Dataset(object):
 
   def preprocess(self, params):
     """
-    Perform preprocessing on the self.images object
+    Perform default preprocessing on the self.images object
     Possible kwargs are:
+      norm_data: divide data by the maximum
       whiten_data: default method is using the Fourier amplitude spectrium ("FT")
-        change default method with params["whiten_method"]
+        change default with whiten_method param
       standardize_data: subtract mean and divide by the standard deviation
       contrast_normalize: divide by gaussian blurred surround pixels
-      patches: break up data into patches
+      extract_patches: break up data into patches
         see utils/data_processing/exract_patches() for docs
     """
-    if "whiten_data" in params.keys():
+    if "norm_data" in params.keys():
+      if params["norm_data"]:
+        self.images = dp.normalize_data_with_max(self.images)
+    if "whiten_data" in params.keys(): # if FT method, whiten before patching
       if params["whiten_data"]:
         if "whiten_method" in params.keys():
-          self.images = dp.whiten_data(self.images, method=params["whiten_method"])
+          if params["whiten_method"] == "FT":
+            self.images, self.w_filter = dp.whiten_data(self.images,
+              method=params["whiten_method"])
         else:
-          self.images = dp.whiten_data(self.images)
+          self.images, self.w_filter = dp.whiten_data(self.images, method="FT")
     if "standardize_data" in params.keys():
       if params["standardize_data"]:
         self.images = dp.standardize_data(self.images)
@@ -63,7 +69,7 @@ class Dataset(object):
         assert all(key in params.keys()
           for key in ["num_patches", "patch_edge_size", "overlapping_patches",
           "randomize_patches"]), ("Insufficient params for patches.")
-        out_shape = (params["num_patches"], int(params["patch_edge_size"]**2))
+        out_shape = (int(params["num_patches"]), int(params["patch_edge_size"]**2))
         self.num_examples = np.int32(params["num_patches"])
         self.num_rows = params["patch_edge_size"]
         self.num_cols = params["patch_edge_size"]
@@ -73,8 +79,11 @@ class Dataset(object):
           self.images = dp.extract_patches(self.images, out_shape, params["overlapping_patches"],
             params["randomize_patches"], params["patch_variance_threshold"], self.rand_state)
         else:
-          self.images = dp.extract_patches(self.images, out_shape, params["overlapping_patche"],
+          self.images = dp.extract_patches(self.images, out_shape, params["overlapping_patches"],
             params["randomize_patches"], var_thresh=0, rand_state=self.rand_state)
+    if "whiten_data" in params.keys(): # other whiten methods happen after patching
+      if params["whiten_data"]:
+        self.images, self.w_filter = dp.whiten_data(self.images, method=params["whiten_method"])
 
   def new_epoch(self, num_to_advance=1):
     """

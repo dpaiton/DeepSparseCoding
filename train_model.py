@@ -12,8 +12,8 @@ import data.data_selector as ds
 #model_type = "mlp"
 #model_type = "ica"
 #model_type = "ica_pca"
-#model_type = "lca"
-model_type = "lca_pca"
+model_type = "lca"
+#model_type = "lca_pca"
 #model_type = "lca_pca_fb"
 #model_type = "conv_lca"
 #model_type = "dsc"
@@ -35,6 +35,8 @@ params["data_type"] = data_type
 data = ds.get_data(params)
 params["input_shape"] = list(data["train"].images.shape[1:])
 params["num_pixels"] = data["train"].num_pixels
+#print(np.max(data["train"].images))
+#print(np.min(data["train"].images))
 
 ## Import model
 model = mp.get_model(model_type, params, schedule)
@@ -91,8 +93,7 @@ with tf.Session(graph=model.graph) as sess:
       current_step = sess.run(model.global_step)
       if (current_step % model.log_int == 0
         and model.log_int > 0):
-        model.print_update(input_data=input_data, input_labels=input_labels,
-          batch_step=b_step+1)
+        model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
 
       ## Plot weights & gradients
       if (current_step % model.gen_plot_int == 0

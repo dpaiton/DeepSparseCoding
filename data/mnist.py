@@ -112,7 +112,7 @@ def load_MNIST(kwargs):
     if "num_labeled" in kwargs.keys() else 50000)
   rand_state = (kwargs["rand_state"]
     if "rand_state" in kwargs.keys() else np.random.RandomState())
-  vectorize = kwargs["vectorize"] if "vectorize" in kwargs.keys() else True
+  vectorize = kwargs["vectorize_data"] if "vectorize_data" in kwargs.keys() else True
 
   ## Training set
   train_img_filename = data_dir+"/train-images-idx3-ubyte.gz"
