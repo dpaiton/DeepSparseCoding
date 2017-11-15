@@ -571,7 +571,7 @@ def standardize_data(data):
         data[idx,...] = data[idx,...] / np.std(data[idx,...])
   return data.squeeze()
 
-def norm_data_by_var(data):
+def normalize_data_with_var(data):
   """
   Divide data by its variance
   Inputs:
@@ -601,7 +601,7 @@ def whiten_data(data, method="FT"):
   """
   if method == "FT":
     flatten=False
-    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten) 
+    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten)
     data -= data.mean(axis=(1,2))[:,None,None]
     dataFT = np.fft.fftshift(np.fft.fft2(data, axes=(1, 2)), axes=(1, 2))
     nyq = np.int32(np.floor(num_rows/2))
@@ -612,6 +612,7 @@ def whiten_data(data, method="FT"):
     w_filter = np.multiply(rho, lpf) # filter is in the frequency domain
     dataFT_wht = np.multiply(dataFT, w_filter[None, :])
     data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(dataFT_wht, axes=(1, 2)), axes=(1, 2)))
+    data_wht = normalize_data_with_max(data_wht)
   elif method == "PCA":
     flatten=True
     (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten)

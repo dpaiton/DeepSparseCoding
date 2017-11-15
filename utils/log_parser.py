@@ -25,8 +25,7 @@ Inputs:
 def read_js(tokens, text):
   assert type(tokens) == list, ("Input variable tokens must be a list")
   assert len(tokens) == 2, ("Input variable tokens must be a list of length 2")
-  matches = re.findall(re.escape(tokens[0])+"([\s\S]*?)"+re.escape(tokens[1]),
-    text)
+  matches = re.findall(re.escape(tokens[0])+"([\s\S]*?)"+re.escape(tokens[1]), text)
   if len(matches) > 1:
     js_matches = [js.loads(match) for match in matches]
   else:

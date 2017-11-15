@@ -98,7 +98,10 @@ class Model(object):
         + "/checkpoints/")
     # Directories
     self.out_dir = str(params["out_dir"])
-    self.model_out_dir = self.out_dir + self.model_name
+    if "model_out_dir" in params.keys():
+      self.model_out_dir = params["model_out_dir"]
+    else:
+      self.model_out_dir = self.out_dir + self.model_name
     self.cp_save_dir = self.model_out_dir + "/checkpoints/"
     self.log_dir = self.model_out_dir + "/logfiles/"
     self.save_dir = self.model_out_dir + "/savefiles/"

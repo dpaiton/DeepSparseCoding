@@ -649,6 +649,45 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
   plt.show()
   return fig
 
+def plot_inference_stats(data, save_filename=None):
+  labels = [key for key in data["losses"].keys()]
+  losses = [val for val in data["losses"].values()]
+  num_im, num_steps = losses[0].shape
+  means = [None,]*len(labels)
+  sems = [None,]*len(labels)
+  for loss_id, loss in enumerate(losses):
+    means[loss_id] = np.mean(loss, axis=0) # mean across num_imgs
+    sems[loss_id] = np.std(loss, axis=0) / np.sqrt(num_im)
+  num_plots_y = np.int32(np.ceil(np.sqrt(len(labels))))+1
+  num_plots_x = np.int32(np.ceil(np.sqrt(len(labels))))
+  gs = gridspec.GridSpec(num_plots_y, num_plots_x)
+  fig = plt.figure(figsize=(10,10))
+  loss_id = 0
+  for plot_id in np.ndindex((num_plots_y, num_plots_x)):
+    (y_id, x_id) = plot_id
+    ax = fig.add_subplot(gs[plot_id])
+    if loss_id < len(labels):
+      time_steps = np.arange(num_steps)
+      ax.plot(time_steps, means[loss_id], "k-")
+      ax.fill_between(time_steps, means[loss_id]-sems[loss_id],
+        means[loss_id]+sems[loss_id], alpha=0.2)
+      ax.set_ylabel(labels[loss_id].replace('_', ' '), fontsize=16)
+      ax.set_xlim([1, np.max(time_steps)])
+      ax.set_xticks([1, int(np.floor(np.max(time_steps)/2)), np.max(time_steps)])
+      ax.set_xlabel("time step", fontsize=16)
+      ax.tick_params("both", labelsize=14)
+      loss_id += 1
+    else:
+      ax = clear_axis(ax, spines="none")
+  fig.tight_layout()
+  fig.suptitle("Average Loss Statistics During Inference", y=1.03, x=0.5, fontsize=20)
+  if save_filename is not None:
+    fig.savefig(save_filename, transparent=True)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
 def plot_inference_traces(data, activation_threshold, img_idx=0):
   """
   Plot of model neuron inputs over time

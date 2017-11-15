@@ -111,7 +111,7 @@ class LCA(Model):
     """
     total_loss = tf.add_n([func(a_in) for func in loss_funcs.values()], name="total_loss")
     return total_loss
- 
+
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
@@ -164,7 +164,7 @@ class LCA(Model):
           with tf.name_scope("reconstruction_quality"):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.x_)), axis=[1, 0],
               name="mean_squared_error")
-            pixel_var = 1.0
+            pixel_var = tf.nn.moments(self.x, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
