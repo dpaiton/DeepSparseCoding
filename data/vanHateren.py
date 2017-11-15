@@ -11,10 +11,10 @@ class vanHateren(object):
     self.full_shape = full_img_data.shape
     self.images = full_img_data
 
-  """
-  Load in van Hateren dataset
-  """
   def extract_images(self, filename, num_images=None, rand_state=np.random.RandomState()):
+    """
+    Load in van Hateren dataset
+    """
     with h5py.File(filename, "r") as f:
       full_img_data = np.array(f["van_hateren_good"], dtype=np.float32)
       if num_images is not None and num_images < full_img_data.shape[0] and num_images>0:
@@ -22,14 +22,14 @@ class vanHateren(object):
         full_img_data = full_img_data[im_keep_idx, ...]
     return full_img_data
 
-"""
-Load van Hateren data and format as a Dataset object
-Inputs:
-  kwargs [dict] containing keywords:
-    data_dir [str] directory to van Hateren data
-    rand_state [obj] numpy random state object
-"""
 def load_vanHateren(kwargs):
+  """
+  Load van Hateren data and format as a Dataset object
+  Inputs:
+    kwargs [dict] containing keywords:
+      data_dir [str] directory to van Hateren data
+      rand_state [obj] numpy random state object
+  """
   assert ("data_dir" in kwargs.keys()), (
     "function input must have 'data_dir' key")
   data_dir = kwargs["data_dir"]
