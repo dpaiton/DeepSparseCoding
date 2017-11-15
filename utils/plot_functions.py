@@ -368,7 +368,7 @@ def plot_hilbert_analysis(weights, padding=None):
     right="off")
   sub_ax[0].get_xaxis().set_visible(False)
   sub_ax[0].get_yaxis().set_visible(False)
-  sub_ax[0].set_title("Basis Functions", fontsize=32)
+  sub_ax[0].set_title("Basis Functions", fontsize=20)
   plot_data = pad_data(np.abs(Envelope).reshape((num_outputs,
     patch_edge_size, patch_edge_size)))
   hil_axis_image = sub_ax[1].imshow(plot_data, cmap="Greys_r",
@@ -377,7 +377,7 @@ def plot_hilbert_analysis(weights, padding=None):
     right="off")
   sub_ax[1].get_xaxis().set_visible(False)
   sub_ax[1].get_yaxis().set_visible(False)
-  sub_ax[1].set_title("Analytic Signal Amplitude Envelope", fontsize=32)
+  sub_ax[1].set_title("Analytic Signal Amplitude Envelope", fontsize=20)
   resh_Zf = np.abs(bff_filt).reshape((num_outputs, N, N))
   output_z = np.zeros(resh_Zf.shape)
   for i in range(num_outputs):
@@ -389,7 +389,7 @@ def plot_hilbert_analysis(weights, padding=None):
     right="off")
   sub_ax[2].get_xaxis().set_visible(False)
   sub_ax[2].get_yaxis().set_visible(False)
-  sub_ax[2].set_title("Fourier Amplitude Spectrum", fontsize=32)
+  sub_ax[2].set_title("Fourier Amplitude Spectrum", fontsize=20)
   plt.show()
   return fig
 
@@ -405,7 +405,7 @@ def plot_cov_matrix(cov_matrix, num_cov_images=""):
   im = ax.imshow(cov_matrix, cmap="Greys_r", interpolation="nearest")
   im.set_clim(vmin=np.min(cov_matrix), vmax=np.max(cov_matrix))
   ax.set_title("Activity covariance matrix averaged from "+str(num_cov_images)+" image patches",
-    fontsize=14)
+    fontsize=20)
   add_colorbar_to_im(im)
   plt.show()
   return fig
@@ -425,7 +425,7 @@ def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
   ax.set_xlim(xlim[0], xlim[1]) # Ignore first eigenvalue
   ax.set_ylim(ylim[0], ylim[1])
   ax.set_yscale("log")
-  ax.set_title("Sorted eigenvalues of covariance matrix", fontsize=18)
+  ax.set_title("Sorted eigenvalues of covariance matrix", fontsize=20)
   plt.show()
   return fig
 
@@ -552,7 +552,7 @@ def plot_weights(weights, title="", save_filename=None):
       filter_total += 1
     clear_axis(sub_ax[plot_id])
     sub_ax[plot_id].set_aspect("equal")
-  fig.suptitle(title, y=1.0, x=0.5, fontsize=24)
+  fig.suptitle(title, y=1.0, x=0.5, fontsize=20)
   if save_filename is not None:
       fig.savefig(save_filename)
       plt.close(fig)
@@ -595,7 +595,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
   sub_axis.tick_params(axis="both", bottom="off", top="off", left="off", right="off")
   sub_axis.get_xaxis().set_visible(False)
   sub_axis.get_yaxis().set_visible(False)
-  sub_axis.set_title(title, fontsize=24)
+  sub_axis.set_title(title, fontsize=20)
   if save_filename is not None:
     if save_filename == "":
       save_filename = "./output.png"
@@ -649,7 +649,7 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
   plt.show()
   return fig
 
-def plot_inference_stats(data, save_filename=None):
+def plot_inference_stats(data, title="", save_filename=None):
   labels = [key for key in data["losses"].keys()]
   losses = [val for val in data["losses"].values()]
   num_im, num_steps = losses[0].shape
@@ -680,7 +680,7 @@ def plot_inference_stats(data, save_filename=None):
     else:
       ax = clear_axis(ax, spines="none")
   fig.tight_layout()
-  fig.suptitle("Average Loss Statistics During Inference", y=1.03, x=0.5, fontsize=20)
+  fig.suptitle(title, y=1.03, x=0.5, fontsize=20)
   if save_filename is not None:
     fig.savefig(save_filename, transparent=True)
     plt.close(fig)

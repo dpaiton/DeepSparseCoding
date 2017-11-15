@@ -33,7 +33,7 @@ class LCA_PCA(LCA):
     self.pool_atas = self.compute_atas(self.cov["pooled_act"], images)
     self.bf_stats = dp.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
-    self.inference_stats = self.evaluate_inference(images[73:74])
+    self.inference_stats = self.evaluate_inference(images[0:5])
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
           "evec_atas":self.evec_atas, "pool_atas":self.pool_atas})

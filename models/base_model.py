@@ -152,6 +152,8 @@ class Model(object):
 
   def init_logging(self):
     """Logging to track run statistics"""
+    #for handler in logging.root.handlers[:]: # prevent overwriting previous logs
+    #  logging.root.removeHandler(handler)
     logging_level = logging.INFO
     log_format = ("%(asctime)s.%(msecs)03d"
       +" -- %(message)s")
