@@ -3,57 +3,42 @@ from data.dataset import Dataset
 import utils.data_processing as dp
 
 class field(object):
-  def __init__(self, img_dir, num_examples=None, patch_edge_size=None,
-    overlapping=None, var_thresh=None, rand_state=np.random.RandomState()):
+  def __init__(self, img_dir, num_images=None, rand_state=np.random.RandomState()):
     full_img_data = self.extract_images(img_dir)
-    if all(param is not None for param in (num_examples, patch_edge_size,
-      overlapping, var_thresh)):
-      out_shape = (num_examples, patch_edge_size, patch_edge_size)
-      self.images = dp.extract_patches(full_img_data, out_shape, overlapping,
-        var_thresh, rand_state)
-    else:
-      self.images = full_img_data
+    self.num_images = num_images
+    self.full_shape = full_img_data.shape
+    self.images = full_img_data
 
-  """
-  Load in Field dataset
-  """
   def extract_images(self, filename):
+    """
+    Load in Field dataset
+    """
     full_img_data = np.load(filename)["IMAGES"].transpose((2,0,1))
     return full_img_data
 
-"""
-Load Field data and format as a Dataset object
-Inputs:
-  kwargs [dict] containing keywords:
-    data_dir [str] directory to van Hateren data
-    whiten_data [bool] whether or not images should be whitened(not implemented)
-  rand_state [obj] numpy random state object
-"""
 def load_field(kwargs):
+  """
+  Load Field data and format as a Dataset object
+  Inputs:
+    kwargs [dict] containing keywords:
+      data_dir [str] directory to van Hateren data
+      whiten_data [bool] whether or not images should be whitened(not implemented)
+    rand_state [obj] numpy random state object
+  """
   assert ("data_dir" in kwargs.keys()), (
     "function input must have 'data_dir' key")
   data_dir = kwargs["data_dir"]
-  whiten_data = (kwargs["whiten_data"]
-    if "whiten_data" in kwargs.keys() else False)
   rand_state = (kwargs["rand_state"]
     if "rand_state" in kwargs.keys() else np.random.RandomState())
-  patch_edge_size = (np.int(kwargs["patch_edge_size"])
-    if "patch_edge_size" in kwargs.keys() else None)
-  num_examples = (np.int(kwargs["epoch_size"])
-    if "epoch_size" in kwargs.keys() else None)
-  overlapping = (kwargs["overlapping_patches"]
-    if "overlapping_patches" in kwargs.keys() else None)
-  var_thresh = (kwargs["patch_variance_threshold"]
-    if "patch_variance_threshold" in kwargs.keys() else None)
+  num_images = (np.int(kwargs["num_images"])
+    if "num_images" in kwargs.keys() else None)
   vectorize = kwargs["vectorize_data"] if "vectorize_data" in kwargs.keys() else True
 
-  ## Training set
-  if whiten_data:
-    img_filename = data_dir+"/field/IMAGES.npz"
-  else:
-    img_filename = data_dir+"/field/IMAGES_RAW.npz"
-  field_data = field(img_filename, num_examples, patch_edge_size, overlapping,
-    var_thresh, rand_state=rand_state)
+  img_filename = data_dir+"/field/IMAGES_RAW.npz" # NOTE: IMAGES.npz has whitened data
+  field_data = field(img_filename, num_images, rand_state=rand_state)
   images = Dataset(field_data.images, lbls=None, ignore_lbls=None,
     vectorize=vectorize, rand_state=rand_state)
+  images.preprocess(kwargs)
+  images.num_images = field_data.num_iamges
+  images.full_shape = field_data.full_shape
   return {"train":images}
