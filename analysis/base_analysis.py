@@ -28,11 +28,12 @@ class Analyzer(object):
     self.version = params["version"]
     self.device = params["device"]
     self.analysis_out_dir = params["model_dir"]+"/analysis/"+self.version+"/"
-    if "cp_idx" in params.keys():
-      self.cp_idx = params["cp_idx"]
+    if "cp_load_step" in params.keys() and params["cp_load_step"] is not None:
+      self.cp_load_step = params["cp_load_step"]
       self.cp_loc = (params["model_dir"]+"/checkpoints/"+params["model_name"]
-        +"_v"+params["version"]+"_full-"+str(self.cp_idx))
+        +"_v"+params["version"]+"_full-"+str(self.cp_load_step))
     else:
+      self.cp_load_step = None
       self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/")
     self.model_params["model_out_dir"] = self.analysis_out_dir
     if "data_dir" in params.keys():

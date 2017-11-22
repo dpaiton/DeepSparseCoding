@@ -13,8 +13,8 @@ import data.data_selector as ds
 #model_type = "ica"
 #model_type = "ica_pca"
 #model_type = "lca"
-model_type = "lca_pca"
-#model_type = "lca_pca_fb"
+#model_type = "lca_pca"
+model_type = "lca_pca_fb"
 #model_type = "conv_lca"
 #model_type = "dsc"
 #model_type = "density_learner"
@@ -50,6 +50,16 @@ with tf.Session(graph=model.graph) as sess:
   sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)
 
+  if model.cp_load:
+    if model.cp_load_step is None:
+      cp_load_prefix = (model.cp_load_dir+model.cp_load_name+"_v"+model.cp_load_ver
+        +"_weights")
+      cp_load_file = tf.train.latest_checkpoint(cp_load_prefix)
+    else:
+      cp_load_file = (model.cp_load_dir+model.cp_load_name+"_v"+model.cp_load_ver
+        +"_weights-"+str(model.cp_load_step))
+    model.load_weights(sess, cp_load_file)
+
   for sch_idx, sch in enumerate(schedule):
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
@@ -70,12 +80,13 @@ with tf.Session(graph=model.graph) as sess:
       if hasattr(model, "reset_activity"):
         sess.run([model.reset_activity], feed_dict)
 
-      ### Run inference
-      #if hasattr(model, "full_inference"): # all steps in a single op
-      #  sess.run([model.full_inference], feed_dict)
-      #if hasattr(model, "step_inference"): # op only does one step
-      #  for step in range(model.num_steps):
-      #    sess.run([model.step_inference], feed_dict)
+      # Do inference if the model has that option
+      if hasattr(model, "full_inference"): # all steps in a single op
+        sess.run([model.full_inference], feed_dict)
+
+      if hasattr(model, "step_inference"): # op only does one step
+        for step in range(model.num_steps):
+          sess.run([model.step_inference], feed_dict)
 
       ## Temporary for density learning
       #for step in range(model.num_u_steps):

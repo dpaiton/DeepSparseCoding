@@ -38,8 +38,11 @@ class CONV_LCA(Model):
     self.patch_size_y = int(params["patch_size_y"])
     self.patch_size_x = int(params["patch_size_x"])
     self.num_neurons = int(params["num_neurons"])
-    self.phi_shape = [int(self.patch_size_y), int(self.patch_size_x),
-      int(self.input_shape[2]), int(self.num_neurons)]
+    if len(self.input_shape) == 2:
+      self.phi_shape = [int(self.patch_size_y), int(self.patch_size_x), int(self.num_neurons)]
+    if len(self.input_shape) == 3:
+      self.phi_shape = [int(self.patch_size_y), int(self.patch_size_x),
+        int(self.input_shape[2]), int(self.num_neurons)]
     assert (self.input_shape[0] % self.stride_x == 0), (
       "Stride x must divide evenly into input shape")
     assert (self.input_shape[1] % self.stride_y == 0), (
@@ -114,10 +117,8 @@ class CONV_LCA(Model):
                 self.recon_loss, var_list=[self.a])
             self.du = [(self.loss_grad[0][0] - self.a + self.u, self.u)]
             self.update_u = self.u_optimizer.apply_gradients(self.du)
-            self.step_inference = tf.group(self.update_u,
-              name="step_inference")
-          self.reset_activity = tf.group(self.u.assign(self.u_noise),
-            name="reset_activity")
+            self.step_inference = tf.group(self.update_u, name="step_inference")
+          self.reset_activity = tf.group(self.u.assign(self.u_noise), name="reset_activity")
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -142,29 +143,29 @@ class CONV_LCA(Model):
     # TODO: When is it required to get defult session?
     super(CONV_LCA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    current_step = np.array(self.global_step.eval())
-    recon_loss = np.array(self.recon_loss.eval(feed_dict))
-    sparse_loss = np.array(self.sparse_loss.eval(feed_dict))
-    total_loss = np.array(self.total_loss.eval(feed_dict))
-    a_vals = tf.get_default_session().run(self.a, feed_dict)
+    eval_list = [self.global_step, self.recon_loss, self.sparse_loss, self.total_loss, self.a]
+    grad_name_list = []
+    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+      eval_list.append(weight_grad_var[0][0])
+      grad_name_list.append(weight_grad_var[0][1].name.split('/')[1].split(':')[0])#2nd is np.split
+    out_vals =  tf.get_default_session().run(eval_list, feed_dict)
+    current_step, recon_loss, sparse_loss, total_loss, a_vals = out_vals[0:5]
+    grads = out_vals[5:]
     a_vals_max = np.array(a_vals.max())
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(a_vals.size))
+      / float(self.batch_size * self.num_neurons))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
-      "number_of_batch_steps":self.get_sched("num_batches"),
       "schedule_index":self.sched_idx,
       "recon_loss":recon_loss,
       "sparse_loss":sparse_loss,
       "total_loss":total_loss,
       "a_max":a_vals_max,
       "a_fraction_active":a_frac_act}
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      grad = weight_grad_var[0][0].eval(feed_dict)
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+    for grad, name in zip(grads, grad_name_list):
       stat_dict[name+"_max_grad"] = np.array(grad.max())
       stat_dict[name+"_min_grad"] = np.array(grad.min())
-    js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+    js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 
   def generate_plots(self, input_data, input_labels=None):
@@ -176,15 +177,16 @@ class CONV_LCA(Model):
     """
     super(CONV_LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
+    weights = tf.get_default_session().run(self.phi, feed_dict)
     current_step = str(self.global_step.eval())
-    pf.plot_data_tiled(
-      self.phi.eval(), normalize=True,
-      title="Dictionary at step "+current_step, vmin=None, vmax=None,
+    pf.plot_data_tiled(np.transpose(weights, axes=(3,0,1,2)),
+      normalize=False, title="Dictionary at step "+current_step,
+      vmin=np.min(weights), vmax=np.max(weights),  cmap=None,
       save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      pf.plot_data_tiled(grad, normalize=True,
-        title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+      pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
+        title="Gradient for phi at step "+current_step, vmin=None, vmax=None, cmap=None,
         save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))

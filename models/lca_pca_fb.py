@@ -63,7 +63,6 @@ class LCA_PCA_FB(LCA_PCA):
     #  eigen_vecs is square, of course, since act_cov is square (neurons x neurons)
     #  it is also still inputs x outputs
     #  vals & vecs are sorted the same, but does this sort outputs or inputs? Presumably outputs...
-    current_b = tf.matmul(a_in, self.eigen_vecs)
     #TODO:  verify eigen_vals is broadcasting properly - should be 1 x num_pooling_filters
     # how to better normalize the fb strength?
     # It seems as though TF is producing normalized eigenvalues, need to compensate for that?
@@ -73,19 +72,36 @@ class LCA_PCA_FB(LCA_PCA):
     #     not clear that we actually need to denormalize, though
     # Some eigenvals are very close to 0 - not good for division, results in massive loss.
     # Probably need to truncate the eigenvalues - minimum is close to zero (actually zero somehow?)
-    masked_vals = tf.where(tf.greater(self.eigen_vals, 1e-3), self.eigen_vals,
-      tf.multiply(1e-3, tf.ones_like(self.eigen_vals)))
-    fb_loss = tf.multiply(self.fb_mult,
-      tf.reduce_sum(tf.square(tf.divide(current_b, masked_vals)), axis=1),
-      name="feedback")
+
+    current_b = tf.matmul(a_in, self.eigen_vecs, name="eigen_act") #columns (last dim) index vecs
+    #current_b = tf.matmul(a_in, self.pooling_filters, name="pooled_act")
+
+    #masked_vals = tf.where(tf.greater(self.eigen_vals, 1e-2), self.eigen_vals,
+    #  tf.multiply(1e-2, tf.ones_like(self.eigen_vals)))
+    #fb_loss = tf.multiply(self.fb_mult,
+    #  tf.reduce_sum(tf.square(tf.divide(current_b, masked_vals)), axis=1),
+    #  name="feedback")
+
+    #fb_loss = tf.multiply(self.fb_mult,
+    #  tf.reduce_sum(tf.square(tf.divide(current_b, self.eigen_vals)), axis=1), name="feedback")
+
+    fb_loss = tf.multiply(self.fb_mult, tf.reduce_sum(tf.square(tf.matmul(tf.matmul(current_b,
+      tf.transpose(self.eigen_vecs)), self.inv_sigma)), axis=1), name="feedback")
+
     return fb_loss
+
+  def compute_inference_feedback(self, a_in):
+    #lca_fb_grad = tf.gradients(self.compute_feedback_loss(a_in), a_in)[0]
+    # TODO: Figure out why it would be zero at all?
+    #  None probably comes from compute_feedback_loss. Should be asserting that none are None
+    #lca_fb = lca_fb_grad if lca_fb_grad is not None else tf.zeros_like(a_in)
+    lca_fb = tf.gradients(self.compute_feedback_loss(a_in), a_in)[0]
+    return lca_fb
 
   def step_inference(self, u_in, a_in, b, g, step):
     with tf.name_scope("update_u"+str(step)) as scope:
       lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
-      lca_fb_grad = tf.gradients(self.compute_feedback_loss(a_in), a_in)[0]
-      # TODO: Figure out why it would be zero at all?
-      lca_fb = lca_fb_grad if lca_fb_grad is not None else tf.zeros_like(a_in)
+      lca_fb = self.compute_inference_feedback(a_in)
       du = tf.identity(b - lca_explain_away - u_in - lca_fb, name="du")
       u_out = tf.add(u_in, tf.multiply(self.eta, du))
     return (u_out, lca_explain_away, lca_fb)
@@ -136,9 +152,9 @@ class LCA_PCA_FB(LCA_PCA):
     a_vals_max = np.array(a_vals.max())
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(self.batch_size * self.num_neurons))
-    b_vals = tf.get_default_session().run(self.b, feed_dict)
-    b_vals_max = np.array(b_vals.max())
-    b_frac_act = np.array(np.count_nonzero(b_vals)
+    a2_vals = tf.get_default_session().run(self.a2, feed_dict)
+    a2_vals_max = np.array(a2_vals.max())
+    a2_frac_act = np.array(np.count_nonzero(a2_vals)
       / float(self.batch_size * self.num_neurons))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
@@ -149,8 +165,8 @@ class LCA_PCA_FB(LCA_PCA):
       "total_loss":total_loss,
       "a_max":a_vals_max,
       "a_fraction_active":a_frac_act,
-      "b_max":b_vals_max,
-      "b_fraction_active":b_frac_act}
+      "a2_max":a2_vals_max,
+      "a2_fraction_active":a2_frac_act}
     js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 

@@ -619,7 +619,7 @@ def whiten_data(data, method="FT"):
     data -= data.mean(axis=(1))[:, None]
     cov = np.divide(np.dot(data.T, data), num_examples)
     evals, evecs = np.linalg.eig(cov)
-    isqrtEval = np.diag(1 / np.sqrt(evals+1e-6)) # TODO: Should maybe threshold instead of adding eps?
+    isqrtEval = np.diag(1 / np.sqrt(evals+1e-6)) # TODO: Should maybe threshold denom instead
     w_filter = np.dot(np.dot(evecs, isqrtEval), evecs.T) # filter is in the spatial domain
     data_wht = np.dot(data, w_filter)
   elif method == "ZCA":
