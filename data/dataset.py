@@ -83,7 +83,9 @@ class Dataset(object):
             params["randomize_patches"], var_thresh=0, rand_state=self.rand_state)
     if "whiten_data" in params.keys(): # other whiten methods happen after patching
       if params["whiten_data"]:
-        self.images, self.w_filter = dp.whiten_data(self.images, method=params["whiten_method"])
+        if "whiten_method" in params.keys():
+          self.images, self.w_filter = dp.whiten_data(self.images, method=params["whiten_method"])
+        self.images, self.w_filter = dp.whiten_data(self.images)
 
   def new_epoch(self, num_to_advance=1):
     """

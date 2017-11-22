@@ -393,19 +393,17 @@ def plot_hilbert_analysis(weights, padding=None):
   plt.show()
   return fig
 
-def plot_cov_matrix(cov_matrix, num_cov_images=""):
+def plot_matrix(matrix, title=""):
   """
   Plot covariance matrix as an image
   Inputs:
-    cov_matrix [np.ndarray] covariance matrix
-    num_cov_images [str] indicating the number of images that were used for the plot
-      this string will be placed in the title
+    matrix [np.ndarray] covariance matrix
+    title [str] indicating the title for the figure
   """
   fig, ax = plt.subplots(1, figsize=(10,10))
-  im = ax.imshow(cov_matrix, cmap="Greys_r", interpolation="nearest")
-  im.set_clim(vmin=np.min(cov_matrix), vmax=np.max(cov_matrix))
-  ax.set_title("Activity covariance matrix averaged from "+str(num_cov_images)+" image patches",
-    fontsize=20)
+  im = ax.imshow(matrix, cmap="Greys_r", interpolation="nearest")
+  im.set_clim(vmin=np.min(matrix), vmax=np.max(matrix))
+  ax.set_title(title, fontsize=20)
   add_colorbar_to_im(im)
   plt.show()
   return fig
@@ -560,7 +558,7 @@ def plot_weights(weights, title="", save_filename=None):
   plt.show()
   return fig
 
-def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
+def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap="Greys_r",
   save_filename=None):
   """
   Save figure for input data as a tiled image
@@ -574,6 +572,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
       This is recommended for dictionary plotting.
     title: [str] for title of figure
     vmin, vmax: [int] the min and max of the color range
+    cmap: [str] indicating cmap, or None for imshow default
     save_filename: [str] holding output directory for writing,
       figures will not display with GUI if set
   """
@@ -588,7 +587,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None,
   if len(data.shape) >= 3:
     data = pad_data(data)
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))
-  axis_image = sub_axis.imshow(data, cmap="Greys_r", interpolation="nearest")
+  axis_image = sub_axis.imshow(data, cmap=cmap, interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)
   cbar = add_colorbar_to_im(axis_image)
   #cbar = fig.colorbar(axis_image)
@@ -690,14 +689,14 @@ def plot_inference_stats(data, title="", save_filename=None):
 
 def plot_inference_traces(data, activation_threshold, img_idx=0):
   """
-  Plot of model neuron inputs over time
+  Plot of model neurons' inputs over time
   Args:
     data: [dict] with each trace, with keys [b, u, a, ga, images]
       Dictionary is created by analyze_lca.evaluate_inference()
     img_idx: [int] which image in data["images"] to run analysis on
   """
   plt.rc('text', usetex=True)
-  (num_images, num_timesteps, num_neurons) = data["b"].shape
+  (num_images, num_time_steps, num_neurons) = data["b"].shape
   sqrt_nn = int(np.sqrt(num_neurons))
   global_max_val = float(np.max(np.abs([data["b"][img_idx,...],
     data["u"][img_idx,...], data["ga"][img_idx,...], data["a"][img_idx,...]])))

@@ -26,9 +26,10 @@ class LCA_PCA(LCA):
       with tf.name_scope("pooling_filters") as scope:
         self.full_cov = tf.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),
           name="full_covariance_matrix")
-        s, u, v = tf.svd(self.full_cov, full_matrices=True, name="a_svd")
-        self.eigen_vals = tf.identity(s, name="eigen_vals")
-        self.eigen_vecs = tf.identity(u, name="eigen_vecs")
+        self.eigen_vals, self.eigen_vecs = tf.self_adjoint_eig(self.full_cov, name="eig_decomp")
+        self.inv_sigma = tf.where(self.eigen_vals<1e-3, tf.diag(tf.divide(1.0,
+          tf.sqrt(self.eigen_vals + self.eps))), tf.diag(tf.zeros_like(self.eigen_vals)),
+          name="inv_sigma")
         top_vecs = self.eigen_vecs[:, :self.num_pooling_units]
         self.pooling_filters = tf.transpose(tf.matmul(top_vecs, tf.transpose(top_vecs)),
           name="pooling_filters")
@@ -37,12 +38,10 @@ class LCA_PCA(LCA):
 
     with self.graph.as_default():
       with tf.name_scope("covariance") as scope:
-        self.act_corr = tf.divide(tf.matmul(tf.transpose(self.a), self.a),
-          tf.to_float(tf.shape(self.x)[0]), name="a_corr_matrix")
         act_centered = self.a - tf.reduce_mean(self.a, axis=[1], keep_dims=True)
         self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
           tf.to_float(tf.shape(self.x)[0]), name="a_cov_matrix")
 
       with tf.variable_scope("inference") as scope:
-        self.b = tf.matmul(self.a, self.eigen_vecs, name="b")
+        self.a2 = tf.matmul(self.a, self.eigen_vecs, name="a2")
         self.pooled_activity = tf.matmul(self.a, self.pooling_filters, name="pooled_act")

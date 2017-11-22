@@ -84,7 +84,10 @@ class Model(object):
     self.cp_load = bool(params["cp_load"])
     if self.cp_load:
       self.cp_load_name = str(params["cp_load_name"])
-      self.cp_load_step = int(params["cp_load_step"])
+      if "cp_load_step" in params and params["cp_load_step"] is not None:
+        self.cp_load_step = int(params["cp_load_step"])
+      else:
+        self.cp_load_step = None
       self.cp_load_ver = str(params["cp_load_ver"])
       if "cp_load_var" in params:
         self.cp_load_var = [str(var) for var in params["cp_load_var"]]
@@ -313,6 +316,24 @@ class Model(object):
     logging.info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
 
+  def load_full_model(self, session, model_dir):
+    """
+    Load checkpoint model into session.
+    Inputs:
+      session: tf.Session() that you want to load into
+      model_dir: String specifying the path to the checkpoint
+    """
+    self.full_saver.restore(session, model_dir)
+
+  def load_weights(self, session, model_dir):
+    """
+    Load checkpoint weights into session.
+    Inputs:
+      session: tf.Session() that you want to load into
+      model_dir: String specifying the path to the checkpoint
+    """
+    self.weight_saver.restore(session, model_dir)
+
   def get_sched(self, key=None):
     """
     Returns the current schedule being executed
@@ -337,24 +358,6 @@ class Model(object):
       assert type(val) == type(self.sched[self.sched_idx][key]), (
         "val must have type "+str(type(self.sched[self.sched_idx][key])))
     self.sched[self.sched_idx][key] = val
-
-  def load_full_model(self, session, model_dir):
-    """
-    Load checkpoint model into session.
-    Inputs:
-      session: tf.Session() that you want to load into
-      model_dir: String specifying the path to the checkpoint
-    """
-    self.full_saver.restore(session, model_dir)
-
-  def load_weights(self, session, model_dir):
-    """
-    Load checkpoint weights into session.
-    Inputs:
-      session: tf.Session() that you want to load into
-      model_dir: String specifying the path to the checkpoint
-    """
-    self.weight_saver.restore(session, model_dir)
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None):
     """

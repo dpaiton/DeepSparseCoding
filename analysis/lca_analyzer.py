@@ -5,21 +5,24 @@ from analysis.base_analysis import Analyzer
 class LCA(Analyzer):
   def __init__(self, params):
     Analyzer.__init__(self, params)
-
-  def load_params(self, params):
-    Analyzer.load_params(self, params)
-
-  def run_analysis(self, images, save_info=""):
-    self.run_stats = self.get_log_stats()
     self.var_names = [
       "weights/phi:0",
       "inference/u:0",
       "inference/activity:0",
       "output/image_estimate/reconstruction:0",
       "performance_metrics/reconstruction_quality/recon_quality:0"]
+
+  def load_params(self, params):
+    super(LCA, self).load_params(params)
+    self.num_inference_images = params["num_inference_images"]
+
+  def run_analysis(self, images, save_info=""):
+    self.run_stats = self.get_log_stats()
     self.evals = self.evaluate_model(images, self.var_names)
     self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
-    self.inference_stats = self.evaluate_inference(images[0:5])
+    image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
+      replace=False)
+    self.inference_stats = self.evaluate_inference(images[image_indices, ...])
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
       "inference_stats":self.inference_stats, "var_names":self.var_names})
@@ -62,7 +65,7 @@ class LCA(Analyzer):
           MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.x, x_)), axis=[1, 0])
           img_var = tf.nn.moments(self.model.x, axes=[1])[1]
           pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(img_var), MSE)))
-          loss_list  = [func(current_a) for func in loss_funcs.values()]
+          loss_list = [func(current_a) for func in loss_funcs.values()]
           run_list = [self.model.step_inference(current_u, current_a, lca_b, lca_g, step),
             self.model.compute_total_loss(current_a, loss_funcs), pSNRdB]+loss_list
           run_outputs = sess.run(run_list, feed_dict)
