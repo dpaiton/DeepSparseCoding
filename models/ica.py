@@ -106,7 +106,7 @@ class ICA(Model):
       / float(self.num_neurons * self.batch_size))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
-      "number_of_batch_steps":self.get_sched("num_batches"),
+      "number_of_batch_steps":self.get_schedule("num_batches"),
       "schedule_index":self.sched_idx,
       "u_max":u_vals_max,
       "u_fraction_active":u_frac_act,

@@ -54,7 +54,7 @@ class LCA_PCA_FB(LCA_PCA):
       feed_dict = {self.full_cov:activity_covariance, self.x:input_data}
     for placeholder in placeholders:
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
-        self.get_sched(placeholder.split("/")[1]))
+        self.get_schedule(placeholder.split("/")[1]))
     return feed_dict
 
   def compute_feedback_loss(self, a_in):

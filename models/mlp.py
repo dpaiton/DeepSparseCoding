@@ -154,7 +154,7 @@ class MLP(Model):
     accuracy = np.array(self.accuracy.eval(feed_dict))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
-      "number_of_batch_steps":self.get_sched("num_batches"),
+      "number_of_batch_steps":self.get_schedule("num_batches"),
       "schedule_index":self.sched_idx,
       "total_loss":total_loss,
       "a_max":a_vals_max,

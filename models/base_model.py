@@ -331,7 +331,7 @@ class Model(object):
     """
     self.weight_saver.restore(session, model_dir)
 
-  def get_sched(self, key=None):
+  def get_schedule(self, key=None):
     """
     Returns the current schedule being executed
     Inputs:
@@ -376,7 +376,7 @@ class Model(object):
       feed_dict = {self.x:input_data}
     for placeholder in placeholders:
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
-        self.get_sched(placeholder.split("/")[1]))
+        self.get_schedule(placeholder.split("/")[1]))
     if dict_args is not None:
       feed_dict.update(dict_args)
     return feed_dict

@@ -55,7 +55,7 @@ with tf.Session(graph=model.graph) as sess:
   for sch_idx, sch in enumerate(schedule):
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
-    for b_step in range(model.get_sched("num_batches")):
+    for b_step in range(model.get_schedule("num_batches")):
       data_batch = data["train"].next_batch(model.batch_size)
       input_data = data_batch[0][..., np.newaxis]
       input_labels = data_batch[1]
@@ -74,7 +74,7 @@ with tf.Session(graph=model.graph) as sess:
 
       ## Update weights
       batch_t0 = ti.time()
-      for w_idx in range(len(model.get_sched("weights"))):
+      for w_idx in range(len(model.get_schedule("weights"))):
         sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
       batch_t1 = ti.time()
       avg_time += (batch_t1-batch_t0)/model.batch_size
@@ -115,10 +115,11 @@ with tf.Session(graph=model.graph) as sess:
               model.log_info("<stats>"+js_str+"</stats>")
 
   save_dir = model.write_checkpoint(sess)
-  avg_time /= model.get_sched("num_batches")
+  avg_time /= model.get_schedule("num_batches")
   model.log_info("Avg time per image: "+str(avg_time))
   t1=ti.time()
   tot_time=float(t1-t0)
-  out_str = ("Training on "+str(sch_idx*model.get_sched("num_batches")*model.params["batch_size"])
+  out_str = (
+    "Training on "+str(sch_idx*model.get_schedule("num_batches")*model.params["batch_size"])
     +" Images is Complete. Total time was "+str(tot_time)+" seconds.\n")
   model.log_info(out_str)

@@ -63,7 +63,7 @@ with tf.Session(graph=model.graph) as sess:
   for sch_idx, sch in enumerate(schedule):
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
-    for b_step in range(model.get_sched("num_batches")):
+    for b_step in range(model.get_schedule("num_batches")):
       data_batch = data["train"].next_batch(model.batch_size)
       input_data = data_batch[0]
       input_labels = data_batch[1]
@@ -96,7 +96,7 @@ with tf.Session(graph=model.graph) as sess:
       #  sess.run([model.step_v], feed_dict)
 
       ## Update weights
-      for w_idx in range(len(model.get_sched("weights"))):
+      for w_idx in range(len(model.get_schedule("weights"))):
         sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
 
       ## Generate logs
