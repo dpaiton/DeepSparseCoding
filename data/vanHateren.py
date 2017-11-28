@@ -6,7 +6,6 @@ import utils.data_processing as dp
 class vanHateren(object):
   def __init__(self, img_dir, num_images=50, rand_state=np.random.RandomState()):
     full_img_data = self.extract_images(img_dir, num_images, rand_state=rand_state)
-    full_img_data = dp.downsample_data(full_img_data, factor=[1, 0.5, 0.5], order=2)
     self.num_images = num_images
     self.full_shape = full_img_data.shape
     self.images = full_img_data
@@ -45,6 +44,26 @@ def load_vanHateren(kwargs):
   vh_data = vanHateren(img_filename, num_images, rand_state=rand_state)
   images = Dataset(vh_data.images, lbls=None, ignore_lbls=None, vectorize=vectorize,
     rand_state=rand_state)
+
+  ## TODO: This 'if' block is temporary - new code will rquire ndim == 3 after extraction,
+  ##       so there is no need to check.
+  image_edge_size = (int(np.floor(kwargs["image_edge_size"]))
+    if "image_edge_size" in kwargs.keys() else None)
+  if image_edge_size is not None:
+    if images.ndim == 2:
+      edge_scale = image_edge_size/images.shape[0] #vh has square images
+      assert edge_scale < 1.0, (
+        "image_edge_size (%g) must be greater than the original size (%g)."%(image_edge_size,
+        images.shape[0]))
+      scale_factor = [edge_scale, edge_scale]
+    elif images.ndim > 2: #1st dim is expected to be batch
+      edge_scale = image_edge_size/images.shape[1] #vh has square images
+      assert edge_scale < 1.0, (
+        "image_edge_size (%g) must be greater than the original size (%g)."%(image_edge_size,
+        images.shape[0]))
+      scale_factor = [1.0]+[edge_scale,]*(images.ndim-1)
+    images.downsample(scale_factor, order=3)
+
   images.preprocess(kwargs)
   images.num_images = vh_data.num_images
   images.full_shape = vh_data.full_shape

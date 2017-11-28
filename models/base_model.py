@@ -206,11 +206,11 @@ class Model(object):
     """
     with self.graph.as_default():
       with tf.name_scope("optimizers") as scope:
-        self.grads_and_vars = list()
-        self.apply_grads = list()
+        self.grads_and_vars = list() # [sch_idx][weight_idx]
+        self.apply_grads = list() # [sch_idx][weight_idx]
         for schedule_idx, sch in enumerate(self.sched):
-          sch_grads_and_vars = list()
-          sch_apply_grads = list()
+          sch_grads_and_vars = list() # [weight_idx]
+          sch_apply_grads = list() # [weight_idx]
           for w_idx, weight in enumerate(sch["weights"]):
             learning_rates = tf.train.exponential_decay(
               learning_rate=sch["weight_lr"][w_idx],
@@ -223,19 +223,16 @@ class Model(object):
               optimizer = tf.train.GradientDescentOptimizer(learning_rates,
                 name="grad_optimizer_"+weight)
             elif self.optimizer == "adam":
-              optimizer = tf.train.AdamOptimizer(learning_rates,
-                beta1=0.9, beta2=0.99, epsilon=1e-07,
-                name="adam_optimizer_"+weight)
+              optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
+                epsilon=1e-07, name="adam_optimizer_"+weight)
             elif self.optimizer == "adadelta":
-              optimizer = tf.train.AdadeltaOptimizer(learning_rates,
-                epsilon=1e-07, name="adadelta_optimizer_"+weight)
+              optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
+                name="adadelta_optimizer_"+weight)
             with tf.variable_scope("weights", reuse=True) as scope:
               weight_op = [tf.get_variable(weight)]
-            sch_grads_and_vars.append(self.compute_weight_gradients(optimizer,
-              weight_op))
+            sch_grads_and_vars.append(self.compute_weight_gradients(optimizer, weight_op))
             gstep = self.global_step if w_idx == 0 else None # Only update once
-            sch_apply_grads.append(
-              optimizer.apply_gradients(sch_grads_and_vars[w_idx],
+            sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
               global_step=gstep))
           self.grads_and_vars.append(sch_grads_and_vars)
           self.apply_grads.append(sch_apply_grads)

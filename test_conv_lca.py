@@ -1,6 +1,8 @@
 import matplotlib
 matplotlib.use("Agg")
 
+import time as ti
+t0 = ti.time()
 import numpy as np
 import tensorflow as tf
 import json as js
@@ -9,21 +11,10 @@ import models.model_picker as mp
 import data.data_selector as ds
 
 ## Specify model type and data type
-#model_type = "mlp"
-#model_type = "ica"
-#model_type = "ica_pca"
-model_type = "lca"
-#model_type = "lca_pca"
-#model_type = "lca_pca_fb"
-#model_type = "conv_lca"
-#model_type = "dsc"
-#model_type = "density_learner"
+model_type = "conv_lca"
 
 #data_type = "cifar10"
-#data_type = "mnist"
 data_type = "vanhateren"
-#data_type = "field"
-#data_type = "synthetic"
 
 ## Import params
 params, schedule = pp.get_params(model_type)
@@ -45,7 +36,7 @@ model.write_saver_defs()
 with tf.Session(graph=model.graph) as sess:
   ## Need to provide shape if batch_size is used in graph
   sess.run(model.init_op,
-    feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"], dtype=np.float32)})
+    feed_dict={model.x:np.zeros([params["batch_size"]]+model.input_shape, dtype=np.float32)})
 
   sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)
@@ -60,12 +51,13 @@ with tf.Session(graph=model.graph) as sess:
         +"_weights-"+str(model.cp_load_step))
     model.load_weights(sess, cp_load_file)
 
+  avg_time = 0
   for sch_idx, sch in enumerate(schedule):
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
     for b_step in range(model.get_sched("num_batches")):
       data_batch = data["train"].next_batch(model.batch_size)
-      input_data = data_batch[0]
+      input_data = data_batch[0][..., np.newaxis]
       input_labels = data_batch[1]
 
       ## Get feed dictionary for placeholders
@@ -80,24 +72,12 @@ with tf.Session(graph=model.graph) as sess:
       if hasattr(model, "reset_activity"):
         sess.run([model.reset_activity], feed_dict)
 
-      # Do inference if the model has that option
-      #if hasattr(model, "full_inference"): # all steps in a single op
-      #  sess.run([model.full_inference], feed_dict)
-
-      ## NOTE: new LCA has step_inference method attr, which causes this line to error
-      #if hasattr(model, "step_inference"): # op only does one step
-      #  for step in range(model.num_steps):
-      #    sess.run([model.step_inference], feed_dict)
-
-      ## Temporary for density learning
-      #for step in range(model.num_u_steps):
-      #  sess.run([model.step_u], feed_dict)
-      #for step in range(model.num_v_steps):
-      #  sess.run([model.step_v], feed_dict)
-
       ## Update weights
+      batch_t0 = ti.time()
       for w_idx in range(len(model.get_sched("weights"))):
         sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
+      batch_t1 = ti.time()
+      avg_time += (batch_t1-batch_t0)/model.batch_size
 
       ## Generate logs
       current_step = sess.run(model.global_step)
@@ -135,4 +115,10 @@ with tf.Session(graph=model.graph) as sess:
               model.log_info("<stats>"+js_str+"</stats>")
 
   save_dir = model.write_checkpoint(sess)
-  print("Training Complete\n")
+  avg_time /= model.get_sched("num_batches")
+  model.log_info("Avg time per image: "+str(avg_time))
+  t1=ti.time()
+  tot_time=float(t1-t0)
+  out_str = ("Training on "+str(sch_idx*model.get_sched("num_batches")*model.params["batch_size"])
+    +" Images is Complete. Total time was "+str(tot_time)+" seconds.\n")
+  model.log_info(out_str)

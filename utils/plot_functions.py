@@ -585,7 +585,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   if vmax is None:
     vmax = np.max(data)
   if len(data.shape) >= 3:
-    data = pad_data(data)
+    data = np.squeeze(pad_data(data))
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))
   axis_image = sub_axis.imshow(data, cmap=cmap, interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)

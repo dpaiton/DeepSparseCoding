@@ -467,9 +467,9 @@ def patches_to_image(data, num_im, im_edge_size):
   images = np.stack(im_list)
   return np.squeeze(images)
 
-def downsample_data(data, factor, order):
+def downsample_data(data, scale_factor, order):
   """Downsample data"""
-  return scipy.ndimage.interpolation.zoom(data, factor, order=order)
+  return scipy.ndimage.interpolation.zoom(data, scale_factor, order=order, mode="constant")
 
 def reshape_data(data, flatten=False):
   """
@@ -537,7 +537,7 @@ def normalize_data_with_max(data):
     norm_data = data.squeeze()
   return norm_data
 
-def center_data(data):
+def center_data(data, use_dataset_mean=False):
   """
   Subtract individual example mean from data
   Inputs:
@@ -548,9 +548,12 @@ def center_data(data):
   Outputs:
     data: [np.ndarray] centered data
   """
-  data = data[np.newaxis, ...] if data.ndim == 1 else data
-  for idx in range(data.shape[0]):
-    data[idx, ...] -= np.mean(data[idx, ...])
+  if use_dataset_mean:
+    data -= np.mean(data)
+  else:
+    data = data[np.newaxis, ...] if data.ndim == 1 else data
+    for idx in range(data.shape[0]):
+      data[idx, ...] -= np.mean(data[idx, ...])
   return data.squeeze()
 
 def standardize_data(data):
