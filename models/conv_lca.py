@@ -1,11 +1,13 @@
 import numpy as np
-import logging
-import json as js
 import tensorflow as tf
 import utils.plot_functions as pf
 from models.lca import LCA
 
 class CONV_LCA(LCA):
+  """
+  Convolutional LCA model
+  Inference is defined within the graph
+  """
   def __init__(self, params, schedule):
     super(CONV_LCA, self).__init__(params, schedule)
 
