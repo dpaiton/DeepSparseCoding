@@ -34,6 +34,8 @@ class LCA(Model):
     self.num_pixels = int(params["num_pixels"])
     self.num_neurons = int(params["num_neurons"])
     self.phi_shape = [self.num_pixels, self.num_neurons]
+    self.u_shape = [self.num_neurons]
+    self.x_shape = [None, self.num_pixels]
     # Hyper Parameters
     self.num_steps = int(params["num_steps"])
     self.dt = float(params["dt"])
@@ -90,15 +92,17 @@ class LCA(Model):
 
   def compute_recon_loss(self, a_in):
     with tf.name_scope("unsupervised"):
+      reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.reduce_mean(0.5 *
         tf.reduce_sum(tf.square(tf.subtract(self.x, self.compute_recon(a_in))),
-        axis=[1]), name="recon_loss")
+        axis=reduc_dim), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
     with tf.name_scope("unsupervised"):
-      sparse_loss = self.sparse_mult * tf.reduce_mean(
-        tf.reduce_sum(tf.abs(a_in), axis=[1]), name="sparse_loss")
+      reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
+      sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(tf.abs(a_in),
+        axis=reduc_dim), name="sparse_loss")
     return sparse_loss
 
   def compute_total_loss(self, a_in, loss_funcs):
@@ -120,15 +124,14 @@ class LCA(Model):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
-          self.x = tf.placeholder(tf.float32, shape=[None, self.num_pixels], name="input_data")
+          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
         with tf.name_scope("constants") as scope:
-          self.u_zeros = tf.zeros(shape=tf.stack([tf.shape(self.x)[0], self.num_neurons]),
-            dtype=tf.float32, name="u_zeros")
-          self.u_noise = tf.truncated_normal(
-            shape=tf.stack([tf.shape(self.x)[0], self.num_neurons]),
-            mean=0.0, stddev=0.1, dtype=tf.float32, name="u_noise")
+          u_full_shape = tf.stack([tf.shape(self.x)[0]]+self.u_shape)
+          self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
+          self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
+            dtype=tf.float32, name="u_noise")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -140,10 +143,10 @@ class LCA(Model):
             initializer=phi_init, trainable=True)
 
         with tf.name_scope("norm_weights") as scope:
-          self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi,
-            dim=0, epsilon=self.eps, name="row_l2_norm"))
-          self.norm_weights = tf.group(self.norm_phi,
-            name="l2_normalization")
+          phi_norm_dim = list(range(len(self.phi_shape)-1)) # normalize across input dim(s)
+          self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi, dim=phi_norm_dim,
+            epsilon=self.eps, name="row_l2_norm"))
+          self.norm_weights = tf.group(self.norm_phi, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
          u_list, a_list = self.infer_coefficients()
@@ -183,14 +186,13 @@ class LCA(Model):
       self.total_loss, self.a]
     grad_name_list = []
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      eval_list.append(weight_grad_var[0][0])
+      eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
       grad_name_list.append(weight_grad_var[0][1].name.split('/')[1].split(':')[0])#2nd is np.split
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, sparse_loss, total_loss, a_vals = out_vals[0:5]
-    grads = out_vals[5:]
     a_vals_max = np.array(a_vals.max())
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(self.batch_size * self.num_neurons))
+      / float(a_vals.size))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
@@ -199,6 +201,7 @@ class LCA(Model):
       "total_loss":total_loss,
       "a_max":a_vals_max,
       "a_fraction_active":a_frac_act}
+    grads = out_vals[5:]
     for grad, name in zip(grads, grad_name_list):
       stat_dict[name+"_max_grad"] = np.array(grad.max())
       stat_dict[name+"_min_grad"] = np.array(grad.min())

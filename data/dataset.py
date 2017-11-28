@@ -17,7 +17,9 @@ class Dataset(object):
       self.images = imgs.reshape(self.num_examples, self.num_rows*self.num_cols*self.num_channels)
     else:
       self.images = imgs
-    self.num_pixels = self.num_rows*self.num_cols*self.num_channels
+    self.ndim = imgs.ndim
+    self.shape = imgs.shape
+    self.num_pixels = np.prod(self.shape[1:])
     self.labels = lbls
     self.ignore_labels = ignore_lbls
     self.rand_state = rand_state
@@ -32,10 +34,31 @@ class Dataset(object):
     self.curr_epoch_idx = 0
     self.epoch_order = self.rand_state.permutation(self.num_examples)
 
+  def downsample(self, scale_factor=None, order=3):
+    """
+    Downsample data with scipy.ndimage.interpolation.zoom
+    Inputs:
+      data: np.ndarray
+      scale_factor [list of floats] indicating the downsampling factor for each dimension
+        Values in the list should be between 0.0 and 1.0
+        scale_factor needs an element for each dimension in the data
+      order: [int 0-5] the order for the spline interpolation
+    """
+    if scale_factor is None:
+      scale_factor = [1.0,]*data.ndim
+    else:
+      assert len(scale_factor) == self.images.ndim, ("len(scale_factor) must == data.ndim")
+    self.images = dp.downsample_data(self.images, scale_factor=scale_factor, order=order)
+    self.shape = self.images.shape
+    (self.num_rows, self.num_cols) = self.shape[1:]
+    self.num_pixels = np.prod(self.shape[1:])
+
+
   def preprocess(self, params):
     """
     Perform default preprocessing on the self.images object
     Possible kwargs are:
+      center_data: subtract mean from data
       norm_data: divide data by the maximum
       whiten_data: default method is using the Fourier amplitude spectrium ("FT")
         change default with whiten_method param
@@ -44,6 +67,9 @@ class Dataset(object):
       extract_patches: break up data into patches
         see utils/data_processing/exract_patches() for docs
     """
+    if "center_data" in params.keys():
+      if params["center_data"]:
+        self.images = dp.center_data(self.images, use_dataset_mean=False)
     if "norm_data" in params.keys():
       if params["norm_data"]:
         self.images = dp.normalize_data_with_max(self.images)
@@ -145,11 +171,12 @@ class Dataset(object):
   def vectorize_data(self):
     """Reshape images to be a vector per data point"""
     #assert self.images.ndim == 4, ("Image must be a 4D tensor")
-    self.images = self.images.reshape(self.num_examples,
-      self.num_rows * self.num_cols * self.num_channels)
+    self.images = self.images.reshape(self.num_examples, self.num_pixels)
+    self.shape = self.images.shape
 
   def devectorize_data(self):
     """Reshape images to be a vector per data point"""
     #assert self.images.ndim == 2, ("Image must be a 2D tensor")
     self.images = self.images.reshape(self.num_examples,
       self.num_rows, self.num_cols, self.num_channels)
+    self.shape = self.images.shape
