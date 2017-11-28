@@ -110,7 +110,7 @@ class LCA(Model):
     Returns sum of all loss functions defined in loss_funcs for given a_in
     Inputs:
       a_in [tf.Variable] containing the sparse coding activity values
-      loss_funcs [dict] containing keys that correspond to names of loss functions and values that 
+      loss_funcs [dict] containing keys that correspond to names of loss functions and values that
         point to the functions themselves
     """
     total_loss = tf.add_n([func(a_in) for func in loss_funcs.values()], name="total_loss")

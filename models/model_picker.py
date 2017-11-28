@@ -11,9 +11,9 @@ from models.density_learner import density_learner as dl
 
 def get_model(model_type, params=None, schedule=None):
   if params is None:
-    params, _ = pp.get_params(model_type) 
+    params, _ = pp.get_params(model_type)
   if schedule is None:
-    _, schedule  = pp.get_params(model_type) 
+    _, schedule  = pp.get_params(model_type)
   if model_type.lower() == "mlp":
     return mlp(params, schedule)
   if model_type.lower() == "ica":
