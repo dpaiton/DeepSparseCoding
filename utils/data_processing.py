@@ -85,14 +85,16 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
       envelope_centers: [tuples of ints] indicating the (y, x) position of the
         center of the Hilbert envelope
       gauss_fits: [tuple of np.ndarrays] containing (gaussian_fit, grid) where gaussian_fit
-        is returned from get_gauss_fit and specifies the 2D Gaussian PDF fit to the Hilbert envelope
-        and grid is a tuple containing (y,x) points with which the Gaussian PDF can be plotted
-      gauss_centers: [tuple of ints] containing the (y,x) position of the center of the Gaussian fit
-      gauss_orientations: [tuple of np.ndarrays] containing the (eigenvalues, eigenvectors) of the covariance
-        matrix for the Gaussian fit of the Hilbert amplitude envelope. They are both sorted according to
-        the highest to lowest Eigenvalue.
-      fourier_centers: [tuple of ints] containing the (y,x) position of the center (max) of the 
-        Fourier amplitude map
+        is returned from get_gauss_fit and specifies the 2D Gaussian PDF fit to the Hilbert
+        envelope and grid is a tuple containing (y,x) points with which the Gaussian PDF
+        can be plotted
+      gauss_centers: [tuple of ints] containing the (y,x) position of the center of
+        the Gaussian fit
+      gauss_orientations: [tuple of np.ndarrays] containing the (eigenvalues, eigenvectors) of
+        the covariance matrix for the Gaussian fit of the Hilbert amplitude envelope. They are
+        both sorted according to the highest to lowest Eigenvalue.
+      fourier_centers: [tuple of ints] containing the (y,x) position of the center (max) of
+        the Fourier amplitude map
       num_inputs: [int] dim[0] of input weights
       num_outputs: [int] dim[1] of input weights
       patch_edge_size: [int] int(floor(sqrt(num_inputs)))
@@ -142,8 +144,9 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     fourier_centers[bf_idx] = [fy_cen, fx_cen]
   output = {"basis_functions":basis_funcs, "envelopes":envelopes, "gauss_fits":gauss_fits,
     "gauss_centers":gauss_centers, "gauss_orientations":gauss_orientations,
-    "fourier_centers":fourier_centers, "fourier_maps":fourier_maps, "envelope_centers":envelope_centers,
-    "num_inputs":num_inputs, "num_outputs":num_outputs, "patch_edge_size":patch_edge_size}
+    "fourier_centers":fourier_centers, "fourier_maps":fourier_maps,
+    "envelope_centers":envelope_centers, "num_inputs":num_inputs, "num_outputs":num_outputs,
+    "patch_edge_size":patch_edge_size}
   return output
 
 def generate_gaussian(shape, mean, cov):
@@ -226,7 +229,9 @@ def get_gauss_fit(prob_map, num_attempts=1, perc_mean=0.33):
           prob_map *= gauss_mask
       gauss_success = True
     except np.linalg.LinAlgError: # Usually means cov matrix is singular
-      print("get_gauss_fit: Failed to fit Gaussian at attempt %g, trying again.\n  To avoid this try decreasing perc_mean."%(i))
+      print(
+        "get_gauss_fit: Failed to fit Gaussian at attempt %g, trying again."+
+        "\n  To avoid this try decreasing perc_mean."%(i))
       num_attempts = i-1
       if num_attempts <= 0:
         assert False, ("get_gauss_fit: np.linalg.LinAlgError - Unable to fit gaussian.")

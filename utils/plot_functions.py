@@ -16,7 +16,8 @@ def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=
     angle [float] specifying angle of ellipse
     color_val [matplotlib color spec] specifying the color of the edge & face of the ellipse
     alpha [float] specifying the transparency of the ellipse
-    lines [bool] if true, output will be a line, where the secondary axis of the ellipse is collapsed
+    lines [bool] if true, output will be a line, where the secondary axis of the ellipse
+      is collapsed
   Outputs:
     ellipse [matplotlib.patches.ellipse] ellipse object
   """
@@ -72,14 +73,17 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False):
   plt.show()
   return fig
 
-def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_connected_weights, lines=False):
+def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
+                           num_connected_weights, lines=False):
   """
   Plot 2nd layer (fully-connected) weights in terms of connection strengths to 1st layer weights
   Inputs:
     bf_stats [dict] output of dp.get_dictionary_stats() which was run on the 1st layer weights
-    pooling_filters [np.ndarray] 2nd layer weights, of shape [num_1st_layer_neurons, num_2nd_layer_neurons]
+    pooling_filters [np.ndarray] 2nd layer weights
+      should be shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
-    num_connected_weights [int] How many 1st layer weight summaries to include for a given 2nd layer neuron
+    num_connected_weights [int] How many 1st layer weight summaries to include
+      for a given 2nd layer neuron
     lines [bool] if True, 1st layer weight summaries will appear as lines instead of ellipses
   """
   num_inputs = bf_stats["num_inputs"]
@@ -133,12 +137,15 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters, num_c
   plt.show()
   return fig
 
-def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, fig_size=(17,17), spot_size=10):
+def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
+                         fig_size=(17,17), spot_size=10):
   """
-  Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of 1st layer weights
+  Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of
+    1st layer weights
   Inputs:
     bf_stats [dict] Output of dp.get_dictionary_stats() which was run on the 1st layer weights
-    pooling_filters [np.ndarray] 2nd layer weights, of shape [num_1st_layer_neurons, num_2nd_layer_neurons]
+    pooling_filters [np.ndarray] 2nd layer weights
+      should be shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
     fig_size [tuple] Containing the (width, height) of the figure, in inches
     spot_size [int] How big to make the points
@@ -559,7 +566,7 @@ def plot_weights(weights, title="", save_filename=None):
   return fig
 
 def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap="Greys_r",
-  save_filename=None):
+                    save_filename=None):
   """
   Save figure for input data as a tiled image
   Inpus:
