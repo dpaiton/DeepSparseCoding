@@ -7,14 +7,15 @@ class Dataset(object):
     self.vectorize = vectorize
     if imgs.ndim == 3:
       (self.num_examples, self.num_rows, self.num_cols) = imgs.shape
+      #imgs = imgs[..., None] # Need to keep singleton dimension for color
       self.num_channels = 1
     elif imgs.ndim == 4:
       (self.num_examples, self.num_rows,
         self.num_cols, self.num_channels) = imgs.shape
     else:
-      assert False, ("ndim must be 3 (batch, rows, cols) or 4 (batch, rows, cols, chans)")
+      assert False, ("data ndim must be 3 (batch, rows, cols) or 4 (batch, rows, cols, chans)")
     if self.vectorize:
-      self.images = imgs.reshape(self.num_examples, self.num_rows*self.num_cols*self.num_channels)
+      self.images = dp.reshape_data(imgs, flatten=True)
     else:
       self.images = imgs
     self.ndim = imgs.ndim
@@ -51,8 +52,8 @@ class Dataset(object):
     self.images = dp.downsample_data(self.images, scale_factor=scale_factor, order=order)
     self.shape = self.images.shape
     (self.num_rows, self.num_cols) = self.shape[1:]
+    #(self.num_rows, self.num_cols, self.num_channels) = self.shape[1:]
     self.num_pixels = np.prod(self.shape[1:])
-
 
   def preprocess(self, params):
     """
@@ -167,16 +168,3 @@ class Dataset(object):
       self.new_epoch(int((num_batches * batch_size) / float(self.num_examples)))
     self.batches_completed += num_batches
     self.curr_epoch_idx = (num_batches * batch_size) % self.num_examples
-
-  def vectorize_data(self):
-    """Reshape images to be a vector per data point"""
-    #assert self.images.ndim == 4, ("Image must be a 4D tensor")
-    self.images = self.images.reshape(self.num_examples, self.num_pixels)
-    self.shape = self.images.shape
-
-  def devectorize_data(self):
-    """Reshape images to be a vector per data point"""
-    #assert self.images.ndim == 2, ("Image must be a 2D tensor")
-    self.images = self.images.reshape(self.num_examples,
-      self.num_rows, self.num_cols, self.num_channels)
-    self.shape = self.images.shape

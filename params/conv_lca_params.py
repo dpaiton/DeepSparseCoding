@@ -2,8 +2,8 @@ import os
 params = {
   "model_type": "conv_lca",
   "model_name": "conv_lca_vh",
-  "version": "4.0",
-  "num_images": 250,
+  "version": "0.0",
+  "num_images": 300,
   "image_edge_size": 256,
   "vectorize_data": False,
   "center_data": True,
@@ -17,13 +17,13 @@ params = {
   "patch_size_y": 16,
   "patch_size_x": 16,
   "num_neurons": 512, # pixel-overcompleteness is num_neurons/(stride_y * stride_x)
-  "num_steps": 100,
+  "num_steps": 120,
   "dt": 0.001,
   "tau": 0.03,
   "rectify_a": True,
   "norm_weights": True,
   "thresh_type": "soft",
-  "optimizer": "annealed_sgd",#"adadelta",
+  "optimizer": "annealed_sgd",
   "cp_int": 10000,
   "max_cp_to_keep": 1,
   "cp_load": False,
@@ -40,8 +40,8 @@ params = {
 schedule = [
   {"weights": ["phi"],
   "sparse_mult": 0.06,
-  "weight_lr": [0.04],
-  "decay_steps": [int(5e4*0.8)],
-  "decay_rate": [0.8],
+  "weight_lr": [0.07],
+  "decay_steps": [int(1e5*0.8)],
+  "decay_rate": [0.6],
   "staircase": [True],
-  "num_batches": int(5e4)}]
+  "num_batches": int(1e5)}]

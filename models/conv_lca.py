@@ -73,11 +73,11 @@ class CONV_LCA(LCA):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     weights, recon = tf.get_default_session().run([self.phi, self.x_], feed_dict)
     current_step = str(self.global_step.eval())
-    pf.plot_data_tiled(input_data[0,...].reshape((np.int(np.sqrt(self.num_pixels)),
-      np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"images_"+self.version+"-"
-      +current_step.zfill(5)+".png"))
+    #pf.plot_data_tiled(input_data[0,...].reshape((np.int(np.sqrt(self.num_pixels)),
+    #  np.int(np.sqrt(self.num_pixels)))),
+    #  normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
+    #  +current_step.zfill(5)+".png"))
     pf.plot_data_tiled(recon[0,...].reshape((
       np.int(np.sqrt(self.num_pixels)),
       np.int(np.sqrt(self.num_pixels)))),
@@ -86,11 +86,11 @@ class CONV_LCA(LCA):
     pf.plot_data_tiled(np.transpose(weights, axes=(3,0,1,2)),
       normalize=False, title="Dictionary at step "+current_step,
       vmin=np.min(weights), vmax=np.max(weights),
-      save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+      save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
         title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))

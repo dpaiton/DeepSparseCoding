@@ -136,22 +136,22 @@ class ICA(Model):
     #  np.int(np.sqrt(self.num_pixels)))),
     #  normalize=False, title="Images at step "+current_step,
     #  vmin=np.min(input_data), vmax=np.max(input_data),
-    #  save_filename=(self.disp_dir+"images_"+current_step.zfill(5)+".pdf"))
+    #  save_filename=(self.disp_dir+"images_"+current_step.zfill(5)+".png"))
     pf.plot_data_tiled(weights.reshape(self.num_neurons,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
       normalize=True, title="Dictionary at step "+current_step, vmin=-1.0, vmax=1.0,
-      save_filename=(self.disp_dir+"a_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+      save_filename=(self.disp_dir+"a_v"+self.version+"-"+current_step.zfill(5)+".png"))
     pf.plot_activity_hist(self.z.eval(feed_dict), num_bins=1000,
       title="z Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"z_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".pdf"))
+      +current_step.zfill(5)+".png"))
     pf.plot_activity_hist(self.u.eval(feed_dict), num_bins=1000,
       title="u Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".pdf"))
+      +current_step.zfill(5)+".png"))
     pf.plot_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
       title="a l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"a_norm_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+      save_filename=(self.disp_dir+"a_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
@@ -159,4 +159,4 @@ class ICA(Model):
       pf.plot_data_tiled(grad.reshape(self.num_neurons,
         int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
         normalize=False, title="Gradient for "+name+" at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+        save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"_"+current_step.zfill(5)+".png"))

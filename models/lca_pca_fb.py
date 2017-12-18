@@ -200,4 +200,4 @@ class LCA_PCA_FB(LCA_PCA):
       pf.plot_data_tiled(grad.T.reshape(self.num_neurons,
         int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
         normalize=True, title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))

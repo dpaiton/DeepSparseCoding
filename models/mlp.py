@@ -176,12 +176,12 @@ class MLP(Model):
       int(np.sqrt(self.num_hidden)), int(np.sqrt(self.num_hidden))),
       normalize=True, title="Classification matrix at step number "+current_step,
       vmin=None, vmax=None, save_filename=(self.disp_dir+"w2_v"+self.version+"-"
-      +current_step.zfill(5)+".pdf"))
+      +current_step.zfill(5)+".png"))
     pf.plot_data_tiled(
       self.w1.eval().T.reshape(self.num_hidden,
       int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
       normalize=True, title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w1_v"+self.version+"-"+current_step.zfill(5)+".pdf"))
+      save_filename=(self.disp_dir+"w1_v"+self.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
@@ -190,9 +190,9 @@ class MLP(Model):
         pf.plot_data_tiled(grad.T.reshape(self.num_hidden,
           int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
           normalize=True, title="Gradient for w1 at step "+current_step, vmin=None, vmax=None,
-          save_filename=(self.disp_dir+"dw1_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+          save_filename=(self.disp_dir+"dw1_v"+self.version+"_"+current_step.zfill(5)+".png"))
       elif name == "w2":
         pf.plot_data_tiled(grad.T.reshape(self.num_classes,
           int(np.sqrt(self.num_hidden)), int(np.sqrt(self.num_hidden))),
           normalize=True, title="Gradient for w2 at step "+current_step, vmin=None, vmax=None,
-          save_filename=(self.disp_dir+"dw2_v"+self.version+"_"+current_step.zfill(5)+".pdf"))
+          save_filename=(self.disp_dir+"dw2_v"+self.version+"_"+current_step.zfill(5)+".png"))
