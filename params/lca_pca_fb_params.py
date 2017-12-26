@@ -1,7 +1,7 @@
 import os
 params = {
   "model_type": "lca_pca_fb",
-  "model_name": "lca_pca_fb_pretrain",
+  "model_name": "lca_pca_fb_512_vh_ftw",
   "version": "0.0",
   "num_images": 100,
   "vectorize_data": True,
@@ -14,11 +14,11 @@ params = {
   "patch_edge_size": 16,
   "overlapping_patches": True,
   "randomize_patches": True,
-  "patch_variance_threshold": 1e-6,
+  "patch_variance_threshold": 0,
   "batch_size": 100,
   "num_neurons": 512,
   "num_pooling_units": 50,
-  "num_steps": 40,
+  "num_steps": 50,
   "dt": 0.001,
   "tau": 0.03,
   "rectify_a": True,
@@ -28,12 +28,13 @@ params = {
   "cp_int": 10000,
   "max_cp_to_keep": 1,
   "cp_load": True,
-  "cp_load_name": "lca_vh_ft_white",
+  "cp_load_step": int(1e6), # None gives latest checkpoint
+  "cp_load_name": "lca_pca_512_vh_ft_white",
   "cp_load_ver": "0.0",
   "cp_load_var": ["phi"],
-  "log_int": 100,
-  "log_to_file": True,
-  "gen_plot_int": 1000,
+  "log_int": 1,
+  "log_to_file": False,
+  "gen_plot_int": 100,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/gpu:0",
@@ -44,10 +45,10 @@ params = {
 
 schedule = [
   {"weights": ["phi"],
-  "sparse_mult": 0.4,
-  "fb_mult": 0.00001,
-  "weight_lr": [0.1],
-  "decay_steps": [8000],
+  "sparse_mult": 0.08,
+  "fb_mult": 1e-3,
+  "weight_lr": [0.8],
+  "decay_steps": [int(1e4*0.6)],
   "decay_rate": [0.5],
   "staircase": [True],
-  "num_batches": 10000}]
+  "num_batches": int(1e4)}]

@@ -28,6 +28,7 @@ class density_learner(Model):
       tau          [float] LCA time constant
     """
     super(density_learner, self).load_params(params)
+    self.vector_inputs = True
     # Meta parameters
     self.rectify_a = bool(params["rectify_a"])
     self.rectify_v = bool(params["rectify_v"])

@@ -3,6 +3,92 @@ import scipy.signal
 import scipy.stats
 import scipy.ndimage
 
+def reshape_data(data, flatten=None, out_shape=None):
+  """
+  Helper function to reshape input data for processing and return data shape
+  Inputs:
+    data: [np.ndarray] data of shape:
+      (n, i, j, k) - n data points, each of shape (i,j,k), with k specifying num_channels
+      (n, l) - n data points, each of shape l (flattened)
+      (i, j, k) - single datapoint of of shape (i,j, k), a singleton dimension will be added to the output
+      (l) - single data point of shape l, assumes 1 color channel
+    flatten: [bool or None] specify the shape of the output
+      If None, do not reshape data, but add num_examples dimension if necessary
+      If True, return ravelled data of shape (num_examples, num_elements)
+      If False, return unravelled data, of shape out_shape or of shape (num_examples, sqrt(l), sqrt(l), 1)
+      If data is flat and flatten==True, or !flat and flatten==False, then None condition will apply
+    out_shape: (optional) [list or tuple] containing the desired output shape if flatten == False
+      should specify [num_rows, num_cols, num_channels]
+      If this is not given, the default is to assume a square image and num_channels = 1
+  Outputs:
+    tuple containing:
+    data: [np.ndarray] data with new shape
+      (num_examples, num_rows, num_cols, num_channels) if flatten==False
+      (num_examples, num_elements) if flatten==True
+    orig_shape: [tuple of int32] original shape of the input data
+      Note that if the input data did not have a num_examples dim,
+      then the output data will and orig_shape will include a singleton dimension for num_examples
+    num_examples: [int32] number of data examples
+    num_rows: [int32] number of data rows
+    num_cols: [int32] number of data cols
+    num_channels: [int32] number of data channels
+  """
+  orig_shape = list(data.shape)
+  orig_ndim = data.ndim
+  if orig_ndim == 1: # single datapoint
+    num_examples = 1
+    num_channels = 1
+    num_elements = data.shape[0]
+    if flatten is None or flatten == True:
+      num_rows = num_elements
+      num_cols = 1
+      data = data[None, ...]
+      orig_shape = [1]+orig_shape
+    else:
+      sqrt_num_elements = np.sqrt(num_elements)
+      assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
+        "Data length must have an even square root.")
+      num_rows = int(sqrt_num_elements)
+      num_cols = num_rows
+      data = data.reshape((num_rows, num_cols))[None, ..., None]
+      orig_shape = [1]+orig_shape+[1]
+  elif orig_ndim == 2: # already flattened
+    (num_examples, num_elements) = data.shape
+    if flatten is None or flatten == True:
+      num_rows = num_elements
+      num_cols = 1
+      num_channels = 1
+    else:
+      if out_shape is not None:
+        num_rows, num_cols, num_channels = out_shape
+        data = data.reshape((num_examples, num_rows, num_cols, num_channels))
+      else:
+        sqrt_num_elements = np.sqrt(num_elements)
+        assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
+          "Data length must have an even square root when not specifying out_shape.")
+        num_rows = int(sqrt_num_elements)
+        num_cols = num_rows
+        num_channels = 1
+        data = data.reshape((num_examples, num_rows, num_cols, num_channels))
+  elif orig_ndim == 3: # single data point
+    num_examples = 1
+    num_rows, num_cols, num_channels = data.shape
+    if flatten == True:
+      data = data.reshape((num_examples, num_rows * num_cols * num_channels))
+    elif flatten is None or flatten == False:
+      data = data[None, ...]
+      orig_shape = [1]+orig_shape
+    else:
+        assert False, ("flatten argument must be True, False, or None")
+  elif orig_ndim == 4: # not flat
+    num_examples, num_rows, num_cols, num_channels = data.shape
+    if flatten == True:
+      data = data.reshape((num_examples, num_rows*num_cols*num_channels))
+  else:
+    assert False, ("Data must have 1, 2, 3, or 4 dimensions.")
+  return (data, tuple(orig_shape), num_examples, num_rows, num_cols, num_channels)
+
+
 def hilbert_amplitude(weights, padding=None):
   """
   Compute Hilbert amplitude envelope of weight matrix
@@ -242,24 +328,30 @@ def extract_overlapping_patches(images, out_shape, var_thresh=0,
   """
   Extract randomly selected, overlapping patches from image dataset.
   Inputs:
-    images [np.ndarray] of shape [num_images, im_height, im_width]
-    out_shape [tuple or list] containing the 2-d output shape
-      [num_patches, patch_size] where patch_size has an even sqrt
+    images [np.ndarray] of shape [num_images, im_height, im_width, im_chan]
+    out_shape [tuple or list] containing the output shape
+      [num_patches, patch_height, patch_width, patch_chan]
+      patch_chan must be the same as im_chan
     var_thresh [float] acceptance threshold for patch pixel variance. If it is
       below threshold then reject the patch.
     rand_state [np.random.RandomState()]
   Outputs:
     patches [np.ndarray] of patches of shape out_shape
+  TODO:
+    Allow non-random overlapping patches (e.g. strided convolution patches)
   """
-  num_patches, patch_size = out_shape
-  patch_edge_size = np.int32(np.sqrt(patch_size))
-  num_im, im_num_rows, im_num_cols = images.shape
+  num_im, im_height, im_width, im_chan = images.shape
+  num_patches, patch_height, patch_width, patch_chan = out_shape
+  assert im_chan == patch_chan, (
+    "out_shape must specify the same number of channels as the input images")
+  patch_size = out_shape[1:]
   patches = np.zeros(out_shape, dtype=np.float32)
   i = 0
   while i < num_patches:
-    row = rand_state.randint(im_num_rows - patch_edge_size)
-    col = rand_state.randint(im_num_cols - patch_edge_size)
-    patch = images[rand_state.randint(num_im), row:row+patch_edge_size, col:col+patch_edge_size]
+    example = rand_state.randint(num_im)
+    row = rand_state.randint(im_height - patch_height)
+    col = rand_state.randint(im_width - patch_width)
+    patch = images[example, row:row+patch_height, col:col+patch_width, ...]
     if np.var(patch) > var_thresh:
       patches[i, :] = np.reshape(patch, patch_size)
       i = i+1
@@ -270,76 +362,89 @@ def extract_random_tiled_patches(images, out_shape, var_thresh=0,
   """
   Extract randomly selected non-overlapping patches from image dataset.
   Inputs:
-    images [np.ndarray] of shape [num_images, im_height, im_width]
-    out_shape [tuple or list] containing the 2-d output shape
-      [num_patches, patch_size] where patch_size has an even sqrt
+    images [np.ndarray] of shape [num_images, im_height, im_width, im_chan]
+    out_shape [tuple or list] containing the output shape
+      [num_patches, patch_height, patch_width, patch_chan]
+      patch_chan must be the same as im_chan
     var_thresh [float] acceptance threshold for patch pixel variance. If it is
       below threshold then reject the patch.
     rand_state [np.random.RandomState()]
   Outputs:
     patches [np.ndarray] of patches of shape out_shape
   """
-  num_patches, patch_size = out_shape
-  patch_edge_size = np.int32(np.sqrt(patch_size))
-  num_im, im_num_rows, im_num_cols = images.shape
-  num_available_patches = num_im * np.floor(im_num_cols/patch_edge_size)**2
+  num_im, im_height, im_width, im_chan = images.shape
+  num_patches, patch_height, patch_width, patch_chan = out_shape
+  num_row_patches = num_im * np.floor(im_height / patch_height)
+  num_col_patches = num_im * np.floor(im_width / patch_width)
+  num_available_patches = int(num_row_patches * num_col_patches)
   assert num_patches <= num_available_patches, (
     "The number of requested patches (%g) must be less than or equal to %g"%(
       num_patches, num_available_patches))
-  if im_num_rows % patch_edge_size != 0: # crop rows
-    crop_rows = im_num_rows % patch_edge_size
+  if im_height % patch_height != 0: # crop rows
+    crop_rows = im_height % patch_height
     crop_edge = np.int32(np.floor(crop_rows/2.0))
-    images = images[:, crop_edge:im_num_rows-crop_edge, :]
-    im_num_rows = images.shape[1]
-  if im_num_cols % patch_edge_size != 0: # crop columns
-    crop_cols = im_num_cols % patch_edge_size
+    images = images[:, crop_edge:im_height-crop_edge, :, :]
+    im_height = images.shape[1]
+  if im_width % patch_width != 0: # crop columns
+    crop_cols = im_width % patch_width
     crop_edge = np.int32(np.floor(crop_cols/2.0))
-    images = images[:, :, crop_edge:im_num_cols-crop_edge]
-    im_num_cols = images.shape[2]
+    images = images[:, :, crop_edge:im_width-crop_edge, :]
+    im_width = images.shape[2]
+  import IPython; IPython.embed()
   # Tile column-wise, then row-wise
-  patches = np.asarray(np.split(images, im_num_cols/patch_edge_size, axis=2))
-  # patches.shape = [im_num_cols/patch_edge_size, num_im, im_num_rows, patch_edge_size]
-  patches = np.asarray(np.split(patches, im_num_rows/patch_edge_size, axis=2))
-  # patches.shape = [im_num_rows/patch_edge_size, im_num_cols/patch_edge_size, num_im,
-  #   patch_edge_size, patch_edge_size]
-  patches = np.transpose(patches, axes=(3,4,0,1,2))
-  # patches.shape = [patch_edge_size, patch_edge_size, im_num_rows/patch_edge_size,
-  #   im_num_cols/patch_edge_size, num_im]
-  patches = np.reshape(patches, (patch_edge_size, patch_edge_size, -1))
-  # patches.shape = [patch_edge_size, patch_edge_size, num_patches]
-  patches = np.transpose(patches, axes=(2,0,1))
-  # patches.shape = [num_patches, patch_edge_size, patch_edge_size]
+  patches = np.asarray(np.split(images, im_width/patch_width, axis=2))
+  # patches.shape = [im_width/patch_width, num_im, im_height, patch_height, patch_chan]
+  patches = np.asarray(np.split(patches, im_height/patch_height, axis=2))
+  # patches.shape = [im_height/patch_height, im_width/patch_width, num_im,
+  #  patch_height, patch_width, patch_chan]
+  patches = np.transpose(patches, axes=(3,4,5,0,1,2))
+  # patches.shape = [patch_height, patch_width, patch_chan, im_height/patch_height,
+  #   im_width/patch_width, num_im]
+  patches = np.reshape(patches, (patch_height, patch_width, patch_chan, -1))
+  # patches.shape = [patch_height, patch_width, patch_chan, num_patches]
+  patches = np.transpose(patches, axes=(3,0,1,2))
+  # patches.shape = [num_patches, patch_height, patch_width, patch_chan]
   patches = patches[(np.var(patches, axis=(1,2)) > var_thresh)]
   assert patches.shape[0] >= num_patches, (
-    "out_shape requres too many patches (%g); maximum available is %g."%(
+    "out_shape (%g) requres too many patches; maximum available is %g."%(
     num_patches, patches.shape[0]))
   patch_keep_idx = rand_state.choice(patches.shape[0], num_patches, replace=False)
   patch_keep_idx = np.arange(num_patches)
   patches = patches[patch_keep_idx, ...]
   return patches
 
-def extract_patches_from_single_image(image, patch_edge_size):
+def extract_patches_from_single_image(image, out_shape):
   """
   Extract patches from a single image
   Inputs:
-    image [np.ndarray] of shape [num_cols, num_rows]
-    patch_edge_size [int] specifying the size of a patch edge (assumes patch is square)
+    image [np.ndarray] of shape [im_height, im_width, im_chan]
+    out_shape [tuple or list] containing the output shape
+      [patch_height, patch_width, patch_chan]
+      patch_chan must be the same as im_chan
+  Outputs:
+    patches [np.ndarray] of patches of shape [num_patches, patch_height, patch_width, patch_chan]
   """
-  im_num_rows, im_num_cols = image.shape
-  assert im_num_rows == im_num_cols, ("Input image must be square.")
-  im_edge_size = im_num_cols
-  num_patches_per_side = np.int32(im_edge_size/patch_edge_size)
-  num_patches = np.int32(num_patches_per_side**2)
-  patches = np.zeros((num_patches, patch_edge_size, patch_edge_size))
+  assert image.ndim == 3, ("input must have 3 ndim")
+  im_height, im_width, im_chan = image.shape
+  patch_height, patch_width, patch_chan = out_shape
+  assert im_chan == patch_chan, ("image and out_shape must specify the same number of channels")
+  assert im_height % patch_height == 0, ("image height (%g) must equal patch height (%g)"%(
+    im_height, patch_height))
+  assert im_width % patch_width == 0, ("image width (%g) must equal patch width (%g)"%(
+    im_width, patch_width))
+  num_row_patches = np.floor(im_height / patch_height)
+  num_col_patches = np.floor(im_width / patch_width)
+  num_patches = int(num_row_patches * num_col_patches)
+  patches = np.zeros((num_patches, patch_height, patch_width, patch_chan))
   row_id = 0
   col_id = 0
   for patch_idx in range(num_patches):
-    patches[patch_idx, ...] = image[row_id:row_id+patch_edge_size, col_id:col_id+patch_edge_size]
-    row_id += patch_edge_size
-    if row_id >= im_edge_size:
+    patches[patch_idx, ...] = image[row_id:row_id+patch_height, col_id:col_id+patch_width, :]
+    row_id += patch_height
+    if row_id >= im_height:
       row_id = 0
-      col_id += patch_edge_size
-    if col_id >= im_edge_size:
+      col_id += patch_width
+    if col_id >= im_width:
       col_id = 0
   return patches
 
@@ -347,35 +452,41 @@ def extract_tiled_patches(images, out_shape):
   """
   Extract tiled patches from image dataset.
   Inputs:
-    images [np.ndarray] of shape [num_images, num_rows, num_cols]
-    out_shape [tuple or list] containing the 2-d output shape
-      [num_patches, patch_size] where patch_size has an even sqrt
+    image [np.ndarray] of shape [num_im, im_height, im_width, im_chan] or
+      [im_height, im_width, im_chan] if only using one image
+    out_shape [tuple or list] containing the output shape
+      [patch_height, patch_width, patch_chan]
+      patch_chan must be the same as im_chan
+      note that out_shape doesn't specify num_patches, it extracts all patches from the given images
   Outputs:
     patches [np.ndarray] of patches of shape out_shape
   """
-  num_patches, patch_size = out_shape
-  patch_edge_size = np.int32(np.sqrt(patch_size))
-  num_im, im_num_rows, im_num_cols = images.shape
-  assert im_num_rows == im_num_cols, ("Input images must be square.")
-  im_edge_size = im_num_cols
-  assert im_num_cols % patch_edge_size == 0, (
-    "Requested patch_edge_size, %g does not divide into image edge size, %g"%(
-    patch_edge_size, im_edge_size))
-  num_patches_per_side = np.int32(im_edge_size/patch_edge_size)
-  num_patches_per_im = np.int32(num_patches_per_side**2)
-  tot_num_patches =  np.int32(num_patches_per_im*num_im)
-  assert num_patches <= tot_num_patches, (
-    "The requested number of patches, %g, is less than the number of available patches, %g"%(
-    num_patches, tot_num_patches))
+  if images.ndim == 3: # single image of dim [im_height, im_width, im_chan]
+      return extract_patches_from_single_image(images, out_shape)
+  num_im, im_height, im_width, im_chan = images.shape
+  patch_height, patch_width, patch_chan = out_shape
+  assert im_chan == patch_chan, ("image and out_shape must specify the same number of channels")
+  assert im_height % patch_height == 0, ("image height (%g) must equal patch height (%g)"%(
+    im_height, patch_height))
+  assert im_width % patch_width == 0, ("image width (%g) must equal patch width (%g)"%(
+    im_width, patch_width))
+  num_row_patches = np.floor(im_height / patch_height)
+  num_col_patches = np.floor(im_width / patch_width)
+  num_patches_per_im = int(num_row_patches * num_col_patches)
+  tot_num_patches =  int(num_patches_per_im * num_im)
   patch_list = [None,]*num_im
   patch_id = 0
   for im_id in range(num_im):
-    patch_list[patch_id] = extract_patches_from_single_image(images[im_id,...], patch_edge_size)
+    patch_list[patch_id] = extract_patches_from_single_image(images[im_id, ...], out_shape)
     patch_id += 1
   patches = np.stack(patch_list)
-  patches = np.transpose(patches, axes=(2,3,0,1))
-  patches = np.reshape(patches, (patch_edge_size, patch_edge_size, -1))
-  patches = np.transpose(patches, axes=(2, 0, 1))
+  # patches.shape = [num_im, num_patches_per_im, patch_height, patch_width, patch_chan]
+  patches = np.transpose(patches, axes=(2,3,4,0,1))
+  # patches.shape = [patch_height, patch_width, patch_chan, num_im, num_patches_per_im]
+  patches = np.reshape(patches, (patch_height, patch_width, patch_chan, -1))
+  # patches.shape = [patch_height, patch_width, patch_chan, num_patches]
+  patches = np.transpose(patches, axes=(3,0,1,2))
+  # patches.shape = [num_patches, patch_height, patch_width, patch_chan]
   return patches
 
 def extract_patches(images, out_shape, overlapping=False, randomize=False, var_thresh=0,
@@ -383,9 +494,11 @@ def extract_patches(images, out_shape, overlapping=False, randomize=False, var_t
   """
   Extract patches from image dataset.
   Inputs:
-    images [np.ndarray] of shape [num_images, im_height, im_width]
-    out_shape [tuple or list] containing the 2-d output shape
-      [num_patches, patch_size] where patch_size has an even sqrt
+    images [np.ndarray] of shape [num_images, im_height, im_width, im_chan]
+      or [im_height, im_width, im_chan] for a single image
+    out_shape [tuple or list] containing the output shape
+      [num_patches, patch_height, patch_width, patch_chan]
+      patch_chan must be the same as im_chan
     overlapping [bool] specify if the patches are evenly tiled or randomly drawn
     randomize [bool] specify if the patches are drawn randomly (must be True for overlapping)
     var_thresh [float] acceptance threshold for patch pixel variance. If it is
@@ -394,12 +507,11 @@ def extract_patches(images, out_shape, overlapping=False, randomize=False, var_t
   Outputs:
     patches [np.ndarray] of patches
   """
-  (images, orig_shape, num_im, im_num_rows, im_num_cols) = reshape_data(images, flatten=False)
-  (num_patches, patch_size) = out_shape
-  assert np.floor(np.sqrt(patch_size)) == np.ceil(np.sqrt(patch_size)), (
-    "Patch size must have an even square root.")
-  patch_edge_size = np.int32(np.sqrt(patch_size))
-  if (patch_edge_size <= 0 or patch_edge_size == im_num_rows):
+  if images.ndim == 3: # single image
+    images = images[None,...]
+  num_im, im_height, im_width, im_chan = images.shape
+  num_patches, patch_height, patch_width, patch_chan = out_shape
+  if patch_height == im_height and patch_width == im_width:
     if num_patches < num_im:
       im_keep_idx = rand_state.choice(images.shape[0], num_patches, replace=False)
       return images[im_keep_idx, ...]
@@ -407,7 +519,7 @@ def extract_patches(images, out_shape, overlapping=False, randomize=False, var_t
       return images
     else:
       assert False, (
-        "The number of requested %g pixel patches must be less than or equal to %g"%(
+        "The number of requested patches (%g) must be less than or equal to %g."%(
         num_patches, num_im))
   if overlapping:
     patches = extract_overlapping_patches(images, out_shape, var_thresh, rand_state)
@@ -415,118 +527,75 @@ def extract_patches(images, out_shape, overlapping=False, randomize=False, var_t
     if randomize:
       patches = extract_random_tiled_patches(images, out_shape, var_thresh, rand_state)
     else:
-      patches = extract_tiled_patches(images, out_shape)
-  if images.shape == orig_shape: #patches should be vectorized only if input images were
-    patches = reshape_data(patches, flatten=False)[0]
-  else:
-    patches = reshape_data(patches, flatten=True)[0]
+      patches = extract_tiled_patches(images, out_shape[1:])
   return patches
 
-def patches_to_single_image(patches, im_edge_size):
+def patches_to_single_image(patches, im_shape):
   """
   Convert patches input into a single ouput
   Inputs:
-    patches [np.ndarray] of shape [num_patches, num_rows, num_cols]
-    im_edge_size [int] indicating the size of the edge of the output image (assumed square)
+    patches [np.ndarray] of shape [num_patches, patch_height, patch_width, patch_chan]
+    im_shape [list or tuple] containing the image shape
+      [im_height, im_width, im_chan]
+      im_chan must equal patch_chan
   """
-  num_patches, patch_num_rows, patch_num_cols = patches.shape
-  assert patch_num_rows == patch_num_cols, ("Input image must be square.")
-  patch_edge_size = patch_num_rows
-  im = np.zeros((im_edge_size, im_edge_size))
+  num_patches, patch_height, patch_width, patch_chan = patches.shape
+  im_height, im_width, im_chan = im_shape
+  assert im_chan == patch_chan, ("specified im_shape must have same number of channels as patches.")
+  im = np.zeros((im_height, im_width, im_chan))
   row_id = 0
   col_id = 0
   for patch_idx in range(num_patches):
-    im[row_id:row_id+patch_edge_size, col_id:col_id+patch_edge_size] = patches[patch_idx,...]
-    row_id += patch_edge_size
-    if row_id >= im_edge_size:
+    im[row_id:row_id+patch_height, col_id:col_id+patch_width] = patches[patch_idx,...]
+    row_id += patch_height
+    if row_id >= im_height:
       row_id = 0
-      col_id += patch_edge_size
-    if col_id >= im_edge_size:
+      col_id += patch_width
+    if col_id >= im_width:
       col_id = 0
   return im
 
-def patches_to_image(data, num_im, im_edge_size):
+def patches_to_image(patches, im_shape):
   """
   Reassemble patches created from extract_tiled_patches() into image
   Inputs:
-    data [np.ndarray] holding square patch data of shape
-      [num_patches, patch_edge_size, patch_edge_size]
-    num_im [int] number of images to compile patches into
-    patch_edge_size [int] size of one edge of square patches.
-      This must divide evenly into im_edge_size.
-    im_edge_size [int] size of one edge of square image output
+    patches [np.ndarray] holding square patch data of shape
+      [num_patches, patch_height, patch_width, patch_chan]
+    im_shape [list or tuple] containing the output image shape
+      [num_im, im_height, im_width, im_chan]
+      im_chan must equal patch_chan
+      patches must evenly split into im_shape
+      can also be [im_height, im_width, im_chan], in which case it is assumed num_im=1
   Outputs:
-    images [np.ndarray] of images of shape [num_im, im_edge_size, im_edge_size]
+    images [np.ndarray] of images of shape im_shape
   """
-  num_patches, patch_edge_size, _ = data.shape
-  assert im_edge_size%patch_edge_size == 0, ("Patches must divide evenly into the image.")
-  (data, orig_shape, num_patches, num_rows, num_cols) = reshape_data(data, flatten=False)
-  num_patches_per_side = np.int(im_edge_size/patch_edge_size)
-  num_patches_per_im = np.int(num_patches_per_side**2)
+  num_patches, patch_height, patch_width, patch_chan = patches.shape
+  if len(im_shape) == 4:
+    num_im, im_height, im_width, im_chan = im_shape
+  elif len(im_shape) == 3:
+    num_im = 1
+    im_height, im_width, im_chan = im_shape
+    im_shape = [num_im, im_height, im_width, im_chan]
+  else:
+    assert False, ("input im_shape must have len 3 or 4")
+  assert im_height%patch_height == 0, ("Patch height must divide evenly into the image.")
+  assert im_width%patch_width == 0, ("Patch width must divide evenly into the image.")
+  num_row_patches = np.floor(im_height / patch_height)
+  num_col_patches = np.floor(im_width / patch_width)
+  num_patches_per_im = int(num_row_patches * num_col_patches)
+  tot_num_patches =  int(num_patches_per_im * num_im)
   im_list = [None,]*num_im
   patch_id = 0
   for im_id in range(num_im):
-    im_list[im_id] = patches_to_single_image(data[patch_id:patch_id+num_patches_per_im, ...],
-      im_edge_size)
+    im_list[im_id] = patches_to_single_image(patches[patch_id:patch_id+num_patches_per_im, ...],
+      im_shape[1:])
     patch_id += num_patches_per_im
   images = np.stack(im_list)
-  return np.squeeze(images)
+  return images
 
 def downsample_data(data, scale_factor, order):
   """Downsample data"""
   return scipy.ndimage.interpolation.zoom(data, scale_factor, order=order, mode="constant")
-
-def reshape_data(data, flatten=False):
-  """
-  Helper function to reshape input data for processing and return data shape
-  Inputs:
-    data: [np.ndarray] unnormalized data of shape:
-      (n, i, j) - n data points, each of shape (i,j)
-      (n, k) - n data points, each of length k
-      (k) - single data point of length k
-    flatten: [bool] if True, return raveled data
-  Outputs:
-    tuple containing:
-    data: [np.ndarray] data with new shape
-      (num_examples, num_rows, num_cols) if flatten==False
-      (num_examples, num_elements) if flatten==True
-    orig_shape: [tuple of int32] original shape of the input data
-    num_examples: [int32] number of data examples
-    num_rows: [int32] number of data rows (sqrt of num elements)
-    num_cols: [int32] number of data cols (sqrt of num elements)
-  """
-  orig_shape = data.shape
-  orig_ndim = data.ndim
-  if orig_ndim == 1:
-    num_examples = 1
-    num_elements = data.shape[0]
-    sqrt_num_elements = np.sqrt(num_elements)
-    assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
-      "Data length must have an even square root.")
-    num_rows = np.int32(np.floor(sqrt_num_elements))
-    num_cols = num_rows
-    if flatten:
-      data = data[np.newaxis, ...]
-    else:
-      data = data.reshape((num_rows, num_cols))[np.newaxis, ...]
-  elif orig_ndim == 2:
-    (num_examples, num_elements) = data.shape
-    sqrt_num_elements = np.sqrt(num_elements)
-    num_rows = np.int32(np.floor(sqrt_num_elements))
-    num_cols = (num_rows
-      + np.int32(np.ceil(sqrt_num_elements)-np.floor(sqrt_num_elements)))
-    if not flatten:
-      assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
-        "Data length must have an even square root.")
-      data = data.reshape((num_examples, num_rows, num_cols))
-  elif orig_ndim == 3:
-    (num_examples, num_rows, num_cols) = data.shape
-    assert num_rows == num_cols, ("Data points must be square.")
-    if flatten:
-      data = data.reshape((num_examples, num_rows * num_cols))
-  else:
-    assert False, ("Data must have 1, 2, or 3 dimensions.")
-  return (data, orig_shape, num_examples, num_rows, num_cols)
 
 def normalize_data_with_max(data):
   """
@@ -534,12 +603,12 @@ def normalize_data_with_max(data):
   Inputs:
     data: [np.ndarray] data to be normalized
   Outputs:
-    norm_data: [np.ndarray] data normalized so that 0 is midlevel grey
+    norm_data: [np.ndarray] normalized data
   """
   if np.max(np.abs(data)) > 0:
-    norm_data = (data / np.max(np.abs(data))).squeeze()
+    norm_data = (data / np.max(np.abs(data)))
   else:
-    norm_data = data.squeeze()
+    norm_data = data
   return norm_data
 
 def center_data(data, use_dataset_mean=False):
@@ -547,37 +616,42 @@ def center_data(data, use_dataset_mean=False):
   Subtract individual example mean from data
   Inputs:
     data: [np.ndarray] unnormalized data of shape:
-      (n, i, j) - n data points, each of shape (i,j)
-      (n, k) - n data points, each of length k
-      (k) - single data point of length k
+      (n, i, j, k) - n data points, each of shape (i,j,k), with k channels
+      (i, j, k) - single data point of shape (i,j,k)
+        Note: output will be reshaped to (1, i, j, k)
+      (n, l) - n data points, each of length l
+      (l) - single data point of length l
+        Note: output will be reshaped to (1, l)
   Outputs:
-    data: [np.ndarray] centered data
+    data: [np.ndarray] centered data of shape (n, i, j, k) or (n, l)
   """
-  if use_dataset_mean:
-    data -= np.mean(data)
+  if use_dataset_mean or data.ndim == 1:
+    data_mean = np.mean(data)
+    data -= data_mean
   else:
-    data = data[np.newaxis, ...] if data.ndim == 1 else data
-    for idx in range(data.shape[0]):
-      data[idx, ...] -= np.mean(data[idx, ...])
-  return data.squeeze()
+    data = reshape_data(data, flatten=None)[0] # reshapes to 4D (not flat) or 2D (flat)
+    data_mean = np.mean(data,
+      axis=tuple(range(data.ndim)[1:])).reshape(tuple([data.shape[0]]+[1,]*(data.ndim-1)))
+    data -= data_mean
+  return data, data_mean
 
 def standardize_data(data):
   """
   Standardize data to have zero mean and unit standard-deviation (z-score)
   Inputs:
-    data: [np.ndarray] unnormalized data of shape:
-      (n, i, j) - n data points, each of shape (i,j)
-      (n, k) - n data points, each of length k
-      (k) - single data point of length k
+    data: [np.ndarray] unnormalized data of shape
   Outputs:
     data: [np.ndarray] normalized data
   """
-  data = data[np.newaxis, ...] if data.ndim == 1 else data
-  for idx in range(data.shape[0]):
-    data[idx,...] -= np.mean(data[idx, ...])
-    if np.std(data[idx, ...]) > 0:
-        data[idx,...] = data[idx,...] / np.std(data[idx,...])
-  return data.squeeze()
+  if data.ndim == 1:
+      data -= np.mean(data)
+      data /= np.std(data)
+  else:
+    for idx in range(data.shape[0]):
+      data, data_mean = center_data(data)
+      if np.std(data[idx, ...]) > 0:
+          data[idx,...] = data[idx,...] / np.std(data[idx,...])
+  return data, data_mean
 
 def normalize_data_with_var(data):
   """
@@ -590,60 +664,99 @@ def normalize_data_with_var(data):
   Outputs:
     data: [np.ndarray] input data batch
   """
-  data = data[np.newaxis, ...] if data.ndim == 1 else data
-  for idx in range(data.shape[0]):
-    data[idx, ...] /= np.var(data[idx, ...])
-  return data.squeeze()
+  if data.ndim == 1:
+      data /= np.var(data)
+  else:
+    for idx in range(data.shape[0]):
+      data[idx, ...] /= np.var(data[idx, ...])
+  return data
 
 def whiten_data(data, method="FT"):
   """
   Whiten data
   Inputs:
-    data: [np.ndarray] of shape:
-      (n, i, j) - n data points, each of shape (i,j)
-      (n, k) - n data points, each of length k
-      (k) - single data point of length k
+    data: [np.ndarray] with shape [num_examples, height, width, chan]
     method: [str] method to use, can be {FT, PCA, ZCA}
   Outputs:
-    whitened_data, filter used for whitening
+    whitened_data [np.ndarray]
+    data_mean [np.ndarray]
+    w_filter [list or np.ndarray] information necessary for unwhitenening
+      if method=="FT", then w_filter is np.ndarray representing fourier filter
+      if method=="PCA" or "ZCA", then w_filter is a list containing [u, diag(s)] of SVD of covariance matrix
   """
-  if method == "FT":
+  if method.upper() == "FT":
     flatten=False
-    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten)
-    data -= data.mean(axis=(1,2))[:,None,None]
-    dataFT = np.fft.fftshift(np.fft.fft2(data, axes=(1, 2)), axes=(1, 2))
+    (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data, flatten)
+    data, data_mean = center_data(data, use_dataset_mean=False)
+    data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
     nyq = np.int32(np.floor(num_rows/2))
     freqs = np.linspace(-nyq, nyq-1, num=num_rows)
     fspace = np.meshgrid(freqs, freqs)
     rho = np.sqrt(np.square(fspace[0]) + np.square(fspace[1]))
     lpf = np.exp(-0.5 * np.square(rho / (0.7 * nyq)))
     w_filter = np.multiply(rho, lpf) # filter is in the frequency domain
-    dataFT_wht = np.multiply(dataFT, w_filter[None, :])
-    data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(dataFT_wht, axes=(1, 2)), axes=(1, 2)))
-    data_wht = normalize_data_with_max(data_wht)
-  elif method == "PCA":
+    data = np.multiply(data, w_filter[None, ..., None])
+    data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
+  elif method.upper() == "PCA":
     flatten=True
-    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten)
-    data -= data.mean(axis=(1))[:, None]
-    cov = np.divide(np.dot(data.T, data), num_examples)
-    evals, evecs = np.linalg.eig(cov)
-    isqrtEval = np.diag(1 / np.sqrt(evals+1e-6)) # TODO: Should maybe threshold denom instead
-    w_filter = np.dot(np.dot(evecs, isqrtEval), evecs.T) # filter is in the spatial domain
-    data_wht = np.dot(data, w_filter)
-  elif method == "ZCA":
-    flatten=True
-    (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data, flatten)
-    data -= data.mean(axis=(1))[:, None]
+    data, orig_shape, num_examples, num_rows, num_cols, num_channels = reshape_data(data, flatten)
+    data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
     u, s, v = np.linalg.svd(cov)
-    isqrtS = np.diag(1 / np.sqrt(s+1e-6)) # TODO: Should maybe threshold instead of adding eps?
-    w_filter = np.dot(u, np.dot(isqrtS, u.T))
-    data_wht = np.dot(data, w_filter.T)
+    isqrtS = np.diag(1 / np.sqrt(s+1e-8))
+    w_filter = [u, np.diag(s)] # filter components
+    data_wht = np.dot(data, np.dot(u, isqrtS))
+  elif method.upper() == "ZCA":
+    flatten=True
+    (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data, flatten)
+    data, data_mean = center_data(data, use_dataset_mean=False)
+    cov = np.divide(np.dot(data.T, data), num_examples)
+    u, s, v = np.linalg.svd(cov)
+    isqrtS = np.diag(1 / np.sqrt(s+1e-8))
+    w_filter = [u, np.diag(s)] # filter components
+    data_wht = np.dot(data, np.dot(u, np.dot(isqrtS, u.T)))
   else:
     assert False, ("whitening method must be 'FT', 'ZCA', or 'PCA'")
   if data_wht.shape != orig_shape:
-    data_wht = reshape_data(data_wht, not flatten)[0]
-  return data_wht, w_filter
+    data_wht = reshape_data(data_wht, not flatten, out_shape=orig_shape[1:])[0]
+  return data_wht, data_mean, w_filter
+
+def unwhiten_data(data, data_mean, w_filter, method="FT"):
+  """
+  Unwhiten data
+  Inputs:
+    data: [np.ndarray] whitened data with first dim indicating batch
+    data_mean: [np.ndarray] data mean (computed before whitening)
+    w_filter: [np.ndarray] whitening filter to be inverted
+      if method=="FT", then w_filter is np.ndarray representing fourier filter
+      if method=="PCA" or "ZCA", then w_filter is a list containing [u, diag(s)] of SVD of covariance matrix
+    method: [str] method to use, can be {FT, PCA, ZCA}
+  Outputs:
+    unwhitened_data
+  """
+  if method.upper() == "FT":
+    flatten=False
+    (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data, flatten)
+    data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
+    data = np.multiply(data, (w_filter[None, ..., None]+1e-8)**-1)
+    data = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
+  elif method.upper() == "PCA":
+    flatten=True
+    data, orig_shape, num_examples, num_rows, num_cols, num_channels = reshape_data(data, flatten)
+    u, s = w_filter
+    data = np.dot(data, np.dot(u, s).T)
+  elif method.upper() == "ZCA":
+    flatten=True
+    (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data, flatten)
+    u, s = w_filter
+    unwhiten_filter = np.dot(np.dot(u, s), u.T)
+    data = np.dot(data, unwhiten_filter)
+  else:
+    assert False, ("whitening method must be 'FT', 'PCA', or 'ZCA'")
+  data += data_mean
+  if data.shape != orig_shape:
+    data = reshape_data(data, not flatten, out_shape=orig_shape[1:])[0]
+  return data
 
 def generate_local_contrast_normalizer(radius=12):
   """
@@ -678,7 +791,7 @@ def contrast_normalize(data, gauss_patch_size=12):
     normalizedData = np.divide(example, np.sqrt(localIntensityEstimate))
     data[ex, ...] = normalizedData
   if data.shape != orig_shape:
-    data = reshape_data(data, flatten=True)[0]
+    data = reshape_data(data, flatten=True, out_shape=orig_shape[1:])[0]
   return data
 
 def pca_reduction(data, num_pcs=-1):
@@ -690,7 +803,7 @@ def pca_reduction(data, num_pcs=-1):
   outputs:
     data_reduc: [np.ndarray] data with reduced dimensionality
   """
-  (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
+  (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data,
     flatten=True)
   data_mean = data.mean(axis=(1))[:,None]
   data -= data_mean
@@ -702,8 +815,6 @@ def pca_reduction(data, num_pcs=-1):
   else:
     n = num_pcs
   data_reduc = np.dot(data, np.dot(np.dot(U[:, :n], diagS[:n, :n]), V[:n, :]))
-  if orig_shape != data.shape:
-    data_reduc = reshape_data(data_reduc, flatten=False)[0]
   return data_reduc
 
 def compute_power_spectrum(data):
@@ -717,9 +828,9 @@ def compute_power_spectrum(data):
   Outputs:
     power_spec: [np.ndarray] Fourier power spectrum
   """
-  (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
+  (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data,
     flatten=False)
-  data = standardize_data(data)
+  data = standardize_data(data)[0]
   dataFT = np.fft.fftshift(np.fft.fft2(data, axes=(1, 2)), axes=(1, 2))
   power_spec = np.multiply(dataFT, np.conjugate(dataFT)).real
   return power_spec
@@ -737,7 +848,7 @@ def phase_avg_pow_spec(data):
     phase_avg: [list of np.ndarray] phase averaged power spectrum
       each element in the list corresponds to a data point
   """
-  (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
+  (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data,
     flatten=False)
   power_spec = compute_power_spectrum(data)
   dims = power_spec[0].shape

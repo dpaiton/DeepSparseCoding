@@ -16,7 +16,7 @@ class StandardizeDataTest(tf.test.TestCase):
     for use_gpu in gpu_args:
       with self.test_session(use_gpu=use_gpu):
         data = rand_state.normal(rand_mean, rand_var, size=[num_samples, num_rows, num_cols])
-        stand_data = dp.standardize_data(data)
+        stand_data, data_mean = dp.standardize_data(data)
         for idx in range(stand_data.shape[0]):
           self.assertNear(np.mean(stand_data[idx, ...]), 0.0, err)
           self.assertNear(np.std(data[idx, ...]), 1.0, err)

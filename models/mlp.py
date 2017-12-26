@@ -26,6 +26,7 @@ class MLP(Model):
       val_on_cp      [bool] If set, compute validation performance on checkpoint
     """
     super(MLP, self).load_params(params)
+    self.vector_inputs = True
     if "rectify_a" in params.keys():
       self.rectify_a = bool(params["rectify_a"])
     self.norm_a = bool(params["norm_a"])
@@ -46,6 +47,8 @@ class MLP(Model):
       self.val_on_cp = bool(params["val_on_cp"])
     else:
       self.val_on_cp = False
+    self.x_shape = [None, self.num_pixels]
+    self.y_shape = [None, self.num_classes]
     self.w1_shape = [self.num_pixels, self.num_hidden]
     self.w2_shape = [self.num_hidden, self.num_classes]
 
@@ -56,10 +59,8 @@ class MLP(Model):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
-          self.x = tf.placeholder(tf.float32,
-            shape=[None, self.num_pixels], name="input_data")
-          self.y = tf.placeholder(tf.float32,
-            shape=[None, self.num_classes], name="input_labels")
+          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
+          self.y = tf.placeholder(tf.float32, shape=self.y_shape, name="input_labels")
 
         with tf.name_scope("constants") as scope:
           ## For semi-supervised learning, loss is 0 if there is no label
@@ -160,7 +161,7 @@ class MLP(Model):
       "a_max":a_vals_max,
       "a_frac_active":a_frac_act,
       "train_accuracy":accuracy}
-    js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+    js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 
   def generate_plots(self, input_data, input_labels=None):

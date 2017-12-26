@@ -571,10 +571,8 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   Save figure for input data as a tiled image
   Inpus:
     data: [np.ndarray] of shape:
-      (height, width) - single image
-      (n, height, width) - n images tiled with dim (height, width)
-      (n, height, width, features) - n images tiled with dim
-        (height, width, features); features could be color
+      (height, width, features) - single image
+      (n, height, width, features) - n images
     normalize: [bool] indicating whether the data should be streched (normalized)
       This is recommended for dictionary plotting.
     title: [str] for title of figure
@@ -583,6 +581,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
     save_filename: [str] holding output directory for writing,
       figures will not display with GUI if set
   """
+  data = np.squeeze(dp.reshape_data(data, flatten=False)[0])
   if normalize:
     data = dp.normalize_data_with_max(data)
     vmin = -1.0
@@ -591,16 +590,14 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
     vmin = np.min(data)
   if vmax is None:
     vmax = np.max(data)
-  if len(data.shape) >= 3:
+  if len(data.shape) >= 4:
     data = np.squeeze(pad_data(data))
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))
   axis_image = sub_axis.imshow(data, cmap=cmap, interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)
-  cbar = add_colorbar_to_im(axis_image)
-  #cbar = fig.colorbar(axis_image)
-  sub_axis.tick_params(axis="both", bottom="off", top="off", left="off", right="off")
-  sub_axis.get_xaxis().set_visible(False)
-  sub_axis.get_yaxis().set_visible(False)
+  if data.shape[-1] == 1:
+    cbar = add_colorbar_to_im(axis_image)
+  sub_axis = clear_axis(sub_axis, spines="k")
   sub_axis.set_title(title, fontsize=20)
   if save_filename is not None:
     if save_filename == "":

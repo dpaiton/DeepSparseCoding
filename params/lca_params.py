@@ -1,7 +1,7 @@
 import os
 params = {
   "model_type": "lca",
-  "model_name": "lca_vh_ft_white",
+  "model_name": "test",
   "version": "0.0",
   "num_images": 100,
   "vectorize_data": True,

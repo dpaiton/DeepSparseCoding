@@ -21,15 +21,20 @@ def get_params(model_type):
   if model_type.lower() == "mlp":
     return mlp_params.params, mlp_params.schedule
   if model_type.lower() == "ica":
-    ica_params.params["num_pixels"] = int(ica_params.params["patch_edge_size"]**2)
+    #if "patch_edge_size" in ica_params.params.keys():
+    #  ica_params.params["num_pixels"] = int(ica_params.params["patch_edge_size"]**2)
+    #  ica_params.params["num_neurons"] = ica_params.params["num_pixels"]
     ica_params.params["num_neurons"] = ica_params.params["num_pixels"]
     return ica_params.params, ica_params.schedule
   if model_type.lower() == "ica_pca":
-    ica_pca_params.params["num_pixels"] = int(ica_pca_params.params["patch_edge_size"]**2)
+    #if "patch_edge_size" in ica_pca_params.params.keys():
+    #  ica_pca_params.params["num_pixels"] = int(ica_pca_params.params["patch_edge_size"]**2)
+    #  ica_pca_params.params["num_neurons"] = ica_pca_params.params["num_pixels"]
     ica_pca_params.params["num_neurons"] = ica_pca_params.params["num_pixels"]
     return ica_pca_params.params, ica_pca_params.schedule
   if model_type.lower() == "lca":
-    lca_params.params["num_pixels"] = int(lca_params.params["patch_edge_size"]**2)
+    #if "patch_edge_size" in lca_params.params.keys():
+    #  lca_params.params["num_pixels"] = int(lca_params.params["patch_edge_size"]**2)
     return lca_params.params, lca_params.schedule
   if model_type.lower() == "lca_pca":
     return lca_pca_params.params, lca_pca_params.schedule
