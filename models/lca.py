@@ -25,6 +25,7 @@ class LCA(Model):
       thresh_type  [str] "hard" or "soft" - LCA threshold function specification
     """
     super(LCA, self).load_params(params)
+    self.vector_inputs = True
     # Meta parameters
     self.rectify_a = bool(params["rectify_a"])
     self.norm_weights = bool(params["norm_weights"])
@@ -120,6 +121,7 @@ class LCA(Model):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
   def build_graph(self):
+    super(LCA, self).build_graph()
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():

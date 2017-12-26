@@ -17,30 +17,31 @@ class CONV_LCA(LCA):
     Inputs:
      params: [dict] model parameters
     Modifiable Parameters:
-      input_shape
+      data_shape
       stride_x
       stride_y
       patch_size_y
       patch_size_x
     """
     super(CONV_LCA, self).load_params(params)
-    self.input_shape = params["input_shape"]
+    self.vector_inputs = False
+    self.data_shape = params["data_shape"]
     self.stride_x = int(params["stride_x"])
     self.stride_y = int(params["stride_y"])
     self.patch_size_y = int(params["patch_size_y"])
     self.patch_size_x = int(params["patch_size_x"])
-    if len(self.input_shape) == 2:
-      self.input_shape += [1]
+    if len(self.data_shape) == 2:
+      self.data_shape += [1]
     self.phi_shape = [int(self.patch_size_y), int(self.patch_size_x),
-      int(self.input_shape[2]), int(self.num_neurons)]
-    assert (self.input_shape[0] % self.stride_x == 0), (
+      int(self.data_shape[2]), int(self.num_neurons)]
+    assert (self.data_shape[0] % self.stride_x == 0), (
       "Stride x must divide evenly into input shape")
-    assert (self.input_shape[1] % self.stride_y == 0), (
+    assert (self.data_shape[1] % self.stride_y == 0), (
       "Stride y must divide evenly into input shape")
-    self.u_x = int(self.input_shape[0]/self.stride_x)
-    self.u_y = int(self.input_shape[1]/self.stride_y)
+    self.u_x = int(self.data_shape[0]/self.stride_x)
+    self.u_y = int(self.data_shape[1]/self.stride_y)
     self.u_shape = [int(self.u_y), int(self.u_x), int(self.num_neurons)]
-    self.x_shape = [None,]+ self.input_shape
+    self.x_shape = [None,]+ self.data_shape
 
   def step_inference(self, u_in, a_in, step):
     with tf.name_scope("update_u"+str(step)) as scope:
@@ -72,16 +73,14 @@ class CONV_LCA(LCA):
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
     weights, recon = tf.get_default_session().run([self.phi, self.x_], feed_dict)
+    input_data += self.data_mean
+    recon += self.data_mean
     current_step = str(self.global_step.eval())
-    #pf.plot_data_tiled(input_data[0,...].reshape((np.int(np.sqrt(self.num_pixels)),
-    #  np.int(np.sqrt(self.num_pixels)))),
-    #  normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
-    #  +current_step.zfill(5)+".png"))
-    pf.plot_data_tiled(recon[0,...].reshape((
-      np.int(np.sqrt(self.num_pixels)),
-      np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Recons at step "+current_step, vmin=None, vmax=None,
+    pf.plot_data_tiled(input_data[0,...], normalize=False,
+      title="Images at step "+current_step, vmin=None, vmax=None, cmap=None,
+      save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".png"))
+    pf.plot_data_tiled(recon[0,...], normalize=False,
+      title="Recons at step "+current_step, vmin=None, vmax=None, cmap=None,
       save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
     pf.plot_data_tiled(np.transpose(weights, axes=(3,0,1,2)),
       normalize=False, title="Dictionary at step "+current_step,
@@ -92,5 +91,5 @@ class CONV_LCA(LCA):
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
-        title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+        title="Gradient for phi at step "+current_step, vmin=None, vmax=None, cmap=None,
         save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))

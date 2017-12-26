@@ -3,6 +3,7 @@ import logging
 import json as js
 import numpy as np
 import tensorflow as tf
+import utils.data_processing as dp
 
 class Model(object):
   def __init__(self, params, schedule):
@@ -110,6 +111,7 @@ class Model(object):
     self.save_dir = self.model_out_dir + "/savefiles/"
     self.disp_dir = self.model_out_dir + "/vis/"
     # Other
+    self.vector_inputs = None
     self.eps = float(params["eps"])
     self.device = str(params["device"])
     self.rand_seed = int(params["rand_seed"])
@@ -390,7 +392,92 @@ class Model(object):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
+    with tf.device(self.device):
+      with self.graph.as_default():
+        with tf.name_scope("placeholders") as scope:
+          self.input_data = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
     pass
+
+  def reshape_dataset(self, dataset):
+    """
+    Reshape dataset to fit model expectations
+    Inputs:
+      dataset [dict] returned from data/data_picker
+    """
+    assert self.vector_inputs is not None, (
+      "Model object must set vector_inputs member variable in load_parameters() method.")
+    for key in dataset.keys():
+      if "data_shape" in self.params.keys():
+        data_shape = self.params["data_shape"]
+      else:
+        data_shape = None
+      dataset[key].images = dp.reshape_data(dataset[key].images, self.vector_inputs,
+        data_shape)[0]
+      dataset[key].shape = dataset[key].images.shape
+    return dataset
+
+  def preprocess_dataset(self, dataset):
+    """
+    Perform default preprocessing on the dataset images 
+    Inputs:
+      dataset [dict] returned from data/data_picker
+    Parameters are set using the model parameter dictionary.
+    Possible parameters  are:
+      center_data: subtract mean from data
+      norm_data: divide data by the maximum
+      whiten_data: default method is using the Fourier amplitude spectrium ("FT")
+        change default with whiten_method param
+      standardize_data: subtract mean and divide by the standard deviation
+      contrast_normalize: divide by gaussian blurred surround pixels
+      extract_patches: break up data into patches
+        see utils/data_processing/exract_patches() for docs
+    """
+    for key in dataset.keys():
+      if "center_data" in self.params.keys() and self.params["center_data"]:
+        dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
+          use_dataset_mean=True)
+        self.data_mean = dataset[key].data_mean
+      if "norm_data" in self.params.keys() and self.params["norm_data"]:
+        dataset[key].images = dp.normalize_data_with_max(dataset[key].images)
+      if "whiten_data" in self.params.keys() and self.params["whiten_data"]:
+        if "whiten_method" in self.params.keys():
+          if self.params["whiten_method"] == "FT": # other methods require patching first
+            dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
+              dp.whiten_data(dataset[key].images, method=self.params["whiten_method"])
+      if "standardize_data" in self.params.keys() and self.params["standardize_data"]:
+        dataset[key].images, dataset[key].data_mean = dp.standardize_data(dataset[key].images)
+      if "contrast_normalize" in self.params.keys() and self.params["contrast_normalize"]:
+        if "gauss_patch_size" in self.params.keys():
+          dataset[key].images = dp.contrast_normalize(dataset[key].images,
+            self.params["gauss_patch_size"])
+        else:
+          dataset[key].images = dp.contrast_normalize(dataset[key].images)
+      if "extract_patches" in self.params.keys() and self.params["extract_patches"]:
+        assert all(key in self.params.keys()
+          for key in ["num_patches", "patch_edge_size", "overlapping_patches",
+          "randomize_patches"]), ("Insufficient params for patches.")
+        out_shape = (int(self.params["num_patches"]), int(self.params["patch_edge_size"]),
+          int(self.params["patch_edge_size"]), dataset[key].num_channels)
+        dataset[key].num_examples = out_shape[0]
+        dataset[key].reset_counters()
+        if "patch_variance_threshold" in self.params.keys():
+          dataset[key].images = dp.extract_patches(dataset[key].images, out_shape,
+            self.params["overlapping_patches"], self.params["randomize_patches"],
+            self.params["patch_variance_threshold"], dataset[key].rand_state)
+        else:
+          dataset[key].images = dp.extract_patches(dataset[key].images, out_shape,
+            self.params["overlapping_patches"], self.params["randomize_patches"],
+            var_thresh=0, rand_state=dataset[key].rand_state)
+        dataset[key].shape = dataset[key].images.shape
+        dataset[key].num_rows = dataset[key].shape[1]
+        dataset[key].num_cols = dataset[key].shape[2]
+        dataset[key].num_channels = dataset[key].shape[3]
+        dataset[key].num_pixels = np.prod(dataset[key].shape[1:])
+      if "whiten_data" in self.params.keys() and self.params["whiten_data"]:
+        if "whiten_method" in self.params.keys() and self.params["whiten_method"] != "FT":
+          dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
+            dp.whiten_data(dataset[key].images, method=self.params["whiten_method"])
+    return dataset
 
   def print_update(self, input_data, input_labels=None, batch_step=0):
     """

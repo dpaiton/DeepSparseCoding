@@ -8,15 +8,17 @@ import params.param_picker as pp
 import models.model_picker as mp
 import data.data_selector as ds
 
+import time as ti
+t0 = ti.time()
+
 ## Specify model type and data type
 #model_type = "mlp"
 #model_type = "ica"
 #model_type = "ica_pca"
-model_type = "lca"
+#model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "lca_pca_fb"
-#model_type = "conv_lca"
-#model_type = "dsc"
+model_type = "conv_lca"
 #model_type = "density_learner"
 
 #data_type = "cifar10"
@@ -33,11 +35,13 @@ params["data_type"] = data_type
 
 ## Import data
 data = ds.get_data(params)
-params["input_shape"] = list(data["train"].images.shape[1:])
 params["num_pixels"] = data["train"].num_pixels
+params["data_shape"] = list(data["train"].shape[1:])
 
 ## Import model
 model = mp.get_model(model_type, params, schedule)
+data = model.preprocess_dataset(data)
+data = model.reshape_dataset(data)
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
@@ -45,7 +49,7 @@ model.write_saver_defs()
 with tf.Session(graph=model.graph) as sess:
   ## Need to provide shape if batch_size is used in graph
   sess.run(model.init_op,
-    feed_dict={model.x:np.zeros([params["batch_size"]]+params["input_shape"], dtype=np.float32)})
+    feed_dict={model.x:np.zeros([params["batch_size"]]+params["data_shape"], dtype=np.float32)})
 
   sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)
@@ -60,6 +64,7 @@ with tf.Session(graph=model.graph) as sess:
         +"_weights-"+str(model.cp_load_step))
     model.load_weights(sess, cp_load_file)
 
+  avg_time = 0
   for sch_idx, sch in enumerate(schedule):
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
@@ -95,9 +100,12 @@ with tf.Session(graph=model.graph) as sess:
       #for step in range(model.num_v_steps):
       #  sess.run([model.step_v], feed_dict)
 
+      batch_t0 = ti.time()
       ## Update weights
       for w_idx in range(len(model.get_schedule("weights"))):
         sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
+      batch_t1 = ti.time()
+      avg_time += (batch_t1-batch_t0)/model.batch_size
 
       ## Generate logs
       current_step = sess.run(model.global_step)
@@ -135,4 +143,12 @@ with tf.Session(graph=model.graph) as sess:
               model.log_info("<stats>"+js_str+"</stats>")
 
   save_dir = model.write_checkpoint(sess)
+  avg_time /= model.get_schedule("num_batches")
+  model.log_info("Avg time per image: "+str(avg_time))
+  t1=ti.time()
+  tot_time=float(t1-t0)
+  out_str = (
+    "Training on "+str(sch_idx*model.get_schedule("num_batches")*model.params["batch_size"])
+    +" Images is Complete. Total time was "+str(tot_time)+" seconds.\n")
+  model.log_info(out_str)
   print("Training Complete\n")

@@ -1,7 +1,7 @@
 import os
 params = {
   "model_type": "lca_pca",
-  "model_name": "lca_pca_512_vh_ft_white",
+  "model_name": "test_lca_pca",
   "version": "0.0",
   "num_images": 100,
   "vectorize_data": True,
@@ -27,10 +27,14 @@ params = {
   "optimizer": "annealed_sgd",
   "cp_int": 10000,
   "max_cp_to_keep": 1,
-  "cp_load": False,
-  "log_int": 100,
+  "cp_load": True,
+  "cp_load_step": int(1e6), # None gives latest checkpoint
+  "cp_load_name": "lca_pca_512_vh_ft_white",
+  "cp_load_ver": "0.0",
+  "cp_load_var": ["phi"],
+  "log_int": 10,
   "log_to_file": True,
-  "gen_plot_int": 10000,
+  "gen_plot_int": 100,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/gpu:0",
@@ -42,7 +46,7 @@ schedule = [
   {"weights": ["phi"],
   "sparse_mult": 0.08,
   "weight_lr": [0.8],
-  "decay_steps": [int(1e6*0.4)],
+  "decay_steps": [int(1e2*0.4)],
   "decay_rate": [0.5],
   "staircase": [True],
-  "num_batches": int(1e6)}]
+  "num_batches": int(1e2)}]

@@ -40,8 +40,7 @@ def get_data(kwargs):
     kwargs["num_classes"] = int(kwargs["data_type"][5:len(kwargs["data_type"])])
     dataset = load_CIFAR(kwargs)
   if kwargs["data_type"].lower() == "synthetic":
-    assert "epoch_size" in kwargs.keys(), (
-      "Params must include 'epoch_size'")
+    assert "epoch_size" in kwargs.keys(), ("Params must include 'epoch_size'")
     dataset = load_synthetic(kwargs)
   if kwargs["data_type"].lower() == "field":
     dataset = load_field(kwargs)

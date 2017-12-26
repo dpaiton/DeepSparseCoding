@@ -20,6 +20,7 @@ class ICA(Model):
       num_pixels   [int] Number of pixels
     """
     super(ICA, self).load_params(params)
+    self.vector_inputs = True
     ## Meta parameters
     self.prior = str(params["prior"])
     assert (True if self.prior.lower() in ("laplacian", "cauchy") else False), (
@@ -30,6 +31,7 @@ class ICA(Model):
     self.patch_edge_size = int(params["patch_edge_size"])
     self.num_patch_pixels = int(self.patch_edge_size**2)
     self.num_neurons = self.num_patch_pixels
+    self.x_shape = [None, self.num_pixels]
     self.a_shape = [self.num_neurons, self.num_patch_pixels]
 
   def build_graph(self):
@@ -37,8 +39,7 @@ class ICA(Model):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
-          self.x = tf.placeholder(
-            tf.float32, shape=[None, self.num_pixels], name="input_data")
+          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -117,7 +118,7 @@ class ICA(Model):
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       stat_dict[name+"_max_grad"] = np.array(grad.max())
       stat_dict[name+"_min_grad"] = np.array(grad.min())
-    js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+    js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 
   def generate_plots(self, input_data, input_labels=None):
