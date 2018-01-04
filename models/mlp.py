@@ -1,13 +1,13 @@
 import numpy as np
-import logging
 import tensorflow as tf
-import json as js
 import utils.plot_functions as pf
+import utils.data_processing as dp
 from models.base_model import Model
 
 class MLP(Model):
-  def __init__(self, params, schedule):
-    super(MLP, self).__init__(params, schedule)
+  def __init__(self):
+    super(MLP, self).__init__()
+    self.vector_inputs = True
 
   def load_params(self, params):
     """
@@ -29,11 +29,12 @@ class MLP(Model):
     self.vector_inputs = True
     if "rectify_a" in params.keys():
       self.rectify_a = bool(params["rectify_a"])
+    self.data_shape = params["data_shape"]
     self.norm_a = bool(params["norm_a"])
     self.norm_weights = bool(params["norm_weights"])
     # Hyper-parameters
     self.batch_size = int(params["batch_size"])
-    self.num_pixels = int(params["num_pixels"])
+    self.num_pixels = int(np.prod(self.data_shape))
     self.num_hidden = int(params["num_hidden"])
     if "num_classes" in params.keys():
       self.num_classes = int(params["num_classes"])
@@ -172,28 +173,26 @@ class MLP(Model):
     super(MLP, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
-    pf.plot_data_tiled(
-      self.w2.eval().T.reshape(self.num_classes,
-      int(np.sqrt(self.num_hidden)), int(np.sqrt(self.num_hidden))),
-      normalize=True, title="Classification matrix at step number "+current_step,
+    w1, w2 = tf.get_default_session().run([self.w1, self.w2], feed_dict)
+    w1 = dp.reshape_data(w1.T, flatten=False)[0]
+    w2 = dp.reshape_data(w2.T, flatten=False)[0]
+    pf.plot_data_tiled(w2, normalize=True,
+      title="Classification matrix at step number "+current_step,
       vmin=None, vmax=None, save_filename=(self.disp_dir+"w2_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    pf.plot_data_tiled(
-      self.w1.eval().T.reshape(self.num_hidden,
-      int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-      normalize=True, title="Dictionary at step "+current_step, vmin=None, vmax=None,
+    pf.plot_data_tiled(w1, normalize=True,
+      title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"w1_v"+self.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+      grad = dp.reshape_data(grad.T, flatten=False)[0]
       if name == "w1":
-        pf.plot_data_tiled(grad.T.reshape(self.num_hidden,
-          int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-          normalize=True, title="Gradient for w1 at step "+current_step, vmin=None, vmax=None,
+        pf.plot_data_tiled(grad, normalize=True,
+          title="Gradient for w1 at step "+current_step, vmin=None, vmax=None,
           save_filename=(self.disp_dir+"dw1_v"+self.version+"_"+current_step.zfill(5)+".png"))
       elif name == "w2":
-        pf.plot_data_tiled(grad.T.reshape(self.num_classes,
-          int(np.sqrt(self.num_hidden)), int(np.sqrt(self.num_hidden))),
-          normalize=True, title="Gradient for w2 at step "+current_step, vmin=None, vmax=None,
+        pf.plot_data_tiled(grad, normalize=True,
+          title="Gradient for w2 at step "+current_step, vmin=None, vmax=None,
           save_filename=(self.disp_dir+"dw2_v"+self.version+"_"+current_step.zfill(5)+".png"))

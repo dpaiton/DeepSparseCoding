@@ -4,11 +4,11 @@ import params.param_picker as pp
 from models.ica import ICA
 
 class ICA_PCA(ICA):
-  def __init__(self, params, schedule):
+  def setup(self, params, schedule):
     ica_params, ica_schedule = pp.get_params("ica")
     new_params = ica_params.copy()
     new_params.update(params)
-    super(ICA_PCA, self).__init__(new_params, schedule)
+    super(ICA_PCA, self).setup(new_params, schedule)
 
   def load_params(self, params):
     """

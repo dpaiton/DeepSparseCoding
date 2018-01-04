@@ -26,6 +26,7 @@ Outputs:
   dataset: [dataset] object containing the dataset
 """
 def get_data(kwargs):
+  assert "data_type" in kwargs.keys(), ("kwargs must include data_type")
   if kwargs["data_type"].lower() == "vanhateren":
     if "vanHateren" not in kwargs["data_dir"]:
       kwargs["data_dir"] += "/vanHateren/"

@@ -1,6 +1,4 @@
 import numpy as np
-import logging
-import json as js
 import tensorflow as tf
 import utils.plot_functions as pf
 from models.base_model import Model
@@ -8,8 +6,9 @@ from models.base_model import Model
 import os
 
 class density_learner(Model):
-  def __init__(self, params, schedule):
-    super(density_learner, self).__init__(params, schedule)
+  def __init__(self):
+    super(density_learner, self).__init__()
+    self.vector_inputs = True
 
   def load_params(self, params):
     """
@@ -28,7 +27,6 @@ class density_learner(Model):
       tau          [float] LCA time constant
     """
     super(density_learner, self).load_params(params)
-    self.vector_inputs = True
     # Meta parameters
     self.rectify_a = bool(params["rectify_a"])
     self.rectify_v = bool(params["rectify_v"])
@@ -76,6 +74,7 @@ class density_learner(Model):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("weights") as scope:
+          # TODO: specify pretrain init in params
           phi_init = tf.nn.l2_normalize(np.load((os.path.expanduser("~")
             +"/Work/Projects/pretrain_white/analysis/0.0/weights/phi.npz"))["data"],
             dim=0, epsilon=self.eps, name="phi_init")
@@ -244,7 +243,7 @@ class density_learner(Model):
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       stat_dict[name+"_max_grad"] = np.array(grad.max())
       stat_dict[name+"_min_grad"] = np.array(grad.min())
-    js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+    js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 
   def generate_plots(self, input_data, input_labels=None):

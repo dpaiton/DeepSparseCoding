@@ -35,13 +35,13 @@ params["data_type"] = data_type
 
 ## Import data
 data = ds.get_data(params)
-params["num_pixels"] = data["train"].num_pixels
-params["data_shape"] = list(data["train"].shape[1:])
 
 ## Import model
-model = mp.get_model(model_type, params, schedule)
-data = model.preprocess_dataset(data)
-data = model.reshape_dataset(data)
+model = mp.get_model(model_type)
+data = model.preprocess_dataset(data, params)
+data = model.reshape_dataset(data, params)
+params["data_shape"] = list(data["train"].shape[1:])
+model.setup(params, schedule)
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()

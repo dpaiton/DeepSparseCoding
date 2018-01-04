@@ -1,12 +1,13 @@
 import numpy as np
-import json as js
 import tensorflow as tf
 import utils.plot_functions as pf
+import utils.data_processing as dp
 from models.base_model import Model
 
 class LCA(Model):
-  def __init__(self, params, schedule):
-    super(LCA, self).__init__(params, schedule)
+  def __init__(self):
+    super(LCA, self).__init__()
+    self.vector_inputs = True
 
   def load_params(self, params):
     """
@@ -25,14 +26,14 @@ class LCA(Model):
       thresh_type  [str] "hard" or "soft" - LCA threshold function specification
     """
     super(LCA, self).load_params(params)
-    self.vector_inputs = True
+    self.data_shape = params["data_shape"]
     # Meta parameters
     self.rectify_a = bool(params["rectify_a"])
     self.norm_weights = bool(params["norm_weights"])
     self.thresh_type = str(params["thresh_type"])
     # Network Size
     self.batch_size = int(params["batch_size"])
-    self.num_pixels = int(params["num_pixels"])
+    self.num_pixels = int(np.prod(self.data_shape))
     self.num_neurons = int(params["num_neurons"])
     self.phi_shape = [self.num_pixels, self.num_neurons]
     self.u_shape = [self.num_neurons]
@@ -220,32 +221,30 @@ class LCA(Model):
     super(LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = str(self.global_step.eval())
-    recon = tf.get_default_session().run(self.x_, feed_dict)
-    weights = tf.get_default_session().run(self.phi, feed_dict)
-    pf.plot_data_tiled(input_data.reshape((self.batch_size,
-      np.int(np.sqrt(self.num_pixels)),
-      np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
+    weights, recon = tf.get_default_session().run([self.phi, self.x_], feed_dict)
+    weights_norm = np.linalg.norm(weights, axis=1, keepdims=False)
+    input_data = dp.reshape_data(input_data, flatten=False)[0]
+    recon = dp.reshape_data(recon, flatten=False)[0]
+    weights = dp.reshape_data(weights.T, flatten=False)[0]
+    fig = pf.plot_data_tiled(input_data, normalize=False,
+      title="Images at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"images_"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    pf.plot_data_tiled(weights.T.reshape(self.num_neurons,
-      int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-      normalize=False, title="Dictionary at step "+current_step, vmin=None, vmax=None,
+    fig = pf.plot_data_tiled(weights, normalize=False,
+      title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"phi_v"+self.version+"_"
       +current_step.zfill(5)+".png"))
-    fig = pf.plot_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
+    fig = pf.plot_bar(weights_norm, num_xticks=5,
       title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.disp_dir+"phi_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    pf.plot_data_tiled(recon.reshape((self.batch_size,
-      np.int(np.sqrt(self.num_pixels)),
-      np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Recons at step "+current_step, vmin=None, vmax=None,
+    fig = pf.plot_data_tiled(recon, normalize=False,
+      title="Recons at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      pf.plot_data_tiled(grad.T.reshape(self.num_neurons,
-        int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-        normalize=True, title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+      grad = dp.reshape_data(grad.T, flatten=False)[0]
+      fig = pf.plot_data_tiled(grad, normalize=True,
+        title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
         save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))

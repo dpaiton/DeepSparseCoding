@@ -161,6 +161,8 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     weights: [np.ndarray] of shape [num_inputs, num_outputs]
     padding: [int] total image size to pad out to in the FFT computation
     num_gauss_fits: [int] total number of attempts to make when fitting the BFs
+    gauss_thresh: All probability values below gauss_thresh*mean(gauss_fit) will be
+      considered outliers for repeated fits
   Outputs:
     The function output is a dictionary containing the keys for each type of analysis
     Each key dereferences a list of len num_outputs (i.e. one entry for each weight vector)
@@ -597,6 +599,20 @@ def downsample_data(data, scale_factor, order):
   """Downsample data"""
   return scipy.ndimage.interpolation.zoom(data, scale_factor, order=order, mode="constant")
 
+def rescale_data_to_one(data):
+  """
+  Rescale input data to be between 0 and 1, per example
+  Inputs:
+    data: [np.ndarray] unnormalized data
+  Outputs:
+    data: [np.ndarray] centered data of shape (n, i, j, k) or (n, l)
+  """
+  data = reshape_data(data, flatten=None)[0]
+  data_axis=tuple(range(data.ndim)[1:])
+  data_min = np.min(data, axis=data_axis, keepdims=True)
+  data_max = np.max(data, axis=data_axis, keepdims=True)
+  return (data - data_min) / (data_max - data_min)
+  
 def normalize_data_with_max(data):
   """
   Normalize data by dividing by abs(max(data))
@@ -630,14 +646,14 @@ def center_data(data, use_dataset_mean=False):
     data -= data_mean
   else:
     data = reshape_data(data, flatten=None)[0] # reshapes to 4D (not flat) or 2D (flat)
-    data_mean = np.mean(data,
-      axis=tuple(range(data.ndim)[1:])).reshape(tuple([data.shape[0]]+[1,]*(data.ndim-1)))
+    data_axis=tuple(range(data.ndim)[1:])
+    data_mean = np.mean(data, axis=data_axis, keepdims=True)
     data -= data_mean
   return data, data_mean
 
 def standardize_data(data):
   """
-  Standardize data to have zero mean and unit standard-deviation (z-score)
+  Standardize each image data to have zero mean and unit standard-deviation (z-score)
   Inputs:
     data: [np.ndarray] unnormalized data of shape
   Outputs:
@@ -647,11 +663,12 @@ def standardize_data(data):
       data -= np.mean(data)
       data /= np.std(data)
   else:
-    for idx in range(data.shape[0]):
-      data, data_mean = center_data(data)
-      if np.std(data[idx, ...]) > 0:
-          data[idx,...] = data[idx,...] / np.std(data[idx,...])
-  return data, data_mean
+    data = reshape_data(data, flatten=None)[0] # reshapes to 4D (not flat) or 2D (flat)
+    data_axis=tuple(range(data.ndim)[1:])
+    data_std = np.maximum(np.std(data, axis=data_axis, keepdims=True), 1.0/np.sqrt(data[0,...].size))
+    data_mean = np.mean(data, axis=data_axis, keepdims=True)
+    data = (data - data_mean) /  data_std
+  return data, data_mean, data_std
 
 def normalize_data_with_var(data):
   """
@@ -665,11 +682,13 @@ def normalize_data_with_var(data):
     data: [np.ndarray] input data batch
   """
   if data.ndim == 1:
-      data /= np.var(data)
+    data_var = np.var(data)
+    data /= data_var
   else:
-    for idx in range(data.shape[0]):
-      data[idx, ...] /= np.var(data[idx, ...])
-  return data
+    data_axis=tuple(range(data.ndim)[1:])
+    data_var = np.var(data, axis=data_axis, keepdims=True)
+    data /= data_var
+  return data, data_var
 
 def whiten_data(data, method="FT"):
   """
