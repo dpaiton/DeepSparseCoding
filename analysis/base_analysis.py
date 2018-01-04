@@ -46,8 +46,7 @@ class Analyzer(object):
 
   def load_model(self):
     """Load model object into analysis object"""
-    self.model = mp.get_model(self.model_params["model_type"],
-      self.model_params, self.model_schedule)
+    self.model = mp.get_model(self.model_params["model_type"])
 
   def get_log_stats(self):
     """Wrapper function for parsing the log statistics"""

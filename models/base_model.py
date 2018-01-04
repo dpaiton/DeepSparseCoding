@@ -6,9 +6,13 @@ import tensorflow as tf
 import utils.data_processing as dp
 
 class Model(object):
-  def __init__(self, params, schedule):
+  def __init__(self):
     self.optimizers_added = False
     self.savers_constructed = False
+    self.vector_inputs = None
+    self.params_loaded = False
+
+  def setup(self, params, schedule):
     self.load_schedule(schedule)
     self.sched_idx = 0
     self.load_params(params)
@@ -17,7 +21,6 @@ class Model(object):
     self.init_logging()
     self.log_params()
     self.log_schedule()
-    self.graph = tf.Graph()
     self.setup_graph()
 
   def load_schedule(self, schedule):
@@ -44,8 +47,9 @@ class Model(object):
       model_name     [str] Name for model
       out_dir        [str] Base directory where output will be directed
       version        [str] Model version for output
+                             default is an empty string ""
       optimizer      [str] Which optimization algorithm to use
-                       Can be "annealed_sgd" or "adam"
+                       Can be "annealed_sgd" (default) or "adam"
       log_int        [int] How often to send updates to stdout
       log_to_file    [bool] If set, log to file, else log to stderr
       gen_plot_int   [int] How often to generate plots
@@ -115,6 +119,7 @@ class Model(object):
     self.eps = float(params["eps"])
     self.device = str(params["device"])
     self.rand_seed = int(params["rand_seed"])
+    self.params_loaded = True
 
   def check_params(self):
     """Check parameters with assertions"""
@@ -385,6 +390,7 @@ class Model(object):
 
   def setup_graph(self):
     """Setup graph object and add optimizers, initializer"""
+    self.graph = tf.Graph()
     self.build_graph()
     self.add_optimizers_to_graph()
     self.add_initializer_to_graph()
@@ -398,29 +404,29 @@ class Model(object):
           self.input_data = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
     pass
 
-  def reshape_dataset(self, dataset):
+  def reshape_dataset(self, dataset, params):
     """
     Reshape dataset to fit model expectations
     Inputs:
       dataset [dict] returned from data/data_picker
     """
     assert self.vector_inputs is not None, (
-      "Model object must set vector_inputs member variable in load_parameters() method.")
+      "Model object must set vector_inputs member variable in __init__() method.")
     for key in dataset.keys():
-      if "data_shape" in self.params.keys():
-        data_shape = self.params["data_shape"]
+      if "data_shape" in params.keys():
+        data_shape = params["data_shape"]
       else:
         data_shape = None
-      dataset[key].images = dp.reshape_data(dataset[key].images, self.vector_inputs,
-        data_shape)[0]
+      dataset[key].images = dp.reshape_data(dataset[key].images, self.vector_inputs, data_shape)[0]
       dataset[key].shape = dataset[key].images.shape
     return dataset
 
-  def preprocess_dataset(self, dataset):
+  def preprocess_dataset(self, dataset, params=None):
     """
-    Perform default preprocessing on the dataset images 
+    Perform default preprocessing on the dataset images
     Inputs:
       dataset [dict] returned from data/data_picker
+      params [dict] kwargs for preprocessing, if None then the member variable is used
     Parameters are set using the model parameter dictionary.
     Possible parameters  are:
       center_data: subtract mean from data
@@ -432,51 +438,60 @@ class Model(object):
       extract_patches: break up data into patches
         see utils/data_processing/exract_patches() for docs
     """
+    if params is None:
+      assert self.params_loaded, (
+        "You must either provide parameters or load the model params before preprocessing.")
+      params = self.params
     for key in dataset.keys():
-      if "center_data" in self.params.keys() and self.params["center_data"]:
+      if "center_data" in params.keys() and params["center_data"]:
         dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
           use_dataset_mean=True)
         self.data_mean = dataset[key].data_mean
-      if "norm_data" in self.params.keys() and self.params["norm_data"]:
-        dataset[key].images = dp.normalize_data_with_max(dataset[key].images)
-      if "whiten_data" in self.params.keys() and self.params["whiten_data"]:
-        if "whiten_method" in self.params.keys():
-          if self.params["whiten_method"] == "FT": # other methods require patching first
+      if "whiten_data" in params.keys() and params["whiten_data"]:
+        if "whiten_method" in params.keys():
+          if params["whiten_method"] == "FT": # other methods require patching first
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
-              dp.whiten_data(dataset[key].images, method=self.params["whiten_method"])
-      if "standardize_data" in self.params.keys() and self.params["standardize_data"]:
-        dataset[key].images, dataset[key].data_mean = dp.standardize_data(dataset[key].images)
-      if "contrast_normalize" in self.params.keys() and self.params["contrast_normalize"]:
-        if "gauss_patch_size" in self.params.keys():
+              dp.whiten_data(dataset[key].images, method=params["whiten_method"])
+      if "contrast_normalize" in params.keys() and params["contrast_normalize"]:
+        if "gauss_patch_size" in params.keys():
           dataset[key].images = dp.contrast_normalize(dataset[key].images,
-            self.params["gauss_patch_size"])
+            params["gauss_patch_size"])
         else:
           dataset[key].images = dp.contrast_normalize(dataset[key].images)
-      if "extract_patches" in self.params.keys() and self.params["extract_patches"]:
-        assert all(key in self.params.keys()
+      if "extract_patches" in params.keys() and params["extract_patches"]:
+        assert all(key in params.keys()
           for key in ["num_patches", "patch_edge_size", "overlapping_patches",
           "randomize_patches"]), ("Insufficient params for patches.")
-        out_shape = (int(self.params["num_patches"]), int(self.params["patch_edge_size"]),
-          int(self.params["patch_edge_size"]), dataset[key].num_channels)
+        out_shape = (int(params["num_patches"]), int(params["patch_edge_size"]),
+          int(params["patch_edge_size"]), dataset[key].num_channels)
         dataset[key].num_examples = out_shape[0]
         dataset[key].reset_counters()
-        if "patch_variance_threshold" in self.params.keys():
+        if "patch_variance_threshold" in params.keys():
           dataset[key].images = dp.extract_patches(dataset[key].images, out_shape,
-            self.params["overlapping_patches"], self.params["randomize_patches"],
-            self.params["patch_variance_threshold"], dataset[key].rand_state)
+            params["overlapping_patches"], params["randomize_patches"],
+            params["patch_variance_threshold"], dataset[key].rand_state)
         else:
           dataset[key].images = dp.extract_patches(dataset[key].images, out_shape,
-            self.params["overlapping_patches"], self.params["randomize_patches"],
+            params["overlapping_patches"], params["randomize_patches"],
             var_thresh=0, rand_state=dataset[key].rand_state)
         dataset[key].shape = dataset[key].images.shape
         dataset[key].num_rows = dataset[key].shape[1]
         dataset[key].num_cols = dataset[key].shape[2]
         dataset[key].num_channels = dataset[key].shape[3]
         dataset[key].num_pixels = np.prod(dataset[key].shape[1:])
-      if "whiten_data" in self.params.keys() and self.params["whiten_data"]:
-        if "whiten_method" in self.params.keys() and self.params["whiten_method"] != "FT":
+      if "whiten_data" in params.keys() and params["whiten_data"]:
+        if "whiten_method" in params.keys() and params["whiten_method"] != "FT":
           dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
-            dp.whiten_data(dataset[key].images, method=self.params["whiten_method"])
+            dp.whiten_data(dataset[key].images, method=params["whiten_method"])
+      if "norm_data" in params.keys() and params["norm_data"]:
+        dataset[key].images = dp.normalize_data_with_max(dataset[key].images)
+      if "norm_data_to_one" in params.keys() and params["norm_data"]:
+        dataset[key].images = dp.rescale_data_to_one(dataset[key].images)
+      if "standardize_data" in params.keys() and params["standardize_data"]:
+        dataset[key].images, dataset[key].data_mean, dataset[key].data_std = \
+          dp.standardize_data(dataset[key].images)
+        self.data_mean = dataset[key].data_mean
+        self.data_std = dataset[key].data_std
     return dataset
 
   def print_update(self, input_data, input_labels=None, batch_step=0):

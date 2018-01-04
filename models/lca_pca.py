@@ -3,11 +3,11 @@ import params.param_picker as pp
 from models.lca import LCA
 
 class LCA_PCA(LCA):
-  def __init__(self, params, schedule):
+  def setup(self, params, schedule):
     lca_params, lca_schedule = pp.get_params("lca")
     new_params = lca_params.copy()
     new_params.update(params)
-    super(LCA_PCA, self).__init__(new_params, schedule)
+    super(LCA_PCA, self).setup(new_params, schedule)
 
   def load_params(self, params):
     """

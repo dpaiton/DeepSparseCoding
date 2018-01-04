@@ -1,13 +1,13 @@
 import numpy as np
-import logging
-import json as js
 import tensorflow as tf
 import utils.plot_functions as pf
+import utils.data_processing as dp
 from models.base_model import Model
 
 class ICA(Model):
-  def __init__(self, params, schedule):
-    super(ICA, self).__init__(params, schedule)
+  def __init__(self):
+    super(ICA, self).__init__()
+    self.vector_inputs = True
 
   def load_params(self, params):
     """
@@ -20,19 +20,17 @@ class ICA(Model):
       num_pixels   [int] Number of pixels
     """
     super(ICA, self).load_params(params)
-    self.vector_inputs = True
     ## Meta parameters
     self.prior = str(params["prior"])
     assert (True if self.prior.lower() in ("laplacian", "cauchy") else False), (
       "Prior must be 'laplacian' or 'cauchy'")
+    self.data_shape = params["data_shape"]
     ## Network Size
     self.batch_size = int(params["batch_size"])
-    self.num_pixels = int(params["num_pixels"])
-    self.patch_edge_size = int(params["patch_edge_size"])
-    self.num_patch_pixels = int(self.patch_edge_size**2)
-    self.num_neurons = self.num_patch_pixels
+    self.num_pixels = int(np.prod(self.data_shape))
+    self.num_neurons = self.num_pixels
     self.x_shape = [None, self.num_pixels]
-    self.a_shape = [self.num_neurons, self.num_patch_pixels]
+    self.a_shape = [self.num_neurons, self.num_pixels]
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
@@ -132,15 +130,14 @@ class ICA(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     weights = tf.get_default_session().run(self.a, feed_dict)
     current_step = str(self.global_step.eval())
-    #pf.plot_data_tiled(input_data.reshape((self.batch_size,
-    #  np.int(np.sqrt(self.num_pixels)),
-    #  np.int(np.sqrt(self.num_pixels)))),
-    #  normalize=False, title="Images at step "+current_step,
-    #  vmin=np.min(input_data), vmax=np.max(input_data),
+    #input_data = dp.reshape_data(input_data, flatten=False)[0]
+    #pf.plot_data_tiled(input_data, normalize=False,
+    #  title="Images at step "+current_step, vmin=np.min(input_data), vmax=np.max(input_data),
     #  save_filename=(self.disp_dir+"images_"+current_step.zfill(5)+".png"))
-    pf.plot_data_tiled(weights.reshape(self.num_neurons,
-      int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-      normalize=True, title="Dictionary at step "+current_step, vmin=-1.0, vmax=1.0,
+    weights_norm = np.linalg.norm(weights, axis=1, keepdims=False)
+    weights = dp.reshape_data(weights, flatten=False)[0]
+    pf.plot_data_tiled(weights, normalize=True,
+      title="Dictionary at step "+current_step, vmin=-1.0, vmax=1.0,
       save_filename=(self.disp_dir+"a_v"+self.version+"-"+current_step.zfill(5)+".png"))
     pf.plot_activity_hist(self.z.eval(feed_dict), num_bins=1000,
       title="z Activity Histogram at step "+current_step,
@@ -150,14 +147,14 @@ class ICA(Model):
       title="u Activity Histogram at step "+current_step,
       save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    pf.plot_bar(np.linalg.norm(weights, axis=1, keepdims=False), num_xticks=5,
+    pf.plot_bar(weights_norm, num_xticks=5,
       title="a l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.disp_dir+"a_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      pf.plot_data_tiled(grad.reshape(self.num_neurons,
-        int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-        normalize=False, title="Gradient for "+name+" at step "+current_step, vmin=None, vmax=None,
+      grad = dp.reshape_data(grad, flatten=False)[0]
+      pf.plot_data_tiled(grad, normalize=False,
+        title="Gradient for "+name+" at step "+current_step, vmin=None, vmax=None,
         save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"_"+current_step.zfill(5)+".png"))

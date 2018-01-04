@@ -581,7 +581,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
     save_filename: [str] holding output directory for writing,
       figures will not display with GUI if set
   """
-  data = np.squeeze(dp.reshape_data(data, flatten=False)[0])
+  data = dp.reshape_data(data, flatten=False)[0]
   if normalize:
     data = dp.normalize_data_with_max(data)
     vmin = -1.0
@@ -590,10 +590,14 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
     vmin = np.min(data)
   if vmax is None:
     vmax = np.max(data)
-  if len(data.shape) >= 4:
+  if data.ndim == 3:
+    data = np.squeeze(data)
+  elif data.ndim == 4:
     data = np.squeeze(pad_data(data))
+  else:
+    assert False, ("input data must have ndim==3 or 4")
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))
-  axis_image = sub_axis.imshow(data, cmap=cmap, interpolation="nearest")
+  axis_image = sub_axis.imshow(np.squeeze(data), cmap=cmap, interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)
   if data.shape[-1] == 1:
     cbar = add_colorbar_to_im(axis_image)
@@ -653,6 +657,12 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
   return fig
 
 def plot_inference_stats(data, title="", save_filename=None):
+  """
+  Plot loss values during LCA inference
+  Inputs:
+    data: [dict] that must contain the "losses"
+      this can be created by using the LCA analyzer objects
+  """
   labels = [key for key in data["losses"].keys()]
   losses = [val for val in data["losses"].values()]
   num_im, num_steps = losses[0].shape

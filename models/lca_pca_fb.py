@@ -1,5 +1,4 @@
 import numpy as np
-import json as js
 import os
 import tensorflow as tf
 import params.param_picker as pp
@@ -7,13 +6,13 @@ import utils.plot_functions as pf
 from models.lca_pca import LCA_PCA
 
 class LCA_PCA_FB(LCA_PCA):
-  def __init__(self, params, schedule):
+  def setup(self, params, schedule):
     lca_params, lca_schedule = pp.get_params("lca")
     new_params = lca_params.copy()
     lca_pca_params, lca_pca_schedule = pp.get_params("lca_pca")
     new_params.update(lca_pca_params)
     new_params.update(params)
-    super(LCA_PCA_FB, self).__init__(new_params, schedule)
+    super(LCA_PCA_FB, self).setup(new_params, schedule)
 
   def load_params(self, params):
     """
@@ -169,35 +168,3 @@ class LCA_PCA_FB(LCA_PCA):
       "a2_fraction_active":a2_frac_act}
     js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
-
-  def generate_plots(self, input_data, input_labels=None):
-    """
-    Plot weights, reconstruction, and gradients
-    Inputs:
-      input_data: data object containing the current image batch
-      input_labels: data object containing the current label batch
-    """
-    feed_dict = self.get_feed_dict(input_data, input_labels)
-    current_step = str(self.global_step.eval())
-    recon = tf.get_default_session().run(self.x_, feed_dict)
-    weights = tf.get_default_session().run(self.phi, feed_dict)
-    pf.plot_data_tiled(weights.T.reshape(self.num_neurons,
-      int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-      normalize=False, title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".png"))
-    pf.plot_data_tiled(input_data.reshape((self.batch_size,
-      np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Images at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".png"))
-    pf.plot_data_tiled(recon.reshape((self.batch_size,
-      np.int(np.sqrt(self.num_pixels)), np.int(np.sqrt(self.num_pixels)))),
-      normalize=False, title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      grad = weight_grad_var[0][0].eval(feed_dict)
-      shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      pf.plot_data_tiled(grad.T.reshape(self.num_neurons,
-        int(np.sqrt(self.num_pixels)), int(np.sqrt(self.num_pixels))),
-        normalize=True, title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))

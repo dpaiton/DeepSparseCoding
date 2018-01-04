@@ -6,33 +6,27 @@ from models.lca import LCA as lca
 from models.lca_pca import LCA_PCA as lca_pca
 from models.lca_pca_fb import LCA_PCA_FB as lca_pca_fb
 from models.conv_lca import CONV_LCA as conv_lca
-from models.dsc import dsc as dsc
 from models.density_learner import density_learner as dl
 
-def get_model(model_type, params=None, schedule=None):
-  if params is None:
-    params, _ = pp.get_params(model_type)
-  if schedule is None:
-    _, schedule  = pp.get_params(model_type)
+def get_model(model_type):
   if model_type.lower() == "mlp":
-    return mlp(params, schedule)
+    return mlp()
   if model_type.lower() == "ica":
-    return ica(params, schedule)
+    return ica()
   if model_type.lower() == "ica_pca":
-    return ica_pca(params, schedule)
+    return ica_pca()
   if model_type.lower() == "lca":
-    return lca(params, schedule)
+    return lca()
   if model_type.lower() == "lca_pca":
-    return lca_pca(params, schedule)
+    return lca_pca()
   if model_type.lower() == "lca_pca_fb":
-    return lca_pca_fb(params, schedule)
+    return lca_pca_fb()
   if model_type.lower() == "conv_lca":
-    return conv_lca(params, schedule)
-  if model_type.lower() == "dsc":
-    return dsc(params, schedule)
+    return conv_lca()
   if model_type.lower() == "density_learner":
-    return dl(params, schedule)
+    return dl()
 
 def get_model_list():
-  model_list = ["mlp", "ica", "ica_pca", "lca", "lca_pca", "conv_lca", "dsc"]
+  model_list = ["mlp", "ica", "ica_pca", "lca", "lca_pca", "lca_pca_fb", "conv_lca",
+    "density_learner"]
   return model_list
