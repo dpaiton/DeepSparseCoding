@@ -46,7 +46,9 @@ model.setup(params, schedule)
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
 
-with tf.Session(graph=model.graph) as sess:
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+with tf.Session(config=config, graph=model.graph) as sess:
   ## Need to provide shape if batch_size is used in graph
   sess.run(model.init_op,
     feed_dict={model.x:np.zeros([params["batch_size"]]+params["data_shape"], dtype=np.float32)})
