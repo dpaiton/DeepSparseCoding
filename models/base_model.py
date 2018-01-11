@@ -219,7 +219,7 @@ class Model(object):
           sch_grads_and_vars = list() # [weight_idx]
           sch_apply_grads = list() # [weight_idx]
           for w_idx, weight in enumerate(sch["weights"]):
-            learning_rates = tf.train.exponential_decay(
+            self.learning_rates = tf.train.exponential_decay(
               learning_rate=sch["weight_lr"][w_idx],
               global_step=self.global_step,
               decay_steps=sch["decay_steps"][w_idx],
@@ -227,13 +227,13 @@ class Model(object):
               staircase=sch["staircase"][w_idx],
               name="annealing_schedule_"+weight)
             if self.optimizer == "annealed_sgd":
-              optimizer = tf.train.GradientDescentOptimizer(learning_rates,
+              optimizer = tf.train.GradientDescentOptimizer(self.learning_rates,
                 name="grad_optimizer_"+weight)
             elif self.optimizer == "adam":
-              optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
+              optimizer = tf.train.AdamOptimizer(self.learning_rates, beta1=0.9, beta2=0.99,
                 epsilon=1e-07, name="adam_optimizer_"+weight)
             elif self.optimizer == "adadelta":
-              optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
+              optimizer = tf.train.AdadeltaOptimizer(self.learning_rates, epsilon=1e-07,
                 name="adadelta_optimizer_"+weight)
             with tf.variable_scope("weights", reuse=True) as scope:
               weight_op = [tf.get_variable(weight)]

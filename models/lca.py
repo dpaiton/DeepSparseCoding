@@ -18,7 +18,6 @@ class LCA(Model):
       rectify_a    [bool] If set, rectify layer 1 activity
       norm_weights [bool] If set, l2 normalize weights after updates
       batch_size   [int] Number of images in a training batch
-      num_pixels   [int] Number of pixels
       num_neurons  [int] Number of LCA neurons
       num_steps    [int] Number of inference steps
       dt           [float] Discrete global time constant
