@@ -611,7 +611,7 @@ def rescale_data_to_one(data):
   data_axis=tuple(range(data.ndim)[1:])
   data_min = np.min(data, axis=data_axis, keepdims=True)
   data_max = np.max(data, axis=data_axis, keepdims=True)
-  return (data - data_min) / (data_max - data_min)
+  return (data - data_min) / (data_max - data_min + 1e-6)
   
 def normalize_data_with_max(data):
   """
@@ -620,12 +620,14 @@ def normalize_data_with_max(data):
     data: [np.ndarray] data to be normalized
   Outputs:
     norm_data: [np.ndarray] normalized data
+    data_max: [float] max that was divided out
   """
   if np.max(np.abs(data)) > 0:
-    norm_data = (data / np.max(np.abs(data)))
+    data_max = np.max(np.abs(data))
+    norm_data = data / data_max
   else:
     norm_data = data
-  return norm_data
+  return norm_data, data_max
 
 def center_data(data, use_dataset_mean=False):
   """

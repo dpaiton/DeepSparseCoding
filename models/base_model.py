@@ -484,7 +484,7 @@ class Model(object):
           dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
             dp.whiten_data(dataset[key].images, method=params["whiten_method"])
       if "norm_data" in params.keys() and params["norm_data"]:
-        dataset[key].images = dp.normalize_data_with_max(dataset[key].images)
+        dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
       if "norm_data_to_one" in params.keys() and params["norm_data"]:
         dataset[key].images = dp.rescale_data_to_one(dataset[key].images)
       if "standardize_data" in params.keys() and params["standardize_data"]:

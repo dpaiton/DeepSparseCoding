@@ -93,13 +93,8 @@ class CONV_LCA(LCA):
         if "whiten_method" in params.keys() and params["whiten_method"] != "FT":
           dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
             dp.whiten_data(dataset[key].images, method=params["whiten_method"])
-      if "norm_data_to_one" in params.keys() and params["norm_data"]:
-        dataset[key].images = dp.rescale_data_to_one(dataset[key].images)
-      if "standardize_data" in params.keys() and params["standardize_data"]:
-        dataset[key].images, dataset[key].data_mean, dataset[key].data_std = \
-          dp.standardize_data(dataset[key].images)
-        self.data_mean = dataset[key].data_mean
-        self.data_std = dataset[key].data_std
+      if "norm_data" in params.keys() and params["norm_data"]:
+        dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
     return dataset
 
   def step_inference(self, u_in, a_in, step):

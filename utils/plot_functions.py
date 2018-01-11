@@ -583,7 +583,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   """
   data = dp.reshape_data(data, flatten=False)[0]
   if normalize:
-    data = dp.normalize_data_with_max(data)
+    data = dp.normalize_data_with_max(data)[0]
     vmin = -1.0
     vmax = 1.0
   if vmin is None:
