@@ -707,7 +707,7 @@ def whiten_data(data, method="FT"):
   """
   if method.upper() == "FT":
     flatten=False
-    (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data, flatten)
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
     nyq = np.int32(np.floor(num_rows/2))
@@ -720,21 +720,21 @@ def whiten_data(data, method="FT"):
     data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
   elif method.upper() == "PCA":
     flatten=True
-    data, orig_shape, num_examples, num_rows, num_cols, num_channels = reshape_data(data, flatten)
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
-    u, s, v = np.linalg.svd(cov)
+    u, s, v = np.linalg.svd(cov) # s are singular values, sqrt(s) are eigenvalues
     isqrtS = np.diag(1 / np.sqrt(s+1e-8))
-    w_filter = [u, np.diag(s)] # filter components
-    data_wht = np.dot(data, np.dot(u, isqrtS))
+    w_filter = [u, np.diag(np.sqrt(s+1e-8))] # filter components
+    data_wht = np.dot(data, np.dot(u, isqrtS)) 
   elif method.upper() == "ZCA":
     flatten=True
-    (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data, flatten)
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
     u, s, v = np.linalg.svd(cov)
     isqrtS = np.diag(1 / np.sqrt(s+1e-8))
-    w_filter = [u, np.diag(s)] # filter components
+    w_filter = [u, np.diag(np.sqrt(s+1e-8))] # filter components
     data_wht = np.dot(data, np.dot(u, np.dot(isqrtS, u.T)))
   else:
     assert False, ("whitening method must be 'FT', 'ZCA', or 'PCA'")
@@ -757,18 +757,19 @@ def unwhiten_data(data, data_mean, w_filter, method="FT"):
   """
   if method.upper() == "FT":
     flatten=False
-    (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data, flatten)
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
     data = np.multiply(data, (w_filter[None, ..., None]+1e-8)**-1)
     data = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
+    data += data_mean
   elif method.upper() == "PCA":
     flatten=True
-    data, orig_shape, num_examples, num_rows, num_cols, num_channels = reshape_data(data, flatten)
-    u, s = w_filter
-    data = np.dot(data, np.dot(u, s).T)
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+    u, sqrtS = w_filter
+    data = np.dot(data, np.dot(u, sqrtS).T)
   elif method.upper() == "ZCA":
     flatten=True
-    (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data, flatten)
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     u, s = w_filter
     unwhiten_filter = np.dot(np.dot(u, s), u.T)
     data = np.dot(data, unwhiten_filter)
