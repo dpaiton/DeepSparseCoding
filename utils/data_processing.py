@@ -317,9 +317,8 @@ def get_gauss_fit(prob_map, num_attempts=1, perc_mean=0.33):
           prob_map *= gauss_mask
       gauss_success = True
     except np.linalg.LinAlgError: # Usually means cov matrix is singular
-      print(
-        "get_gauss_fit: Failed to fit Gaussian at attempt %g, trying again."+
-        "\n  To avoid this try decreasing perc_mean."%(i))
+      print("get_gauss_fit: Failed to fit Gaussian at attempt ",i,", trying again."+
+        "\n  To avoid this try decreasing perc_mean.")
       num_attempts = i-1
       if num_attempts <= 0:
         assert False, ("get_gauss_fit: np.linalg.LinAlgError - Unable to fit gaussian.")
