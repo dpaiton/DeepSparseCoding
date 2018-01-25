@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits import axes_grid1
 import utils.data_processing as dp
 
@@ -21,18 +22,15 @@ def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=
   Outputs:
     ellipse [matplotlib.patches.ellipse] ellipse object
   """
-  face_color_val = "none" if color_val == "auto" else color_val
+  face_color_val = "none" #set to color_val to fill the ellipse
   y_cen, x_cen = center
   width, height = shape
   if lines:
-    #aspect_region = 0.05
-    #aspect = width / height
-    if True:#not (aspect > 1.0 - aspect_region and aspect < 1.0 + aspect_region):
-      min_length = 0.1
-      if width < height:
-        width = min_length
-      elif width > height:
-        height = min_length
+    min_length = 0.1
+    if width < height:
+      width = min_length
+    elif width > height:
+      height = min_length
   ellipse = matplotlib.patches.Ellipse(xy=[x_cen, y_cen], width=width,
     height=height, angle=angle, edgecolor=color_val, facecolor=face_color_val,
     alpha=alpha, fill=True)
@@ -40,31 +38,41 @@ def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=
   ellipse.set_clip_box(axis.bbox)
   return ellipse
 
-def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False):
+def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False, rand_bf=False):
   """
   Plot basis functions with summary ellipses drawn over them
   Inputs:
     bf_stats [dict] output of dp.get_dictionary_stats()
     num_bf [int] number of basis functions to plot (<=0 is all; >total is all)
     lines [bool] If true, will plot lines instead of ellipses
+    rand_bf [bool] If true, will choose a random set of basis functions
   """
   tot_num_bf = len(bf_stats["basis_functions"])
   if num_bf <= 0 or num_bf > tot_num_bf:
     num_bf = tot_num_bf
-  bf_range = np.random.choice([i for i in range(tot_num_bf)], num_bf, replace=False)
+  SFs = np.asarray([np.sqrt(fcent[0]**2 + fcent[1]**2)
+    for fcent in bf_stats["fourier_centers"]], dtype=np.float32)
+  sf_sort_indices = np.argsort(SFs)
+  if rand_bf:
+    bf_range = np.random.choice([i for i in range(tot_num_bf)], num_bf, replace=False)
   num_plots_y = int(np.ceil(np.sqrt(num_bf)))
   num_plots_x = int(np.ceil(np.sqrt(num_bf)))
   gs = gridspec.GridSpec(num_plots_y, num_plots_x)
   fig = plt.figure(figsize=(17,17))
   filter_idx = 0
   for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
-    ax = clear_axis(fig.add_subplot(gs[plot_id]))
+    ax = pf.clear_axis(fig.add_subplot(gs[plot_id]))
     if filter_idx < tot_num_bf and filter_idx < num_bf:
-      bf = bf_stats["basis_functions"][filter_idx]
+      if rand_bf:
+        bf_idx = bf_range[filter_idx]
+      else:
+        bf_idx = filter_idx
+      bf = bf_stats["basis_functions"][bf_idx]
       ax.imshow(bf, interpolation="Nearest", cmap="Greys_r")
-      center = bf_stats["gauss_centers"][filter_idx]
-      evals, evecs = bf_stats["gauss_orientations"][filter_idx]
-      orientations = bf_stats["fourier_centers"][filter_idx]
+      ax.set_title(str(bf_idx), fontsize="8")
+      center = bf_stats["gauss_centers"][bf_idx]
+      evals, evecs = bf_stats["gauss_orientations"][bf_idx]
+      orientations = bf_stats["fourier_centers"][bf_idx]
       angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
       alpha = 1.0
       ellipse = plot_ellipse(ax, center, evals, angle, color_val="b", alpha=alpha, lines=lines)
@@ -74,7 +82,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False):
   return fig
 
 def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
-                           num_connected_weights, lines=False):
+                           num_connected_weights, lines=False, figsize=None):
   """
   Plot 2nd layer (fully-connected) weights in terms of connection strengths to 1st layer weights
   Inputs:
@@ -88,30 +96,34 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
   """
   num_inputs = bf_stats["num_inputs"]
   num_outputs = bf_stats["num_outputs"]
+  tot_pooling_filters = pooling_filters.shape[1]
   patch_edge_size = np.int32(np.sqrt(num_inputs))
   filter_idx_list = np.arange(num_pooling_filters, dtype=np.int32)
   assert num_pooling_filters <= num_outputs, (
     "num_pooling_filters must be less than or equal to bf_stats['num_outputs']")
   cmap = plt.get_cmap('bwr')
-  cNorm = matplotlib.colors.Normalize(vmin=-1, vmax=1)
+  cNorm = matplotlib.colors.SymLogNorm(linthresh=0.03, linscale=0.01, vmin=-1.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
   num_plots_y = np.int32(np.ceil(np.sqrt(num_pooling_filters)))
   num_plots_x = np.int32(np.ceil(np.sqrt(num_pooling_filters)))+1 # +cbar col
-  gs = gridspec.GridSpec(num_plots_y, num_plots_x)
-  fig = plt.figure(figsize=(17,17))
+  gs_widths = [1 for _ in range(num_plots_x-1)]+[0.3]
+  gs = gridspec.GridSpec(num_plots_y, num_plots_x, width_ratios=gs_widths)
+  if figsize is None:
+    fig = plt.figure()
+  else:
+    fig = plt.figure(figsize=(17,17))
   filter_total = 0
   for plot_id in  np.ndindex((num_plots_y, num_plots_x-1)):
     (y_id, x_id) = plot_id
     ax = fig.add_subplot(gs[plot_id])
     if (filter_total < num_pooling_filters and x_id != num_plots_x-1):
-      ax = clear_axis(ax, spines="k")
+      ax = pf.clear_axis(ax, spines="k")
       filter_idx = filter_idx_list[filter_total]
       example_filter = pooling_filters[:, filter_idx]
       top_indices = np.argsort(np.abs(example_filter))[::-1] #descending
       filter_norm = np.max(np.abs(example_filter))
       SFs = np.asarray([np.sqrt(fcent[0]**2 + fcent[1]**2)
         for fcent in bf_stats["fourier_centers"]], dtype=np.float32)
-      sf_norm = np.max(SFs)
       # Plot weakest of the top connected filters first because of occlusion
       for bf_idx in top_indices[:num_connected_weights][::-1]:
         connection_strength = example_filter[bf_idx]/filter_norm
@@ -120,25 +132,46 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
         evals, evecs = bf_stats["gauss_orientations"][bf_idx]
         orientations = bf_stats["fourier_centers"][bf_idx]
         angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
-        ## TODO: Add spatial freq
-        #spatial_freq = SFs[bf_idx] / sf_norm
-        #alpha = spatial_freq
-        alpha = 1.0#np.abs(connection_strength)
+        alpha = 0.5#todo:spatial_freq for filled ellipses?
         ellipse = plot_ellipse(ax, center, evals, angle, color_val, alpha=alpha, lines=lines)
       ax.set_xlim(0, patch_edge_size-1)
       ax.set_ylim(patch_edge_size-1, 0)
       filter_total += 1
     else:
-      ax = clear_axis(ax, spines="none")
+      ax = pf.clear_axis(ax, spines="none")
     ax.set_aspect("equal")
   scalarMap._A = []
-  ax = clear_axis(fig.add_subplot(gs[:, -1]))
+  ax = pf.clear_axis(fig.add_subplot(gs[0, -1]))
   cbar = fig.colorbar(scalarMap, ax=ax, ticks=[-1, 0, 1])
+  cbar.ax.set_yticklabels(["-1", "0", "1"])
+  for label in cbar.ax.yaxis.get_ticklabels():
+    label.set_weight("bold")
+    label.set_fontsize(14)
   plt.show()
   return fig
 
+def bgr_colormap():
+  """
+  In cdict, the first column is interpolated between 0.0 & 1.0 - this indicates the value to be plotted
+  the second column specifies how interpolation should be done from below
+  the third column specifies how interpolation should be done from above
+  if the second column does not equal the third, then there will be a break in the colors
+  """
+  darkness = 0.85 #0 is black, 1 is white
+  cdict = {'red':   ((0.0, 0.0, 0.0),
+                    (0.5, darkness, darkness),
+                    (1.0, 1.0, 1.0)),
+           'green': ((0.0, 0.0, 0.0),
+                    (0.5, darkness, darkness),
+                    (1.0, 0.0, 0.0)),
+           'blue':  ((0.0, 1.0, 1.0),
+                    (0.5, darkness, darkness),
+                    (1.0, 0.0, 0.0))
+      }
+  return LinearSegmentedColormap("bgr", cdict)
+
 def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
-                         fig_size=(17,17), spot_size=10):
+                         spot_size=10, figsize=None):
   """
   Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of
     1st layer weights
@@ -147,13 +180,13 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
     pooling_filters [np.ndarray] 2nd layer weights
       should be shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
-    fig_size [tuple] Containing the (width, height) of the figure, in inches
+    figsize [tuple] Containing the (width, height) of the figure, in inches
     spot_size [int] How big to make the points
   """
-  num_filters_y = int(np.ceil(np.sqrt(num_pooling_filters)))#+1
+  num_filters_y = int(np.ceil(np.sqrt(num_pooling_filters)))
   num_filters_x = int(np.ceil(np.sqrt(num_pooling_filters)))
-  cmap = plt.get_cmap("bwr")
-  cNorm = matplotlib.colors.Normalize(vmin=-1, vmax=1)
+  cmap = plt.get_cmap(bgr_colormap())# Could also use "nipy_spectral", "coolwarm", "bwr"
+  cNorm = matplotlib.colors.SymLogNorm(linthresh=0.03, linscale=0.01, vmin=-1.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
   x_p_cent = [x for (y,x) in bf_stats["gauss_centers"]]# Get raw points
   y_p_cent = [y for (y,x) in bf_stats["gauss_centers"]]
@@ -165,17 +198,23 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
   h_gap = 0.03
   plt_w = (num_filters_x/num_pooling_filters)
   plt_h = plt_w
-  fig = plt.figure(figsize=fig_size) #fig_size is (w,h)
+  if figsize is None:
+    fig = plt.figure()
+  else:
+    fig = plt.figure(figsize=figsize) #figsize is (w,h)
   axes = []
   filter_id = 0
   for plot_id in np.ndindex((num_filters_y, num_filters_x)):
     if all(pid == 0 for pid in plot_id):
-      axes.append(clear_axis(fig.add_axes([0, plt_h+h_gap, 2*plt_w, plt_h])))
+      axes.append(pf.clear_axis(fig.add_axes([0, plt_h+h_gap, 2*plt_w, plt_h])))
       scalarMap._A = []
-      cbar = fig.colorbar(scalarMap, ax=axes[-1], ticks=[-1, 0, 1], orientation="horizontal")
+      cbar = fig.colorbar(scalarMap, ax=axes[-1], ticks=[-1, 0, 1], aspect=10, location="bottom")
+      cbar.ax.set_xticklabels(["-1", "0", "1"])
+      cbar.ax.xaxis.set_ticks_position('top')
+      cbar.ax.xaxis.set_label_position('top')
       for label in cbar.ax.xaxis.get_ticklabels():
         label.set_weight("bold")
-        label.set_fontsize(18)
+        label.set_fontsize(10+figsize[0])
     if (filter_id < num_pooling_filters):
       example_filter = pooling_filters[:, filter_id]
       filter_norm = np.max(np.abs(example_filter))
@@ -194,22 +233,26 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
       ax_w = plt_w
       ax_h = plt_h
       #spatial
-      axes.append(clear_axis(fig.add_axes([ax_l, ax_b, ax_w, ax_h])))
+      axes.append(pf.clear_axis(fig.add_axes([ax_l, ax_b, ax_w, ax_h])))
       axes[-1].invert_yaxis()
-      axes[-1].scatter(x_p_cent, y_p_cent, c=connection_colors, s=spot_size)
+      axes[-1].scatter(x_p_cent, y_p_cent, c=connection_colors, s=spot_size, alpha=0.8)
       axes[-1].set_xlim(0, bf_stats["patch_edge_size"]-1)
       axes[-1].set_ylim(bf_stats["patch_edge_size"]-1, 0)
       axes[-1].set_aspect("equal")
       axes[-1].set_facecolor("k")
-      #freq
-      axes.append(clear_axis(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h])))
-      axes[-1].scatter(x_f_cent, y_f_cent, c=connection_colors, s=spot_size)
+      axes.append(pf.clear_axis(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h])))
+      axes[-1].scatter(x_f_cent, y_f_cent, c=connection_colors, s=spot_size, alpha=0.8)
       axes[-1].set_xlim([-max_sf, max_sf])
       axes[-1].set_ylim([-max_sf, max_sf])
       axes[-1].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
       axes[-1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
       axes[-1].set_aspect("equal")
       axes[-1].set_facecolor("k")
+      #histogram - note: axis widths/heights are not setup for a third plot
+      #axes.append(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h]))
+      #axes[-1].set_yticklabels([])
+      #axes[-1].tick_params(axis="y", bottom="off", top="off", left="off", right="off")
+      #axes[-1].hist([example_filter[bf_idx]/filter_norm for bf_idx in range(bf_stats["num_outputs"])])
       filter_id += 1
   plt.show()
   return fig
