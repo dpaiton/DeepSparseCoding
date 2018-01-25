@@ -66,7 +66,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False, rand_bf=False):
   fig = plt.figure(figsize=(17,17))
   filter_idx = 0
   for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
-    ax = pf.clear_axis(fig.add_subplot(gs[plot_id]))
+    ax = clear_axis(fig.add_subplot(gs[plot_id]))
     if filter_idx < tot_num_bf and filter_idx < num_bf:
       if rand_bf:
         bf_idx = bf_range[filter_idx]
@@ -122,7 +122,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
     (y_id, x_id) = plot_id
     ax = fig.add_subplot(gs[plot_id])
     if (filter_total < num_pooling_filters and x_id != num_plots_x-1):
-      ax = pf.clear_axis(ax, spines="k")
+      ax = clear_axis(ax, spines="k")
       filter_idx = filter_idx_list[filter_total]
       example_filter = pooling_filters[:, filter_idx]
       top_indices = np.argsort(np.abs(example_filter))[::-1] #descending
@@ -143,10 +143,10 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
       ax.set_ylim(patch_edge_size-1, 0)
       filter_total += 1
     else:
-      ax = pf.clear_axis(ax, spines="none")
+      ax = clear_axis(ax, spines="none")
     ax.set_aspect("equal")
   scalarMap._A = []
-  ax = pf.clear_axis(fig.add_subplot(gs[0, -1]))
+  ax = clear_axis(fig.add_subplot(gs[0, -1]))
   cbar = fig.colorbar(scalarMap, ax=ax, ticks=[-1, 0, 1])
   cbar.ax.set_yticklabels(["-1", "0", "1"])
   for label in cbar.ax.yaxis.get_ticklabels():
@@ -191,7 +191,7 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
   filter_id = 0
   for plot_id in np.ndindex((num_filters_y, num_filters_x)):
     if all(pid == 0 for pid in plot_id):
-      axes.append(pf.clear_axis(fig.add_axes([0, plt_h+h_gap, 2*plt_w, plt_h])))
+      axes.append(clear_axis(fig.add_axes([0, plt_h+h_gap, 2*plt_w, plt_h])))
       scalarMap._A = []
       cbar = fig.colorbar(scalarMap, ax=axes[-1], ticks=[-1, 0, 1], aspect=10, location="bottom")
       cbar.ax.set_xticklabels(["-1", "0", "1"])
@@ -218,14 +218,14 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
       ax_w = plt_w
       ax_h = plt_h
       #spatial
-      axes.append(pf.clear_axis(fig.add_axes([ax_l, ax_b, ax_w, ax_h])))
+      axes.append(clear_axis(fig.add_axes([ax_l, ax_b, ax_w, ax_h])))
       axes[-1].invert_yaxis()
       axes[-1].scatter(x_p_cent, y_p_cent, c=connection_colors, s=spot_size, alpha=0.8)
       axes[-1].set_xlim(0, bf_stats["patch_edge_size"]-1)
       axes[-1].set_ylim(bf_stats["patch_edge_size"]-1, 0)
       axes[-1].set_aspect("equal")
       axes[-1].set_facecolor("k")
-      axes.append(pf.clear_axis(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h])))
+      axes.append(clear_axis(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h])))
       axes[-1].scatter(x_f_cent, y_f_cent, c=connection_colors, s=spot_size, alpha=0.8)
       axes[-1].set_xlim([-max_sf, max_sf])
       axes[-1].set_ylim([-max_sf, max_sf])
