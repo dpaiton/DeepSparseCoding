@@ -172,20 +172,22 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
         for the hilbert_amplitude function
       envelope_centers: [tuples of ints] indicating the (y, x) position of the
         center of the Hilbert envelope
-      gauss_fits: [tuple of np.ndarrays] containing (gaussian_fit, grid) where gaussian_fit
+      gauss_fits: [list of np.ndarrays] containing (gaussian_fit, grid) where gaussian_fit
         is returned from get_gauss_fit and specifies the 2D Gaussian PDF fit to the Hilbert
         envelope and grid is a tuple containing (y,x) points with which the Gaussian PDF
         can be plotted
-      gauss_centers: [tuple of ints] containing the (y,x) position of the center of
+      gauss_centers: [list of ints] containing the (y,x) position of the center of
         the Gaussian fit
-      gauss_orientations: [tuple of np.ndarrays] containing the (eigenvalues, eigenvectors) of
+      gauss_orientations: [list of np.ndarrays] containing the (eigenvalues, eigenvectors) of
         the covariance matrix for the Gaussian fit of the Hilbert amplitude envelope. They are
         both sorted according to the highest to lowest Eigenvalue.
-      fourier_centers: [tuple of ints] containing the (y,x) position of the center (max) of
+      fourier_centers: [list of ints] containing the (y,x) position of the center (max) of
         the Fourier amplitude map
       num_inputs: [int] dim[0] of input weights
       num_outputs: [int] dim[1] of input weights
       patch_edge_size: [int] int(floor(sqrt(num_inputs)))
+      areas: [list of floats] area of enclosed ellipse
+      spatial_frequncies: [list of floats] dominant spatial frequency for basis function
   """
   envelope, bff_filt, hil_filter, bffs = hilbert_amplitude(weights, padding)
   num_inputs, num_outputs = weights.shape
@@ -198,6 +200,8 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
   envelope_centers = [None]*num_outputs
   fourier_centers = [None]*num_outputs
   fourier_maps = [None]*num_outputs
+  spatial_frequencies = [None]*num_outputs
+  areas = [None]*num_outputs
   for bf_idx in range(num_outputs):
     # Reformatted individual basis function
     basis_funcs[bf_idx] = np.squeeze(reshape_data(weights.T[bf_idx,...],
@@ -230,11 +234,13 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     fy_cen = (max_fys[max_fx] - (N/2)) * (patch_edge_size/N)
     fx_cen = (max_fx - (N/2)) * (patch_edge_size/N)
     fourier_centers[bf_idx] = [fy_cen, fx_cen]
+    spatial_frequencies[bf_idx] = np.sqrt(fy_cen**2 + fx_cen**2)
+    areas[bf_idx] = np.pi * np.prod(evals)
   output = {"basis_functions":basis_funcs, "envelopes":envelopes, "gauss_fits":gauss_fits,
-    "gauss_centers":gauss_centers, "gauss_orientations":gauss_orientations,
-    "fourier_centers":fourier_centers, "fourier_maps":fourier_maps,
-    "envelope_centers":envelope_centers, "num_inputs":num_inputs, "num_outputs":num_outputs,
-    "patch_edge_size":patch_edge_size}
+    "gauss_centers":gauss_centers, "gauss_orientations":gauss_orientations, "areas":areas,
+    "fourier_centers":fourier_centers, "fourier_maps":fourier_maps, "num_inputs":num_inputs,
+    "spatial_frequencies":spatial_frequencies, "envelope_centers":envelope_centers,
+    "num_outputs":num_outputs, "patch_edge_size":patch_edge_size}
   return output
 
 def generate_gaussian(shape, mean, cov):
