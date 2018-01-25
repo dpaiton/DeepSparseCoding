@@ -7,7 +7,8 @@ from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits import axes_grid1
 import utils.data_processing as dp
 
-def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=False):
+def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=False,
+  fill_ellipse=False):
   """
   Add an ellipse to given axis
   Inputs:
@@ -19,10 +20,14 @@ def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=
     alpha [float] specifying the transparency of the ellipse
     lines [bool] if true, output will be a line, where the secondary axis of the ellipse
       is collapsed
+    fill_ellipse [bool] if true and lines is false then a filled ellipse will be plotted
   Outputs:
     ellipse [matplotlib.patches.ellipse] ellipse object
   """
-  face_color_val = "none" #set to color_val to fill the ellipse
+  if fill_ellipse:
+    face_color_val = "none" if color_val=="auto" else color_val
+  else:
+    face_color_val = "none"
   y_cen, x_cen = center
   width, height = shape
   if lines:
@@ -149,26 +154,6 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
     label.set_fontsize(14)
   plt.show()
   return fig
-
-def bgr_colormap():
-  """
-  In cdict, the first column is interpolated between 0.0 & 1.0 - this indicates the value to be plotted
-  the second column specifies how interpolation should be done from below
-  the third column specifies how interpolation should be done from above
-  if the second column does not equal the third, then there will be a break in the colors
-  """
-  darkness = 0.85 #0 is black, 1 is white
-  cdict = {'red':   ((0.0, 0.0, 0.0),
-                    (0.5, darkness, darkness),
-                    (1.0, 1.0, 1.0)),
-           'green': ((0.0, 0.0, 0.0),
-                    (0.5, darkness, darkness),
-                    (1.0, 0.0, 0.0)),
-           'blue':  ((0.0, 1.0, 1.0),
-                    (0.5, darkness, darkness),
-                    (1.0, 0.0, 0.0))
-      }
-  return LinearSegmentedColormap("bgr", cdict)
 
 def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
                          spot_size=10, figsize=None):
@@ -330,6 +315,7 @@ def plot_bf_stats(bf_stats, num_bf=2):
     bf = bf_stats["basis_functions"][bf_idx]
     sub_ax[plot_id, 0].imshow(bf, cmap="Greys_r", interpolation="Nearest")
     sub_ax[plot_id, 0] = clear_axis(sub_ax[plot_id, 0], spines="k")
+    sub_ax[plot_id, 0].set_title(str(bf_idx), fontsize="8")
     # Hilbert envelope
     env = bf_stats["envelopes"][bf_idx]
     sub_ax[plot_id, 1].imshow(env, cmap="Greys_r", interpolation="Nearest")
@@ -830,6 +816,26 @@ def pad_data(data, pad_values=1):
   padded_data = padded_data.reshape((n * padded_data.shape[1],
     n * padded_data.shape[3]) + padded_data.shape[4:])
   return padded_data
+
+def bgr_colormap():
+  """
+  In cdict, the first column is interpolated between 0.0 & 1.0 - this indicates the value to be plotted
+  the second column specifies how interpolation should be done from below
+  the third column specifies how interpolation should be done from above
+  if the second column does not equal the third, then there will be a break in the colors
+  """
+  darkness = 0.85 #0 is black, 1 is white
+  cdict = {'red':   ((0.0, 0.0, 0.0),
+                    (0.5, darkness, darkness),
+                    (1.0, 1.0, 1.0)),
+           'green': ((0.0, 0.0, 0.0),
+                    (0.5, darkness, darkness),
+                    (1.0, 0.0, 0.0)),
+           'blue':  ((0.0, 1.0, 1.0),
+                    (0.5, darkness, darkness),
+                    (1.0, 0.0, 0.0))
+      }
+  return LinearSegmentedColormap("bgr", cdict)
 
 def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, **kwargs):
   """
