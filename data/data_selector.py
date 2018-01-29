@@ -3,6 +3,7 @@ from data.mnist import load_MNIST
 from data.cifar import load_CIFAR
 from data.synthetic import load_synthetic
 from data.field import load_field
+from data.tinyImages import load_tinyImages
 
 """
 Get function that returns the corresponding dataset
@@ -27,6 +28,7 @@ Outputs:
 """
 def get_data(kwargs):
   assert "data_type" in kwargs.keys(), ("kwargs must include data_type")
+  # TODO: Add assert that gives meaningful error if data_type is not one of the options
   if kwargs["data_type"].lower() == "vanhateren":
     if "vanHateren" not in kwargs["data_dir"]:
       kwargs["data_dir"] += "/vanHateren/"
@@ -45,8 +47,12 @@ def get_data(kwargs):
     dataset = load_synthetic(kwargs)
   if kwargs["data_type"].lower() == "field":
     dataset = load_field(kwargs)
+  if kwargs["data_type"].lower() == "tinyimages":
+    if "TinyImages" not in kwargs["data_dir"]:
+      kwargs["data_dir"] += "/TinyImages/"
+    dataset = load_tinyImages(kwargs)
   return dataset
 
 def get_dataset_list():
-  data_list = ["vanHateren", "field", "MNIST", "CIFAR10", "synthetic"]
+  data_list = ["vanHateren", "field", "MNIST", "CIFAR10", "tinyImages", "synthetic"]
   return data_list
