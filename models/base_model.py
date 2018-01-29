@@ -115,7 +115,6 @@ class Model(object):
     self.save_dir = self.model_out_dir + "/savefiles/"
     self.disp_dir = self.model_out_dir + "/vis/"
     # Other
-    self.vector_inputs = None
     self.eps = float(params["eps"])
     self.device = str(params["device"])
     self.rand_seed = int(params["rand_seed"])

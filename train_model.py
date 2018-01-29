@@ -3,7 +3,6 @@ matplotlib.use("Agg")
 
 import numpy as np
 import tensorflow as tf
-import json as js
 import params.param_picker as pp
 import models.model_picker as mp
 import data.data_selector as ds
@@ -141,12 +140,12 @@ with tf.Session(config=config, graph=model.graph) as sess:
               val_accuracy = (
                 np.array(tmp_sess.run(model.accuracy, val_feed_dict)).tolist())
               stat_dict = {"validation_accuracy":val_accuracy}
-              js_str = js.dumps(stat_dict, sort_keys=True, indent=2)
+              js_str = model.js_dumpstring(stat_dict)
               model.log_info("<stats>"+js_str+"</stats>")
 
   save_dir = model.write_checkpoint(sess)
   avg_time /= model.get_schedule("num_batches")
-  model.log_info("Avg time per image: "+str(avg_time))
+  model.log_info("Avg time per image: "+str(avg_time)+" seconds")
   t1=ti.time()
   tot_time=float(t1-t0)
   out_str = (
