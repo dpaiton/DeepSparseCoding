@@ -4,8 +4,8 @@ from data.dataset import Dataset
 import utils.data_processing as dp
 
 class vanHateren(object):
-  def __init__(self, img_dir, num_images=50, rand_state=np.random.RandomState()):
-    full_img_data = self.extract_images(img_dir, num_images, rand_state=rand_state)[..., None]
+  def __init__(self, image_dir, num_images=50, rand_state=np.random.RandomState()):
+    full_img_data = self.extract_images(image_dir, num_images, rand_state)[..., None]
     self.images = full_img_data
 
   def extract_images(self, filename, num_images=None, rand_state=np.random.RandomState()):
