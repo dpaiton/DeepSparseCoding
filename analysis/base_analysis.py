@@ -1,8 +1,10 @@
 import os
 import numpy as np
+from scipy.optimize import curve_fit
 import utils.log_parser as lp
 import utils.plot_functions as pf
 import models.model_picker as mp
+import utils.data_processing as dp
 import tensorflow as tf
 
 class Analyzer(object):
@@ -62,6 +64,14 @@ class Analyzer(object):
     evals = dict(zip(var_names, eval_list))
     return evals
 
+  def compute_activations(self, images):
+    with tf.Session(graph=self.model.graph) as sess:
+      feed_dict = self.model.get_feed_dict(images)
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_weights(sess, self.cp_loc)
+      activations = sess.run(self.model.a, feed_dict)
+    return activations
+
   def compute_atas(self, activities, images):
     """
     Returns activity triggered averages
@@ -74,3 +84,105 @@ class Analyzer(object):
     atas = np.dot(images.T, activities)
     avg_atas = atas / images.shape[1]
     return avg_atas
+
+  ## TODO: These use bf_stats, which is created by child methods
+  def cross_orientation_suppression(self, base_contrast, base_orientations, base_phases,
+    mask_contrasts, mask_orientations, mask_phases, num_bfs=None, diameter=-1):
+
+    num_bfs = self.bf_stats["num_outputs"] if num_bfs is None else num_bfs
+    num_pixels = self.bf_stats["patch_edge_size"]**2
+
+    assert np.asarray(base_orientations).size == num_bfs, (
+      "You must specify a base orientation for all basis functions")
+
+    # Generate a grating with spatial frequency estimated from bf_stats
+    grating = lambda bf_idx,orientation,phase,contrast:dp.generate_grating(
+      *dp.get_grating_params(bf_stats=self.bf_stats, bf_idx=bf_idx, orientation=orientation,
+      phase=phase, contrast=contrast, diameter=diameter)).reshape(num_pixels)
+
+    # Stimulus parameters
+    num_contrasts = np.asarray(mask_contrasts).size
+    num_orientations = np.asarray(mask_orientations).size
+    num_phases = np.asarray(mask_phases).size
+
+    # Output arrays
+    contrast_activations = np.zeros((num_bfs, num_contrasts, num_orientations))
+    best_phases = np.zeros((num_bfs, num_contrasts, num_orientations))
+
+    #Setup stimulus
+    base_stims = np.zeros((num_bfs, num_pixels))
+    test_stims = np.zeros((num_bfs*num_contrasts*num_orientations*num_phases, num_pixels))
+    stim_idx = 0
+    for bf_idx in range(num_bfs):
+      base_stim = grating(bf_idx, base_orientations[bf_idx], base_phases[bf_idx], base_contrast)
+      base_stims[bf_idx,:] = base_stim
+      for contrast in mask_contrasts:
+        for orientation in mask_orientations:
+          for phase in mask_phases:
+            test_stim = grating(bf_idx, orientation, phase, contrast)
+            test_stims[stim_idx, :] = base_stim + test_stim
+            stim_idx += 1
+
+    # Each bf has its own stimulus with a set spatial frequency, but we still compute activations
+    # for all neurons and all stimuli
+    base_activations = self.compute_activations(base_stims)
+    test_activations = self.compute_activations(test_stims).reshape(num_bfs, num_contrasts,
+      num_orientations, num_phases, num_bfs)
+    test_stims = test_stims.reshape(num_bfs, num_contrasts, num_orientations, num_phases,
+      num_pixels)
+
+
+    for bf_idx in range(num_bfs):
+      for co_idx, contrast in enumerate(mask_contrasts):
+        orientation_activations = np.zeros(num_orientations)
+        for or_idx, orientation in enumerate(mask_orientations):
+          test_activity = test_activations[bf_idx, co_idx, or_idx, :, bf_idx]
+          best_phases[bf_idx, co_idx, or_idx] = mask_phases[np.argmax(test_activity)]
+          # Choose the peak-to-trough amplitude as the representative output
+          orientation_activations[or_idx] = np.max(test_activity) - np.min(test_activity)
+        contrast_activations[bf_idx, co_idx, :] = orientation_activations
+    return {"contrasts":mask_contrasts, "orientations":mask_orientations, "phases":mask_phases,
+      "contrast_activations":contrast_activations, "best_phases":best_phases,
+      "test_stims":test_stims, "base_stims":base_stims, "test_activations":test_activations,
+      "base_activations":base_activations}
+
+  def orientation_tuning(self, contrasts, orientations, phases, num_pixels=None,
+    num_bfs=None, diameter=-1):
+    num_pixels = self.bf_stats["patch_edge_size"]**2 if num_pixels is None else num_pixels
+    num_bfs = self.bf_stats["num_outputs"] if num_bfs is None else num_bfs
+
+    # Generate a grating with spatial frequency estimated from bf_stats
+    grating = lambda bf_idx,orientation,phase,contrast:dp.generate_grating(
+      *dp.get_grating_params(self.bf_stats, bf_idx, orientation=orientation,
+      phase=phase, contrast=contrast, diameter=diameter))
+
+    # Stimulus parameters
+    num_contrasts = np.asarray(contrasts).size
+    num_orientations = np.asarray(orientations).size
+    num_phases = np.asarray(phases).size
+
+    # Output arrays
+    contrast_activations = np.zeros((num_bfs, num_contrasts, num_orientations))
+    phase_activations = np.zeros((num_bfs, num_contrasts, num_orientations, num_phases))
+    best_phases = np.zeros((num_bfs, num_contrasts, num_orientations))
+    phase_stims = np.stack([grating(bf_idx, orientation, phase, contrast).reshape(num_pixels)
+      for bf_idx in range(num_bfs)
+      for contrast in contrasts
+      for orientation in orientations
+      for phase in phases], axis=0)
+    # Each bf has its own stimulus with a set spatial frequency, but we still compute activations
+    # for all neurons and all stimuli
+    activations = self.compute_activations(phase_stims).reshape(num_bfs, num_contrasts,
+      num_orientations, num_phases, num_bfs)
+    for bf_idx in range(num_bfs):
+      for co_idx, contrast in enumerate(contrasts):
+        orientation_activations = np.zeros(num_orientations)
+        for or_idx, orientation in enumerate(orientations):
+          phase_activity = activations[bf_idx, co_idx, or_idx, :, bf_idx]
+          best_phases[bf_idx, co_idx, or_idx] = phases[np.argmax(phase_activity)]
+          # Choose the peak-to-trough amplitude as the representative output
+          orientation_activations[or_idx] = np.max(phase_activity) - np.min(phase_activity)
+        contrast_activations[bf_idx, co_idx, :] = orientation_activations
+    return {"contrasts":contrasts, "orientations":orientations, "phases":phases,
+      "contrast_activations":contrast_activations, "phase_activations":phase_activations,
+      "best_phases": best_phases, "phase_stims":phase_stims, "activations":activations}

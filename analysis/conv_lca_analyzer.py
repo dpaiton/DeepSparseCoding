@@ -63,7 +63,5 @@ class CONV_LCA(LCA):
           psnr[img_idx, step] = current_psnr
           for idx, key in enumerate(loss_funcs.keys()):
               losses[key][img_idx, step] = current_losses[idx]
-              if not np.all(np.isfinite(current_losses[idx])):
-                  import IPython; IPython.embed(); raise SystemExit
       losses["total"] = total_loss
     return {"u":u, "a":a, "psnr":psnr, "losses":losses, "images":images}

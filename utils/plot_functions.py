@@ -155,8 +155,8 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
   plt.show()
   return fig
 
-def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
-                         spot_size=10, figsize=None):
+def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, num_connected_weights,
+                         spot_size=10, filter_indices=None, figsize=None):
   """
   Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of
     1st layer weights
@@ -165,11 +165,21 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
     pooling_filters [np.ndarray] 2nd layer weights
       should be shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
-    figsize [tuple] Containing the (width, height) of the figure, in inches
+    num_connected_weights [int] How many 1st layer neurons to plot
     spot_size [int] How big to make the points
+    filter_ids [list] indices to plot from pooling_filters. len should equal num_pooling_filters.
+      set to None for default, which is a random selection
+    figsize [tuple] Containing the (width, height) of the figure, in inches.
+      Set to None for default figure size
   """
   num_filters_y = int(np.ceil(np.sqrt(num_pooling_filters)))
   num_filters_x = int(np.ceil(np.sqrt(num_pooling_filters)))
+  tot_pooling_filters = pooling_filters.shape[1]
+  if filter_ids is None:
+    filter_indices = np.random.choice(tot_pooling_filters, num_pooling_filters, replace=False)
+  else:
+    assert len(filter_indices) == num_pooling_filters, (
+      "len(filter_indices) must equal num_pooling_filters")
   cmap = plt.get_cmap(bgr_colormap())# Could also use "nipy_spectral", "coolwarm", "bwr"
   cNorm = matplotlib.colors.SymLogNorm(linthresh=0.03, linscale=0.01, vmin=-1.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
@@ -716,7 +726,7 @@ def plot_inference_stats(data, title="", save_filename=None):
       ax.set_ylabel(labels[loss_id].replace('_', ' '), fontsize=16)
       ax.set_xlim([1, np.max(time_steps)])
       ax.set_xticks([1, int(np.floor(np.max(time_steps)/2)), np.max(time_steps)])
-      ax.set_xlabel("time step", fontsize=16)
+      ax.set_xlabel("Time Step", fontsize=16)
       ax.tick_params("both", labelsize=14)
       loss_id += 1
     else:

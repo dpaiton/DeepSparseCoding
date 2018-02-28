@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from analysis.base_analysis import Analyzer
+import utils.data_processing as dp
 
 class LCA(Analyzer):
   def __init__(self, params):
@@ -15,17 +16,23 @@ class LCA(Analyzer):
   def load_params(self, params):
     super(LCA, self).load_params(params)
     self.num_inference_images = params["num_inference_images"]
+    self.ft_padding = params["ft_padding"]
+    self.num_gauss_fits = 20
+    self.gauss_thresh = 0.2
 
   def run_analysis(self, images, save_info=""):
     self.run_stats = self.get_log_stats()
     self.evals = self.evaluate_model(images, self.var_names)
     self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
+    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
+      num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
       replace=False)
     self.inference_stats = self.evaluate_inference(images[image_indices, ...])
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
-      "inference_stats":self.inference_stats, "var_names":self.var_names})
+      "inference_stats":self.inference_stats, "var_names":self.var_names,
+      "bf_stats":self.bf_stats})
 
   def load_analysis(self, save_info=""):
     file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
@@ -35,6 +42,7 @@ class LCA(Analyzer):
     self.evals = analysis["evals"]
     self.atas = analysis["atas"]
     self.inference_stats = analysis["inference_stats"]
+    self.bf_stats = analysis["bf_stats"]
 
   def evaluate_inference(self, images, num_inference_steps=None):
     if num_inference_steps is None:

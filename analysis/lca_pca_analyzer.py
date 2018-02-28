@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from analysis.lca_analyzer import LCA
-import utils.data_processing as dp
 import utils.notebook as nb
 
 class LCA_PCA(LCA):
@@ -14,20 +13,14 @@ class LCA_PCA(LCA):
       self.rand_seed = params["rand_seed"]
       self.rand_state = np.random.RandomState(self.rand_seed)
     self.cov_num_images = params["cov_num_images"]
-    self.ft_padding = params["ft_padding"]
-    self.num_gauss_fits = 20
-    self.gauss_thresh = 0.2
 
   def run_analysis(self, images, save_info=""):
     super(LCA_PCA, self).run_analysis(images, save_info)
     self.cov = self.analyze_cov(images)
     self.evec_atas = self.compute_atas(self.cov["a2"], images)
     self.pool_atas = self.compute_atas(self.cov["pooled_act"], images)
-    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
-      num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     np.savez(self.analysis_out_dir+"pca_analysis_"+save_info+".npz",
-      data={"evec_atas":self.evec_atas, "pool_atas":self.pool_atas, "act_cov":self.cov,
-      "bf_stats":self.bf_stats})
+      data={"evec_atas":self.evec_atas, "pool_atas":self.pool_atas, "act_cov":self.cov})
 
   def load_analysis(self, save_info=""):
     super(LCA_PCA, self).load_analysis(save_info)
@@ -36,7 +29,6 @@ class LCA_PCA(LCA):
     self.evec_atas = pca_analysis["evec_atas"]
     self.pool_atas = pca_analysis["pool_atas"]
     self.cov = pca_analysis["act_cov"]
-    self.bf_stats = pca_analysis["bf_stats"]
 
   def analyze_cov(self, images):
     num_imgs, num_pixels = images.shape
