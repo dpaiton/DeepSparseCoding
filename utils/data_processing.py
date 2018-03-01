@@ -279,7 +279,7 @@ def generate_grating(rf_edge, location, diameter, orientation, frequency, phase,
   X, Y = np.meshgrid(vals, vals)
   Xr = np.cos(orientation)*X + -np.sin(orientation)*Y  # countercloclwise
   Yr = np.sin(orientation)*X + np.cos(orientation)*Y
-  stim = 0.5*(contrast*np.sin(Yr*frequency+phase)+1)
+  stim = 0.5*(contrast*np.sin(Yr*frequency+phase)+1) # sin between 0 and 1
   if diameter > 0: # Generate mask
     rad = diameter/2
     y_loc, x_loc = location
