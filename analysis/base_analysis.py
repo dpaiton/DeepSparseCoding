@@ -135,6 +135,11 @@ class Analyzer(object):
     #test_stims = test_stims.reshape(num_bfs, num_contrasts, num_contrasts,
     #  num_orientations, num_phases, num_phases, num_pixels)
     
+    ## TODO
+    ##  take max instead of max-min for activity
+    ##  visualize test_stims
+    ##  removed 0.5
+    
     # Output arrays
     base_responses = np.zeros((num_bfs, num_contrasts))
     test_responses = np.zeros((num_bfs, num_contrasts, num_contrasts, num_orientations))
@@ -144,20 +149,22 @@ class Analyzer(object):
         base_stims = np.zeros((num_phases, num_pixels))
         for bph_idx, base_phase in enumerate(phases):
           base_stims[bph_idx] = grating(bf_idx, base_orientations[bf_idx], base_phase, base_contrast)
-        base_activity = self.compute_activations(base_stims).reshape(num_phases, num_bfs)[:, bf_idx]
+        base_activity = self.compute_activations(base_stims)[:, bf_idx]
         base_responses[bf_idx, bco_idx] = np.max(base_activity) - np.min(base_activity) # peak-to-trough amplitude
+
         for co_idx, test_contrast in enumerate(contrasts): # for each base contrast, loop over test contrasts
             test_stims = np.zeros((num_orientations, num_phases**2, num_pixels))
             for or_idx, test_orientation in enumerate(mask_orientations): # loop over test orientations
               mask_stims = np.zeros((num_phases, num_pixels))
               for ph_idx, test_phase in enumerate(phases):
                 mask_stims[ph_idx,:] = grating(bf_idx, test_orientation, test_phase, test_contrast)
-              test_stims[or_idx,:,:] = 0.5*(base_stims[:,None,:] + mask_stims[None,:,:]).reshape(num_phases**2,
+              test_stims[or_idx,:,:] = (base_stims[:,None,:] + mask_stims[None,:,:]).reshape(num_phases**2,
                 num_pixels)
             test_stims = test_stims.reshape(num_orientations*num_phases*num_phases, num_pixels)
             test_activity = self.compute_activations(test_stims)[:, bf_idx].reshape(num_orientations, num_phases**2)
             # peak-to-trough amplitude is computed across all base & mask phases
             test_responses[bf_idx, bco_idx, co_idx, :] = np.max(test_activity, axis=1) - np.min(test_activity, axis=1)
+
     return {"contrasts":contrasts, "phases":phases, "base_orientations":base_orientations,
       "mask_orientations":mask_orientations, "base_responses":base_responses, "test_responses":test_responses}
 
