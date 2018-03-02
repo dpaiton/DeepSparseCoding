@@ -38,8 +38,8 @@ class Analyzer(object):
       self.cp_load_step = None
       # TODO: tf.train.latest_checkpoint ends up looking for the directory where the checkpoint was created
       #   not sure where this is set, but it results in a poorly described exit
-      #self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/")
-      self.cp_loc = params["model_dir"]+"/checkpoints/lca_256_l0_0.5_v2.0_weights-35000"
+      self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/")
+      #self.cp_loc = params["model_dir"]+"/checkpoints/lca_256_l0_0.5_v2.0_weights-35000"
     self.model_params["model_out_dir"] = self.analysis_out_dir
     if "data_dir" in params.keys():
       self.model_params["data_dir"] = params["data_dir"]
@@ -89,8 +89,8 @@ class Analyzer(object):
     return avg_atas
 
   ## TODO: These use bf_stats, which is created by child methods
-  def cross_orientation_suppression(self, base_contrasts, base_orientations, base_phases,
-    mask_contrasts, mask_orientations, mask_phases, num_bfs=None, diameter=-1):
+  def cross_orientation_suppression(self, contrasts, phases, base_orientations,
+    mask_orientations, num_bfs=None, diameter=-1):
 
     num_bfs = self.bf_stats["num_outputs"] if num_bfs is None else num_bfs
     num_pixels = self.bf_stats["patch_edge_size"]**2
@@ -104,53 +104,62 @@ class Analyzer(object):
       phase=phase, contrast=contrast, diameter=diameter)).reshape(num_pixels)
 
     # Stimulus parameters
-    num_contrasts = np.asarray(mask_contrasts).size
-    num_base_contrasts = np.asarray(base_contrasts).size
+    num_contrasts = np.asarray(contrasts).size
+    num_phases = np.asarray(phases).size
     num_orientations = np.asarray(mask_orientations).size
-    num_phases = np.asarray(mask_phases).size
-
-    # Output arrays
-    test_responses = np.zeros((num_bfs, num_base_contrasts, num_contrasts, num_orientations))
 
     #Setup stimulus
-    base_stims = np.zeros((num_bfs*num_base_contrasts, num_pixels))
-    test_stims = np.zeros((num_bfs*num_base_contrasts*num_contrasts*num_orientations*num_phases, num_pixels))
-    test_idx = 0
-    base_idx = 0 
-    for bf_idx in range(num_bfs):
-      for bco_idx, base_contrast in enumerate(base_contrasts):
-        base_stim = grating(bf_idx, base_orientations[bf_idx], base_phases[bf_idx], base_contrast)
-        base_stims[base_idx, :] = base_stim
-        base_idx += 1
-        for co_idx, contrast in enumerate(mask_contrasts):
-          for or_idx, orientation in enumerate(mask_orientations):
-            for ph_idx, phase in enumerate(mask_phases):
-              test_stim = grating(bf_idx, orientation, phase, contrast)
-              test_stims[test_idx, :] = 0.5*(base_stim + test_stim)
-              test_idx += 1
+    #base_stims = np.zeros((num_bfs*num_contrasts*num_phases, num_pixels))
+    #test_stims = np.zeros((num_bfs*num_contrasts*num_contrasts*num_orientations*num_phases*num_phases, num_pixels))
+    #test_idx = 0
+    #base_idx = 0 
+    #for bf_idx in range(num_bfs):
+    #  for bco_idx, base_contrast in enumerate(contrasts):
+    #    for bph_idx, base_phase in enumerate(phases):
+    #      base_stim = grating(bf_idx, base_orientations[bf_idx], base_phase, base_contrast)
+    #      base_stims[base_idx, :] = base_stim
+    #      base_idx += 1
+    #      for co_idx, contrast in enumerate(contrasts):
+    #        for or_idx, orientation in enumerate(mask_orientations):
+    #          for ph_idx, phase in enumerate(phases):
+    #            test_stim = grating(bf_idx, orientation, phase, contrast)
+    #            test_stims[test_idx, :] = 0.5*(base_stim + test_stim)
+    #            test_idx += 1
 
     # Each bf has its own stimulus with a set spatial frequency, but we still compute activations
-    # for all neurons and all stimuli
-    #base_activations = self.compute_activations(base_stims).reshape(num_bfs, num_base_contrasts, num_bfs)
-    test_activations = self.compute_activations(test_stims).reshape(num_bfs, num_base_contrasts,
-      num_contrasts, num_orientations, num_phases, num_bfs)
-    base_stims = base_stims.reshape(num_bfs, num_base_contrasts, num_pixels)
-    test_stims = test_stims.reshape(num_bfs, num_base_contrasts, num_contrasts,
-      num_orientations, num_phases, num_pixels)
+    # for all neurons and all stimuli for batching reasons
+    #base_activations = self.compute_activations(base_stims).reshape(num_bfs, num_contrasts, num_phases, num_bfs)
+    #test_activations = self.compute_activations(test_stims).reshape(num_bfs, num_contrasts,
+    #  num_contrasts, num_orientations, num_phases, num_phases, num_bfs)
+    #base_stims = base_stims.reshape(num_bfs, num_contrasts, num_phases, num_pixels)
+    #test_stims = test_stims.reshape(num_bfs, num_contrasts, num_contrasts,
+    #  num_orientations, num_phases, num_phases, num_pixels)
+    
+    # Output arrays
+    base_responses = np.zeros((num_bfs, num_contrasts))
+    test_responses = np.zeros((num_bfs, num_contrasts, num_contrasts, num_orientations))
 
-    for bf_idx in range(num_bfs):
-      for bco_idx, base_contrast in enumerate(base_contrasts):
-        for co_idx, contrast in enumerate(mask_contrasts):
-          orientation_activations = np.zeros(num_orientations)
-          for or_idx, orientation in enumerate(mask_orientations):
-            test_activity = test_activations[bf_idx, bco_idx, co_idx, or_idx, :, bf_idx]
-            # peak-to-trough amplitude is the representative output
-            orientation_activations[or_idx] = np.max(test_activity) - np.min(test_activity)
-          test_responses[bf_idx, co_idx, :] = orientation_activations
-    return {"mask_contrasts":mask_contrasts, "mask_orientations":mask_orientations,
-      "mask_phases":mask_phases, "test_responses":test_responses, "base_phases":base_phases,
-      "base_orientations":base_orientations, "test_stims":test_stims,
-      "base_stims":base_stims, "base_contrasts":base_contrasts}
+    for bf_idx in range(num_bfs): # each neuron produces a baseline output & test output
+      for bco_idx, base_contrast in enumerate(contrasts): # loop over base contrast levels
+        base_stims = np.zeros((num_phases, num_pixels))
+        for bph_idx, base_phase in enumerate(phases):
+          base_stims[bph_idx] = grating(bf_idx, base_orientations[bf_idx], base_phase, base_contrast)
+        base_activity = self.compute_activations(base_stims).reshape(num_phases, num_bfs)[:, bf_idx]
+        base_responses[bf_idx, bco_idx] = np.max(base_activity) - np.min(base_activity) # peak-to-trough amplitude
+        for co_idx, test_contrast in enumerate(contrasts): # for each base contrast, loop over test contrasts
+            test_stims = np.zeros((num_orientations, num_phases**2, num_pixels))
+            for or_idx, test_orientation in enumerate(mask_orientations): # loop over test orientations
+              mask_stims = np.zeros((num_phases, num_pixels))
+              for ph_idx, test_phase in enumerate(phases):
+                mask_stims[ph_idx,:] = grating(bf_idx, test_orientation, test_phase, test_contrast)
+              test_stims[or_idx,:,:] = 0.5*(base_stims[:,None,:] + mask_stims[None,:,:]).reshape(num_phases**2,
+                num_pixels)
+            test_stims = test_stims.reshape(num_orientations*num_phases*num_phases, num_pixels)
+            test_activity = self.compute_activations(test_stims)[:, bf_idx].reshape(num_orientations, num_phases**2)
+            # peak-to-trough amplitude is computed across all base & mask phases
+            test_responses[bf_idx, bco_idx, co_idx, :] = np.max(test_activity, axis=1) - np.min(test_activity, axis=1)
+    return {"contrasts":contrasts, "phases":phases, "base_orientations":base_orientations,
+      "mask_orientations":mask_orientations, "base_responses":base_responses, "test_responses":test_responses}
 
   def orientation_tuning(self, contrasts, orientations, phases, num_pixels=None,
     num_bfs=None, diameter=-1):
