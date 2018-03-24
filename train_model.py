@@ -12,9 +12,9 @@ t0 = ti.time()
 
 ## Specify model type and data type
 #model_type = "mlp"
-model_type = "ica"
+#model_type = "ica"
 #model_type = "ica_pca"
-#model_type = "lca"
+model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "lca_pca_fb"
 #model_type = "conv_lca"
@@ -81,25 +81,6 @@ with tf.Session(config=config, graph=model.graph) as sess:
       if hasattr(model, "norm_weights"):
         if params["norm_weights"]:
           sess.run([model.norm_weights], feed_dict)
-
-      # Reset activity from previous batch
-      if hasattr(model, "reset_activity"):
-        sess.run([model.reset_activity], feed_dict)
-
-      # Do inference if the model has that option
-      #if hasattr(model, "full_inference"): # all steps in a single op
-      #  sess.run([model.full_inference], feed_dict)
-
-      ## NOTE: new LCA has step_inference method attr, which causes this line to error
-      #if hasattr(model, "step_inference"): # op only does one step
-      #  for step in range(model.num_steps):
-      #    sess.run([model.step_inference], feed_dict)
-
-      ## Temporary for density learning
-      #for step in range(model.num_u_steps):
-      #  sess.run([model.step_u], feed_dict)
-      #for step in range(model.num_v_steps):
-      #  sess.run([model.step_v], feed_dict)
 
       batch_t0 = ti.time()
       ## Update weights
