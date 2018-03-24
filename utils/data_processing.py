@@ -252,9 +252,8 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
   return output
 
 def get_grating_params(bf_stats, bf_idx, patch_edge=None, location=None, diameter=None,
-  #"""
-  #"""
   orientation=None, frequency=None, phase=None, contrast=None):
+  """Parse bf_stats for optimal params to be used when generating a sinusoidal grating"""
   patch_edge = bf_stats["patch_edge_size"] if patch_edge is None else patch_edge
   location = bf_stats["gauss_centers"][bf_idx] if location is None else location
   diameter = bf_stats["diameters"][bf_idx] if diameter is None else diameter
@@ -274,12 +273,14 @@ def generate_grating(rf_edge, location, diameter, orientation, frequency, phase,
   frequency [float] frequency of stimulus
   phase [float] phase of the grating
   contrast [float] contrast of the grating, should be between 0 and 1
+  TODO: This function should probably live in the synthetic dataset class.
+  What to do with get_grating_params?
   """
   vals = np.linspace(-np.pi, np.pi, rf_edge)
   X, Y = np.meshgrid(vals, vals)
   Xr = np.cos(orientation)*X + -np.sin(orientation)*Y  # countercloclwise
   Yr = np.sin(orientation)*X + np.cos(orientation)*Y
-  stim = 0.5*(contrast*np.sin(Yr*frequency+phase)+1) # sin between 0 and 1
+  stim = contrast*np.sin(Yr*frequency+phase)
   if diameter > 0: # Generate mask
     rad = diameter/2
     y_loc, x_loc = location
