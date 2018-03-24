@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits import axes_grid1
 import utils.data_processing as dp
@@ -537,6 +538,44 @@ def plot_bar(data, num_xticks=5, title="", xlabel="", ylabel="", save_filename=N
   plt.show()
   return fig
 
+def plot_orientation_selectivity(bf_indices, contrasts, orientations, activations):
+  num_bfs = np.asarray(bf_indices).size
+  cmap = plt.get_cmap('Greys')
+  cNorm = matplotlib.colors.Normalize(vmin=0.0, vmax=1.0)
+  scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
+  fig = plt.figure(figsize=(32,32))
+  num_plots_y = np.int32(np.ceil(np.sqrt(num_bfs)))+1
+  num_plots_x = np.int32(np.ceil(np.sqrt(num_bfs)))
+  gs_widths = [1.0,]*num_plots_x
+  gs_heights = [1.0,]*num_plots_y
+  gs = gridspec.GridSpec(num_plots_y, num_plots_x, wspace=0.5, hspace=0.7,
+    width_ratios=gs_widths, height_ratios=gs_heights)
+  bf_idx = 0
+  for plot_id in np.ndindex((num_plots_y, num_plots_x)):
+    (y_id, x_id) = plot_id
+    if y_id == 0 and x_id == 0:
+      ax = fig.add_subplot(gs[plot_id])
+      #ax.set_ylabel("Activation", fontsize=16)
+      #ax.set_xlabel("Orientation", fontsize=16)
+      ax00 = ax
+    else:
+      ax = fig.add_subplot(gs[plot_id])#, sharey=ax00)
+    if bf_idx < num_bfs:
+      for co_idx, contrast in enumerate(contrasts):
+        contrast = contrasts[co_idx]
+        activity = activations[bf_idx, co_idx, :]
+        color_val = scalarMap.to_rgba(contrast)
+        ax.plot(orientations*(180/np.pi), activity, linewidth=1, color=color_val)
+        ax.scatter(orientations*(180/np.pi), activity, s=4, c=color_val)
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
+        ax.set_yticks([0, np.max(activity)])
+        ax.set_xticks([0, 90, 180])
+      bf_idx += 1
+    else:
+      ax = clear_axis(ax, spines="none")
+  plt.show()
+  return fig
+
 def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   """
   Histogram activity matrix
@@ -554,7 +593,7 @@ def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   (fig, ax) = plt.subplots(1)
   vals, bins, patches = ax.hist(data, bins=num_bins, histtype="barstacked",
     stacked=True)
-  ax.set_xlabel('Activity')
+  ax.set_xlabel('Value')
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
   fig.tight_layout()
