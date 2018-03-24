@@ -1,21 +1,21 @@
 import numpy as np
 import tensorflow as tf
-from analysis.lca_analyzer import LCA
+from analysis.lca_analyzer import LCA_Analyzer
 import utils.notebook as nb
 
-class LCA_PCA(LCA):
+class LCA_PCA_Analyzer(LCA_Analyzer):
   def __init__(self, params):
-    super(LCA_PCA, self).__init__(params)
+    super(LCA_PCA_Analyzer, self).__init__(params)
 
   def load_params(self, params):
-    super(LCA_PCA, self).load_params(params)
+    super(LCA_PCA_Analyzer, self).load_params(params)
     if "rand_seed" in params.keys():
       self.rand_seed = params["rand_seed"]
       self.rand_state = np.random.RandomState(self.rand_seed)
     self.cov_num_images = params["cov_num_images"]
 
   def run_analysis(self, images, save_info=""):
-    super(LCA_PCA, self).run_analysis(images, save_info)
+    super(LCA_PCA_Analyzer, self).run_analysis(images, save_info)
     self.cov = self.analyze_cov(images)
     self.evec_atas = self.compute_atas(self.cov["a2"], images)
     self.pool_atas = self.compute_atas(self.cov["pooled_act"], images)
@@ -23,7 +23,7 @@ class LCA_PCA(LCA):
       data={"evec_atas":self.evec_atas, "pool_atas":self.pool_atas, "act_cov":self.cov})
 
   def load_analysis(self, save_info=""):
-    super(LCA_PCA, self).load_analysis(save_info)
+    super(LCA_PCA_Analyzer, self).load_analysis(save_info)
     pca_file_loc = self.analysis_out_dir+"pca_analysis_"+save_info+".npz"
     pca_analysis = np.load(pca_file_loc)["data"].item()
     self.evec_atas = pca_analysis["evec_atas"]

@@ -1,12 +1,12 @@
 import numpy as np
 import tensorflow as tf
-from analysis.lca_pca_analyzer import LCA_PCA
+from analysis.lca_pca_analyzer import LCA_PCA_Analyzer
 import utils.data_processing as dp
 import utils.notebook as nb
 
-class LCA_PCA_FB(LCA_PCA):
+class LCA_PCA_FB_Analyzer(LCA_PCA_Analyzer):
   def __init__(self, params):
-    super(LCA_PCA_FB, self).__init__(params)
+    super(LCA_PCA_FB_Analyzer, self).__init__(params)
 
   def evaluate_inference(self, images, num_inference_steps=None):
     if num_inference_steps is None:

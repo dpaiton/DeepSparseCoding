@@ -1,10 +1,10 @@
 import numpy as np
 import tensorflow as tf
-from analysis.lca_analyzer import LCA
+from analysis.lca_analyzer import LCA_Analyzer
 
-class CONV_LCA(LCA):
+class CONV_LCA_Analyzer(LCA_Analyzer):
   def __init__(self, params):
-    super(CONV_LCA, self).__init__(params)
+    super(CONV_LCA_Analyzer, self).__init__(params)
     self.var_names = ["weights/phi:0"]
 
   def run_analysis(self, images, save_info=""):
