@@ -192,7 +192,11 @@ class LCA(Model):
       grad_name_list.append(weight_grad_var[0][1].name.split('/')[1].split(':')[0])#2nd is np.split
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, sparse_loss, total_loss, a_vals = out_vals[0:5]
+    input_mean = np.mean(input_data)
+    input_max = np.max(input_data)
+    input_min = np.min(input_data)
     a_vals_max = np.array(a_vals.max())
+    a_vals_min = np.array(a_vals.min())
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
     stat_dict = {"global_batch_index":current_step,
@@ -202,7 +206,11 @@ class LCA(Model):
       "sparse_loss":sparse_loss,
       "total_loss":total_loss,
       "a_max":a_vals_max,
-      "a_fraction_active":a_frac_act}
+      "a_min":a_vals_min,
+      "a_fraction_active":a_frac_act,
+      "x_mean":input_mean,
+      "x_max":input_max,
+      "x_min":input_min}
     grads = out_vals[5:]
     for grad, name in zip(grads, grad_name_list):
       stat_dict[name+"_max_grad"] = np.array(grad.max())
@@ -219,15 +227,23 @@ class LCA(Model):
     """
     super(LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    current_step = str(self.global_step.eval())
-    weights, recon = tf.get_default_session().run([self.phi, self.x_], feed_dict)
+    eval_list = [self.global_step, self.phi, self.x_,  self.a]
+    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    current_step = str(eval_out[0])
+    weights, recon, activity = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=1, keepdims=False)
-    input_data = dp.reshape_data(input_data, flatten=False)[0]
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0]
+    fig = pf.plot_activity_hist(input_data, title="Image Histogram",
+      save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
+      +current_step.zfill(5)+".png"))
+    input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Images at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"images_"+self.version+"-"
+      +current_step.zfill(5)+".png"))
+    fig = pf.plot_activity_hist(activity, title="Activity Histogram",
+      save_filename=(self.disp_dir+"act_hist_"+self.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
