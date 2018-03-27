@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits import axes_grid1
 import utils.data_processing as dp
@@ -87,7 +88,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False, rand_bf=False):
   return fig
 
 def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
-                           num_connected_weights, lines=False, figsize=None):
+                           num_connected_weights=None, lines=False, figsize=None):
   """
   Plot 2nd layer (fully-connected) weights in terms of connection strengths to 1st layer weights
   Inputs:
@@ -106,6 +107,8 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
   filter_idx_list = np.arange(num_pooling_filters, dtype=np.int32)
   assert num_pooling_filters <= num_outputs, (
     "num_pooling_filters must be less than or equal to bf_stats['num_outputs']")
+  if num_connected_weights is None:
+    num_connected_weights = num_inputs
   cmap = plt.get_cmap('bwr')
   cNorm = matplotlib.colors.SymLogNorm(linthresh=0.03, linscale=0.01, vmin=-1.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
@@ -155,8 +158,8 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
   plt.show()
   return fig
 
-def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
-                         spot_size=10, figsize=None):
+def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, num_connected_weights=None,
+  filter_indices=None, spot_size=10, figsize=None):
   """
   Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of
     1st layer weights
@@ -165,11 +168,23 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
     pooling_filters [np.ndarray] 2nd layer weights
       should be shape [num_1st_layer_neurons, num_2nd_layer_neurons]
     num_pooling_filters [int] How many 2nd layer neurons to plot
-    figsize [tuple] Containing the (width, height) of the figure, in inches
+    num_connected_weights [int] How many 1st layer neurons to plot
     spot_size [int] How big to make the points
+    filter_indices [list] indices to plot from pooling_filters. len should equal num_pooling_filters
+      set to None for default, which is a random selection
+    figsize [tuple] Containing the (width, height) of the figure, in inches.
+      Set to None for default figure size
   """
   num_filters_y = int(np.ceil(np.sqrt(num_pooling_filters)))
   num_filters_x = int(np.ceil(np.sqrt(num_pooling_filters)))
+  tot_pooling_filters = pooling_filters.shape[1]
+  if filter_indices is None:
+    filter_indices = np.random.choice(tot_pooling_filters, num_pooling_filters, replace=False)
+  else:
+    assert len(filter_indices) == num_pooling_filters, (
+      "len(filter_indices) must equal num_pooling_filters")
+  if num_connected_weights is None:
+    num_connected_weights = bf_stats["num_inputs"]
   cmap = plt.get_cmap(bgr_colormap())# Could also use "nipy_spectral", "coolwarm", "bwr"
   cNorm = matplotlib.colors.SymLogNorm(linthresh=0.03, linscale=0.01, vmin=-1.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
@@ -195,16 +210,31 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
       scalarMap._A = []
       cbar = fig.colorbar(scalarMap, ax=axes[-1], ticks=[-1, 0, 1], aspect=10, location="bottom")
       cbar.ax.set_xticklabels(["-1", "0", "1"])
-      cbar.ax.xaxis.set_ticks_position('top')
-      cbar.ax.xaxis.set_label_position('top')
+      cbar.ax.xaxis.set_ticks_position("top")
+      cbar.ax.xaxis.set_label_position("top")
       for label in cbar.ax.xaxis.get_ticklabels():
         label.set_weight("bold")
         label.set_fontsize(10+figsize[0])
     if (filter_id < num_pooling_filters):
-      example_filter = pooling_filters[:, filter_id]
+      example_filter = pooling_filters[:, filter_indices[filter_id]]
+      top_indices = np.argsort(np.abs(example_filter))[::-1] #descending
+      selected_indices = top_indices[:num_connected_weights][::-1] #select top, plot weakest first
       filter_norm = np.max(np.abs(example_filter))
       connection_colors = [scalarMap.to_rgba(example_filter[bf_idx]/filter_norm)
         for bf_idx in range(bf_stats["num_outputs"])]
+      if num_connected_weights < top_indices.size:
+        black_indices = top_indices[num_connected_weights:][::-1]
+        xp = [x_p_cent[i] for i in black_indices]+[x_p_cent[i] for i in selected_indices]
+        yp = [y_p_cent[i] for i in black_indices]+[y_p_cent[i] for i in selected_indices]
+        xf = [x_f_cent[i] for i in black_indices]+[x_f_cent[i] for i in selected_indices]
+        yf = [y_f_cent[i] for i in black_indices]+[y_f_cent[i] for i in selected_indices]
+        c = [(0.1,0.1,0.1,1.0) for i in black_indices]+[connection_colors[i] for i in selected_indices]
+      else:
+        xp = [x_p_cent[i] for i in selected_indices]
+        yp = [y_p_cent[i] for i in selected_indices]
+        xf = [x_f_cent[i] for i in selected_indices]
+        yf = [y_f_cent[i] for i in selected_indices]
+        c = [connection_colors[i] for i in selected_indices]
       (y_id, x_id) = plot_id
       if x_id == 0:
         ax_l = 0
@@ -217,22 +247,21 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters,
         ax_b = prev_b
       ax_w = plt_w
       ax_h = plt_h
-      #spatial
       axes.append(clear_axis(fig.add_axes([ax_l, ax_b, ax_w, ax_h])))
       axes[-1].invert_yaxis()
-      axes[-1].scatter(x_p_cent, y_p_cent, c=connection_colors, s=spot_size, alpha=0.8)
+      axes[-1].scatter(xp, yp, c=c, s=spot_size, alpha=0.8)
       axes[-1].set_xlim(0, bf_stats["patch_edge_size"]-1)
       axes[-1].set_ylim(bf_stats["patch_edge_size"]-1, 0)
       axes[-1].set_aspect("equal")
-      axes[-1].set_facecolor("k")
+      axes[-1].set_facecolor("w")
       axes.append(clear_axis(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h])))
-      axes[-1].scatter(x_f_cent, y_f_cent, c=connection_colors, s=spot_size, alpha=0.8)
+      axes[-1].scatter(xf, yf, c=c, s=spot_size, alpha=0.8)
       axes[-1].set_xlim([-max_sf, max_sf])
       axes[-1].set_ylim([-max_sf, max_sf])
       axes[-1].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
       axes[-1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
       axes[-1].set_aspect("equal")
-      axes[-1].set_facecolor("k")
+      axes[-1].set_facecolor("w")
       #histogram - note: axis widths/heights are not setup for a third plot
       #axes.append(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h]))
       #axes[-1].set_yticklabels([])
@@ -527,6 +556,173 @@ def plot_bar(data, num_xticks=5, title="", xlabel="", ylabel="", save_filename=N
   plt.show()
   return fig
 
+def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activations):
+  """
+  Generate contrast orientation tuning curves. Every subplot will have curves for each contrast.
+  Inputs:
+    bf_indices: [list or array] of neuron indices to use
+      all indices should be less than activations.shape[0]
+    contrasts: [list or array] of contrasts to use
+    orientations: [list or array] of orientations to use
+  """
+  orientations = np.asarray(orientations)*(180/np.pi) #convert to degrees for plotting
+  num_bfs = np.asarray(bf_indices).size
+  cmap = plt.get_cmap('Greys')
+  cNorm = matplotlib.colors.Normalize(vmin=0.0, vmax=1.0)
+  scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
+  fig = plt.figure(figsize=(32,32))
+  num_plots_y = np.int32(np.ceil(np.sqrt(num_bfs)))+1
+  num_plots_x = np.int32(np.ceil(np.sqrt(num_bfs)))
+  gs_widths = [1.0,]*num_plots_x
+  gs_heights = [1.0,]*num_plots_y
+  gs = gridspec.GridSpec(num_plots_y, num_plots_x, wspace=0.5, hspace=0.7,
+    width_ratios=gs_widths, height_ratios=gs_heights)
+  bf_idx = 0
+  for plot_id in np.ndindex((num_plots_y, num_plots_x)):
+    (y_id, x_id) = plot_id
+    if y_id == 0 and x_id == 0:
+      ax = fig.add_subplot(gs[plot_id])
+      #ax.set_ylabel("Activation", fontsize=16)
+      #ax.set_xlabel("Orientation", fontsize=16)
+      ax00 = ax
+    else:
+      ax = fig.add_subplot(gs[plot_id])#, sharey=ax00)
+    if bf_idx < num_bfs:
+      for co_idx, contrast in enumerate(contrasts):
+        contrast = contrasts[co_idx]
+        activity = activations[bf_indices[bf_idx], co_idx, :]
+        color_val = scalarMap.to_rgba(contrast)
+        ax.plot(orientations, activity, linewidth=1, color=color_val)
+        ax.scatter(orientations, activity, s=4, c=color_val)
+        ax.yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
+        ax.set_yticks([0, np.max(activity)])
+        ax.set_xticks([0, 90, 180])
+      bf_idx += 1
+    else:
+      ax = clear_axis(ax, spines="none")
+  plt.show()
+  return fig
+
+def plot_masked_orientation_tuning(bf_indices, mask_orientations, base_responses, test_responses):
+  """
+  Generate orientation tuning curves for superimposed masks.
+  Maximum contrast (index -1) will be selected for the base and mask
+  Inputs:
+    bf_indices: [list or array] of neuron indices to use
+      all indices should be less than base_responsees.shape[0] and test_responses.shape[0]
+    mask_orientations: [list or array] of mask orientation values
+    base_responses: [list or array] of responses to base stimulus at optimal orientation
+      should be shape [num_neurons, num_base_contrasts, num_mask_contrasts, num_orientations]
+    test_responses: [list or array] of responses to the base+mask stimulus
+      should be shape [num_neurons, num_base_contrasts, num_mask_contrasts, num_orientations]
+  """
+  mask_orientations = np.asarray(mask_orientations) * (180/np.pi)
+  num_bfs = np.asarray(bf_indices).size
+  num_orientations = mask_orientations.size
+  cmap = plt.get_cmap('Greys')
+  cNorm = matplotlib.colors.Normalize(vmin=0.0, vmax=1.0)
+  scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
+  fig = plt.figure(figsize=(32,32))
+  num_plots_y = np.int32(np.ceil(np.sqrt(num_bfs)))+1
+  num_plots_x = np.int32(np.ceil(np.sqrt(num_bfs)))
+  gs_widths = [1.0,]*num_plots_x
+  gs_heights = [1.0,]*num_plots_y
+  gs = gridspec.GridSpec(num_plots_y, num_plots_x, wspace=0.5, hspace=0.7,
+    width_ratios=gs_widths, height_ratios=gs_heights)
+  bf_idx = 0
+  for plot_id in np.ndindex((num_plots_y, num_plots_x)):
+    (y_id, x_id) = plot_id
+    if y_id == 0 and x_id == 0:
+      ax = fig.add_subplot(gs[plot_id])
+      #ax.set_ylabel("Normalized Activation", fontsize=16)
+      #ax.set_xlabel("Mask Orientation", fontsize=16)
+      #ax.set_ylim([0.0, np.max(co_test_mean_responses)])
+      ax00 = ax
+    else:
+      ax = fig.add_subplot(gs[plot_id])#, sharey=ax00)
+    if bf_idx < num_bfs:
+      bco_idx = -1; co_idx = -1 # we want highest contrasts used for this experiment
+      base_activity = base_responses[bf_indices[bf_idx], bco_idx]
+      test_activity  = test_responses[bf_indices[bf_idx], bco_idx, co_idx, :]
+      color_val = scalarMap.to_rgba(1.0) # One could alternatively set this to the contrast value
+      ax.plot(mask_orientations, [base_activity,]*num_orientations, linestyle="--",
+        linewidth=1, color=color_val)
+      ax.plot(mask_orientations, test_activity, linestyle="-", linewidth=1, color=color_val)
+      ax.scatter(mask_orientations, test_activity, s=4, c=color_val)
+      ax.set_yticks([0, np.max(test_activity)])
+      ax.yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
+      ax.set_xticks([0, 90, 180])
+      bf_idx += 1
+    else:
+      ax = clear_axis(ax, spines="none")
+  plt.show()
+  return fig
+
+def plot_plaid_contrast_tuning(bf_indices, base_contrasts, mask_contrasts, base_orientations,
+  mask_orientations, test_responses):
+  """
+  Plot responses to orthogonal plaid stimulus at different base and mask contrasts
+  Inputs:
+    bf_indices: [list or array] of neuron indices to use
+      all indices should be less than test_responsees.shape[0]
+    base_contrasts: [list or array] of base contrasts.
+    mask_contrasts: [list or array] of mask contrasts.
+      each plot will have one line per mask_contrast
+    base_orientations: [list or array] of optimal base orientations for all neurons
+      should be a 1-D array with size = test_responses.shape[0]
+    mask_orientations: [list or array] of mask orientation values
+      function will compute the plaid response for orthogonal orientations
+    test_responses: [list or array] of responses to the base+mask stimulus
+      should be shape [num_neurons, num_base_contrasts, num_mask_contrasts, num_orientations]
+  """
+  bf_indices = np.asarray(bf_indices)
+  mask_orientations = np.asarray(mask_orientations)
+  mask_contrasts = np.asarray(mask_contrasts)
+  num_bfs = bf_indices.size
+  num_orientations = mask_orientations.size
+  num_contrasts = mask_contrasts.size
+  # index of value in mask_orientations that is closest to orthogonal to base_orientations[bf_idx]
+  orthogonal_orientations = [base_orientations[bf_indices[bf_idx]]-(np.pi/2)
+    for bf_idx in range(num_bfs)]
+  orthogonal_orientations = np.asarray([val + np.pi if val < 0 else val
+    for val in orthogonal_orientations])
+  mask_or_idx = [np.argmin(orthogonal_orientations[bf_idx] - mask_orientations)
+    for bf_idx in range(num_bfs)]
+  cmap = plt.get_cmap('Greys')
+  cNorm = matplotlib.colors.Normalize(vmin=0.0, vmax=1.0)
+  scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
+  num_plots_y = np.int32(np.ceil(np.sqrt(num_bfs)))+1
+  num_plots_x = np.int32(np.ceil(np.sqrt(num_bfs)))
+  gs_widths = [1.0,]*num_plots_x
+  gs_heights = [1.0,]*num_plots_y
+  gs = gridspec.GridSpec(num_plots_y, num_plots_x, wspace=0.5, hspace=0.7,
+    width_ratios=gs_widths, height_ratios=gs_heights)
+  fig = plt.figure(figsize=(32,32)) #TODO: Adjust fig size according to num plots
+  bf_idx = 0
+  for plot_id in np.ndindex((num_plots_y, num_plots_x)):
+    (y_id, x_id) = plot_id
+    if y_id == 0 and x_id == 0:
+      ax = fig.add_subplot(gs[plot_id])
+      #ax.set_ylabel("Normalized Activation", fontsize=16)
+      #ax.set_xlabel("Base Contrast", fontsize=16)
+      #ax.set_ylim([0.0, 1.0])
+      ax00 = ax
+    else:
+      ax = fig.add_subplot(gs[plot_id], sharey=ax00)
+    if bf_idx < num_bfs:
+      for co_idx, mask_contrast in enumerate(mask_contrasts):
+        # vary base contrast for fixed mask contrast & orthogonal mask
+        activity  = test_responses[bf_indices[bf_idx], :, co_idx, mask_or_idx[bf_idx]]
+        color_val = scalarMap.to_rgba(mask_contrast)
+        ax.plot(base_contrasts, activity, linestyle="-", color=color_val)
+        ax.scatter(base_contrasts, activity, s=4, c=color_val, label=str(mask_contrast))
+      ax.set_xticks([base_contrasts[0], base_contrasts[-1]])
+      bf_idx += 1
+    else:
+      ax = clear_axis(ax, spines="none")
+  plt.show()
+  return fig
+
 def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   """
   Histogram activity matrix
@@ -544,7 +740,7 @@ def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   (fig, ax) = plt.subplots(1)
   vals, bins, patches = ax.hist(data, bins=num_bins, histtype="barstacked",
     stacked=True)
-  ax.set_xlabel('Activity')
+  ax.set_xlabel('Value')
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
   fig.tight_layout()
@@ -716,7 +912,7 @@ def plot_inference_stats(data, title="", save_filename=None):
       ax.set_ylabel(labels[loss_id].replace('_', ' '), fontsize=16)
       ax.set_xlim([1, np.max(time_steps)])
       ax.set_xticks([1, int(np.floor(np.max(time_steps)/2)), np.max(time_steps)])
-      ax.set_xlabel("time step", fontsize=16)
+      ax.set_xlabel("Time Step", fontsize=16)
       ax.tick_params("both", labelsize=14)
       loss_id += 1
     else:

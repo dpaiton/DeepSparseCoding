@@ -128,7 +128,7 @@ class ICA(Model):
     """
     super(ICA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    weights = tf.get_default_session().run(self.a, feed_dict)
+    weights = tf.get_default_session().run(self.a_inv, feed_dict)
     current_step = str(self.global_step.eval())
     #input_data = dp.reshape_data(input_data, flatten=False)[0]
     #pf.plot_data_tiled(input_data, normalize=False,
@@ -137,7 +137,7 @@ class ICA(Model):
     weights_norm = np.linalg.norm(weights, axis=1, keepdims=False)
     weights = dp.reshape_data(weights, flatten=False)[0]
     pf.plot_data_tiled(weights, normalize=True,
-      title="Dictionary at step "+current_step, vmin=-1.0, vmax=1.0,
+      title="Weights at step "+current_step, vmin=-1.0, vmax=1.0,
       save_filename=(self.disp_dir+"a_v"+self.version+"-"+current_step.zfill(5)+".png"))
     pf.plot_activity_hist(self.z.eval(feed_dict), num_bins=1000,
       title="z Activity Histogram at step "+current_step,
@@ -148,7 +148,7 @@ class ICA(Model):
       save_filename=(self.disp_dir+"u_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     pf.plot_bar(weights_norm, num_xticks=5,
-      title="a l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+      title="$a^-1$ l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.disp_dir+"a_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
