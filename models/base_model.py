@@ -1,8 +1,7 @@
 import os
-import logging
-import json as js
 import numpy as np
 import tensorflow as tf
+from utils.logger import Logger
 import utils.data_processing as dp
 
 class Model(object):
@@ -159,24 +158,17 @@ class Model(object):
     if not os.path.exists(self.disp_dir):
       os.makedirs(self.disp_dir)
 
-  def init_logging(self):
-    """Logging to track run statistics"""
-    #for handler in logging.root.handlers[:]: # prevent overwriting previous logs
-    #  logging.root.removeHandler(handler)
-    logging_level = logging.INFO
-    log_format = ("%(asctime)s.%(msecs)03d"
-      +" -- %(message)s")
-    date_format = "%m-%d-%Y %H:%M:%S"
+  def init_logging(self, log_filename=None):
     if self.log_to_file:
-      log_filename = self.log_dir+self.model_name+"_v"+self.version+".log"
-      logging.basicConfig(filename=log_filename, format=log_format,
-        datefmt=date_format, filemode="w", level=logging.INFO)
+      if log_filename is None:
+        log_filename = self.log_dir+self.model_name+"_v"+self.version+".log"
+        self.logger = Logger(log_filename)
     else:
-      logging.basicConfig(format=log_format, datefmt=date_format, level=logging.INFO)
+        self.logger = Logger()
 
   def js_dumpstring(self, obj):
     """Dump json string with special NumpyEncoder"""
-    return js.dumps(obj, sort_keys=True, indent=2, cls=NumpyEncoder)
+    return self.logger.js_dumpstring(obj)
 
   def log_params(self, params=None):
     """Use logging to write model params"""
@@ -184,19 +176,15 @@ class Model(object):
       dump_obj = params
     else:
       dump_obj = self.params
-    if "rand_state" in dump_obj.keys():
-      del dump_obj["rand_state"]
-    js_str = self.js_dumpstring(dump_obj)
-    logging.info("<params>"+js_str+"</params>")
+    self.logger.log_params(dump_obj)
 
   def log_schedule(self):
     """Use logging to write current schedule, as specified by self.sched_idx"""
-    js_str = self.js_dumpstring(self.sched)
-    logging.info("<schedule>"+js_str+"</schedule>")
+    self.logger.log_schedule(self.sched)
 
   def log_info(self, string):
     """Log input string"""
-    logging.info(str(string))
+    self.logger.log_info(string)
 
   def compute_weight_gradients(self, optimizer, weight_op=None):
     """Returns the gradients for a weight variable using a given optimizer"""
@@ -291,12 +279,12 @@ class Model(object):
     full_file = self.save_dir+self.model_name+"_v"+self.version+"-full.def"
     with open(full_file, "wb") as f:
       f.write(full_saver_def.SerializeToString())
-    logging.info("Full saver def saved in file %s"%full_file)
+    self.logger.log_info("Full saver def saved in file %s"%full_file)
     weight_saver_def = self.weight_saver.as_saver_def()
     weight_file = self.save_dir+self.model_name+"_v"+self.version+"-weights.def"
     with open(weight_file, "wb") as f:
       f.write(weight_saver_def.SerializeToString())
-    logging.info("Weight saver def saved in file %s"%weight_file)
+    self.logger.log_info("Weight saver def saved in file %s"%weight_file)
 
   def write_graph(self, graph_def):
     """Write graph structure to protobuf file"""
@@ -304,7 +292,7 @@ class Model(object):
     self.writer = tf.summary.FileWriter(self.save_dir, graph=self.graph)
     tf.train.write_graph(graph_def,
       logdir=self.save_dir, name=write_name, as_text=False)
-    logging.info("Graph def saved in file %s"%self.save_dir+write_name)
+    self.logger.log_info("Graph def saved in file %s"%self.save_dir+write_name)
 
   def write_checkpoint(self, session):
     """Write checkpoints for full model and weights-only"""
@@ -312,11 +300,11 @@ class Model(object):
     full_save_path = self.full_saver.save(session,
       save_path=base_save_path+"_full",
       global_step=self.global_step)
-    logging.info("Full model saved in file %s"%full_save_path)
+    self.logger.log_info("Full model saved in file %s"%full_save_path)
     weight_save_path = self.weight_saver.save(session,
       save_path=base_save_path+"_weights",
       global_step=self.global_step)
-    logging.info("Weights model saved in file %s"%weight_save_path)
+    self.logger.log_info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
 
   def load_full_model(self, session, model_dir):
@@ -397,10 +385,6 @@ class Model(object):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    with tf.device(self.device):
-      with self.graph.as_default():
-        with tf.name_scope("placeholders") as scope:
-          self.input_data = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
     pass
 
   def reshape_dataset(self, dataset, params):
@@ -422,7 +406,7 @@ class Model(object):
 
   def preprocess_dataset(self, dataset, params=None):
     """
-    Perform default preprocessing on the dataset images
+    This is a wrapper function to demonstrate how preprocessing can be performed.
     Inputs:
       dataset [dict] returned from data/data_picker
       params [dict] kwargs for preprocessing, if None then the member variable is used
@@ -478,14 +462,12 @@ class Model(object):
         dataset[key].num_cols = dataset[key].shape[2]
         dataset[key].num_channels = dataset[key].shape[3]
         dataset[key].num_pixels = np.prod(dataset[key].shape[1:])
-      if "whiten_data" in params.keys() and params["whiten_data"]:
-        if "whiten_method" in params.keys() and params["whiten_method"] != "FT":
-          dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
-            dp.whiten_data(dataset[key].images, method=params["whiten_method"])
+        if "whiten_data" in params.keys() and params["whiten_data"]:
+          if "whiten_method" in params.keys() and params["whiten_method"] != "FT":
+            dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
+              dp.whiten_data(dataset[key].images, method=params["whiten_method"])
       if "norm_data" in params.keys() and params["norm_data"]:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
-      if "norm_data_to_one" in params.keys() and params["norm_data"]:
-        dataset[key].images = dp.rescale_data_to_one(dataset[key].images)
       if "standardize_data" in params.keys() and params["standardize_data"]:
         dataset[key].images, dataset[key].data_mean, dataset[key].data_std = \
           dp.standardize_data(dataset[key].images)
@@ -515,14 +497,3 @@ class Model(object):
       input_labels: data object containing the current label batch
     """
     pass
-
-class NumpyEncoder(js.JSONEncoder):
-  def default(self, obj):
-    if isinstance(obj, np.integer):
-      return int(obj)
-    elif isinstance(obj, np.floating):
-      return float(obj)
-    elif isinstance(obj, np.ndarray):
-      return obj.tolist()
-    else:
-      return super(NumpyEncoder, self).default(obj)

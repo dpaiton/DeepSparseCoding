@@ -3,7 +3,7 @@ params = {
   "model_type": "ica",
   "model_name": "ica_nowhite",
   "version": "0.0",
-  "num_images": 50,
+  "num_images": 100,
   "vectorize_data": True,
   "norm_data": False,
   "whiten_data": False,
@@ -18,7 +18,7 @@ params = {
   "prior": "laplacian",
   "optimizer": "annealed_sgd",
   "cp_int": 10000,
-  "max_cp_to_keep": 5,
+  "max_cp_to_keep": 1,
   "cp_load": False,
   "cp_load_name": "pretrain",
   "cp_load_step": 150000,
@@ -26,10 +26,10 @@ params = {
   "cp_load_var": ["a"],
   "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 500,
+  "gen_plot_int": 1000,
   "save_plots": True,
   "eps": 1e-12,
-  "device": "/cpu:0",
+  "device": "/gpu:0",
   "rand_seed": 1234567890,
   "out_dir": os.path.expanduser("~")+"/Work/Projects/",
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
@@ -37,7 +37,7 @@ params = {
 schedule = [
   {"weights": ["a"],
   "weight_lr": [0.01],
-  "decay_steps": [30000],
-  "decay_rate": [0.6],
+  "decay_steps": [80000],
+  "decay_rate": [0.7],
   "staircase": [True],
-  "num_batches": 30000}]
+  "num_batches": 100000}]

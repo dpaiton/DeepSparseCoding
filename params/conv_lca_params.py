@@ -1,15 +1,13 @@
 import os
 params = {
   "model_type": "conv_lca",
-  "model_name": "conv_lca_vh_patch",
+  "model_name": "conv_lca_cifar",
   "version": "0.0",
-  "num_images": 300,
-  "image_edge_size": 256,
   "center_data": False,
   "norm_data": False,
   "whiten_data": True,
   "whiten_method": "FT",
-  "standardize_data": True,
+  "standardize_data": False,
   "contrast_normalize": False,
   "extract_patches": True,
   "num_patches": 1e6,
@@ -25,7 +23,7 @@ params = {
   "num_neurons": 96, # pixel-overcompleteness is num_neurons/(stride_y * stride_x)
   "num_steps": 120,
   "dt": 0.001,
-  "tau": 0.01,
+  "tau": 0.02,
   "rectify_a": True,
   "norm_weights": True,
   "thresh_type": "soft",
@@ -35,7 +33,7 @@ params = {
   "cp_load": False,
   "log_int": 50,
   "log_to_file": True,
-  "gen_plot_int": 100,
+  "gen_plot_int": 500,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/gpu:0",
@@ -45,8 +43,8 @@ params = {
 
 schedule = [
   {"weights": ["phi"],
-  "sparse_mult": 0.06,
-  "weight_lr": [0.005],
+  "sparse_mult": 0.01,
+  "weight_lr": [0.001],
   "decay_steps": [int(1e5*0.8)],
   "decay_rate": [0.6],
   "staircase": [True],

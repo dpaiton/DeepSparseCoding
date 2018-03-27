@@ -42,61 +42,6 @@ class CONV_LCA(LCA):
     self.u_shape = [int(self.u_y), int(self.u_x), int(self.num_neurons)]
     self.x_shape = [None,]+ self.data_shape
 
-  def preprocess_dataset(self, dataset, params=None):
-    """
-    Perform preprocessing on the dataset images 
-    Inputs:
-      dataset [dict] returned from data/data_picker
-    Parameters are set using the model parameter dictionary.
-    Possible parameters  are:
-      center_data: subtract mean from data
-      norm_data: divide data by the maximum
-      whiten_data: default method is using the Fourier amplitude spectrium ("FT")
-        change default with whiten_method param
-      standardize_data: subtract mean and divide by the standard deviation
-      contrast_normalize: divide by gaussian blurred surround pixels
-      extract_patches: break up data into patches
-        see utils/data_processing/exract_patches() for docs
-    """
-    if params is None:
-      assert self.params_loaded, (
-        "You must either provide parameters or load the model params before preprocessing.")
-      params = self.params
-    for key in dataset.keys():
-      if "whiten_data" in params.keys() and params["whiten_data"]:
-        if "whiten_method" in params.keys():
-          if params["whiten_method"] == "FT": # other methods require patching first
-            dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
-              dp.whiten_data(dataset[key].images, method=params["whiten_method"])
-      if "extract_patches" in params.keys() and params["extract_patches"]:
-        assert all(key in params.keys()
-          for key in ["num_patches", "patch_edge_size", "overlapping_patches",
-          "randomize_patches"]), ("Insufficient params for patches.")
-        out_shape = (int(params["num_patches"]), int(params["patch_edge_size"]),
-          int(params["patch_edge_size"]), dataset[key].num_channels)
-        dataset[key].num_examples = out_shape[0]
-        dataset[key].reset_counters()
-        if "patch_variance_threshold" in params.keys():
-          dataset[key].images = dp.extract_patches(dataset[key].images, out_shape,
-            params["overlapping_patches"], params["randomize_patches"],
-            params["patch_variance_threshold"], dataset[key].rand_state)
-        else:
-          dataset[key].images = dp.extract_patches(dataset[key].images, out_shape,
-            params["overlapping_patches"], params["randomize_patches"],
-            var_thresh=0, rand_state=dataset[key].rand_state)
-        dataset[key].shape = dataset[key].images.shape
-        dataset[key].num_rows = dataset[key].shape[1]
-        dataset[key].num_cols = dataset[key].shape[2]
-        dataset[key].num_channels = dataset[key].shape[3]
-        dataset[key].num_pixels = np.prod(dataset[key].shape[1:])
-      if "whiten_data" in params.keys() and params["whiten_data"]:
-        if "whiten_method" in params.keys() and params["whiten_method"] != "FT":
-          dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
-            dp.whiten_data(dataset[key].images, method=params["whiten_method"])
-      if "norm_data" in params.keys() and params["norm_data"]:
-        dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
-    return dataset
-
   def step_inference(self, u_in, a_in, step):
     with tf.name_scope("update_u"+str(step)) as scope:
       recon_grad = tf.gradients(self.compute_recon_loss(a_in), a_in)[0]
