@@ -5,16 +5,20 @@ import data.data_selector as ds
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "ica",
-  #"model_type": "lca",
+  #"model_type": "ica",
+  "model_type": "lca",
   #"model_name": "lca_vh_ft_1c_ht",
-  "model_name": "ica",
+  #"model_name": "ica",
+  "model_name": "lca_pca_512_vh_ft_white",
+  "version": "0.0", #lca_vh
+  #"version": "1.0", #ICA
   "data_type": "vanHateren",
-  "num_patches": 1e4,
   "device": "/gpu:0",
-  #"version": "0.0", #lca_vh
-  "version": "1.0", #ICA
+  #"save_info": "full_imgs",
+  "save_info": "300k_imgs",
+  "num_patches": 1e4,
   "num_inference_images": 5, #How many random images to average over for inference statistics
+  "cov_num_images": int(3e5), #number of images used to compute cov matrix (LCA_PCA)
   "ft_padding": 32, #Fourier analysis padding for weight fitting
   "neuron_indices": None,
   "contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
@@ -38,4 +42,4 @@ analyzer.model.setup(analyzer.model_params, analyzer.model_schedule)
 analyzer.model_params["input_shape"] = [
   data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
 
-analyzer.run_analysis(data["train"].images, save_info="full_imgs")
+analyzer.run_analysis(data["train"].images, save_info=analysis_params["save_info"])

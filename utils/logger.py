@@ -49,6 +49,8 @@ class Logger(object):
       log_text: [str] containing log file text
     TODO: Make text a member variable, other load functions use member variable
       This would then become an internal function without a return
+      Downside is you keep the text in memory even if you're not using it...
+      Current setup allows for the text to be dropped once e.g. params are read
     """
     self.file_obj.seek(0)
     text = self.file_obj.read()

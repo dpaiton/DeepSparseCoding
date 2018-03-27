@@ -9,9 +9,9 @@ import tensorflow as tf
 class Analyzer(object):
   def __init__(self, params):
     # Load model parameters and schedule
-    self.model_lod_file = (params["model_dir"]+"/logfiles/"+params["model_name"]
+    self.model_log_file = (params["model_dir"]+"/logfiles/"+params["model_name"]
       +"_v"+params["version"]+".log")
-    self.model_logger = Logger(self.model_lod_file)
+    self.model_logger = Logger(self.model_log_file)
     self.model_log_text = self.model_logger.load_file()
     self.model_params = self.model_logger.read_params(self.model_log_text)
     self.model_params["rand_state"] = np.random.RandomState(self.model_params["rand_seed"])
@@ -19,9 +19,9 @@ class Analyzer(object):
     # Load or create analysis params log
     self.analysis_out_dir = params["model_dir"]+"/analysis/"+params["version"]+"/"
     self.make_dirs() # If analysis log does not exist then we want to make the folder first
-    self.analysis_log = self.analysis_out_dir+"analysis.log"
-    self.analysis_logger = Logger(self.analysis_log)
-    if os.stat(self.analysis_log).st_size != 0: # File has contents
+    self.analysis_log_file = self.analysis_out_dir+"analysis.log"
+    self.analysis_logger = Logger(self.analysis_log_file)
+    if os.stat(self.analysis_log_file).st_size != 0: # File has contents
       analysis_text = self.analysis_logger.load_file()
       prev_analysis_params = self.analysis_logger.read_params(analysis_text)
       if type(prev_analysis_params) == dict: # there was only one param entry in the log
@@ -173,9 +173,9 @@ class Analyzer(object):
     activations = self.compute_activations(phase_stims).reshape(num_neurons, num_contrasts,
       num_orientations, num_phases, tot_num_bfs)
     for bf_idx, neuron_idx in enumerate(neuron_indices):
-      activity_slice = activations[bf_idx,:,:,:,neuron_idx]
-      max_responses[bf_idx,...] = np.max(np.abs(activity_slice), axis=-1)
-      mean_responses[bf_idx,...] = np.mean(np.abs(activity_slice), axis=-1)
+      activity_slice = activations[bf_idx, :, :, :, neuron_idx]
+      max_responses[bf_idx, ...] = np.max(np.abs(activity_slice), axis=-1)
+      mean_responses[bf_idx, ...] = np.mean(np.abs(activity_slice), axis=-1)
       for co_idx, contrast in enumerate(contrasts):
         for or_idx, orientation in enumerate(orientations):
           phase_activity = activations[bf_idx, co_idx, or_idx, :, neuron_idx]
@@ -219,24 +219,27 @@ class Analyzer(object):
     test_max_responses = np.zeros((num_neurons, num_contrasts, num_contrasts, num_orientations))
     base_mean_responses = np.zeros((num_neurons, num_contrasts))
     test_mean_responses = np.zeros((num_neurons, num_contrasts, num_contrasts, num_orientations))
-    for bf_idx, neuron_idx in enumerate(neuron_indices): # each neuron produces a baseline output & test output
+    for bf_idx, neuron_idx in enumerate(neuron_indices): # each neuron produces a base & test output
       for bco_idx, base_contrast in enumerate(contrasts): # loop over base contrast levels
         base_stims = np.zeros((num_phases, num_pixels))
         for bph_idx, base_phase in enumerate(phases):
-          base_stims[bph_idx] = grating(neuron_idx, base_contrast, base_orientations[bf_idx], base_phase)
+          base_stims[bph_idx] = grating(neuron_idx, base_contrast, base_orientations[bf_idx],
+            base_phase)
         base_activity = self.compute_activations(base_stims)[:, neuron_idx]
         base_max_responses[bf_idx, bco_idx] = np.max(np.abs(base_activity))
         base_mean_responses[bf_idx, bco_idx] = np.mean(np.abs(base_activity))
         # generate mask stimulus to overlay onto base stimulus
-        for co_idx, mask_contrast in enumerate(contrasts): # for each base contrast, loop over test contrasts
+        for co_idx, mask_contrast in enumerate(contrasts): # loop over test contrasts
             test_stims = np.zeros((num_orientations, num_phases, num_phases, num_pixels))
-            for or_idx, mask_orientation in enumerate(mask_orientations): # loop over test orientations
+            for or_idx, mask_orientation in enumerate(mask_orientations):
               mask_stims = np.zeros((num_phases, num_pixels))
               for ph_idx, mask_phase in enumerate(phases):
-                mask_stims[ph_idx, :] = grating(neuron_idx, mask_contrast, mask_orientation, mask_phase)
+                mask_stims[ph_idx, :] = grating(neuron_idx, mask_contrast, mask_orientation,
+                  mask_phase)
               test_stims[or_idx, ...] = base_stims[:, None, :] + mask_stims[None, :, :]
             test_stims = test_stims.reshape(num_orientations*num_phases*num_phases, num_pixels)
-            test_activity = self.compute_activations(test_stims)[:, neuron_idx].reshape(num_orientations, num_phases**2)
+            test_activity = self.compute_activations(test_stims)[:, neuron_idx]
+            test_activity = np.reshape(test_activity, (num_orientations, num_phases**2))
             # peak-to-trough amplitude is computed across all base & mask phases
             test_max_responses[bf_idx, bco_idx, co_idx, :] = np.max(np.abs(test_activity), axis=1)
             test_mean_responses[bf_idx, bco_idx, co_idx, :] = np.mean(np.abs(test_activity), axis=1)

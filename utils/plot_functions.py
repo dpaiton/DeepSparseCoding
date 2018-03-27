@@ -88,7 +88,7 @@ def plot_ellipse_summaries(bf_stats, num_bf=-1, lines=False, rand_bf=False):
   return fig
 
 def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
-                           num_connected_weights, lines=False, figsize=None):
+                           num_connected_weights=None, lines=False, figsize=None):
   """
   Plot 2nd layer (fully-connected) weights in terms of connection strengths to 1st layer weights
   Inputs:
@@ -107,6 +107,8 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
   filter_idx_list = np.arange(num_pooling_filters, dtype=np.int32)
   assert num_pooling_filters <= num_outputs, (
     "num_pooling_filters must be less than or equal to bf_stats['num_outputs']")
+  if num_connected_weights is None:
+    num_connected_weights = num_inputs
   cmap = plt.get_cmap('bwr')
   cNorm = matplotlib.colors.SymLogNorm(linthresh=0.03, linscale=0.01, vmin=-1.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
@@ -156,8 +158,8 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
   plt.show()
   return fig
 
-def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, num_connected_weights,
-                         spot_size=10, filter_indices=None, figsize=None):
+def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, num_connected_weights=None,
+  filter_indices=None, spot_size=10, figsize=None):
   """
   Plot 2nd layer (fully-connected) weights in terms of spatial/frequency centers of
     1st layer weights
@@ -168,7 +170,7 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, num_con
     num_pooling_filters [int] How many 2nd layer neurons to plot
     num_connected_weights [int] How many 1st layer neurons to plot
     spot_size [int] How big to make the points
-    filter_ids [list] indices to plot from pooling_filters. len should equal num_pooling_filters.
+    filter_indices [list] indices to plot from pooling_filters. len should equal num_pooling_filters
       set to None for default, which is a random selection
     figsize [tuple] Containing the (width, height) of the figure, in inches.
       Set to None for default figure size
@@ -176,11 +178,13 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, num_con
   num_filters_y = int(np.ceil(np.sqrt(num_pooling_filters)))
   num_filters_x = int(np.ceil(np.sqrt(num_pooling_filters)))
   tot_pooling_filters = pooling_filters.shape[1]
-  if filter_ids is None:
+  if filter_indices is None:
     filter_indices = np.random.choice(tot_pooling_filters, num_pooling_filters, replace=False)
   else:
     assert len(filter_indices) == num_pooling_filters, (
       "len(filter_indices) must equal num_pooling_filters")
+  if num_connected_weights is None:
+    num_connected_weights = bf_stats["num_inputs"]
   cmap = plt.get_cmap(bgr_colormap())# Could also use "nipy_spectral", "coolwarm", "bwr"
   cNorm = matplotlib.colors.SymLogNorm(linthresh=0.03, linscale=0.01, vmin=-1.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
@@ -206,16 +210,31 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, num_con
       scalarMap._A = []
       cbar = fig.colorbar(scalarMap, ax=axes[-1], ticks=[-1, 0, 1], aspect=10, location="bottom")
       cbar.ax.set_xticklabels(["-1", "0", "1"])
-      cbar.ax.xaxis.set_ticks_position('top')
-      cbar.ax.xaxis.set_label_position('top')
+      cbar.ax.xaxis.set_ticks_position("top")
+      cbar.ax.xaxis.set_label_position("top")
       for label in cbar.ax.xaxis.get_ticklabels():
         label.set_weight("bold")
         label.set_fontsize(10+figsize[0])
     if (filter_id < num_pooling_filters):
-      example_filter = pooling_filters[:, filter_id]
+      example_filter = pooling_filters[:, filter_indices[filter_id]]
+      top_indices = np.argsort(np.abs(example_filter))[::-1] #descending
+      selected_indices = top_indices[:num_connected_weights][::-1] #select top, plot weakest first
       filter_norm = np.max(np.abs(example_filter))
       connection_colors = [scalarMap.to_rgba(example_filter[bf_idx]/filter_norm)
         for bf_idx in range(bf_stats["num_outputs"])]
+      if num_connected_weights < top_indices.size:
+        black_indices = top_indices[num_connected_weights:][::-1]
+        xp = [x_p_cent[i] for i in black_indices]+[x_p_cent[i] for i in selected_indices]
+        yp = [y_p_cent[i] for i in black_indices]+[y_p_cent[i] for i in selected_indices]
+        xf = [x_f_cent[i] for i in black_indices]+[x_f_cent[i] for i in selected_indices]
+        yf = [y_f_cent[i] for i in black_indices]+[y_f_cent[i] for i in selected_indices]
+        c = [(0.1,0.1,0.1,1.0) for i in black_indices]+[connection_colors[i] for i in selected_indices]
+      else:
+        xp = [x_p_cent[i] for i in selected_indices]
+        yp = [y_p_cent[i] for i in selected_indices]
+        xf = [x_f_cent[i] for i in selected_indices]
+        yf = [y_f_cent[i] for i in selected_indices]
+        c = [connection_colors[i] for i in selected_indices]
       (y_id, x_id) = plot_id
       if x_id == 0:
         ax_l = 0
@@ -228,22 +247,21 @@ def plot_pooling_centers(bf_stats, pooling_filters, num_pooling_filters, num_con
         ax_b = prev_b
       ax_w = plt_w
       ax_h = plt_h
-      #spatial
       axes.append(clear_axis(fig.add_axes([ax_l, ax_b, ax_w, ax_h])))
       axes[-1].invert_yaxis()
-      axes[-1].scatter(x_p_cent, y_p_cent, c=connection_colors, s=spot_size, alpha=0.8)
+      axes[-1].scatter(xp, yp, c=c, s=spot_size, alpha=0.8)
       axes[-1].set_xlim(0, bf_stats["patch_edge_size"]-1)
       axes[-1].set_ylim(bf_stats["patch_edge_size"]-1, 0)
       axes[-1].set_aspect("equal")
-      axes[-1].set_facecolor("k")
+      axes[-1].set_facecolor("w")
       axes.append(clear_axis(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h])))
-      axes[-1].scatter(x_f_cent, y_f_cent, c=connection_colors, s=spot_size, alpha=0.8)
+      axes[-1].scatter(xf, yf, c=c, s=spot_size, alpha=0.8)
       axes[-1].set_xlim([-max_sf, max_sf])
       axes[-1].set_ylim([-max_sf, max_sf])
       axes[-1].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
       axes[-1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
       axes[-1].set_aspect("equal")
-      axes[-1].set_facecolor("k")
+      axes[-1].set_facecolor("w")
       #histogram - note: axis widths/heights are not setup for a third plot
       #axes.append(fig.add_axes([ax_l+ax_w+pair_w_gap, ax_b, ax_w, ax_h]))
       #axes[-1].set_yticklabels([])

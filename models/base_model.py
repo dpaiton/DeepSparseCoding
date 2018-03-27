@@ -167,6 +167,7 @@ class Model(object):
         self.logger = Logger()
 
   def js_dumpstring(self, obj):
+    """Dump json string with special NumpyEncoder"""
     return self.logger.js_dumpstring(obj)
 
   def log_params(self, params=None):

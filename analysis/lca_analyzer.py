@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import tensorflow as tf
 from analysis.base_analysis import Analyzer
@@ -15,12 +16,14 @@ class LCA_Analyzer(Analyzer):
 
   def load_params(self, params):
     super(LCA_Analyzer, self).load_params(params)
-    self.num_inference_images = params["num_inference_images"]
-    self.ft_padding = params["ft_padding"]
-    self.ot_neurons = params["neuron_indices"]
-    self.ot_contrasts = params["contrasts"]
-    self.ot_orientations = params["orientations"]
-    self.ot_phases = params["phases"]
+    if "num_inference_images" in params.keys():
+      self.num_inference_images = params["num_inference_images"]
+    else:
+      self.num_inference_images = 1
+    if "ft_padding" in params.keys():
+      self.ft_padding = params["ft_padding"]
+    else:
+      self.ft_padding = None
     if "num_gauss_fits" in params.keys():
       self.num_gauss_fits = params["num_gauss_fits"]
     else:
@@ -29,6 +32,22 @@ class LCA_Analyzer(Analyzer):
       self.gauss_thresh = params["gauss_thresh"]
     else:
       self.gauss_thresh = 0.2
+    if "neuron_indices" in params.keys():
+      self.ot_neurons = params["neuron_indices"]
+    else:
+      self.ot_neurons = None
+    if "contrasts" in params.keys():
+      self.ot_contrasts = params["contrasts"]
+    else:
+      self.ot_contrasts = None
+    if "orientations" in params.keys():
+      self.ot_orientations = params["orientations"]
+    else:
+      self.ot_orientations = None
+    if "phases" in params.keys():
+      self.ot_phases = params["phases"]
+    else:
+      self.ot_phases = None
 
   def run_analysis(self, images, save_info=""):
     super(LCA_Analyzer, self).run_analysis(images, save_info)
@@ -43,15 +62,18 @@ class LCA_Analyzer(Analyzer):
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
       "inference_stats":self.inference_stats, "var_names":self.var_names,
       "bf_stats":self.bf_stats})
-    self.ot_grating_responses = self.orientation_tuning(self.bf_stats, self.ot_contrasts,
-      self.ot_orientations, self.ot_phases, self.ot_neurons)
-    np.savez(self.analysis_out_dir+"ot_responses_"+save_info+".npz", data=self.ot_grating_responses)
-    ot_mean_activations = self.ot_grating_responses["mean_responses"]
-    base_orientations = [self.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
-      for bf_idx in range(len(self.ot_grating_responses["neuron_indices"]))]
-    self.co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
-      self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons)
-    np.savez(self.analysis_out_dir+"co_responses_"+save_info+".npz", data=self.co_grating_responses)
+    if (self.ot_contrasts is not None
+      and self.ot_orientations is not None
+      and self.ot_phases is not None):
+      self.ot_grating_responses = self.orientation_tuning(self.bf_stats, self.ot_contrasts,
+        self.ot_orientations, self.ot_phases, self.ot_neurons)
+      np.savez(self.analysis_out_dir+"ot_responses_"+save_info+".npz", data=self.ot_grating_responses)
+      ot_mean_activations = self.ot_grating_responses["mean_responses"]
+      base_orientations = [self.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
+        for bf_idx in range(len(self.ot_grating_responses["neuron_indices"]))]
+      self.co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
+        self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons)
+      np.savez(self.analysis_out_dir+"co_responses_"+save_info+".npz", data=self.co_grating_responses)
 
   def load_analysis(self, save_info=""):
     file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
@@ -64,8 +86,9 @@ class LCA_Analyzer(Analyzer):
     self.bf_stats = analysis["bf_stats"]
     tuning_file_locs = [self.analysis_out_dir+"ot_responses_"+save_info+".npz",
       self.analysis_out_dir+"co_responses_"+save_info+".npz"]
-    self.ot_grating_responses = np.load(tuning_file_locs[0])["data"].item()
-    self.co_grating_responses = np.load(tuning_file_locs[1])["data"].item()
+    if os.path.exists(tuning_file_locs[0]) and os.path.exists(tuning_file_locs[1]):
+      self.ot_grating_responses = np.load(tuning_file_locs[0])["data"].item()
+      self.co_grating_responses = np.load(tuning_file_locs[1])["data"].item()
 
   def compute_time_varied_response(self, images, steps_per_image=None):
     """
