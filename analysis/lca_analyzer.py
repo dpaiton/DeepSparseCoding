@@ -3,9 +3,9 @@ import tensorflow as tf
 from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
 
-class LCA(Analyzer):
+class LCA_Analyzer(Analyzer):
   def __init__(self, params):
-    Analyzer.__init__(self, params)
+    super(LCA_Analyzer, self).__init__(params)
     self.var_names = [
       "weights/phi:0",
       "inference/u:0",
@@ -14,14 +14,24 @@ class LCA(Analyzer):
       "performance_metrics/reconstruction_quality/recon_quality:0"]
 
   def load_params(self, params):
-    super(LCA, self).load_params(params)
+    super(LCA_Analyzer, self).load_params(params)
     self.num_inference_images = params["num_inference_images"]
     self.ft_padding = params["ft_padding"]
-    self.num_gauss_fits = 20
-    self.gauss_thresh = 0.2
+    self.ot_neurons = params["neuron_indices"]
+    self.ot_contrasts = params["contrasts"]
+    self.ot_orientations = params["orientations"]
+    self.ot_phases = params["phases"]
+    if "num_gauss_fits" in params.keys():
+      self.num_gauss_fits = params["num_gauss_fits"]
+    else:
+      self.num_gauss_fits = 20
+    if "gauss_thresh" in params.keys():
+      self.gauss_thresh = params["gauss_thresh"]
+    else:
+      self.gauss_thresh = 0.2
 
   def run_analysis(self, images, save_info=""):
-    self.run_stats = self.get_log_stats()
+    super(LCA_Analyzer, self).run_analysis(images, save_info)
     self.evals = self.evaluate_model(images, self.var_names)
     self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
     self.bf_stats = dp.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
@@ -33,6 +43,15 @@ class LCA(Analyzer):
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
       "inference_stats":self.inference_stats, "var_names":self.var_names,
       "bf_stats":self.bf_stats})
+    self.ot_grating_responses = self.orientation_tuning(self.bf_stats, self.ot_contrasts,
+      self.ot_orientations, self.ot_phases, self.ot_neurons)
+    np.savez(self.analysis_out_dir+"ot_responses_"+save_info+".npz", data=self.ot_grating_responses)
+    ot_mean_activations = self.ot_grating_responses["mean_responses"]
+    base_orientations = [self.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
+      for bf_idx in range(len(self.ot_grating_responses["neuron_indices"]))]
+    self.co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
+      self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons)
+    np.savez(self.analysis_out_dir+"co_responses_"+save_info+".npz", data=self.co_grating_responses)
 
   def load_analysis(self, save_info=""):
     file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
@@ -43,8 +62,45 @@ class LCA(Analyzer):
     self.atas = analysis["atas"]
     self.inference_stats = analysis["inference_stats"]
     self.bf_stats = analysis["bf_stats"]
+    tuning_file_locs = [self.analysis_out_dir+"ot_responses_"+save_info+".npz",
+      self.analysis_out_dir+"co_responses_"+save_info+".npz"]
+    self.ot_grating_responses = np.load(tuning_file_locs[0])["data"].item()
+    self.co_grating_responses = np.load(tuning_file_locs[1])["data"].item()
+
+  def compute_time_varied_response(self, images, steps_per_image=None):
+    """
+    Converge LCA inference with stimulus that has a matched time constant,
+    so that the frames change during inference.
+    """
+    if steps_per_image is None:
+      steps_per_image = self.model_params["num_steps"]
+    num_imgs, num_pixels = images.shape
+    num_neurons = self.model_params["num_neurons"]
+    u = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32)
+    a = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
+      self.model.load_weights(sess, self.cp_loc)
+      inference_idx = 1 # first step of inference is zeros
+      for img_idx in range(num_imgs):
+        feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
+        lca_b = sess.run(self.model.compute_excitatory_current(), feed_dict)
+        lca_g = sess.run(self.model.compute_inhibitory_connectivity(), feed_dict)
+        for step in range(inference_idx, int((img_idx+1)*steps_per_image)):
+          current_u = u[inference_idx-1, :][None, ...]
+          current_a = a[inference_idx-1, :][None, ...]
+          lca_u_and_ga = sess.run(self.model.step_inference(current_u, current_a, lca_b,
+            lca_g, step), feed_dict)
+          lca_a = sess.run(self.model.threshold_units(lca_u_and_ga[0]), feed_dict)
+          u[inference_idx, :] = lca_u_and_ga[0]
+          a[inference_idx, :] = lca_a
+          inference_idx += 1
+    return a
 
   def evaluate_inference(self, images, num_inference_steps=None):
+    """Evaluates inference on images, produces outputs over time"""
     if num_inference_steps is None:
       num_inference_steps = self.model_params["num_steps"]
     num_imgs, num_pixels = images.shape
@@ -59,7 +115,9 @@ class LCA(Analyzer):
       [np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
       for _ in range(len(loss_funcs))]))
     total_loss = np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
-    with tf.Session(graph=self.model.graph) as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
       self.model.load_weights(sess, self.cp_loc)
       for img_idx in range(num_imgs):

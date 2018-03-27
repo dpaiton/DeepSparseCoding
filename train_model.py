@@ -77,17 +77,17 @@ with tf.Session(config=config, graph=model.graph) as sess:
       ## Get feed dictionary for placeholders
       feed_dict = model.get_feed_dict(input_data, input_labels)
 
-      ## Normalize weights
-      if hasattr(model, "norm_weights"):
-        if params["norm_weights"]:
-          sess.run([model.norm_weights], feed_dict)
-
       batch_t0 = ti.time()
       ## Update weights
       for w_idx in range(len(model.get_schedule("weights"))):
         sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
       batch_t1 = ti.time()
       avg_time += (batch_t1-batch_t0)/model.batch_size
+
+      ## Normalize weights
+      if hasattr(model, "norm_weights"):
+        if params["norm_weights"]:
+          sess.run([model.norm_weights], feed_dict)
 
       ## Generate logs
       current_step = sess.run(model.global_step)
