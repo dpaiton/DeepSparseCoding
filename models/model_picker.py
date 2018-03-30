@@ -7,12 +7,18 @@ from models.lca_pca import LCA_PCA as lca_pca
 from models.lca_pca_fb import LCA_PCA_FB as lca_pca_fb
 from models.conv_lca import CONV_LCA as conv_lca
 from models.density_learner import density_learner as dl
+from models.gradient_sc import Gradient_SC as gsc
+from models.entropy_sc import Entropy_SC as esc
 
 def get_model(model_type):
   if model_type.lower() == "mlp":
     return mlp()
   if model_type.lower() == "ica":
     return ica()
+  if model_type.lower() == "gradient_sc":
+    return gsc()
+  if model_type.lower() == "entropy_sc":
+    return esc()
   if model_type.lower() == "ica_pca":
     return ica_pca()
   if model_type.lower() == "lca":
@@ -27,6 +33,6 @@ def get_model(model_type):
     return dl()
 
 def get_model_list():
-  model_list = ["mlp", "ica", "ica_pca", "lca", "lca_pca", "lca_pca_fb", "conv_lca",
-    "density_learner"]
+  model_list = ["mlp", "ica", "ica_pca", "lca", "lca_pca", "lca_pca_fb", "conv_lca", "entropy_sc",
+    "gradient_sc", "density_learner"]
   return model_list
