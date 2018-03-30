@@ -791,7 +791,7 @@ def plot_weights(weights, title="", save_filename=None):
   return fig
 
 def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap="Greys_r",
-                    save_filename=None):
+  save_filename=None):
   """
   Save figure for input data as a tiled image
   Inpus:
@@ -822,7 +822,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   else:
     assert False, ("input data must have ndim==3 or 4")
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))
-  axis_image = sub_axis.imshow(np.squeeze(data), cmap=cmap, interpolation="nearest")
+  axis_image = sub_axis.imshow(data, cmap=cmap, interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)
   if data.shape[-1] == 1:
     cbar = add_colorbar_to_im(axis_image)
