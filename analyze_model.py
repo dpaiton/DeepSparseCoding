@@ -6,20 +6,28 @@ import analysis.analysis_picker as ap
 
 analysis_params = {
   #"model_type": "ica",
-  "model_type": "lca",
-  #"model_name": "lca_vh_ft_1c_ht",
+  #"model_type": "lca",
+  #"model_type": "conv_lca",
+  #"model_type": "sparse_autoencoder",
+  "model_type": "gdn_autoencoder",
   #"model_name": "ica",
-  "model_name": "lca_pca_512_vh_ft_white",
-  "version": "0.0", #lca_vh
+  #"model_name": "lca_vh_ft_1c_ht",
+  #"model_name": "lca_pca_512_vh_ft_white",
+  #"model_name": "conv_lca_vh",
+  #"model_name": "lca_vh_ft_64d_96n",
+  "model_name": "gdn_autoencoder",
+  #"version": "5.0", #lca
+  #"version": "0.0", #lca, sparse_autoencoder
   #"version": "1.0", #ICA
+  "version": "1.0", #gdn_autoencoder
   "data_type": "vanHateren",
   "device": "/gpu:0",
   #"save_info": "full_imgs",
-  "save_info": "300k_imgs",
+  "save_info": "analysis",
   "num_patches": 1e4,
+  "ft_padding": 16, #Fourier analysis padding for weight fitting
   "num_inference_images": 5, #How many random images to average over for inference statistics
   "cov_num_images": int(3e5), #number of images used to compute cov matrix (LCA_PCA)
-  "ft_padding": 32, #Fourier analysis padding for weight fitting
   "neuron_indices": None,
   "contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
   "phases": np.linspace(-np.pi, np.pi, 12),
