@@ -5,7 +5,7 @@ from models.base_model import Model
 
 import os
 
-class density_learner(Model):
+class Density_Learner(Model):
   def __init__(self):
     super(density_learner, self).__init__()
     self.vector_inputs = True
