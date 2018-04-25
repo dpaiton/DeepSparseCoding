@@ -122,6 +122,22 @@ class Analyzer(object):
       activations = sess.run(self.model.a, feed_dict)
     return activations
 
+  def compute_atcs(self, activities, images):
+    """
+    Returns activity triggered covariances
+    Outputs:
+      atcs [np.ndarray] of shape (num_pixels, num_pixels, num_neurons)
+    Inputs:
+      activities [np.ndarray] of shape (num_imgs, num_neurons)
+      images [np.ndarray] of shape (num_imgs, num_img_pixels)
+    """
+    images -= np.mean(images)
+    atas = self.compute_atas(activities, images)
+    weighted_images = np.dot(activities.T, np.dot((images - atas), (images - atas).T))
+    img_cov = np.dot(images.T, images) / images.shape[1]
+    weighted_cov = np.dot(img_cov, activities)
+    return avg_atcs
+
   def compute_atas(self, activities, images):
     """
     Returns activity triggered averages

@@ -8,6 +8,13 @@ class GA_Analyzer(Analyzer):
     Analyzer.__init__(self, params)
     self.var_names = [
       "weights/w_enc:0",
+      "weights/w_dec:0",
+      "weights/b_enc:0",
+      "weights/b_dec:0",
+      "weights/gdn_w:0",
+      "weights/gdn_b:0",
+      "weights/igdn_w:0",
+      "weights/igdn_b:0",
       "inference/gdn_output:0"]
 
   def load_params(self, params):
