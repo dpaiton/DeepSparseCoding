@@ -3,9 +3,9 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_funcs as ef
-from models.base_model import Model
+from models.gradient_sc import Gradient_SC
 
-class Entropy_SC(Model):
+class Entropy_SC(Gradient_SC):
   def __init__(self):
     super(Entropy_SC, self).__init__()
     self.vector_inputs = True
@@ -16,21 +16,13 @@ class Entropy_SC(Model):
     Inputs:
      params: [dict] model parameters
     Modifiable Parameters:
-      batch_size   [int] Number of images in a training batch
-      num_neurons  [int] Number of SC neurons
-      num_a_steps    [int] Number of inference steps
+      mle_step_size: [float]
+      num_mle_steps: [int]
+      num_triangles: [int]
+      sigmoid_beta: [float]
     """
     super(Entropy_SC, self).load_params(params)
-    self.data_shape = params["data_shape"]
-    # Network Size
-    self.batch_size = int(params["batch_size"])
-    self.num_pixels = int(np.prod(self.data_shape))
-    self.num_neurons = int(params["num_neurons"])
-    self.phi_shape = [self.num_pixels, self.num_neurons]
-    self.x_shape = [None, self.num_pixels]
     # Hyper Parameters
-    self.num_a_steps = int(params["num_a_steps"])
-    self.a_step_size = float(params["a_step_size"])
     self.mle_step_size = float(params["mle_step_size"])
     self.num_mle_steps = int(params["num_mle_steps"])
     self.num_triangles = int(params["num_triangles"])
@@ -42,31 +34,6 @@ class Entropy_SC(Model):
       tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0)
     return a_out
 
-  def step_inference(self, a_in, step):
-    with tf.name_scope("update_a"+str(step)) as scope:
-      da = tf.gradients(self.compute_total_loss(a_in, self.get_loss_funcs()), a_in,
-        name="deda")[0]
-      a_out = tf.add(a_in, tf.multiply(self.a_step_size, da))
-    return a_out
-
-  def infer_coefficients(self):
-   a_list = [tf.matmul(self.x, self.phi, name="init_a")]
-   for step in range(self.num_a_steps-1):
-     a = self.step_inference(a_list[step], step)
-     a_list.append(a)
-   return a_list
-
-  def compute_recon(self, a_in):
-    return tf.matmul(a_in, tf.transpose(self.phi), name="reconstruction")
-
-  def compute_recon_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
-      reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
-      recon_loss = tf.reduce_mean(0.5 *
-        tf.reduce_sum(tf.square(tf.subtract(self.x, self.compute_recon(a_in))),
-        axis=reduc_dim), name="recon_loss")
-    return recon_loss
-
   def compute_entropy_loss(self, a_in):
     with tf.name_scope("unsupervised"):
       a_sig = self.sigmoid(a_in, self.sigmoid_beta)
@@ -75,22 +42,10 @@ class Entropy_SC(Model):
       entropy_loss = tf.multiply(self.entropy_mult, tf.reduce_sum(a_entropies), name="entropy_loss")
     return entropy_loss
 
-  def compute_total_loss(self, a_in, loss_funcs):
-    """
-    Returns sum of all loss functions defined in loss_funcs for given a_in
-    Inputs:
-      a_in [tf.Variable] containing the sparse coding activity values
-      loss_funcs [dict] containing keys that correspond to names of loss functions and values that
-        point to the functions themselves
-    """
-    total_loss = tf.add_n([func(a_in) for func in loss_funcs.values()], name="total_loss")
-    return total_loss
-
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "entropy_loss":self.compute_entropy_loss}
 
   def build_graph(self):
-    super(Entropy_SC, self).build_graph()
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
@@ -108,8 +63,8 @@ class Entropy_SC(Model):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("weights") as scope:
-          phi_init = tf.truncated_normal(self.phi_shape, mean=0.0,
-            stddev=0.5, dtype=tf.float32, name="phi_init")
+          phi_init = tf.nn.l2_normalize(tf.truncated_normal(self.phi_shape, mean=0.0,
+            stddev=0.5, dtype=tf.float32, name="phi_init"), epsilon=self.eps, name="row_l2_norm")
           self.phi = tf.get_variable(name="phi", dtype=tf.float32,
             initializer=phi_init, trainable=True)
 

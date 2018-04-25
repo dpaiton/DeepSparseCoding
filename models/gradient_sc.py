@@ -31,21 +31,20 @@ class Gradient_SC(Model):
     self.num_a_steps = int(params["num_a_steps"])
     self.a_step_size = float(params["a_step_size"])
 
-  def step_inference(self, a_in, step):
+  def step_inference(self, a_in, loss, step):
     with tf.name_scope("update_a"+str(step)) as scope:
-      da = tf.gradients(self.compute_total_loss(a_in, self.get_loss_funcs()), a_in,
-        name="deda")[0]
+      da = tf.gradients(loss, a_in, name="deda")[0]
       a_out = tf.add(a_in, tf.multiply(self.a_step_size, -da))
-      #tot_loss = self.compute_total_loss(a_in, self.get_loss_funcs())
-      #a_grad = self.a_optimizer.compute_gradients(tot_loss, [a_in])[0]
-      #a_out = tf.add(a_in, a_grad)
     return a_out
 
   def infer_coefficients(self):
-   a_list = [tf.zeros_like(tf.matmul(self.x, self.phi), name="init_a")]
+   a_list = [tf.matmul(self.x, self.phi, name="init_a")]
+   loss_list = [self.compute_total_loss(a_list[0], self.get_loss_funcs())]
    for step in range(self.num_a_steps-1):
-     a = self.step_inference(a_list[step], step)
+     a = self.step_inference(a_list[step], loss_list[step], step)
+     loss = self.compute_total_loss(a, self.get_loss_funcs())
      a_list.append(a)
+     loss_list.append(loss)
    return a_list
 
   def compute_recon(self, a_in):
@@ -105,7 +104,6 @@ class Gradient_SC(Model):
           self.norm_weights = tf.group(self.norm_phi, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
-         #self.a_optimizer = tf.train.GradientDescentOptimizer(self.a_step_size)
          a_list = self.infer_coefficients()
          self.a = tf.identity(a_list[-1], name="activity")
 
@@ -145,7 +143,7 @@ class Gradient_SC(Model):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
       grad_name_list.append(weight_grad_var[0][1].name.split('/')[1].split(':')[0])#2nd is np.split
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    current_step, recon_loss, entropy_loss, total_loss, a_vals = out_vals[0:5]
+    current_step, recon_loss, sparse_loss, total_loss, a_vals = out_vals[0:5]
     input_mean = np.mean(input_data)
     input_max = np.max(input_data)
     input_min = np.min(input_data)
@@ -157,7 +155,7 @@ class Gradient_SC(Model):
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
       "recon_loss":recon_loss,
-      "entropy_loss":entropy_loss,
+      "sparse_loss":sparse_loss,
       "total_loss":total_loss,
       "a_max":a_vals_max,
       "a_min":a_vals_min,
@@ -186,34 +184,35 @@ class Gradient_SC(Model):
     current_step = str(eval_out[0])
     weights, recon, activity = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=1, keepdims=False)
-    recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0]
-    fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    input_data = dp.reshape_data(input_data, flatten=False)[0]
-    #fig = pf.plot_data_tiled(input_data, normalize=False,
-    #  title="Images at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
-    #  +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(activity, title="Activity Histogram",
-      save_filename=(self.disp_dir+"act_hist_"+self.version+"-"
-      +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"phi_v"+self.version+"_"
       +current_step.zfill(5)+".png"))
-    #fig = pf.plot_bar(weights_norm, num_xticks=5,
-    #  title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-    #  save_filename=(self.disp_dir+"phi_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    fig = pf.plot_data_tiled(recon, normalize=False,
-      title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      grad = weight_grad_var[0][0].eval(feed_dict)
-      shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      grad = dp.reshape_data(grad.T, flatten=False)[0]
-      fig = pf.plot_data_tiled(grad, normalize=True,
-        title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))
+    if eval_out[0]*10 % self.cp_int == 0:
+      fig = pf.plot_activity_hist(input_data, title="Image Histogram",
+        save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
+        +current_step.zfill(5)+".png"))
+      input_data = dp.reshape_data(input_data, flatten=False)[0]
+      fig = pf.plot_data_tiled(input_data, normalize=False,
+        title="Images at step "+current_step, vmin=None, vmax=None,
+        save_filename=(self.disp_dir+"images_"+self.version+"-"
+        +current_step.zfill(5)+".png"))
+      fig = pf.plot_activity_hist(activity, title="Activity Histogram",
+        save_filename=(self.disp_dir+"act_hist_v"+self.version+"-"
+        +current_step.zfill(5)+".png"))
+      fig = pf.plot_bar(weights_norm, num_xticks=5,
+        title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+        save_filename=(self.disp_dir+"phi_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      recon = dp.reshape_data(recon, flatten=False)[0]
+      fig = pf.plot_data_tiled(recon, normalize=False,
+        title="Recons at step "+current_step, vmin=None, vmax=None,
+        save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+        grad = weight_grad_var[0][0].eval(feed_dict)
+        shape = grad.shape
+        name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+        grad = dp.reshape_data(grad.T, flatten=False)[0]
+        fig = pf.plot_data_tiled(grad, normalize=True,
+          title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+          save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))
