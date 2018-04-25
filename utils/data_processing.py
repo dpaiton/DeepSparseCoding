@@ -673,8 +673,8 @@ def normalize_data_with_max(data):
     norm_data: [np.ndarray] normalized data
     data_max: [float] max that was divided out
   """
-  if np.max(np.abs(data)) > 0:
-    data_max = np.max(np.abs(data))
+  data_max = np.max(np.abs(data))
+  if data_max > 0:
     norm_data = data / data_max
   else:
     norm_data = data

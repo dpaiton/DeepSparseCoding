@@ -5,6 +5,9 @@ import json as js
 
 class Logger(object):
   def __init__(self, filename=None):
+    """
+    TODO: Fix loading -> need to rm dir to rerun model. Needs to be rw (overwrite)
+    """
     if filename is None:
       self.log_to_file = False
     else:
@@ -42,7 +45,7 @@ class Logger(object):
     else:
       print(out_str)
 
-  def load_file(self):
+  def load_file(self, filename=None):
     """
     Load log file into memory
     Outputs:
@@ -52,7 +55,10 @@ class Logger(object):
       Downside is you keep the text in memory even if you're not using it...
       Current setup allows for the text to be dropped once e.g. params are read
     """
-    self.file_obj.seek(0)
+    if filename is None:
+      self.file_obj.seek(0)
+    else:
+      self.file_obj = open(filename, "r", buffering=1)
     text = self.file_obj.read()
     return text
 
@@ -83,6 +89,7 @@ class Logger(object):
       params: converted python object
     Inputs:
       text: [str] containing text to parse, can be obtained by calling load_file()
+    TODO: should always return a list, not only when there is more than one params spec
     """
     tokens = ["<params>", "</params>"]
     return self.read_js(tokens, text)

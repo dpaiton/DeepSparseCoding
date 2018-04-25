@@ -6,6 +6,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits import axes_grid1
+import re
 import utils.data_processing as dp
 
 def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=False,
@@ -589,7 +590,8 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
       ax = fig.add_subplot(gs[plot_id])#, sharey=ax00)
     if bf_idx < num_bfs:
       for co_idx, contrast in enumerate(contrasts):
-        contrast = contrasts[co_idx]
+        contrast = 1.0
+        co_idx = -1
         activity = activations[bf_indices[bf_idx], co_idx, :]
         color_val = scalarMap.to_rgba(contrast)
         ax.plot(orientations, activity, linewidth=1, color=color_val)
@@ -740,6 +742,7 @@ def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   (fig, ax) = plt.subplots(1)
   vals, bins, patches = ax.hist(data, bins=num_bins, histtype="barstacked",
     stacked=True)
+  ax.set_xlim([np.min(data), np.max(data)])
   ax.set_xlabel('Value')
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
@@ -862,17 +865,20 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
     assert len(labels) == len(keys), (
       "The number of labels must match the number of keys")
   num_keys = len(keys)
-  fig, sub_ax = plt.subplots(num_keys)
+  gs = gridspec.GridSpec(num_keys, 1, hspace=0.5)
+  fig = plt.figure()
   axis_image = [None]*num_keys
   for key_idx, key in enumerate(keys):
-    axis_image[key_idx] = sub_ax[key_idx].plot(data["batch_step"], data[key])
+    ax = fig.add_subplot(gs[key_idx])
+    axis_image[key_idx] = ax.plot(data["batch_step"], data[key])
     if key_idx < len(keys)-1:
-      sub_ax[key_idx].get_xaxis().set_ticklabels([])
-    sub_ax[key_idx].locator_params(axis="y", nbins=5)
-    sub_ax[key_idx].set_ylabel(labels[key_idx])
+      ax.get_xaxis().set_ticklabels([])
+    ax.locator_params(axis="y", nbins=5)
+    ax.set_ylabel("\n".join(re.split("_", labels[key_idx])))
+    ax.set_yticks([0, np.max(data[key])])
     ylabel_xpos = -0.15
-    sub_ax[key_idx].yaxis.set_label_coords(ylabel_xpos, 0.5)
-  sub_ax[-1].set_xlabel("Batch Number")
+    ax.yaxis.set_label_coords(ylabel_xpos, 0.5)
+  ax.set_xlabel("Batch Number")
   fig.suptitle("Stats per Batch", y=1.0, x=0.5)
   if save_filename is not None:
       fig.savefig(save_filename, transparent=True)
