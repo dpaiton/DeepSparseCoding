@@ -11,7 +11,9 @@ import time as ti
 t0 = ti.time()
 
 ## Specify model type and data type
-model_type = "entropy_sc"
+#model_type = "entropy_sc"
+model_type = "gdn_autoencoder"
+
 data_type = "vanhateren"
 
 ## Import params
@@ -66,10 +68,12 @@ with tf.Session(config=config, graph=model.graph) as sess:
       feed_dict = model.get_feed_dict(input_data, input_labels)
 
       batch_t0 = ti.time()
+
       ## Update model weights
       sess_run_list = []
       for w_idx in range(len(model.get_schedule("weights"))):
         sess_run_list.append(model.apply_grads[sch_idx][w_idx])
+
       ## Update MLE estimate
       sess_run_list.append(model.mle_update)
       sess.run(sess_run_list, feed_dict)
@@ -77,8 +81,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
       avg_time += (batch_t1-batch_t0)/model.batch_size
 
       ## Normalize weights
-      if hasattr(model, "norm_weights"):
-        if params["norm_weights"]:
+      if hasattr(params, "norm_weights") and params["norm_weights"]:
           sess.run([model.norm_weights], feed_dict)
 
       ## Generate logs

@@ -18,6 +18,8 @@ model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "lca_pca_fb"
 #model_type = "conv_lca"
+#model_type = "gradient_sc"
+#model_type = "sparse_autoencoder"
 #model_type = "density_learner"
 
 #data_type = "cifar10"

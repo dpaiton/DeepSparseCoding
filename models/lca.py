@@ -63,9 +63,9 @@ class LCA(Model):
         a_out = tf.where(tf.greater(u_in, self.sparse_mult),
           tf.subtract(u_in, self.sparse_mult), self.u_zeros)
       else:
-        a_out = tf.where(tf.greater(u_in, self.sparse_mult),
+        a_out = tf.where(tf.greater_equal(u_in, self.sparse_mult),
           tf.subtract(u_in, self.sparse_mult),
-          tf.where(tf.less(u_in, -self.sparse_mult),
+          tf.where(tf.less_equal(u_in, -self.sparse_mult),
           tf.add(u_in, self.sparse_mult),
           self.u_zeros))
     elif self.thresh_type == "hard":
