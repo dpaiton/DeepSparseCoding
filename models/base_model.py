@@ -162,7 +162,7 @@ class Model(object):
     if self.log_to_file:
       if log_filename is None:
         log_filename = self.log_dir+self.model_name+"_v"+self.version+".log"
-        self.logger = Logger(log_filename)
+        self.logger = Logger(log_filename, overwrite=True)
     else:
         self.logger = Logger()
 

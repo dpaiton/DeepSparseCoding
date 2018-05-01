@@ -11,7 +11,7 @@ class Analyzer(object):
     # Load model parameters and schedule
     self.model_log_file = (params["model_dir"]+"/logfiles/"+params["model_name"]
       +"_v"+params["version"]+".log")
-    self.model_logger = Logger(self.model_log_file)
+    self.model_logger = Logger(self.model_log_file, overwrite=False)
     self.model_log_text = self.model_logger.load_file()
     self.model_params = self.model_logger.read_params(self.model_log_text)
     self.model_params["rand_state"] = np.random.RandomState(self.model_params["rand_seed"])
@@ -20,7 +20,7 @@ class Analyzer(object):
     self.analysis_out_dir = params["model_dir"]+"/analysis/"+params["version"]+"/"
     self.make_dirs() # If analysis log does not exist then we want to make the folder first
     self.analysis_log_file = self.analysis_out_dir+"analysis.log"
-    self.analysis_logger = Logger(self.analysis_log_file)
+    self.analysis_logger = Logger(self.analysis_log_file, overwrite=True)
     if os.stat(self.analysis_log_file).st_size != 0: # File has contents
       analysis_text = self.analysis_logger.load_file()
       prev_analysis_params = self.analysis_logger.read_params(analysis_text)
