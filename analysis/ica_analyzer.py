@@ -7,8 +7,9 @@ class ICA_Analyzer(Analyzer):
   def __init__(self, params):
     Analyzer.__init__(self, params)
     self.var_names = [
-      "weights/a_inverse:0",
-      "inference/coefficients:0"]
+      "weights/w_synth:0",
+      "weights/w_analysis:0",
+      "inference/activity:0"]
 
   def load_params(self, params):
     super(ICA_Analyzer, self).load_params(params)
@@ -29,8 +30,8 @@ class ICA_Analyzer(Analyzer):
   def run_analysis(self, images, save_info=""):
     super(ICA_Analyzer, self).run_analysis(images, save_info)
     self.evals = self.evaluate_model(images, self.var_names)
-    self.atas = self.compute_atas(self.evals["inference/coefficients:0"], images)
-    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/a_inverse:0"],
+    self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
+    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/w_analysis:0"],
       padding=self.ft_padding, num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
@@ -65,5 +66,5 @@ class ICA_Analyzer(Analyzer):
       feed_dict = self.model.get_feed_dict(images)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_weights(sess, self.cp_loc)
-      activations = sess.run(self.model.u, feed_dict) 
+      activations = sess.run(self.model.a, feed_dict)
     return activations

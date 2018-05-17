@@ -5,7 +5,7 @@ import utils.data_processing as dp
 
 class GA_Analyzer(Analyzer):
   def __init__(self, params):
-    Analyzer.__init__(self, params)
+    super(GA_Analyzer, self).__init__(params)
     self.var_names = [
       "weights/w_enc:0",
       "weights/w_dec:0",
