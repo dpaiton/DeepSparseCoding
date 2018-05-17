@@ -743,7 +743,46 @@ def normalize_data_with_var(data):
     data /= data_var
   return data, data_var
 
-def whiten_data(data, method="FT"):
+def generate_lpf_ramp_filters(num_data_rows, cutoff=0.7):
+  """
+  Generate a low pass filter and ramp filter for square images with edge length = num_data_rows
+  Inputs:
+    num_data_rows: [int] number of rows on the edge of the square image patch
+    cutoff: [float] between 0 and 1, the desired low-pass cutoff frequency (multiplied by nyquist)
+  Outputs:
+    rho [np.ndarray] ramp (amplitude rises linearly with frequency) filter
+    lpf [np.ndarray] low-pass filter (circularly symmetric, with cutoff specified by input)
+  """
+  nyq = np.int32(np.floor(num_data_rows/2))
+  freqs = np.linspace(-nyq, nyq-1, num=num_data_rows)
+  fspace = np.meshgrid(freqs, freqs)
+  rho = np.sqrt(np.square(fspace[0]) + np.square(fspace[1]))
+  lpf = np.exp(-0.5 * np.square(rho / (cutoff * nyq)))
+  return rho, lpf
+
+def lpf_data(data, cutoff=0.7):
+  """
+  Low pass filter data
+  Inputs:
+    data: [np.ndarray] with shape [num_examples, height, width, chan]
+    cutoff: [float] between 0 and 1, the desired low-pass cutoff frequency (multiplied by nyquist)
+  Outputs:
+    lpf_data [np.ndarray]
+    data_mean [np.ndarray]
+    lpf_filter [np.ndarray] information necessary for undoing the filter
+  """
+  flatten = False
+  (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+  data, data_mean = center_data(data, use_dataset_mean=False)
+  data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
+  lpf = generate_lpf_ramp_filters(num_rows, cutoff)[1]
+  data = np.multiply(data, lpf[None, ..., None])
+  data_lpf = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
+  if data_lpf.shape != orig_shape:
+    data_lpf = reshape_data(data_lpf, not flatten, out_shape=orig_shape[1:])[0]
+  return data_lpf, data_mean, lpf
+
+def whiten_data(data, method="FT", lpf_cutoff=0.7):
   """
   Whiten data
   Inputs:
@@ -754,23 +793,20 @@ def whiten_data(data, method="FT"):
     data_mean [np.ndarray]
     w_filter [list or np.ndarray] information necessary for unwhitenening
       if method=="FT", then w_filter is np.ndarray representing fourier filter
-      if method=="PCA" or "ZCA", then w_filter is a list containing [u, diag(s)] of SVD of covariance matrix
+      if method=="PCA" or "ZCA", then w_filter is a list containing [u, diag(s)]
+        of SVD of covariance matrix
   """
   if method.upper() == "FT":
-    flatten=False
+    flatten = False
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
-    nyq = np.int32(np.floor(num_rows/2))
-    freqs = np.linspace(-nyq, nyq-1, num=num_rows)
-    fspace = np.meshgrid(freqs, freqs)
-    rho = np.sqrt(np.square(fspace[0]) + np.square(fspace[1]))
-    lpf = np.exp(-0.5 * np.square(rho / (0.7 * nyq)))
-    w_filter = np.multiply(rho, lpf) # filter is in the frequency domain
-    data = np.multiply(data, w_filter[None, ..., None])
+    w_filter, lpf = generate_lpf_ramp_filters(num_rows, cutoff=lpf_cutoff)
+    full_filter = np.multiply(w_filter, lpf) # filters are in the frequency domain
+    data = np.multiply(data, full_filter[None, ..., None])
     data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
   elif method.upper() == "PCA":
-    flatten=True
+    flatten = True
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
@@ -779,7 +815,7 @@ def whiten_data(data, method="FT"):
     w_filter = [u, np.diag(np.sqrt(s+1e-8))] # filter components
     data_wht = np.dot(data, np.dot(u, isqrtS)) 
   elif method.upper() == "ZCA":
-    flatten=True
+    flatten = True
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
