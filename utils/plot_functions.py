@@ -774,6 +774,9 @@ def plot_phase_avg_power_spec(data, title="", save_filename=None):
   return fig
 
 def plot_weights(weights, title="", save_filename=None):
+  """
+    weights: [np.ndarray] of shape [num_outputs, num_input_x, num_input_y]
+  """
   num_plots = weights.shape[0]
   num_plots_y = int(np.ceil(np.sqrt(num_plots))+1)
   num_plots_x = int(np.floor(np.sqrt(num_plots)))
@@ -785,7 +788,7 @@ def plot_weights(weights, title="", save_filename=None):
       filter_total += 1
     clear_axis(sub_ax[plot_id])
     sub_ax[plot_id].set_aspect("equal")
-  fig.suptitle(title, y=1.0, x=0.5, fontsize=20)
+  fig.suptitle(title, y=0.9, x=0.5, fontsize=20)
   if save_filename is not None:
       fig.savefig(save_filename)
       plt.close(fig)
@@ -857,6 +860,7 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
   else:
     assert all([key in data.keys() for key in keys]), (
       "All input keys must exist as keys in the data dictionary")
+  assert len(keys) > 0, "Keys must be None or have length > 0."
   if "batch_step" in keys:
     keys.remove("batch_step")
   if labels is None:
@@ -1039,13 +1043,14 @@ def bgr_colormap():
       }
   return LinearSegmentedColormap("bgr", cdict)
 
-def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, **kwargs):
+def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, **kwargs):
   """
   Add a vertical color bar to an image plot.
   Inputs:
     im: [AxisImage] object returned from matplotlib.plt.imshow()
     aspect: [int] aspect ratio of the colorbar
     pad_fraction: [float] how much space to place between colorbar & plot
+    labelsize: [float] font size of the colorbar labels
     **kwargs: [dict] other keyword arguments that would be passed to im.axes.figure.colorbar()
   """
   divider = axes_grid1.make_axes_locatable(im.axes)
@@ -1055,7 +1060,7 @@ def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, **kwargs):
   cax = divider.append_axes("right", size=width, pad=pad)
   plt.sca(current_ax)
   cbar = im.axes.figure.colorbar(im, cax=cax, **kwargs)
-  cbar.ax.tick_params(labelsize=16)
+  cbar.ax.tick_params(labelsize=labelsize)
   return cbar
 
 def clear_axis(ax, spines="none"):
