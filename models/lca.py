@@ -231,7 +231,7 @@ class LCA(Model):
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     weights, recon, activity = eval_out[1:]
-    weights_norm = np.linalg.norm(weights, axis=1, keepdims=False)
+    weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
@@ -247,7 +247,7 @@ class LCA(Model):
       +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"_"
+      save_filename=(self.disp_dir+"phi_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(weights_norm, num_xticks=5,
       title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",

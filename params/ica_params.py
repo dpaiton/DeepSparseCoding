@@ -1,21 +1,26 @@
 import os
 params = {
   "model_type": "ica",
-  "model_name": "ica_nowhite",
+  "model_name": "ica_test",
   "version": "0.0",
   "num_images": 100,
   "vectorize_data": True,
   "norm_data": False,
-  "whiten_data": False,
+  "center_data": False,
+  "standardize_data": False,
+  "contrast_normalize": False,
+  "lpf_data": True, # only for ZCA
+  "lpf_cutoff": 0.7,
+  "whiten_data": True,
+  "whiten_method": "ZCA",
   "extract_patches": True,
   "num_patches": 1e6,
   "patch_edge_size": 16,
   "overlapping_patches": True,
   "randomize_patches": True,
-  "patch_variance_threshold": 1e-6,
-  "batch_size": 100,
-  #"prior": "cauchy",
-  "prior": "laplacian",
+  "patch_variance_threshold": 0,
+  "batch_size": 50,
+  "prior": "laplacian", #"cauchy",
   "optimizer": "annealed_sgd",
   "cp_int": 10000,
   "max_cp_to_keep": 1,
@@ -35,9 +40,10 @@ params = {
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
-  {"weights": ["a"],
-  "weight_lr": [0.01],
-  "decay_steps": [80000],
-  "decay_rate": [0.7],
+  {"weights": ["w_synth"], # A, VS265
+  #{"weights": ["w_analysis"], # W=A^-1, Bell & Sejnowski
+  "weight_lr": [0.001],
+  "decay_steps": [3e5],
+  "decay_rate": [0.8],
   "staircase": [True],
-  "num_batches": 100000}]
+  "num_batches": 5e5}]

@@ -176,11 +176,11 @@ class Sparse_Autoencoder(Model):
     w_dec = dp.reshape_data(w_dec, flatten=False)[0]
     fig = pf.plot_data_tiled(w_enc, normalize=False,
       title="Encoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_enc_v"+self.version+"_"
+      save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(w_dec, normalize=False,
       title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_dec_v"+self.version+"_"
+      save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram",
       save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"
@@ -211,4 +211,4 @@ class Sparse_Autoencoder(Model):
         grad = dp.reshape_data(grad.T, flatten=False)[0]
         fig = pf.plot_data_tiled(grad, normalize=True,
           title="Gradient for"+name+" at step "+current_step, vmin=None, vmax=None,
-          save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"_"+current_step.zfill(5)+".png"))
+          save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"-"+current_step.zfill(5)+".png"))

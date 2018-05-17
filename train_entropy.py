@@ -86,13 +86,16 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Generate logs
       current_step = sess.run(model.global_step)
+      if (current_step <= 1 and model.gen_plot_int > 0):
+        model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
       if (current_step % model.log_int == 0
         and model.log_int > 0):
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
 
       ## Plot weights & gradients
-      if (current_step % model.gen_plot_int == 0
-        and model.gen_plot_int > 0):
+      if (current_step <= 1 and model.gen_plot_int > 0):
+        model.generate_plots(input_data=input_data, input_labels=input_labels)
+      if (current_step % model.gen_plot_int == 0 and model.gen_plot_int > 0):
         model.generate_plots(input_data=input_data, input_labels=input_labels)
 
       ## Checkpoint

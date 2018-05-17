@@ -14,12 +14,12 @@ t0 = ti.time()
 #model_type = "mlp"
 #model_type = "ica"
 #model_type = "ica_pca"
-model_type = "lca"
+#model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "lca_pca_fb"
 #model_type = "conv_lca"
 #model_type = "gradient_sc"
-#model_type = "sparse_autoencoder"
+model_type = "sparse_autoencoder"
 #model_type = "density_learner"
 
 #data_type = "cifar10"
@@ -43,6 +43,9 @@ data = model.preprocess_dataset(data, params)
 data = model.reshape_dataset(data, params)
 params["data_shape"] = list(data["train"].shape[1:])
 model.setup(params, schedule)
+if params["standardize_data"]:
+  model.log_info("Standardization was performed, mean was "+str(model.data_mean)
+    +" and std was "+str(model.data_std))
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
@@ -71,7 +74,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
   for sch_idx, sch in enumerate(schedule):
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
-    for b_step in range(model.get_schedule("num_batches")):
+    for b_step in np.arange(model.get_schedule("num_batches")):
       data_batch = data["train"].next_batch(model.batch_size)
       input_data = data_batch[0]
       input_labels = data_batch[1]
@@ -93,6 +96,8 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Generate logs
       current_step = sess.run(model.global_step)
+      if (current_step <= 1 and model.gen_plot_int > 0):
+        model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
       if (current_step % model.log_int == 0
         and model.log_int > 0):
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
