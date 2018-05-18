@@ -972,3 +972,12 @@ def phase_avg_pow_spec(data):
       if not np.isnan(np.mean(power_spec[data_idx][rho == rad])):
         phase_avg[data_idx, rad] = np.mean(power_spec[data_idx][rho == rad])
   return phase_avg
+
+def compute_mse(a, b):
+  """
+  Computes the mean squared error between a and b
+  Inputs:
+    a [np.ndarray] of shape: (batch, datapoint_size)
+    b [np.ndarray] of shape: (batch, datapoint_size)
+  """
+  return np.mean(np.sum(np.square(a-b), axis=1))
