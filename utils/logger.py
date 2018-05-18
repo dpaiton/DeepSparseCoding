@@ -126,7 +126,7 @@ class Logger(object):
     return stats
 
   def __del__(self):
-    if self.log_to_file:
+    if self.log_to_file and hasattr(self, file_obj):
       self.file_obj.close()
 
 class NumpyEncoder(js.JSONEncoder):
