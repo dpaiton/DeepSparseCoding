@@ -74,6 +74,10 @@ class ICA(Model):
           else: #It must be laplacian or cauchy
             self.z = (2*self.a) / (1 + tf.pow(self.a, 2.0))
 
+        with tf.name_scope("output") as scope:
+          with tf.name_scope("image_estimate"):
+            self.x_ = tf.matmul(self.a, self.w_synth, name="reconstruction")
+
     self.graph_built = True
 
   def compute_weight_gradients(self, optimizer, weight_op=None):

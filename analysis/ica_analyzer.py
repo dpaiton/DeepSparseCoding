@@ -13,11 +13,16 @@ class ICA_Analyzer(Analyzer):
 
   def load_params(self, params):
     super(ICA_Analyzer, self).load_params(params)
-    self.ft_padding = params["ft_padding"]
-    self.ot_neurons = params["neuron_indices"]
-    self.ot_contrasts = params["contrasts"]
-    self.ot_orientations = params["orientations"]
-    self.ot_phases = params["phases"]
+    if "ft_padding" in params.keys():
+      self.ft_padding = params["ft_padding"]
+    if "neuron_indices" in params.keys():
+      self.ot_neurons = params["neuron_indices"]
+    if "contrasts" in params.keys():
+      self.ot_contrasts = params["contrasts"]
+    if "orientations" in params.keys():
+      self.ot_orientations = params["orientations"]
+    if "phases" in params.keys():
+      self.ot_phases = params["phases"]
     if "num_gauss_fits" in params.keys():
       self.num_gauss_fits = params["num_gauss_fits"]
     else:

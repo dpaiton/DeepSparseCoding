@@ -1,7 +1,7 @@
 import os
 params = {
   "model_type": "ica",
-  "model_name": "ica_test",
+  "model_name": "ica",
   "version": "0.0",
   "num_images": 100,
   "vectorize_data": True,
@@ -9,10 +9,10 @@ params = {
   "center_data": False,
   "standardize_data": False,
   "contrast_normalize": False,
-  "lpf_data": True, # only for ZCA
+  "lpf_data": False, # only for ZCA/PCA
   "lpf_cutoff": 0.7,
   "whiten_data": True,
-  "whiten_method": "ZCA",
+  "whiten_method": "FT",
   "extract_patches": True,
   "num_patches": 1e6,
   "patch_edge_size": 16,

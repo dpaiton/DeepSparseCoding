@@ -15,6 +15,7 @@ class Analyzer(object):
     self.model_log_text = self.model_logger.load_file()
     self.model_params = self.model_logger.read_params(self.model_log_text)
     self.model_params["rand_state"] = np.random.RandomState(self.model_params["rand_seed"])
+    self.rand_state = self.model_params["rand_state"]
     self.model_schedule = self.model_logger.read_schedule(self.model_log_text)
     # Load or create analysis params log
     self.analysis_out_dir = params["model_dir"]+"/analysis/"+params["version"]+"/"
@@ -185,6 +186,7 @@ class Analyzer(object):
     # Output arrays
     max_responses = np.zeros((num_neurons, num_contrasts, num_orientations))
     mean_responses = np.zeros((num_neurons, num_contrasts, num_orientations))
+    rect_responses = np.zeros((num_neurons, 2, num_contrasts, num_orientations))
     best_phases = np.zeros((num_neurons, num_contrasts, num_orientations))
     raw_phase_stims = np.stack([grating(neuron_idx, contrast, orientation, phase)
       for neuron_idx in neuron_indices
@@ -208,13 +210,16 @@ class Analyzer(object):
       activity_slice = activations[bf_idx, :, :, :, neuron_idx]
       max_responses[bf_idx, ...] = np.max(np.abs(activity_slice), axis=-1)
       mean_responses[bf_idx, ...] = np.mean(np.abs(activity_slice), axis=-1)
+      rect_responses[bf_idx, 0, ...] = np.mean(np.maximum(0, activity_slice), axis=-1)
+      rect_responses[bf_idx, 1, ...] = np.mean(np.maximum(0, -activity_slice), axis=-1)
       for co_idx, contrast in enumerate(contrasts):
         for or_idx, orientation in enumerate(orientations):
           phase_activity = activations[bf_idx, co_idx, or_idx, :, neuron_idx]
           best_phases[bf_idx, co_idx, or_idx] = phases[np.argmax(phase_activity)]
     return {"contrasts":contrasts, "orientations":orientations, "phases":phases,
       "neuron_indices":neuron_indices, "max_responses":max_responses,
-      "mean_responses":mean_responses, "best_phases":best_phases}
+      "mean_responses":mean_responses, "rectified_responses":rect_responses,
+      "best_phases":best_phases}
 
   def cross_orientation_suppression(self, bf_stats, contrasts=[0.5], phases=[np.pi],
     base_orientations=[np.pi], mask_orientations=[np.pi/2], neuron_indices=None, diameter=-1,
@@ -253,6 +258,8 @@ class Analyzer(object):
     test_max_responses = np.zeros((num_neurons, num_contrasts, num_contrasts, num_orientations))
     base_mean_responses = np.zeros((num_neurons, num_contrasts))
     test_mean_responses = np.zeros((num_neurons, num_contrasts, num_contrasts, num_orientations))
+    base_rect_responses = np.zeros((num_neurons, 2, num_contrasts))
+    test_rect_responses = np.zeros((num_neurons, 2, num_contrasts, num_contrasts, num_orientations))
     for bf_idx, neuron_idx in enumerate(neuron_indices): # each neuron produces a base & test output
       for bco_idx, base_contrast in enumerate(contrasts): # loop over base contrast levels
         base_stims = np.zeros((num_phases, num_pixels))
@@ -273,6 +280,8 @@ class Analyzer(object):
         base_activity = self.compute_activations(base_stims)[:, neuron_idx]
         base_max_responses[bf_idx, bco_idx] = np.max(np.abs(base_activity))
         base_mean_responses[bf_idx, bco_idx] = np.mean(np.abs(base_activity))
+        base_rect_responses[bf_idx, 0, bco_idx] = np.mean(np.maximum(0, base_activity))
+        base_rect_responses[bf_idx, 1, bco_idx] = np.mean(np.maximum(0, -base_activity))
         # generate mask stimulus to overlay onto base stimulus
         for co_idx, mask_contrast in enumerate(contrasts): # loop over test contrasts
             test_stims = np.zeros((num_orientations, num_phases, num_phases, num_pixels))
@@ -299,6 +308,10 @@ class Analyzer(object):
             # peak-to-trough amplitude is computed across all base & mask phases
             test_max_responses[bf_idx, bco_idx, co_idx, :] = np.max(np.abs(test_activity), axis=1)
             test_mean_responses[bf_idx, bco_idx, co_idx, :] = np.mean(np.abs(test_activity), axis=1)
+            test_rect_responses[bf_idx, 0, bco_idx, co_idx, :] = np.mean(np.maximum(0,
+              test_activity), axis=1)
+            test_rect_responses[bf_idx, 1, bco_idx, co_idx, :] = np.mean(np.maximum(0,
+              -test_activity), axis=1)
     return {"contrasts":contrasts, "phases":phases, "base_orientations":base_orientations,
       "neuron_indices":neuron_indices, "mask_orientations":mask_orientations,
       "base_max_responses":base_max_responses, "base_mean_responses":base_mean_responses,
@@ -364,13 +377,13 @@ class Analyzer(object):
         phases[best_ph_idx], target_response)]
       left_orientations = orientations[:best_or_idx][::-1][:int(np.floor(num_alt_orientations/2))]
       right_orientations = orientations[best_or_idx:][:int(np.ceil(num_alt_orientations/2))]
-      alt_orientations = left_orientations+right_orientations
+      alt_orientations = list(left_orientations)+list(right_orientations)
       for orientation in alt_orientations:
         response = 0.0
         contrast = base_contrast
         loop_exit = False
+        prev_contrast = base_contrast
         while not loop_exit:
-          contrast += contrast_resolution
           if contrast <= 1.0:
             raw_test_stims = np.stack([grating(neuron_idx, contrast, orientation, phase)
               for phase in phases], axis=0)
@@ -385,16 +398,23 @@ class Analyzer(object):
               tot_num_bfs)[:, neuron_idx]
             best_phase = phases[np.argmax(bf_activations)]
             response = np.mean(np.abs(bf_activations))
-            atol = closeness * np.max(np.abs(bf_activations))
-            rtol = 1.0
-            response_diff = response-target_response
-            target_found = np.abs(response_diff) <= atol + rtol * np.abs(target_response)
+            if response >= target_response:
+              if response == target_response:
+                target_found = True
+                target_contrast = contrast
+              else:
+                target_found = True
+                target_contrast = prev_contrast - (prev_contrast - contrast)/2.0
+              prev_contrast = contrast
+            else:
+              contrast += contrast_resolution
+              target_found = False
             loop_exit = target_found # exit if you found a target
           else:
             target_found = False
             loop_exit = True
         if target_found:
-         bf_iso_response_parameters.append((contrast, orientation, best_phase, response))
+         bf_iso_response_parameters.append((target_contrast, orientation, best_phase, response))
       iso_response_parameters.append(bf_iso_response_parameters)
     return {"orientations":orientations, "phases":phases, "neuron_indices":neuron_indices,
       "iso_response_parameters":iso_response_parameters}

@@ -9,18 +9,17 @@ import analysis.analysis_picker as ap
 import utils.data_processing as dp
 
 tsne_params = {
-  "model_type": "lca",
-  #"model_type": "ica",
+  #"model_type": "lca",
+  "model_type": "ica",
   #"model_type": "sparse_autoencoder",
-  "model_name": "lca_256_l0_2.5",
-  #"model_name": "ica_test",
+  #"model_name": "lca_256_l0_2.5",
+  "model_name": "ica",
   #"model_name": "sparse_autoencoder",
-  "version": "1.0",
-  #"version": "0.0",
-  #"version": "0.0",
+  #"version": "1.0",
+  "version": "0.0",
   "data_type": "vanHateren",
-  "input_scale": 40, # rescale input to be [-input_scale, input_scale]; 40 for LCA, 0.5 for ICA
-  #"input_scale": 0.5, # rescale input to be [-input_scale, input_scale]; 40 for LCA, 0.5 for ICA
+  #"input_scale": 40, # LCA/SA
+  "input_scale": 0.5, # ICA
   "batch_size": 1024,
   "device": "/gpu:0",
   "save_info": "analysis",
@@ -30,23 +29,29 @@ tsne_params["model_dir"] = (os.path.expanduser("~")+"/Work/Projects/"+tsne_param
 assert int(np.sqrt(tsne_params["batch_size"]))**2 == tsne_params["batch_size"], (
   "batch_size parameter must have an even square root")
 
-analyzer = ap.get_analyzer(tsne_params)
-
-analyzer.model_params["patch_variance_threshold"] = 1e-5
-#data = ds.get_data(analyzer.model_params)
-#data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
-#data = analyzer.model.reshape_dataset(data, analyzer.model_params)
-
-analyzer.model_params["data_shape"] = [256]#list(data["train"].shape[1:])
-analyzer.model.setup(analyzer.model_params, analyzer.model_schedule)
-analyzer.model_params["input_shape"] = [256]#[data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
-
 if not os.path.exists(analyzer.analysis_out_dir+"/embedding"):
   os.makedirs(analyzer.analysis_out_dir+"/embedding")
 
-#data_batch = data["train"].next_batch(tsne_params["batch_size"])[0]
+analyzer = ap.get_analyzer(tsne_params)
+
+# Load natural image data
+#analyzer.model_params["patch_variance_threshold"] = 1e-5
+#data = ds.get_data(analyzer.model_params)
+#data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
+#data = analyzer.model.reshape_dataset(data, analyzer.model_params)
+#analyzer.model_params["data_shape"] = list(data["train"].shape[1:])
+#analyzer.model.setup(analyzer.model_params, analyzer.model_schedule)
+#analyzer.model_params["input_shape"] = [data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
+#raw_data_batch = data["train"].next_batch(tsne_params["batch_size"])[0] # image data
+
+# Load gabor data
+analyzer.model_params["data_shape"] = [256]
+analyzer.model.setup(analyzer.model_params, analyzer.model_schedule)
+analyzer.model_params["input_shape"] = [256]
 gabors = pickle.load(open("./random_gabor_stim.p", "rb"))
 raw_data_batch = gabors[:tsne_params["batch_size"]].reshape(tsne_params["batch_size"], 256)
+
+# Preprocess data
 raw_data_batch, orig_shape, num_examples, num_rows, num_cols = dp.reshape_data(raw_data_batch,
   flatten=False)[:5]
 if "whiten_data" in analyzer.model_params.keys() and analyzer.model_params["whiten_data"]:
@@ -77,7 +82,8 @@ latent_representation = analyzer.evaluate_model(input_data, var_names=["inferenc
 
 tf.reset_default_graph()
 sess = tf.InteractiveSession()
-embedding_var = tf.Variable(latent_representation["inference/activity:0"], name="image_embedding")
+embedding_var = tf.Variable(latent_representation["inference/activity:0"], name="image_embedding") # Model embedding
+#embedding_var = tf.Variable(input_data, name="image_embedding") # Identity embedding
 tf.global_variables_initializer().run()
 
 saver = tf.train.Saver()
@@ -86,7 +92,6 @@ summary_writer = tf.summary.FileWriter(analyzer.analysis_out_dir+"/embedding/")
 config = projector.ProjectorConfig()
 embedding = config.embeddings.add()
 embedding.tensor_name = embedding_var.name
-#embedding.metadata_path = os.path.join(analyzer.analysis_out_dir+"/embedding/metadata.tsv")
 embedding.sprite.image_path = sprite_out_dir
 embedding.sprite.single_image_dim.extend([num_rows, num_cols])
 
