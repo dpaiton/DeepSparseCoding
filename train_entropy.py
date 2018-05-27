@@ -13,6 +13,7 @@ t0 = ti.time()
 ## Specify model type and data type
 #model_type = "entropy_sc"
 model_type = "gdn_autoencoder"
+#model_type = "relu_autoencoder"
 
 data_type = "vanhateren"
 

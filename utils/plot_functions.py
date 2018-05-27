@@ -141,7 +141,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
         evals, evecs = bf_stats["gauss_orientations"][bf_idx]
         orientations = bf_stats["fourier_centers"][bf_idx]
         angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
-        alpha = 0.5#todo:spatial_freq for filled ellipses?
+        alpha = 0.5
         ellipse = plot_ellipse(ax, center, evals, angle, color_val, alpha=alpha, lines=lines)
       ax.set_xlim(0, patch_edge_size-1)
       ax.set_ylim(patch_edge_size-1, 0)

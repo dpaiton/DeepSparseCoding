@@ -51,10 +51,6 @@ class Logger(object):
     Load log file into memory
     Outputs:
       log_text: [str] containing log file text
-    TODO: Make text a member variable, other load functions use member variable
-      This would then become an internal function without a return
-      Downside is you keep the text in memory even if you're not using it...
-      Current setup allows for the text to be dropped once e.g. params are read
     """
     if filename is None:
       self.file_obj.seek(0)
@@ -73,6 +69,9 @@ class Logger(object):
         entry indicating end token
       text: [str] containing text to parse, can be obtained by calling load_file()
     TODO: Verify that js_matches is the same type for both conditionals at the end
+      I believe js_matches should be a list at all times. That way when e.g. read_params
+      is called the output is a list no matter how many params specifications there are
+      in the logfile.
     """
     assert type(tokens) == list, ("Input variable tokens must be a list")
     assert len(tokens) == 2, ("Input variable tokens must be a list of length 2")
@@ -90,7 +89,6 @@ class Logger(object):
       params: converted python object
     Inputs:
       text: [str] containing text to parse, can be obtained by calling load_file()
-    TODO: should always return a list, not only when there is more than one params spec
     """
     tokens = ["<params>", "</params>"]
     return self.read_js(tokens, text)

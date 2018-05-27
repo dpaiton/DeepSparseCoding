@@ -306,7 +306,6 @@ class GDN_Autoencoder(Model):
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
-    TODO: Format entropy output title better
     """
     super(GDN_Autoencoder, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)

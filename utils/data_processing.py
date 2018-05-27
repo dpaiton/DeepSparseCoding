@@ -263,20 +263,19 @@ def get_grating_params(bf_stats, bf_idx, patch_edge=None, location=None, diamete
   contrast = 1.0 if contrast is None else contrast
   return(patch_edge, location, diameter, orientation, frequency, phase, contrast)
 
-def generate_grating(rf_edge, location, diameter, orientation, frequency, phase, contrast):
+def generate_grating(patch_edge_size, location, diameter, orientation, frequency, phase, contrast):
   """
   generate a sinusoidal stimulus. The stimulus is a square with a circular mask.
-  rf_edge [int] number of pixels the stimulus edge will span
+  patch_edge_size [int] number of pixels the stimulus edge will span
   location [tuple of ints] location of the center of the stimulus
-  diameter [int] diameter of the stimulus circular window; set > sqrt(2*rf_edge^2) to remove the mask
+  diameter [int] diameter of the stimulus circular window
+    set > sqrt(2*patch_edge_size^2) to remove the mask
   orientation [float] orientation of the grating. Specification follows the unit circle.
   frequency [float] frequency of stimulus
   phase [float] phase of the grating
   contrast [float] contrast of the grating, should be between 0 and 1
-  TODO: This function should probably live in the synthetic dataset class.
-  What to do with get_grating_params?
   """
-  vals = np.linspace(-np.pi, np.pi, rf_edge)
+  vals = np.linspace(-np.pi, np.pi, patch_edge_size)
   X, Y = np.meshgrid(vals, vals)
   Xr = np.cos(orientation)*X + -np.sin(orientation)*Y  # countercloclwise
   Yr = np.sin(orientation)*X + np.cos(orientation)*Y
@@ -284,7 +283,7 @@ def generate_grating(rf_edge, location, diameter, orientation, frequency, phase,
   if diameter > 0: # Generate mask
     rad = diameter/2
     y_loc, x_loc = location
-    Y,X = np.ogrid[-y_loc:rf_edge-y_loc, -x_loc:rf_edge-x_loc]
+    Y,X = np.ogrid[-y_loc:patch_edge_size-y_loc, -x_loc:patch_edge_size-x_loc]
     mask = X*X + Y*Y > rad*rad
     stim[mask] = 0.5
   return stim
@@ -390,8 +389,7 @@ def extract_overlapping_patches(images, out_shape, var_thresh=0,
     rand_state [np.random.RandomState()]
   Outputs:
     patches [np.ndarray] of patches of shape out_shape
-  TODO:
-    Allow non-random overlapping patches (e.g. strided convolution patches)
+  TODO: Allow non-random overlapping patches (e.g. strided convolution patches)
   """
   num_im, im_height, im_width, im_chan = images.shape
   num_patches, patch_height, patch_width, patch_chan = out_shape
