@@ -299,11 +299,13 @@ class Model(object):
     base_save_path = self.cp_save_dir+self.model_name+"_v"+self.version
     full_save_path = self.full_saver.save(session,
       save_path=base_save_path+"_full",
-      global_step=self.global_step)
+      global_step=self.global_step,
+      latest_filename="latest_checkpoint_v"+self.version)
     self.logger.log_info("Full model saved in file %s"%full_save_path)
     weight_save_path = self.weight_saver.save(session,
       save_path=base_save_path+"_weights",
-      global_step=self.global_step)
+      global_step=self.global_step,
+      latest_filename="latest_checkpoint_v"+self.version)
     self.logger.log_info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
 
