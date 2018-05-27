@@ -24,7 +24,7 @@ def load_synthetic(kwargs):
   rand_state = kwargs["rand_state"] if "rand_state" in kwargs.keys() else np.random.RandomState()
   synth_data = synthetic(
     dist_type=kwargs["dist_type"],
-    num_edge_pixels=np.int(np.sqrt(kwargs["patch_edge_size"])),
+    num_edge_pixels=kwargs["patch_edge_size"],
     epoch_size=kwargs["epoch_size"],
     rand_state=kwargs["rand_state"])
   data = Dataset(synth_data.images, lbls=None, ignore_lbls=None, rand_state=rand_state)
