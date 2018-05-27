@@ -8,7 +8,7 @@ from models.lca import LCA as lca
 from models.lca_pca import LCA_PCA as lca_pca
 from models.lca_pca_fb import LCA_PCA_FB as lca_pca_fb
 from models.conv_lca import CONV_LCA as conv_lca
-from models.sigmoid_autoencoder import Sparse_Autoencoder as sa
+from models.sigmoid_autoencoder import Sigmoid_Autoencoder as sa
 from models.gdn_autoencoder import GDN_Autoencoder as ga
 from models.relu_autoencoder import ReLU_Autoencoder as ra
 from models.density_learner import Density_Learner as dl
