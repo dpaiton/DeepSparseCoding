@@ -7,7 +7,7 @@ import params.lca_params as lca
 import params.lca_pca_params as lca_pca
 import params.lca_pca_fb_params as lca_pca_fb
 import params.conv_lca_params as conv_lca
-import params.sparse_autoencoder_params as sa
+import params.sigmoid_autoencoder_params as sa
 import params.gdn_autoencoder_params as ga
 import params.relu_autoencoder_params as ra
 import params.density_learner_params as density
@@ -42,7 +42,7 @@ def get_params(model_type):
     return conv_lca.params, conv_lca.schedule
   if model_type.lower() == "density_learner":
     return density.params, density.schedule
-  if model_type.lower() == "sparse_autoencoder":
+  if model_type.lower() == "sigmoid_autoencoder":
     return sa.params, sa.schedule
   if model_type.lower() == "gdn_autoencoder":
     return ga.params, ga.schedule

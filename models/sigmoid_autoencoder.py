@@ -4,7 +4,7 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.base_model import Model
 
-class Sparse_Autoencoder(Model):
+class Sigmoid_Autoencoder(Model):
   """
   Implementation of sparse autoencoder described in Andrew Ng's 2011 Stanford CS294A lecture notes
   Sigmoidal activation function
@@ -12,7 +12,7 @@ class Sparse_Autoencoder(Model):
   Linear reconstructions - input images do not have 0-1 range
   """
   def __init__(self):
-    super(Sparse_Autoencoder, self).__init__()
+    super(Sigmoid_Autoencoder, self).__init__()
     self.vector_inputs = True
 
   def load_params(self, params):
@@ -22,7 +22,7 @@ class Sparse_Autoencoder(Model):
      params: [dict] model parameters
     Modifiable Parameters:
     """
-    super(Sparse_Autoencoder, self).load_params(params)
+    super(Sigmoid_Autoencoder, self).load_params(params)
     self.data_shape = params["data_shape"]
     # Network Size
     self.batch_size = int(params["batch_size"])
@@ -121,7 +121,7 @@ class Sparse_Autoencoder(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    super(Sparse_Autoencoder, self).print_update(input_data, input_labels, batch_step)
+    super(Sigmoid_Autoencoder, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
       self.loss_dict["weight_decay_loss"], self.total_loss, self.a]
@@ -164,7 +164,7 @@ class Sparse_Autoencoder(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(Sparse_Autoencoder, self).generate_plots(input_data, input_labels)
+    super(Sigmoid_Autoencoder, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_enc, self.b_enc, self.w_dec, self.x_,  self.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
