@@ -1,14 +1,14 @@
 import os
 import numpy as np
 params = {
-  "model_type": "gdn_autoencoder",
-  "model_name": "gdn_autoencoder",
+  "model_type": "relu_autoencoder",
+  "model_name": "relu_autoencoder",
   "version": "0.0",
   "num_images": 150,
   "vectorize_data": True,
   "norm_data": False,
   "center_data": False,
-  "standardize_data": True,
+  "standardize_data": False,
   "contrast_normalize": False,
   "whiten_data": True,
   "whiten_method": "FT",
@@ -30,13 +30,13 @@ params = {
   "cp_int": 50000,
   "max_cp_to_keep": 1,
   "cp_load": False,
-  "cp_load_name": "gdn_autoencoder",
+  "cp_load_name": "relu_autoencoder",
   "cp_load_step": 1e4,
   "cp_load_ver": "0.0",
-  "cp_load_var": ["w_enc", "b_enc", "w_dec", "b_dec", "gdn_w", "gdn_b", "igdn_w", "igdn_b"],
+  "cp_load_var": ["w_enc", "b_enc", "w_dec", "b_dec"],
   "log_int": 10,
   "log_to_file": True,
-  "gen_plot_int": 1000,
+  "gen_plot_int": 500,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/gpu:0",
@@ -45,14 +45,13 @@ params = {
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
-  {"weights": ["w_enc", "b_enc", "w_dec", "b_dec", "gdn_w", "gdn_b", "igdn_w", "igdn_b"],
-  "ent_mult": 2.00,
+  {"weights": ["w_enc", "b_enc", "w_dec", "b_dec"],
+  "ent_mult": 0.20,
   "decay_mult": 0.01,
-  "noise_var_mult": 0.000,
+  "noise_var_mult": 0.05,
   "triangle_centers": np.linspace(-1.0, 1.0, params["num_triangles"]),
-  "weight_lr": [0.01,]*4+[0.00,]*4,
-  #"weight_lr": [0.005,]*4+[0.01,]*4,
-  "decay_steps": [int(2e5*0.8),]*8,
-  "decay_rate": [0.5,]*8,
-  "staircase": [True,]*8,
-  "num_batches": int(5e5)}]
+  "weight_lr": [0.01,]*4,
+  "decay_steps": [int(1e5*0.8),]*4,
+  "decay_rate": [0.5,]*4,
+  "staircase": [True,]*4,
+  "num_batches": int(1e5)}]

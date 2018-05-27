@@ -40,25 +40,15 @@ class Analyzer(object):
     self.load_model() # Adds "self.model" member variable that is another model class
 
   def load_params(self, params):
-    """Load analysis parameters into object"""
+    """
+    Load analysis parameters into object
+    TODO: CP_load_step is not utilized.
+    """
     self.analysis_params = params
     self.model_name = params["model_name"]
     self.version = params["version"]
-    #if "cp_load_step" in params.keys() and params["cp_load_step"] is not None:
-    # NOTE: This wasn't working as expected. The tf.trian.latest_checkpoint call was looking for
-    #   a file that doesn't exist. Maybe cp_load_step was set accidentally somewhere and then ended
-    #   up getting loaded in. The bug occured when making noise atas in a notebook on an
-    #   already-analyzed model
-    #  self.cp_load_step = params["cp_load_step"]
-    #  self.cp_loc = (params["model_dir"]+"/checkpoints/"+params["model_name"]
-    #    +"_v"+params["version"]+"_full-"+str(self.cp_load_step))
-    #else:
-    #  self.cp_load_step = None
-    #   NOTE: tf.train.latest_checkpoint ends up looking for the directory where the
-    #     checkpoint was created in a situation where the outputs have been copied
-    #     to a new location. Not sure where this is set, but it results in a poorly described error
-    #  self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/")
-    self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/")
+    self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/",
+      latest_filename="latest_checkpoint_v"+self.version)
     self.model_params["model_out_dir"] = self.analysis_out_dir
     if "device" in params.keys():
       self.device = params["device"]
@@ -127,22 +117,6 @@ class Analyzer(object):
       activations = sess.run(self.model.a, feed_dict)
     return activations
 
-  def compute_atcs(self, activities, images):
-    """
-    Returns activity triggered covariances
-    Outputs:
-      atcs [np.ndarray] of shape (num_pixels, num_pixels, num_neurons)
-    Inputs:
-      activities [np.ndarray] of shape (num_imgs, num_neurons)
-      images [np.ndarray] of shape (num_imgs, num_img_pixels)
-    """
-    images -= np.mean(images)
-    atas = self.compute_atas(activities, images)
-    weighted_images = np.dot(activities.T, np.dot((images - atas), (images - atas).T))
-    img_cov = np.dot(images.T, images) / images.shape[1]
-    weighted_cov = np.dot(img_cov, activities)
-    return avg_atcs
-
   def compute_atas(self, activities, images):
     """
     Returns activity triggered averages
@@ -152,9 +126,30 @@ class Analyzer(object):
       activities [np.ndarray] of shape (num_imgs, num_neurons)
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
     """
-    atas = np.dot(images.T, activities)
-    avg_atas = atas / images.shape[1]
-    return avg_atas
+    atas = images.T.dot(activities) / images.shape[0]
+    return atas
+
+  def compute_atcs(self, activities, images):
+    """
+    Returns activity triggered covariances
+    Outputs:
+      atcs [np.ndarray] of shape (num_pixels, num_pixels, num_neurons)
+    Inputs:
+      activities [np.ndarray] of shape (num_imgs, num_neurons)
+      images [np.ndarray] of shape (num_imgs, num_img_pixels)
+    TODO: is it possible to vectorize this so it is faster?
+    """
+    num_batch, num_neurons = activities.shape
+    images -= np.mean(images)
+    atas = self.compute_atas(activities, images)
+    atcs = [None,]*num_neurons
+    for neuron_id in range(num_neurons):
+      ata = atas[:, neuron_id] # pixels x 1
+      img_deviations = images - ata[None, :] # batch x pixels
+      covs = [x.T.dot(x) for x in img_deviations] # pixels x pixels x batch
+      covs_acts = zip(covs, activities[:, neuron_id]) # (PxPxB, b)
+      atcs[neuron_id] = np.sum([cov*act for cov,act in covs_acts]) / num_batch
+    return atcs
 
   def orientation_tuning(self, bf_stats, contrasts=[0.5], orientations=[np.pi],
     phases=[np.pi], neuron_indices=None, diameter=-1, scale=1.0):

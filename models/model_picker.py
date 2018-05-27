@@ -10,6 +10,7 @@ from models.lca_pca_fb import LCA_PCA_FB as lca_pca_fb
 from models.conv_lca import CONV_LCA as conv_lca
 from models.sparse_autoencoder import Sparse_Autoencoder as sa
 from models.gdn_autoencoder import GDN_Autoencoder as ga
+from models.relu_autoencoder import ReLU_Autoencoder as ra
 from models.density_learner import Density_Learner as dl
 
 def get_model(model_type):
@@ -35,10 +36,13 @@ def get_model(model_type):
     return sa()
   if model_type.lower() == "gdn_autoencoder":
     return ga()
+  if model_type.lower() == "relu_autoencoder":
+    return ra()
   if model_type.lower() == "density_learner":
     return dl()
 
 def get_model_list():
   model_list = ["mlp", "ica", "ica_pca", "gradient_sc", "entropy_sc", "lca", "lca_pca",
-    "lca_pca_fb", "conv_lca", "sparse_autoencoder", "gdn_autoencoder", "density_learner"]
+    "lca_pca_fb", "conv_lca", "sparse_autoencoder", "gdn_autoencoder", "relu_autoencoder",
+    "density_learner"]
   return model_list

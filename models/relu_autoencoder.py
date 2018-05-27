@@ -6,18 +6,11 @@ import utils.data_processing as dp
 import utils.entropy_funcs as ef
 from models.base_model import Model
 
-class GDN_Autoencoder(Model):
+class ReLU_Autoencoder(Model):
   """
-  Implementation of autoencoder described in Balle, Laparra, Simoncelli (2017)
-  End-to-End Optimized Image Compression
-  ## Key differences:
-  #  Fully connected
-  #  Single hidden layer, complete
-  ## Methods ignored:
-  #  add a small amount of uniform noise to input, to simulate pixel quantization
   """
   def __init__(self):
-    super(GDN_Autoencoder, self).__init__()
+    super(ReLU_Autoencoder, self).__init__()
     self.vector_inputs = True
 
   def load_params(self, params):
@@ -27,7 +20,7 @@ class GDN_Autoencoder(Model):
      params: [dict] model parameters
     Modifiable Parameters:
     """
-    super(GDN_Autoencoder, self).load_params(params)
+    super(ReLU_Autoencoder, self).load_params(params)
     # Network Size
     self.data_shape = params["data_shape"]
     self.batch_size = int(params["batch_size"])
@@ -37,8 +30,6 @@ class GDN_Autoencoder(Model):
     self.w_enc_shape = [self.num_pixels, self.num_neurons]
     self.b_enc_shape = [self.num_neurons]
     self.b_dec_shape = [self.num_pixels]
-    self.gdn_w_shape = [self.num_neurons, self.num_neurons]
-    self.gdn_b_shape = [1, self.num_neurons]
     # Hyper Parameters
     self.mle_step_size = float(params["mle_step_size"])
     self.num_mle_steps = int(params["num_mle_steps"])
@@ -79,35 +70,8 @@ class GDN_Autoencoder(Model):
     return recon_loss
 
   def compute_recon(self, a_in):
-    a_igdn = self.gdn(a_in, inverse=True, name="igdn")
-    recon = tf.add(tf.matmul(a_igdn, self.w_dec), self.b_dec)
+    recon = tf.add(tf.matmul(a_in, self.w_dec), self.b_dec)
     return recon
-
-  def compute_gdn_const(self, a_in, inverse, name=None):
-    if inverse:
-      name_prefix = "i"
-    else:
-      name_prefix = ""
-    with tf.variable_scope(self.weight_scope, reuse=True) as scope:
-      gdn_w = tf.get_variable(name=name_prefix+"gdn_w", shape=self.gdn_w_shape)
-      gdn_b = tf.get_variable(name=name_prefix+"gdn_b", shape=self.gdn_b_shape)
-    w_threshold = tf.where(tf.less(gdn_w, tf.constant(1e-6, dtype=tf.float32)),
-      tf.multiply(1e-6, tf.ones_like(gdn_w)), gdn_w)
-    b_threshold = tf.where(tf.less(gdn_b, tf.constant(1e-6, dtype=tf.float32)),
-      tf.multiply(1e-6, tf.ones_like(gdn_b)), gdn_b)
-    symmetric_weights = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
-    weighted_norm = tf.matmul(tf.square(a_in), symmetric_weights)
-    GDN_const = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
-    return GDN_const
-
-  def gdn(self, a_in, inverse, name=None):
-    GDN_const = self.compute_gdn_const(a_in, inverse, name)
-    if inverse:
-      a_out = tf.multiply(a_in, GDN_const, name=name)
-    else:
-      a_out = tf.where(tf.less(GDN_const, tf.constant(1e-6, dtype=tf.float32)), a_in,
-        tf.divide(a_in, GDN_const), name=name)
-    return a_out
 
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "entropy_loss":self.compute_entropy_loss}
@@ -132,27 +96,8 @@ class GDN_Autoencoder(Model):
             self.num_triangles)
 
         with tf.name_scope("weight_inits") as scope:
-          w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0, stddev=0.1,
+          w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0, stddev=0.5,
             dtype=tf.float32, name="w_init")
-
-          gdn_w_init = tf.truncated_normal(self.gdn_w_shape, mean=0.0, stddev=0.01,
-            dtype=tf.float32, name="gdn_w_init")
-          #gdn_w_init = tf.truncated_normal(self.gdn_w_shape, mean=1.0, stddev=0.01,
-          #  dtype=tf.float32, name="gdn_w_init")
-          #gdn_w_init = tf.add(tf.eye(self.gdn_w_shape[0]), tf.truncated_normal(self.gdn_w_shape,
-          #  mean=0.0, stddev=0.01), name="igdn_w_init")
-
-          gdn_b_init = tf.truncated_normal(self.gdn_b_shape, mean=1.0, stddev=0.01,
-            dtype=tf.float32, name="gdn_b_init")
-          #gdn_b_init = tf.truncated_normal(self.gdn_b_shape, mean=0.0, stddev=0.1,
-          #  dtype=tf.float32, name="gdn_b_init")
-
-          #igdn_w_init = tf.add(tf.eye(self.gdn_w_shape[0]), tf.truncated_normal(self.gdn_w_shape,
-          #  mean=0.0, stddev=0.01), name="igdn_w_init")
-          igdn_w_init = tf.identity(tf.transpose(gdn_w_init), name="igdn_w_init")
-
-          igdn_b_init = tf.identity(gdn_b_init, name="igdn_b_init")
-
           b_enc_init = tf.truncated_normal(self.b_enc_shape, mean=0.0, stddev=0.1,
             dtype=tf.float32, name="b_enc_init")
           b_dec_init = tf.truncated_normal(self.b_dec_shape, mean=0.0, stddev=0.1,
@@ -164,29 +109,20 @@ class GDN_Autoencoder(Model):
             initializer=w_init, trainable=True)
           self.b_enc = tf.get_variable(name="b_enc", dtype=tf.float32,
             initializer=b_enc_init, trainable=True)
-          self.gdn_w = tf.get_variable(name="gdn_w", dtype=tf.float32,
-            initializer=gdn_w_init, trainable=True)
-          self.gdn_b = tf.get_variable(name="gdn_b", dtype=tf.float32,
-            initializer=gdn_b_init, trainable=True)
-          self.igdn_w = tf.get_variable(name="igdn_w", dtype=tf.float32,
-            initializer=igdn_w_init, trainable=True)
-          self.igdn_b = tf.get_variable(name="igdn_b", dtype=tf.float32,
-            initializer=igdn_b_init, trainable=True)
           self.w_dec = tf.get_variable(name="w_dec", dtype=tf.float32,
             initializer=tf.transpose(w_init), trainable=True)
           self.b_dec = tf.get_variable(name="b_dec", dtype=tf.float32,
             initializer=b_dec_init, trainable=True)
 
         with tf.variable_scope("inference") as scope:
-          self.gdn_output = self.gdn(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
-            inverse=False, name="gdn_output")
-          self.gdn_const = self.compute_gdn_const(self.gdn_output, inverse=False, name="gdn_const")
-          self.gdn_entropies = self.compute_entropies(self.gdn_output)
-          noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.gdn_output),
-            tf.reduce_min(self.gdn_output))) # 1/2 of 10% of range of gdn output
-          uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(self.gdn_output)),
+          self.enc_output = tf.nn.relu(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
+            name="relu_output")
+          self.enc_entropies = self.compute_entropies(self.enc_output)
+          noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.enc_output),
+            tf.reduce_min(self.enc_output))) # 1/2 of 10% of range of relu output
+          uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(self.enc_output)),
             minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
-          self.a = tf.add(uniform_noise, self.gdn_output, name="activity")
+          self.a = tf.add(uniform_noise, self.enc_output, name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
           self.a_sig = self.sigmoid(self.a, self.sigmoid_beta)
@@ -213,44 +149,6 @@ class GDN_Autoencoder(Model):
               name="recon_quality")
     self.graph_built = True
 
-  def add_optimizers_to_graph(self):
-    """
-    Same as base class, except the weight scope is a member variable instead of "weights"
-    """
-    with self.graph.as_default():
-      with tf.name_scope("optimizers") as scope:
-        self.grads_and_vars = list() # [sch_idx][weight_idx]
-        self.apply_grads = list() # [sch_idx][weight_idx]
-        for schedule_idx, sch in enumerate(self.sched):
-          sch_grads_and_vars = list() # [weight_idx]
-          sch_apply_grads = list() # [weight_idx]
-          for w_idx, weight in enumerate(sch["weights"]):
-            learning_rates = tf.train.exponential_decay(
-              learning_rate=sch["weight_lr"][w_idx],
-              global_step=self.global_step,
-              decay_steps=sch["decay_steps"][w_idx],
-              decay_rate=sch["decay_rate"][w_idx],
-              staircase=sch["staircase"][w_idx],
-              name="annealing_schedule_"+weight)
-            if self.optimizer == "annealed_sgd":
-              optimizer = tf.train.GradientDescentOptimizer(learning_rates,
-                name="grad_optimizer_"+weight)
-            elif self.optimizer == "adam":
-              optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
-                epsilon=1e-07, name="adam_optimizer_"+weight)
-            elif self.optimizer == "adadelta":
-              optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
-                name="adadelta_optimizer_"+weight)
-            with tf.variable_scope(self.weight_scope, reuse=True) as scope:
-              weight_op = [tf.get_variable(weight)]
-            sch_grads_and_vars.append(self.compute_weight_gradients(optimizer, weight_op))
-            gstep = self.global_step if w_idx == 0 else None # Only update once
-            sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
-              global_step=gstep))
-          self.grads_and_vars.append(sch_grads_and_vars)
-          self.apply_grads.append(sch_apply_grads)
-    self.optimizers_added = True
-
   def print_update(self, input_data, input_labels=None, batch_step=0):
     """
     Log train progress information
@@ -267,9 +165,8 @@ class GDN_Autoencoder(Model):
     learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
-      grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
-      grad_name_list.append(grad_name)
-      learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
+      grad_name_list.append(weight_grad_var[0][1].name.split('/')[1].split(':')[0])#2nd is np.split
+      learning_rate_dict[grad_name_list[w_idx]] = self.get_schedule("weight_lr")[w_idx]
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, entropy_loss, total_loss, a_vals, recon = out_vals[:init_eval_length]
     input_mean = np.mean(input_data)
@@ -308,28 +205,17 @@ class GDN_Autoencoder(Model):
       input_labels: data object containing the current label batch
     TODO: Format entropy output title better
     """
-    super(GDN_Autoencoder, self).generate_plots(input_data, input_labels)
+    super(ReLU_Autoencoder, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.w_enc, self.b_enc, self.b_dec, self.w_dec,
-      self.gdn_w, self.igdn_w, self.gdn_b, self.igdn_b, self.x_, self.gdn_output,
-      self.gdn_entropies, self.gdn_const]
+    eval_list = [self.global_step, self.w_enc, self.b_enc, self.w_dec, self.b_dec,
+      self.x_, self.enc_output, self.enc_entropies]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
-    w_enc, b_enc, b_dec, w_dec, gdn_w, igdn_w, gdn_b, igdn_b, recon, activity, entropies, gdn_constant = eval_out[1:]
+    w_enc, b_enc, w_dec, b_dec, recon, activity, entropies = eval_out[1:]
     w_enc_norm = np.linalg.norm(w_enc, axis=1, keepdims=False)
     w_dec_norm = np.linalg.norm(w_dec, axis=0, keepdims=False)
     w_enc = dp.reshape_data(w_enc.T, flatten=False)[0]
     w_dec = dp.reshape_data(w_dec, flatten=False)[0]
-    fig = pf.plot_weight_image(gdn_w, title="GDN Weights", figsize=(10,10),
-      save_filename=self.disp_dir+"w_gdn_v"+self.version+"-"+current_step.zfill(5)+".png")
-    fig = pf.plot_weight_image(igdn_w, title="Inverse GDN Weights", figsize=(10,10),
-      save_filename=self.disp_dir+"w_igdn_v"+self.version+"-"+current_step.zfill(5)+".png")
-    fig = pf.plot_activity_hist(gdn_b, title="GDN Bias Histogram",
-      save_filename=(self.disp_dir+"b_gdn_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(igdn_b, title="IGDN Bias Histogram",
-      save_filename=(self.disp_dir+"b_igdn_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(w_enc, normalize=False,
       title="Encoding weights at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"
@@ -344,11 +230,8 @@ class GDN_Autoencoder(Model):
     fig = pf.plot_activity_hist(b_dec, title="Decoding Bias Histogram",
       save_filename=(self.disp_dir+"b_dec_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(gdn_constant, title="GDN Constant Histogram",
-      save_filename=(self.disp_dir+"gdn_const_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
     entropy_sort_indices = np.argsort(entropies)[::-1] # ascending
-    for fig_id, neuron_id in enumerate(entropy_sort_indices[:3]):
+    for fig_id, neuron_id in enumerate(entropy_sort_indices[0:2]):
       fig = pf.plot_activity_hist(activity[:, neuron_id],
         title=("Actvity Histogram (pre-noise) for Neuron "+str(neuron_id)+"\nwith entropy = "
         +str(np.round(entropies[neuron_id]))),

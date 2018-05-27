@@ -843,7 +843,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   plt.show()
   return fig
 
-def plot_stats(data, keys=None, labels=None, save_filename=None):
+def plot_stats(data, keys=None, labels=None, figsize=None, save_filename=None):
   """
   Generate time-series plots of stats specified by keys
   Inputs:
@@ -870,7 +870,7 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
       "The number of labels must match the number of keys")
   num_keys = len(keys)
   gs = gridspec.GridSpec(num_keys, 1, hspace=0.5)
-  fig = plt.figure()
+  fig = plt.figure(figsize=figsize)
   axis_image = [None]*num_keys
   for key_idx, key in enumerate(keys):
     ax = fig.add_subplot(gs[key_idx])
@@ -879,7 +879,7 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
       ax.get_xaxis().set_ticklabels([])
     ax.locator_params(axis="y", nbins=5)
     ax.set_ylabel("\n".join(re.split("_", labels[key_idx])))
-    ax.set_yticks([0, np.max(data[key])])
+    ax.set_yticks([np.minimum(0.0, np.min(data[key])), np.maximum(0.0, np.max(data[key]))])
     ylabel_xpos = -0.15
     ax.yaxis.set_label_coords(ylabel_xpos, 0.5)
   ax.set_xlabel("Batch Number")
@@ -997,6 +997,19 @@ def plot_inference_traces(data, activation_threshold, img_idx=0):
     borderaxespad=0., bbox_to_anchor=[0, 0], fancybox=True, loc="upper left")
   for line in legend.get_lines():
     line.set_linewidth(3)
+  plt.show()
+  return fig
+
+def plot_weight_image(weights, colorbar_aspect=50, title="", figsize=None, save_filename=None):
+  fig, ax = plt.subplots(1, 1, figsize=figsize)
+  im = ax.imshow(weights, vmin=np.min(weights), vmax=np.max(weights), cmap="Greys_r")
+  ax.set_title(title)
+  clear_axis(ax)
+  add_colorbar_to_im(im, aspect=colorbar_aspect)
+  if save_filename is not None:
+    fig.savefig(save_filename, transparent=True)
+    plt.close(fig)
+    return None
   plt.show()
   return fig
 
