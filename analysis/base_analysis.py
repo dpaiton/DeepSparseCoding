@@ -4,6 +4,7 @@ from utils.logger import Logger
 import utils.plot_functions as pf
 import models.model_picker as mp
 import utils.data_processing as dp
+from data.dataset import Dataset
 import tensorflow as tf
 
 class Analyzer(object):
@@ -42,7 +43,7 @@ class Analyzer(object):
   def load_params(self, params):
     """
     Load analysis parameters into object
-    TODO: CP_load_step is not utilized.
+    TODO: cp_load_step is not utilized.
     """
     self.analysis_params = params
     self.model_name = params["model_name"]
@@ -177,30 +178,27 @@ class Analyzer(object):
     # Generate a grating with spatial frequency provided by bf_stats
     grating = lambda neuron_idx,contrast,orientation,phase:dp.generate_grating(
       *dp.get_grating_params(bf_stats, neuron_idx, orientation=orientation,
-      phase=phase, contrast=contrast, diameter=diameter)).reshape(num_pixels)
+      phase=phase, contrast=contrast, diameter=diameter))
     # Output arrays
     max_responses = np.zeros((num_neurons, num_contrasts, num_orientations))
     mean_responses = np.zeros((num_neurons, num_contrasts, num_orientations))
     rect_responses = np.zeros((num_neurons, 2, num_contrasts, num_orientations))
     best_phases = np.zeros((num_neurons, num_contrasts, num_orientations))
-    raw_phase_stims = np.stack([grating(neuron_idx, contrast, orientation, phase)
+    phase_stims = np.stack([grating(neuron_idx, contrast, orientation, phase)
       for neuron_idx in neuron_indices
       for contrast in contrasts
       for orientation in orientations
       for phase in phases], axis=0) #Array containing all stimulus that can be returned for testing
-    ## TODO: Masks should be generated as an actual dataset so that we can use model preprocessing
-    #phase_stims = self.model.preprocess_dataset({"data":raw_phase_stims},
-    #  params={"whiten_data":self.model_params["whiten_data"],
-    #  "whiten_method":self.model_params["whiten_method"]})["data"]
-    if "whiten_data" in self.model_params.keys() and self.model_params["whiten_data"]:
-      phase_stims, phase_mean, phase_filter = \
-        dp.whiten_data(raw_phase_stims, method=self.model_params["whiten_method"])
-    if "lpf_data" in self.model_params.keys() and self.model_params["lpf_data"]:
-      phase_stims, phase_mean, phase_filter = \
-        dp.lpf_data(raw_phase_stims, cutoff=self.model_params["lpf_cutoff"])
-    phase_stims = scale * (phase_stims / np.max(np.abs(phase_stims)))
-    activations = self.compute_activations(phase_stims).reshape(num_neurons, num_contrasts,
-      num_orientations, num_phases, tot_num_bfs)
+    phase_stims = {"test": Dataset(phase_stims[:,:,:,None], lbls=None, ignore_lbls=None,
+      rand_state=self.rand_state)}
+    phase_stims = self.model.preprocess_dataset(phase_stims,
+      params={"whiten_data":self.model_params["whiten_data"],
+      "whiten_method":self.model_params["whiten_method"]})
+    phase_stims = self.model.reshape_dataset(phase_stims, self.model_params)
+    phase_stims["test"].images /= np.max(np.abs(phase_stims["test"].images))
+    phase_stims["test"].images *= scale
+    activations = self.compute_activations(phase_stims["test"].images).reshape(num_neurons,
+      num_contrasts, num_orientations, num_phases, tot_num_bfs)
     for bf_idx, neuron_idx in enumerate(neuron_indices):
       activity_slice = activations[bf_idx, :, :, :, neuron_idx]
       max_responses[bf_idx, ...] = np.max(np.abs(activity_slice), axis=-1)
@@ -257,22 +255,17 @@ class Analyzer(object):
     test_rect_responses = np.zeros((num_neurons, 2, num_contrasts, num_contrasts, num_orientations))
     for bf_idx, neuron_idx in enumerate(neuron_indices): # each neuron produces a base & test output
       for bco_idx, base_contrast in enumerate(contrasts): # loop over base contrast levels
-        base_stims = np.zeros((num_phases, num_pixels))
-        for bph_idx, base_phase in enumerate(phases):
-          raw_base_stim = grating(neuron_idx, base_contrast,
-            base_orientations[bf_idx], base_phase)
-          ## TODO: Masks should be generated as an actual dataset so that we can use model preprocessing
-          #base_stims = self.model.preprocess_dataset({"data":raw_base_stims},
-          #  params={"whiten_data":self.model_params["whiten_data"],
-          #  "whiten_method":self.model_params["whiten_method"]})["data"]
-          if "whiten_data" in self.model_params.keys() and self.model_params["whiten_data"]:
-            filt_base_stim, base_mean, base_filter = \
-              dp.whiten_data(raw_base_stim, method=self.model_params["whiten_method"])
-          if "lpf_data" in self.model_params.keys() and self.model_params["lpf_data"]:
-            filt_base_stim, base_mean, base_filter = \
-              dp.lpf_data(raw_base_stim, cutoff=self.model_params["lpf_cutoff"])
-          base_stims[bph_idx] = scale * (filt_base_stim / np.max(np.abs(filt_base_stim)))
-        base_activity = self.compute_activations(base_stims)[:, neuron_idx]
+        base_stims = [grating(neuron_idx, base_contrast, base_orientations[bf_idx], base_phase)
+          for base_phase in phases]
+        base_stims = {"test": Dataset(base_stims[:,:,:,None], lbls=None, ignore_lbls=None,
+          rand_state=self.rand_state)}
+        base_stims = self.model.preprocess_dataset(base_stims,
+          params={"whiten_data":self.model_params["whiten_data"],
+          "whiten_method":self.model_params["whiten_method"]})
+        base_stims = self.model.reshape_dataset(base_stims, self.model_params)
+        base_stims["test"].images /= np.max(np.abs(base_stims["test"].images))
+        base_stims["test"].images *= scale
+        base_activity = self.compute_activations(base_stims["test"].images)[:, neuron_idx]
         base_max_responses[bf_idx, bco_idx] = np.max(np.abs(base_activity))
         base_mean_responses[bf_idx, bco_idx] = np.mean(np.abs(base_activity))
         base_rect_responses[bf_idx, 0, bco_idx] = np.mean(np.maximum(0, base_activity))
@@ -281,22 +274,17 @@ class Analyzer(object):
         for co_idx, mask_contrast in enumerate(contrasts): # loop over test contrasts
             test_stims = np.zeros((num_orientations, num_phases, num_phases, num_pixels))
             for or_idx, mask_orientation in enumerate(mask_orientations):
-              mask_stims = np.zeros((num_phases, num_pixels))
-              for ph_idx, mask_phase in enumerate(phases):
-                raw_mask_stim = grating(neuron_idx, mask_contrast, mask_orientation,
-                  mask_phase)
-                ## TODO: Masks should be generated as an actual dataset so that we can use model preprocessing
-                #mask_stims = self.model.preprocess_dataset({"data":raw_mask_stims},
-                #  params={"whiten_data":self.model_params["whiten_data"],
-                #  "whiten_method":self.model_params["whiten_method"]})["data"]
-                if "whiten_data" in self.model_params.keys() and self.model_params["whiten_data"]:
-                  filt_mask_stim, mask_mean, mask_filter = \
-                    dp.whiten_data(raw_mask_stim, method=self.model_params["whiten_method"])
-                if "lpf_data" in self.model_params.keys() and self.model_params["lpf_data"]:
-                  filt_mask_stim, mask_mean, mask_filter = \
-                    dp.lpf_data(raw_mask_stim, cutoff=self.model_params["lpf_cutoff"])
-                mask_stims[ph_idx, :] = scale * (filt_mask_stim / np.max(np.abs(filt_mask_stim)))
-              test_stims[or_idx, ...] = base_stims[:, None, :] + mask_stims[None, :, :]
+              mask_stims = [grating(neuron_idx, mask_contrast, mask_orientaiton, mask_phase)
+                for mask_phase in phases]
+              mask_stims = {"test": Dataset(mask_stims[:,:,:,None], lbls=None, ignore_lbls=None,
+                rand_state=self.rand_state)}
+              mask_stims = self.model.preprocess_dataset(mask_stims,
+                params={"whiten_data":self.model_params["whiten_data"],
+                "whiten_method":self.model_params["whiten_method"]})
+              mask_stims = self.model.reshape_dataset(mask_stims, self.model_params)
+              mask_stims["test"].images /= np.max(np.abs(mask_stims["test"].images))
+              mask_stims["test"].images *= scale
+              test_stims[or_idx, ...] = base_stims["test"].images[:,None,:] + mask_stims["test"].images[None,:,:]
             test_stims = test_stims.reshape(num_orientations*num_phases*num_phases, num_pixels)
             test_activity = self.compute_activations(test_stims)[:, neuron_idx]
             test_activity = np.reshape(test_activity, (num_orientations, num_phases**2))
@@ -413,3 +401,39 @@ class Analyzer(object):
       iso_response_parameters.append(bf_iso_response_parameters)
     return {"orientations":orientations, "phases":phases, "neuron_indices":neuron_indices,
       "iso_response_parameters":iso_response_parameters}
+
+  def neuron_angles(self, bf_stats):
+    """
+    Compute the angle between all pairs of basis functions in bf_stats
+    Outputs:
+      neuron_angles [np.ndarray] of shape [num_neurons, num_neurons] with all angles
+    Inputs:
+      bf_stats [dict] returned from utils/data_processing.get_dictionary_stats()
+    """
+    num_pixels = self.model_params["patch_edge_size"]**2
+    neuron_angles = np.zeros((bf_stats["num_outputs"], bf_stats["num_outputs"]))
+    for neuron1 in range(bf_stats["num_outputs"]):
+      for neuron2 in range(bf_stats["num_outputs"]):
+        bf1 = bf_stats["basis_functions"][neuron1].reshape((num_pixels,1))
+        bf2 = bf_stats["basis_functions"][neuron2].reshape((num_pixels,1))
+        inner_products = np.dot((bf1/np.linalg.norm(bf1)).T, bf2/np.linalg.norm(bf2))
+        inner_products[inner_products>1.0] = 1.0
+        inner_products[inner_products<-1.0] = -1.0
+        angle = np.arccos(inner_products)
+        neuron_angles[neuron1, neuron2] = angle
+    return neuron_angles
+
+  def bf_projections(self, bf1, bf2):
+    """
+    Find a projection basis that is orthogonal to bf1 and as close as possible to bf2
+    Usees a single step of the Gram-Schmidt process
+    Outputs:
+      projection_matrix [tuple] containing [ax_1, ax_2] for projecting data into the 2d array
+    Inputs
+      bf1 [np.ndarray] of shape [num_pixels,]
+      bf2 [np.ndarray] of shape [num_pixels,]
+    """
+    v = bf2 - np.dot(bf2[:,None].T, bf1[:,None]) * bf1
+    v = np.squeeze((v / np.linalg.norm(v)).T)
+    proj_matrix = np.stack([bf1,v], axis=0)
+    return proj_matrix

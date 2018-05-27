@@ -6,8 +6,8 @@ import analysis.analysis_picker as ap
 
 analysis_params = {
   "model_type": "ica",
-  "model_name": "ica",
-  "version": "1.0",
+  "model_name": "ica_test",
+  "version": "0.0",
   "data_type": "vanHateren",
   "device": "/gpu:0",
   "save_info": "analysis",
@@ -15,8 +15,9 @@ analysis_params = {
   "num_patches": 1e4,
   "ft_padding": 16, #Fourier analysis padding for weight fitting
   "num_inference_images": 5, #How many random images to average over for inference statistics
-  "input_scale": 40, # LCA/SA
+  #"input_scale": 40, # LCA/SA
   #"input_scale": 0.5, # ICA
+  "input_scale": 1.0,
   "cov_num_images": int(1e5), #number of images used to compute cov matrix (LCA_PCA)
   "neuron_indices": None,
   "contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
