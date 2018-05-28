@@ -32,6 +32,10 @@ class LCA_Analyzer(Analyzer):
       self.gauss_thresh = params["gauss_thresh"]
     else:
       self.gauss_thresh = 0.2
+    if "input_scale" in params.keys():
+      self.input_scale = params["input_scale"]
+    else:
+      self.input_scale = 1.0
     if "neuron_indices" in params.keys():
       self.ot_neurons = params["neuron_indices"]
     else:
@@ -66,13 +70,14 @@ class LCA_Analyzer(Analyzer):
       and self.ot_orientations is not None
       and self.ot_phases is not None):
       self.ot_grating_responses = self.orientation_tuning(self.bf_stats, self.ot_contrasts,
-        self.ot_orientations, self.ot_phases, self.ot_neurons)
+        self.ot_orientations, self.ot_phases, self.ot_neurons, scale=self.input_scale)
       np.savez(self.analysis_out_dir+"ot_responses_"+save_info+".npz", data=self.ot_grating_responses)
       ot_mean_activations = self.ot_grating_responses["mean_responses"]
       base_orientations = [self.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
         for bf_idx in range(len(self.ot_grating_responses["neuron_indices"]))]
       self.co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
-        self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons)
+        self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons,
+        scale=self.input_scale)
       np.savez(self.analysis_out_dir+"co_responses_"+save_info+".npz", data=self.co_grating_responses)
 
   def load_analysis(self, save_info=""):

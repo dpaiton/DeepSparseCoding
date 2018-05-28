@@ -1,15 +1,15 @@
 import os
 params = {
-  "model_type": "ica",
-  "model_name": "ica",
+  "model_type": "sparse_autoencoder",
+  "model_name": "sparse_autoencoder",
   "version": "0.0",
-  "num_images": 100,
+  "num_images": 150,
   "vectorize_data": True,
   "norm_data": False,
   "center_data": False,
-  "standardize_data": False,
+  "standardize_data": True,
   "contrast_normalize": False,
-  "lpf_data": False, # only for ZCA/PCA
+  "lpf_data": False,
   "lpf_cutoff": 0.7,
   "whiten_data": True,
   "whiten_method": "FT",
@@ -18,18 +18,14 @@ params = {
   "patch_edge_size": 16,
   "overlapping_patches": True,
   "randomize_patches": True,
-  "patch_variance_threshold": 0,
-  "batch_size": 50,
-  "prior": "laplacian", #"cauchy",
-  "optimizer": "annealed_sgd",
+  "patch_variance_threshold": 0.0,
+  "batch_size": 500,
+  "num_neurons": 256,
+  "optimizer": "adam",#"annealed_sgd",
   "cp_int": 10000,
   "max_cp_to_keep": 1,
   "cp_load": False,
-  "cp_load_name": "pretrain",
-  "cp_load_step": 150000,
-  "cp_load_ver": "0.0",
-  "cp_load_var": ["a"],
-  "log_int": 100,
+  "log_int": 10,
   "log_to_file": True,
   "gen_plot_int": 1000,
   "save_plots": True,
@@ -40,10 +36,12 @@ params = {
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
-  {"weights": ["w_synth"], # A, VS265
-  #{"weights": ["w_analysis"], # W=A^-1, Bell & Sejnowski
-  "weight_lr": [0.001],
-  "decay_steps": [3e5],
-  "decay_rate": [0.8],
-  "staircase": [True],
-  "num_batches": 5e5}]
+  {"weights": ["w_enc", "b_enc", "w_dec", "b_dec"],
+  "sparse_mult": 4.0,
+  "decay_mult": 0.02,
+  "target_act": 0.01,
+  "weight_lr": [0.01,]*4,
+  "decay_steps": [int(1e4*0.5),]*4,
+  "decay_rate": [0.5,]*4,
+  "staircase": [True,]*4,
+  "num_batches": int(1e4)}]

@@ -2,14 +2,18 @@ import re
 import time
 import numpy as np
 import json as js
+import os
 
 class Logger(object):
-  def __init__(self, filename=None):
+  def __init__(self, filename=None, overwrite=False):
     if filename is None:
       self.log_to_file = False
     else:
       self.log_to_file = True
-      self.file_obj = open(filename, "a+", buffering=1)
+      if overwrite:
+        self.file_obj = open(filename, "w", buffering=1)
+      else:
+        self.file_obj = open(filename, "r+", buffering=1)
       self.file_obj.seek(0)
 
   def js_dumpstring(self, obj):
@@ -42,17 +46,16 @@ class Logger(object):
     else:
       print(out_str)
 
-  def load_file(self):
+  def load_file(self, filename=None):
     """
     Load log file into memory
     Outputs:
       log_text: [str] containing log file text
-    TODO: Make text a member variable, other load functions use member variable
-      This would then become an internal function without a return
-      Downside is you keep the text in memory even if you're not using it...
-      Current setup allows for the text to be dropped once e.g. params are read
     """
-    self.file_obj.seek(0)
+    if filename is None:
+      self.file_obj.seek(0)
+    else:
+      self.file_obj = open(filename, "r", buffering=1)
     text = self.file_obj.read()
     return text
 
@@ -66,6 +69,9 @@ class Logger(object):
         entry indicating end token
       text: [str] containing text to parse, can be obtained by calling load_file()
     TODO: Verify that js_matches is the same type for both conditionals at the end
+      I believe js_matches should be a list at all times. That way when e.g. read_params
+      is called the output is a list no matter how many params specifications there are
+      in the logfile.
     """
     assert type(tokens) == list, ("Input variable tokens must be a list")
     assert len(tokens) == 2, ("Input variable tokens must be a list of length 2")
@@ -118,7 +124,7 @@ class Logger(object):
     return stats
 
   def __del__(self):
-    if self.log_to_file:
+    if self.log_to_file and hasattr(self, "file_obj"):
       self.file_obj.close()
 
 class NumpyEncoder(js.JSONEncoder):

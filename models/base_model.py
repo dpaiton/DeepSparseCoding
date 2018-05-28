@@ -162,7 +162,7 @@ class Model(object):
     if self.log_to_file:
       if log_filename is None:
         log_filename = self.log_dir+self.model_name+"_v"+self.version+".log"
-        self.logger = Logger(log_filename)
+        self.logger = Logger(log_filename, overwrite=True)
     else:
         self.logger = Logger()
 
@@ -206,7 +206,7 @@ class Model(object):
           sch_grads_and_vars = list() # [weight_idx]
           sch_apply_grads = list() # [weight_idx]
           for w_idx, weight in enumerate(sch["weights"]):
-            self.learning_rates = tf.train.exponential_decay(
+            learning_rates = tf.train.exponential_decay(
               learning_rate=sch["weight_lr"][w_idx],
               global_step=self.global_step,
               decay_steps=sch["decay_steps"][w_idx],
@@ -214,18 +214,18 @@ class Model(object):
               staircase=sch["staircase"][w_idx],
               name="annealing_schedule_"+weight)
             if self.optimizer == "annealed_sgd":
-              optimizer = tf.train.GradientDescentOptimizer(self.learning_rates,
+              optimizer = tf.train.GradientDescentOptimizer(learning_rates,
                 name="grad_optimizer_"+weight)
             elif self.optimizer == "adam":
-              optimizer = tf.train.AdamOptimizer(self.learning_rates, beta1=0.9, beta2=0.99,
+              optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
                 epsilon=1e-07, name="adam_optimizer_"+weight)
             elif self.optimizer == "adadelta":
-              optimizer = tf.train.AdadeltaOptimizer(self.learning_rates, epsilon=1e-07,
+              optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
                 name="adadelta_optimizer_"+weight)
             with tf.variable_scope("weights", reuse=True) as scope:
               weight_op = [tf.get_variable(weight)]
             sch_grads_and_vars.append(self.compute_weight_gradients(optimizer, weight_op))
-            gstep = self.global_step if w_idx == 0 else None # Only update once
+            gstep = self.global_step if w_idx == 0 else None # Only increment once
             sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
               global_step=gstep))
           self.grads_and_vars.append(sch_grads_and_vars)
@@ -299,11 +299,13 @@ class Model(object):
     base_save_path = self.cp_save_dir+self.model_name+"_v"+self.version
     full_save_path = self.full_saver.save(session,
       save_path=base_save_path+"_full",
-      global_step=self.global_step)
+      global_step=self.global_step,
+      latest_filename="latest_checkpoint_v"+self.version)
     self.logger.log_info("Full model saved in file %s"%full_save_path)
     weight_save_path = self.weight_saver.save(session,
       save_path=base_save_path+"_weights",
-      global_step=self.global_step)
+      global_step=self.global_step,
+      latest_filename="latest_checkpoint_v"+self.version)
     self.logger.log_info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
 
@@ -435,12 +437,20 @@ class Model(object):
           if params["whiten_method"] == "FT": # other methods require patching first
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
               dp.whiten_data(dataset[key].images, method=params["whiten_method"])
+      if "lpf_data" in params.keys() and params["lpf_data"]:
+        dataset[key].images, dataset[key].data_mean, dataset[key].lpf_filter = \
+          dp.lpf_data(dataset[key].images, cutoff=params["lpf_cutoff"])
       if "contrast_normalize" in params.keys() and params["contrast_normalize"]:
         if "gauss_patch_size" in params.keys():
           dataset[key].images = dp.contrast_normalize(dataset[key].images,
             params["gauss_patch_size"])
         else:
           dataset[key].images = dp.contrast_normalize(dataset[key].images)
+      if "standardize_data" in params.keys() and params["standardize_data"]:
+        dataset[key].images, dataset[key].data_mean, dataset[key].data_std = \
+          dp.standardize_data(dataset[key].images)
+        self.data_mean = dataset[key].data_mean
+        self.data_std = dataset[key].data_std
       if "extract_patches" in params.keys() and params["extract_patches"]:
         assert all(key in params.keys()
           for key in ["num_patches", "patch_edge_size", "overlapping_patches",
@@ -468,11 +478,6 @@ class Model(object):
               dp.whiten_data(dataset[key].images, method=params["whiten_method"])
       if "norm_data" in params.keys() and params["norm_data"]:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
-      if "standardize_data" in params.keys() and params["standardize_data"]:
-        dataset[key].images, dataset[key].data_mean, dataset[key].data_std = \
-          dp.standardize_data(dataset[key].images)
-        self.data_mean = dataset[key].data_mean
-        self.data_std = dataset[key].data_std
     return dataset
 
   def print_update(self, input_data, input_labels=None, batch_step=0):

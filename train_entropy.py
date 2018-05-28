@@ -11,22 +11,11 @@ import time as ti
 t0 = ti.time()
 
 ## Specify model type and data type
-#model_type = "mlp"
-model_type = "ica"
-#model_type = "ica_pca"
-#model_type = "lca"
-#model_type = "lca_pca"
-#model_type = "lca_pca_fb"
-#model_type = "conv_lca"
-#model_type = "gradient_sc"
-#model_type = "sigmoid_autoencoder"
-#model_type = "density_learner"
+#model_type = "entropy_sc"
+model_type = "gdn_autoencoder"
+#model_type = "relu_autoencoder"
 
-#data_type = "cifar10"
-#data_type = "mnist"
 data_type = "vanhateren"
-#data_type = "field"
-#data_type = "synthetic"
 
 ## Import params
 params, schedule = pp.get_params(model_type)
@@ -43,9 +32,6 @@ data = model.preprocess_dataset(data, params)
 data = model.reshape_dataset(data, params)
 params["data_shape"] = list(data["train"].shape[1:])
 model.setup(params, schedule)
-if params["standardize_data"]:
-  model.log_info("Standardization was performed, mean was "+str(model.data_mean)
-    +" and std was "+str(model.data_std))
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
@@ -74,7 +60,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
   for sch_idx, sch in enumerate(schedule):
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
-    for b_step in np.arange(model.get_schedule("num_batches")):
+    for b_step in range(model.get_schedule("num_batches")):
       data_batch = data["train"].next_batch(model.batch_size)
       input_data = data_batch[0]
       input_labels = data_batch[1]
@@ -83,15 +69,20 @@ with tf.Session(config=config, graph=model.graph) as sess:
       feed_dict = model.get_feed_dict(input_data, input_labels)
 
       batch_t0 = ti.time()
-      ## Update weights
+
+      ## Update model weights
+      sess_run_list = []
       for w_idx in range(len(model.get_schedule("weights"))):
-        sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
+        sess_run_list.append(model.apply_grads[sch_idx][w_idx])
+
+      ## Update MLE estimate
+      sess_run_list.append(model.mle_update)
+      sess.run(sess_run_list, feed_dict)
       batch_t1 = ti.time()
       avg_time += (batch_t1-batch_t0)/model.batch_size
 
       ## Normalize weights
-      if hasattr(model, "norm_weights"):
-        if params["norm_weights"]:
+      if hasattr(params, "norm_weights") and params["norm_weights"]:
           sess.run([model.norm_weights], feed_dict)
 
       ## Generate logs
@@ -103,8 +94,9 @@ with tf.Session(config=config, graph=model.graph) as sess:
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
 
       ## Plot weights & gradients
-      if (current_step % model.gen_plot_int == 0
-        and model.gen_plot_int > 0):
+      if (current_step <= 1 and model.gen_plot_int > 0):
+        model.generate_plots(input_data=input_data, input_labels=input_labels)
+      if (current_step % model.gen_plot_int == 0 and model.gen_plot_int > 0):
         model.generate_plots(input_data=input_data, input_labels=input_labels)
 
       ## Checkpoint

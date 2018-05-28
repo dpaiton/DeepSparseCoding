@@ -3,16 +3,22 @@ import tensorflow as tf
 from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
 
-class ICA_Analyzer(Analyzer):
+class GA_Analyzer(Analyzer):
   def __init__(self, params):
-    Analyzer.__init__(self, params)
+    super(GA_Analyzer, self).__init__(params)
     self.var_names = [
-      "weights/w_synth:0",
-      "weights/w_analysis:0",
-      "inference/activity:0"]
+      "weights/w_enc:0",
+      "weights/w_dec:0",
+      "weights/b_enc:0",
+      "weights/b_dec:0",
+      "weights/w_gdn:0",
+      "weights/b_gdn:0",
+      "weights/w_igdn:0",
+      "weights/b_igdn:0",
+      "inference/gdn_output:0"]
 
   def load_params(self, params):
-    super(ICA_Analyzer, self).load_params(params)
+    super(GA_Analyzer, self).load_params(params)
     if "ft_padding" in params.keys():
       self.ft_padding = params["ft_padding"]
     if "neuron_indices" in params.keys():
@@ -33,10 +39,10 @@ class ICA_Analyzer(Analyzer):
       self.gauss_thresh = 0.2
 
   def run_analysis(self, images, save_info=""):
-    super(ICA_Analyzer, self).run_analysis(images, save_info)
+    super(GA_Analyzer, self).run_analysis(images, save_info)
     self.evals = self.evaluate_model(images, self.var_names)
-    self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
-    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/w_analysis:0"],
+    self.atas = self.compute_atas(self.evals["inference/gdn_output:0"], images)
+    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/w_enc:0"],
       padding=self.ft_padding, num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
@@ -71,5 +77,5 @@ class ICA_Analyzer(Analyzer):
       feed_dict = self.model.get_feed_dict(images)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_weights(sess, self.cp_loc)
-      activations = sess.run(self.model.a, feed_dict)
+      activations = sess.run(self.model.gdn_output, feed_dict) 
     return activations

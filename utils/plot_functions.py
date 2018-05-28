@@ -6,6 +6,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits import axes_grid1
+import re
 import utils.data_processing as dp
 
 def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=False,
@@ -140,7 +141,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
         evals, evecs = bf_stats["gauss_orientations"][bf_idx]
         orientations = bf_stats["fourier_centers"][bf_idx]
         angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
-        alpha = 0.5#todo:spatial_freq for filled ellipses?
+        alpha = 0.5
         ellipse = plot_ellipse(ax, center, evals, angle, color_val, alpha=alpha, lines=lines)
       ax.set_xlim(0, patch_edge_size-1)
       ax.set_ylim(patch_edge_size-1, 0)
@@ -589,6 +590,7 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
       ax = fig.add_subplot(gs[plot_id])#, sharey=ax00)
     if bf_idx < num_bfs:
       for co_idx, contrast in enumerate(contrasts):
+        co_idx = -1
         contrast = contrasts[co_idx]
         activity = activations[bf_indices[bf_idx], co_idx, :]
         color_val = scalarMap.to_rgba(contrast)
@@ -740,6 +742,7 @@ def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   (fig, ax) = plt.subplots(1)
   vals, bins, patches = ax.hist(data, bins=num_bins, histtype="barstacked",
     stacked=True)
+  ax.set_xlim([np.min(data), np.max(data)])
   ax.set_xlabel('Value')
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
@@ -771,6 +774,9 @@ def plot_phase_avg_power_spec(data, title="", save_filename=None):
   return fig
 
 def plot_weights(weights, title="", save_filename=None):
+  """
+    weights: [np.ndarray] of shape [num_outputs, num_input_x, num_input_y]
+  """
   num_plots = weights.shape[0]
   num_plots_y = int(np.ceil(np.sqrt(num_plots))+1)
   num_plots_x = int(np.floor(np.sqrt(num_plots)))
@@ -782,7 +788,7 @@ def plot_weights(weights, title="", save_filename=None):
       filter_total += 1
     clear_axis(sub_ax[plot_id])
     sub_ax[plot_id].set_aspect("equal")
-  fig.suptitle(title, y=1.0, x=0.5, fontsize=20)
+  fig.suptitle(title, y=0.9, x=0.5, fontsize=20)
   if save_filename is not None:
       fig.savefig(save_filename)
       plt.close(fig)
@@ -791,7 +797,7 @@ def plot_weights(weights, title="", save_filename=None):
   return fig
 
 def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap="Greys_r",
-                    save_filename=None):
+  save_filename=None):
   """
   Save figure for input data as a tiled image
   Inpus:
@@ -837,7 +843,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   plt.show()
   return fig
 
-def plot_stats(data, keys=None, labels=None, save_filename=None):
+def plot_stats(data, keys=None, labels=None, figsize=None, save_filename=None):
   """
   Generate time-series plots of stats specified by keys
   Inputs:
@@ -854,6 +860,7 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
   else:
     assert all([key in data.keys() for key in keys]), (
       "All input keys must exist as keys in the data dictionary")
+  assert len(keys) > 0, "Keys must be None or have length > 0."
   if "batch_step" in keys:
     keys.remove("batch_step")
   if labels is None:
@@ -862,17 +869,20 @@ def plot_stats(data, keys=None, labels=None, save_filename=None):
     assert len(labels) == len(keys), (
       "The number of labels must match the number of keys")
   num_keys = len(keys)
-  fig, sub_ax = plt.subplots(num_keys)
+  gs = gridspec.GridSpec(num_keys, 1, hspace=0.5)
+  fig = plt.figure(figsize=figsize)
   axis_image = [None]*num_keys
   for key_idx, key in enumerate(keys):
-    axis_image[key_idx] = sub_ax[key_idx].plot(data["batch_step"], data[key])
+    ax = fig.add_subplot(gs[key_idx])
+    axis_image[key_idx] = ax.plot(data["batch_step"], data[key])
     if key_idx < len(keys)-1:
-      sub_ax[key_idx].get_xaxis().set_ticklabels([])
-    sub_ax[key_idx].locator_params(axis="y", nbins=5)
-    sub_ax[key_idx].set_ylabel(labels[key_idx])
+      ax.get_xaxis().set_ticklabels([])
+    ax.locator_params(axis="y", nbins=5)
+    ax.set_ylabel("\n".join(re.split("_", labels[key_idx])))
+    ax.set_yticks([np.minimum(0.0, np.min(data[key])), np.maximum(0.0, np.max(data[key]))])
     ylabel_xpos = -0.15
-    sub_ax[key_idx].yaxis.set_label_coords(ylabel_xpos, 0.5)
-  sub_ax[-1].set_xlabel("Batch Number")
+    ax.yaxis.set_label_coords(ylabel_xpos, 0.5)
+  ax.set_xlabel("Batch Number")
   fig.suptitle("Stats per Batch", y=1.0, x=0.5)
   if save_filename is not None:
       fig.savefig(save_filename, transparent=True)
@@ -990,6 +1000,19 @@ def plot_inference_traces(data, activation_threshold, img_idx=0):
   plt.show()
   return fig
 
+def plot_weight_image(weights, colorbar_aspect=50, title="", figsize=None, save_filename=None):
+  fig, ax = plt.subplots(1, 1, figsize=figsize)
+  im = ax.imshow(weights, vmin=np.min(weights), vmax=np.max(weights), cmap="Greys_r")
+  ax.set_title(title)
+  clear_axis(ax)
+  add_colorbar_to_im(im, aspect=colorbar_aspect)
+  if save_filename is not None:
+    fig.savefig(save_filename, transparent=True)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
 def pad_data(data, pad_values=1):
   """
   Pad data with ones for visualization
@@ -1033,13 +1056,14 @@ def bgr_colormap():
       }
   return LinearSegmentedColormap("bgr", cdict)
 
-def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, **kwargs):
+def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, **kwargs):
   """
   Add a vertical color bar to an image plot.
   Inputs:
     im: [AxisImage] object returned from matplotlib.plt.imshow()
     aspect: [int] aspect ratio of the colorbar
     pad_fraction: [float] how much space to place between colorbar & plot
+    labelsize: [float] font size of the colorbar labels
     **kwargs: [dict] other keyword arguments that would be passed to im.axes.figure.colorbar()
   """
   divider = axes_grid1.make_axes_locatable(im.axes)
@@ -1049,7 +1073,7 @@ def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, **kwargs):
   cax = divider.append_axes("right", size=width, pad=pad)
   plt.sca(current_ax)
   cbar = im.axes.figure.colorbar(im, cax=cax, **kwargs)
-  cbar.ax.tick_params(labelsize=16)
+  cbar.ax.tick_params(labelsize=labelsize)
   return cbar
 
 def clear_axis(ax, spines="none"):

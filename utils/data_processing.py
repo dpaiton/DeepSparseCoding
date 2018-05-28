@@ -263,20 +263,19 @@ def get_grating_params(bf_stats, bf_idx, patch_edge=None, location=None, diamete
   contrast = 1.0 if contrast is None else contrast
   return(patch_edge, location, diameter, orientation, frequency, phase, contrast)
 
-def generate_grating(rf_edge, location, diameter, orientation, frequency, phase, contrast):
+def generate_grating(patch_edge_size, location, diameter, orientation, frequency, phase, contrast):
   """
   generate a sinusoidal stimulus. The stimulus is a square with a circular mask.
-  rf_edge [int] number of pixels the stimulus edge will span
+  patch_edge_size [int] number of pixels the stimulus edge will span
   location [tuple of ints] location of the center of the stimulus
-  diameter [int] diameter of the stimulus circular window; set > sqrt(2*rf_edge^2) to remove the mask
+  diameter [int] diameter of the stimulus circular window
+    set > sqrt(2*patch_edge_size^2) to remove the mask
   orientation [float] orientation of the grating. Specification follows the unit circle.
   frequency [float] frequency of stimulus
   phase [float] phase of the grating
   contrast [float] contrast of the grating, should be between 0 and 1
-  TODO: This function should probably live in the synthetic dataset class.
-  What to do with get_grating_params?
   """
-  vals = np.linspace(-np.pi, np.pi, rf_edge)
+  vals = np.linspace(-np.pi, np.pi, patch_edge_size)
   X, Y = np.meshgrid(vals, vals)
   Xr = np.cos(orientation)*X + -np.sin(orientation)*Y  # countercloclwise
   Yr = np.sin(orientation)*X + np.cos(orientation)*Y
@@ -284,7 +283,7 @@ def generate_grating(rf_edge, location, diameter, orientation, frequency, phase,
   if diameter > 0: # Generate mask
     rad = diameter/2
     y_loc, x_loc = location
-    Y,X = np.ogrid[-y_loc:rf_edge-y_loc, -x_loc:rf_edge-x_loc]
+    Y,X = np.ogrid[-y_loc:patch_edge_size-y_loc, -x_loc:patch_edge_size-x_loc]
     mask = X*X + Y*Y > rad*rad
     stim[mask] = 0.5
   return stim
@@ -390,8 +389,7 @@ def extract_overlapping_patches(images, out_shape, var_thresh=0,
     rand_state [np.random.RandomState()]
   Outputs:
     patches [np.ndarray] of patches of shape out_shape
-  TODO:
-    Allow non-random overlapping patches (e.g. strided convolution patches)
+  TODO: Allow non-random overlapping patches (e.g. strided convolution patches)
   """
   num_im, im_height, im_width, im_chan = images.shape
   num_patches, patch_height, patch_width, patch_chan = out_shape
@@ -663,7 +661,7 @@ def rescale_data_to_one(data):
   data_min = np.min(data, axis=data_axis, keepdims=True)
   data_max = np.max(data, axis=data_axis, keepdims=True)
   return (data - data_min) / (data_max - data_min + 1e-6)
-  
+
 def normalize_data_with_max(data):
   """
   Normalize data by dividing by abs(max(data))
@@ -673,8 +671,8 @@ def normalize_data_with_max(data):
     norm_data: [np.ndarray] normalized data
     data_max: [float] max that was divided out
   """
-  if np.max(np.abs(data)) > 0:
-    data_max = np.max(np.abs(data))
+  data_max = np.max(np.abs(data))
+  if data_max > 0:
     norm_data = data / data_max
   else:
     norm_data = data
@@ -743,7 +741,46 @@ def normalize_data_with_var(data):
     data /= data_var
   return data, data_var
 
-def whiten_data(data, method="FT"):
+def generate_lpf_ramp_filters(num_data_rows, cutoff=0.7):
+  """
+  Generate a low pass filter and ramp filter for square images with edge length = num_data_rows
+  Inputs:
+    num_data_rows: [int] number of rows on the edge of the square image patch
+    cutoff: [float] between 0 and 1, the desired low-pass cutoff frequency (multiplied by nyquist)
+  Outputs:
+    rho [np.ndarray] ramp (amplitude rises linearly with frequency) filter
+    lpf [np.ndarray] low-pass filter (circularly symmetric, with cutoff specified by input)
+  """
+  nyq = np.int32(np.floor(num_data_rows/2))
+  freqs = np.linspace(-nyq, nyq-1, num=num_data_rows)
+  fspace = np.meshgrid(freqs, freqs)
+  rho = np.sqrt(np.square(fspace[0]) + np.square(fspace[1]))
+  lpf = np.exp(-0.5 * np.square(rho / (cutoff * nyq)))
+  return rho, lpf
+
+def lpf_data(data, cutoff=0.7):
+  """
+  Low pass filter data
+  Inputs:
+    data: [np.ndarray] with shape [num_examples, height, width, chan]
+    cutoff: [float] between 0 and 1, the desired low-pass cutoff frequency (multiplied by nyquist)
+  Outputs:
+    lpf_data [np.ndarray]
+    data_mean [np.ndarray]
+    lpf_filter [np.ndarray] information necessary for undoing the filter
+  """
+  flatten = False
+  (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+  data, data_mean = center_data(data, use_dataset_mean=False)
+  data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
+  lpf = generate_lpf_ramp_filters(num_rows, cutoff)[1]
+  data = np.multiply(data, lpf[None, ..., None])
+  data_lpf = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
+  if data_lpf.shape != orig_shape:
+    data_lpf = reshape_data(data_lpf, not flatten, out_shape=orig_shape[1:])[0]
+  return data_lpf, data_mean, lpf
+
+def whiten_data(data, method="FT", lpf_cutoff=0.7):
   """
   Whiten data
   Inputs:
@@ -754,23 +791,20 @@ def whiten_data(data, method="FT"):
     data_mean [np.ndarray]
     w_filter [list or np.ndarray] information necessary for unwhitenening
       if method=="FT", then w_filter is np.ndarray representing fourier filter
-      if method=="PCA" or "ZCA", then w_filter is a list containing [u, diag(s)] of SVD of covariance matrix
+      if method=="PCA" or "ZCA", then w_filter is a list containing [u, diag(s)]
+        of SVD of covariance matrix
   """
   if method.upper() == "FT":
-    flatten=False
+    flatten = False
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
-    nyq = np.int32(np.floor(num_rows/2))
-    freqs = np.linspace(-nyq, nyq-1, num=num_rows)
-    fspace = np.meshgrid(freqs, freqs)
-    rho = np.sqrt(np.square(fspace[0]) + np.square(fspace[1]))
-    lpf = np.exp(-0.5 * np.square(rho / (0.7 * nyq)))
-    w_filter = np.multiply(rho, lpf) # filter is in the frequency domain
-    data = np.multiply(data, w_filter[None, ..., None])
+    w_filter, lpf = generate_lpf_ramp_filters(num_rows, cutoff=lpf_cutoff)
+    full_filter = np.multiply(w_filter, lpf) # filters are in the frequency domain
+    data = np.multiply(data, full_filter[None, ..., None])
     data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
   elif method.upper() == "PCA":
-    flatten=True
+    flatten = True
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
@@ -779,7 +813,7 @@ def whiten_data(data, method="FT"):
     w_filter = [u, np.diag(np.sqrt(s+1e-8))] # filter components
     data_wht = np.dot(data, np.dot(u, isqrtS)) 
   elif method.upper() == "ZCA":
-    flatten=True
+    flatten = True
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
@@ -936,3 +970,12 @@ def phase_avg_pow_spec(data):
       if not np.isnan(np.mean(power_spec[data_idx][rho == rad])):
         phase_avg[data_idx, rad] = np.mean(power_spec[data_idx][rho == rad])
   return phase_avg
+
+def compute_mse(a, b):
+  """
+  Computes the mean squared error between a and b
+  Inputs:
+    a [np.ndarray] of shape: (batch, datapoint_size)
+    b [np.ndarray] of shape: (batch, datapoint_size)
+  """
+  return np.mean(np.sum(np.square(a-b), axis=1))

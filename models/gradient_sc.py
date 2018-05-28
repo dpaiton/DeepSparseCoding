@@ -4,9 +4,9 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.base_model import Model
 
-class LCA(Model):
+class Gradient_SC(Model):
   def __init__(self):
-    super(LCA, self).__init__()
+    super(Gradient_SC, self).__init__()
     self.vector_inputs = True
 
   def load_params(self, params):
@@ -15,78 +15,37 @@ class LCA(Model):
     Inputs:
      params: [dict] model parameters
     Modifiable Parameters:
-      rectify_a    [bool] If set, rectify layer 1 activity
-      norm_weights [bool] If set, l2 normalize weights after updates
       batch_size   [int] Number of images in a training batch
-      num_neurons  [int] Number of LCA neurons
-      num_steps    [int] Number of inference steps
-      dt           [float] Discrete global time constant
-      tau          [float] LCA time constant
-      thresh_type  [str] "hard" or "soft" - LCA threshold function specification
+      num_neurons  [int] Number of SC neurons
+      num_a_steps    [int] Number of inference steps
     """
-    super(LCA, self).load_params(params)
+    super(Gradient_SC, self).load_params(params)
     self.data_shape = params["data_shape"]
-    # Meta parameters
-    self.rectify_a = bool(params["rectify_a"])
-    self.norm_weights = bool(params["norm_weights"])
-    self.thresh_type = str(params["thresh_type"])
     # Network Size
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
     self.num_neurons = int(params["num_neurons"])
     self.phi_shape = [self.num_pixels, self.num_neurons]
-    self.u_shape = [self.num_neurons]
     self.x_shape = [None, self.num_pixels]
     # Hyper Parameters
-    self.num_steps = int(params["num_steps"])
-    self.dt = float(params["dt"])
-    self.tau = float(params["tau"])
-    self.eta = self.dt / self.tau
+    self.num_a_steps = int(params["num_a_steps"])
+    self.a_step_size = float(params["a_step_size"])
 
-  def compute_excitatory_current(self):
-    return tf.matmul(self.x, self.phi, name="driving_input")
-
-  def compute_inhibitory_connectivity(self):
-   return (tf.matmul(tf.transpose(self.phi), self.phi, name="gram_matrix")
-     - tf.constant(np.identity(self.phi_shape[1], dtype=np.float32), name="identity_matrix"))
-
-  def step_inference(self, u_in, a_in, b, g, step):
-    with tf.name_scope("update_u"+str(step)) as scope:
-      lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
-      du = tf.subtract(tf.subtract(b, lca_explain_away), u_in, name="du")
-      u_out = tf.add(u_in, tf.multiply(self.eta, du))
-    return u_out, lca_explain_away
-
-  def threshold_units(self, u_in):
-    if self.thresh_type == "soft":
-      if self.rectify_a:
-        a_out = tf.where(tf.greater(u_in, self.sparse_mult),
-          tf.subtract(u_in, self.sparse_mult), self.u_zeros)
-      else:
-        a_out = tf.where(tf.greater_equal(u_in, self.sparse_mult),
-          tf.subtract(u_in, self.sparse_mult),
-          tf.where(tf.less_equal(u_in, -self.sparse_mult),
-          tf.add(u_in, self.sparse_mult),
-          self.u_zeros))
-    elif self.thresh_type == "hard":
-      if self.rectify_a:
-        a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
-          self.u_zeros)
-      else:
-        a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
-          tf.where(tf.less(u_in, -self.sparse_mult), u_in, self.u_zeros))
+  def step_inference(self, a_in, loss, step):
+    with tf.name_scope("update_a"+str(step)) as scope:
+      da = tf.gradients(loss, a_in, name="deda")[0]
+      a_out = tf.add(a_in, tf.multiply(self.a_step_size, -da))
     return a_out
 
   def infer_coefficients(self):
-   lca_b = self.compute_excitatory_current()
-   lca_g = self.compute_inhibitory_connectivity()
-   u_list = [self.u_zeros]
-   a_list = [self.threshold_units(u_list[0])]
-   for step in range(self.num_steps-1):
-     u = self.step_inference(u_list[step], a_list[step], lca_b, lca_g, step)[0]
-     u_list.append(u)
-     a_list.append(self.threshold_units(u_list[step+1]))
-   return (u_list, a_list)
+   a_list = [tf.matmul(self.x, self.phi, name="init_a")]
+   loss_list = [self.compute_total_loss(a_list[0], self.get_loss_funcs())]
+   for step in range(self.num_a_steps-1):
+     a = self.step_inference(a_list[step], loss_list[step], step)
+     loss = self.compute_total_loss(a, self.get_loss_funcs())
+     a_list.append(a)
+     loss_list.append(loss)
+   return a_list
 
   def compute_recon(self, a_in):
     return tf.matmul(a_in, tf.transpose(self.phi), name="reconstruction")
@@ -121,19 +80,13 @@ class LCA(Model):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
   def build_graph(self):
-    super(LCA, self).build_graph()
+    super(Gradient_SC, self).build_graph()
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
-
-        with tf.name_scope("constants") as scope:
-          u_full_shape = tf.stack([tf.shape(self.x)[0]]+self.u_shape)
-          self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
-          self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
-            dtype=tf.float32, name="u_noise")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -151,19 +104,18 @@ class LCA(Model):
           self.norm_weights = tf.group(self.norm_phi, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
-         u_list, a_list = self.infer_coefficients()
-         self.u = tf.identity(u_list[-1], name="u")
+         a_list = self.infer_coefficients()
          self.a = tf.identity(a_list[-1], name="activity")
-
-        with tf.name_scope("output") as scope:
-          with tf.name_scope("image_estimate"):
-            self.x_ = self.compute_recon(self.a)
 
         with tf.name_scope("loss") as scope:
           loss_funcs = self.get_loss_funcs()
           self.loss_dict = dict(zip(
             [key for key in loss_funcs.keys()], [func(self.a) for func in loss_funcs.values()]))
           self.total_loss = self.compute_total_loss(self.a, loss_funcs)
+
+        with tf.name_scope("output") as scope:
+          with tf.name_scope("image_estimate"):
+            self.x_ = self.compute_recon(self.a)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -182,7 +134,7 @@ class LCA(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    super(LCA, self).print_update(input_data, input_labels, batch_step)
+    super(Gradient_SC, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
       self.total_loss, self.a]
@@ -225,41 +177,42 @@ class LCA(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(LCA, self).generate_plots(input_data, input_labels)
+    super(Gradient_SC, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.phi, self.x_,  self.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     weights, recon, activity = eval_out[1:]
-    weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
-    recon = dp.reshape_data(recon, flatten=False)[0]
+    weights_norm = np.linalg.norm(weights, axis=1, keepdims=False)
     weights = dp.reshape_data(weights.T, flatten=False)[0]
-    fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    input_data = dp.reshape_data(input_data, flatten=False)[0]
-    fig = pf.plot_data_tiled(input_data, normalize=False,
-      title="Images at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"images_"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(activity, title="Activity Histogram",
-      save_filename=(self.disp_dir+"act_hist_"+self.version+"-"
-      +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"-"
+      save_filename=(self.disp_dir+"phi_v"+self.version+"_"
       +current_step.zfill(5)+".png"))
-    fig = pf.plot_bar(weights_norm, num_xticks=5,
-      title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"phi_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    fig = pf.plot_data_tiled(recon, normalize=False,
-      title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      grad = weight_grad_var[0][0].eval(feed_dict)
-      shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      grad = dp.reshape_data(grad.T, flatten=False)[0]
-      fig = pf.plot_data_tiled(grad, normalize=True,
-        title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))
+    if eval_out[0]*10 % self.cp_int == 0:
+      fig = pf.plot_activity_hist(input_data, title="Image Histogram",
+        save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
+        +current_step.zfill(5)+".png"))
+      input_data = dp.reshape_data(input_data, flatten=False)[0]
+      fig = pf.plot_data_tiled(input_data, normalize=False,
+        title="Images at step "+current_step, vmin=None, vmax=None,
+        save_filename=(self.disp_dir+"images_"+self.version+"-"
+        +current_step.zfill(5)+".png"))
+      fig = pf.plot_activity_hist(activity, title="Activity Histogram",
+        save_filename=(self.disp_dir+"act_hist_v"+self.version+"-"
+        +current_step.zfill(5)+".png"))
+      fig = pf.plot_bar(weights_norm, num_xticks=5,
+        title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+        save_filename=(self.disp_dir+"phi_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      recon = dp.reshape_data(recon, flatten=False)[0]
+      fig = pf.plot_data_tiled(recon, normalize=False,
+        title="Recons at step "+current_step, vmin=None, vmax=None,
+        save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+        grad = weight_grad_var[0][0].eval(feed_dict)
+        shape = grad.shape
+        name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+        grad = dp.reshape_data(grad.T, flatten=False)[0]
+        fig = pf.plot_data_tiled(grad, normalize=True,
+          title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+          save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))
