@@ -11,10 +11,10 @@ class GA_Analyzer(Analyzer):
       "weights/w_dec:0",
       "weights/b_enc:0",
       "weights/b_dec:0",
-      "weights/gdn_w:0",
-      "weights/gdn_b:0",
-      "weights/igdn_w:0",
-      "weights/igdn_b:0",
+      "weights/w_gdn:0",
+      "weights/b_gdn:0",
+      "weights/w_igdn:0",
+      "weights/b_igdn:0",
       "inference/gdn_output:0"]
 
   def load_params(self, params):

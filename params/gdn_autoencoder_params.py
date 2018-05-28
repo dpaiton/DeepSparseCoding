@@ -33,7 +33,7 @@ params = {
   "cp_load_name": "gdn_autoencoder",
   "cp_load_step": 1e4,
   "cp_load_ver": "0.0",
-  "cp_load_var": ["w_enc", "b_enc", "w_dec", "b_dec", "gdn_w", "gdn_b", "igdn_w", "igdn_b"],
+  "cp_load_var": ["w_enc", "b_enc", "w_dec", "b_dec", "w_gdn", "b_gdn", "w_igdn", "b_igdn"],
   "log_int": 10,
   "log_to_file": True,
   "gen_plot_int": 1000,
@@ -45,7 +45,7 @@ params = {
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
 
 schedule = [
-  {"weights": ["w_enc", "b_enc", "w_dec", "b_dec", "gdn_w", "gdn_b", "igdn_w", "igdn_b"],
+  {"weights": ["w_enc", "b_enc", "w_dec", "b_dec", "w_gdn", "b_gdn", "w_igdn", "b_igdn"],
   "ent_mult": 2.00,
   "decay_mult": 0.01,
   "noise_var_mult": 0.000,
