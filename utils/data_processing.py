@@ -661,7 +661,7 @@ def rescale_data_to_one(data):
   data_min = np.min(data, axis=data_axis, keepdims=True)
   data_max = np.max(data, axis=data_axis, keepdims=True)
   return (data - data_min) / (data_max - data_min + 1e-6)
-  
+
 def normalize_data_with_max(data):
   """
   Normalize data by dividing by abs(max(data))

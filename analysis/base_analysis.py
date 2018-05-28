@@ -29,9 +29,9 @@ class Analyzer(object):
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=False)
       analysis_text = self.analysis_logger.load_file()
       prev_analysis_params = self.analysis_logger.read_params(analysis_text)
-      if type(prev_analysis_params) == dict: # there was only one param entry in the log
+      if type(prev_analysis_params) == dict: # there was only one param entry
         params.update(prev_analysis_params)
-      else: # type is list, which means where were multiple param entries in the file
+      else: # type is list, which means where were multiple param entries in the log
         for param_item in prev_analysis_params:
           params.update(param_item)
     else: # File is empty

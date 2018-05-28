@@ -590,8 +590,8 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
       ax = fig.add_subplot(gs[plot_id])#, sharey=ax00)
     if bf_idx < num_bfs:
       for co_idx, contrast in enumerate(contrasts):
-        contrast = 1.0
         co_idx = -1
+        contrast = contrasts[co_idx]
         activity = activations[bf_indices[bf_idx], co_idx, :]
         color_val = scalarMap.to_rgba(contrast)
         ax.plot(orientations, activity, linewidth=1, color=color_val)
@@ -828,7 +828,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   else:
     assert False, ("input data must have ndim==3 or 4")
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))
-  axis_image = sub_axis.imshow(data, cmap=cmap, interpolation="nearest")
+  axis_image = sub_axis.imshow(np.squeeze(data), cmap=cmap, interpolation="nearest")
   axis_image.set_clim(vmin=vmin, vmax=vmax)
   if data.shape[-1] == 1:
     cbar = add_colorbar_to_im(axis_image)
