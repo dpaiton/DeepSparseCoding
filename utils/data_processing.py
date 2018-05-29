@@ -8,86 +8,91 @@ def reshape_data(data, flatten=None, out_shape=None):
   Helper function to reshape input data for processing and return data shape
   Inputs:
     data: [np.ndarray] data of shape:
-      (n, i, j, k) - n data points, each of shape (i,j,k), with k specifying num_channels
-      (n, l) - n data points, each of shape l (flattened)
-      (i, j, k) - single datapoint of of shape (i,j, k), a singleton dimension will be added to the output
+      n is num_examples, i is num_rows, j is num_cols, k is num_channels, l is num_examples = i*j*k
+      if out_shape is not specified, it is assumed that i == j
       (l) - single data point of shape l, assumes 1 color channel
+      (n, l) - n data points, each of shape l (flattened)
+      (i, j, k) - single datapoint of of shape (i,j, k)
+      (n, i, j, k) - n data points, each of shape (i,j,k)
     flatten: [bool or None] specify the shape of the output
+      If out_shape is not None, this arg has no effect
       If None, do not reshape data, but add num_examples dimension if necessary
       If True, return ravelled data of shape (num_examples, num_elements)
-      If False, return unravelled data, of shape out_shape or of shape (num_examples, sqrt(l), sqrt(l), 1)
+      If False, return unravelled data of shape (num_examples, sqrt(l), sqrt(l), 1)
+        where l is the number of elements (dimensionality) of the datapoints
       If data is flat and flatten==True, or !flat and flatten==False, then None condition will apply
-    out_shape: (optional) [list or tuple] containing the desired output shape if flatten == False
-      should specify [num_rows, num_cols, num_channels]
-      If this is not given, the default is to assume a square image and num_channels = 1
+    out_shape: [list or tuple] containing the desired output shape
+      This will overwrite flatten, and return the input reshaped according to out_shape
   Outputs:
     tuple containing:
     data: [np.ndarray] data with new shape
       (num_examples, num_rows, num_cols, num_channels) if flatten==False
       (num_examples, num_elements) if flatten==True
     orig_shape: [tuple of int32] original shape of the input data
-      Note that if the input data did not have a num_examples dim,
-      then the output data will and orig_shape will include a singleton dimension for num_examples
-    num_examples: [int32] number of data examples
-    num_rows: [int32] number of data rows
-    num_cols: [int32] number of data cols
-    num_channels: [int32] number of data channels
+    num_examples: [int32] number of data examples or None if out_shape is specified
+    num_rows: [int32] number of data rows or None if out_shape is specified
+    num_cols: [int32] number of data cols or None if out_shape is specified
+    num_channels: [int32] number of data channels or None if out_shape is specified
   """
-  orig_shape = list(data.shape)
+  orig_shape = data.shape
   orig_ndim = data.ndim
-  if orig_ndim == 1: # single datapoint
-    num_examples = 1
-    num_channels = 1
-    num_elements = data.shape[0]
-    if flatten is None or flatten == True:
-      num_rows = num_elements
-      num_cols = 1
-      data = data[None, ...]
-      orig_shape = [1]+orig_shape
-    else:
-      sqrt_num_elements = np.sqrt(num_elements)
-      assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
-        "Data length must have an even square root.")
-      num_rows = int(sqrt_num_elements)
-      num_cols = num_rows
-      data = data.reshape((num_rows, num_cols))[None, ..., None]
-      orig_shape = [1]+orig_shape+[1]
-  elif orig_ndim == 2: # already flattened
-    (num_examples, num_elements) = data.shape
-    if flatten is None or flatten == True:
-      num_rows = num_elements
-      num_cols = 1
+  if out_shape is None:
+    if orig_ndim == 1: # single datapoint
+      num_examples = 1
       num_channels = 1
-    else:
-      if out_shape is not None:
-        num_rows, num_cols, num_channels = out_shape
-        data = data.reshape((num_examples, num_rows, num_cols, num_channels))
-      else:
+      num_elements = orig_shape[0]
+      if flatten is None:
+        num_rows = num_elements
+        num_cols = 1
+        data = np.reshape(data, [num_examples]+list(orig_shape)) # add num_examples=1 dimension
+      elif flatten == True:
+        num_rows = num_elements
+        num_cols = 1
+        data = np.reshape(data, (num_examples, num_rows*num_cols*num_channels))
+      else: # flatten == False
+        sqrt_num_elements = np.sqrt(num_elements)
+        assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
+          "Data length must have an even square root. Note that num_channels is assumed to be 1."
+          +" data length = "+str(num_elements)
+          +" and data_shape="+str(orig_shape))
+        num_rows = int(sqrt_num_elements)
+        num_cols = num_rows
+        data = np.reshape(data, (num_examples, num_rows, num_cols, num_channels))
+    elif orig_ndim == 2: # already flattened
+      (num_examples, num_elements) = data.shape
+      if flatten is None or flatten == True: # don't reshape data
+        num_rows = num_elements
+        num_cols = 1
+        num_channels = 1
+      elif flatten == False:
         sqrt_num_elements = np.sqrt(num_elements)
         assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
           "Data length must have an even square root when not specifying out_shape.")
         num_rows = int(sqrt_num_elements)
         num_cols = num_rows
         num_channels = 1
-        data = data.reshape((num_examples, num_rows, num_cols, num_channels))
-  elif orig_ndim == 3: # single data point
-    num_examples = 1
-    num_rows, num_cols, num_channels = data.shape
-    if flatten == True:
-      data = data.reshape((num_examples, num_rows * num_cols * num_channels))
-    elif flatten is None or flatten == False:
-      data = data[None, ...]
-      orig_shape = [1]+orig_shape
-    else:
+        data = np.reshape(data, (num_examples, num_rows, num_cols, num_channels))
+      else:
         assert False, ("flatten argument must be True, False, or None")
-  elif orig_ndim == 4: # not flat
-    num_examples, num_rows, num_cols, num_channels = data.shape
-    if flatten == True:
-      data = data.reshape((num_examples, num_rows*num_cols*num_channels))
+    elif orig_ndim == 3: # single data point
+      num_examples = 1
+      num_rows, num_cols, num_channels = data.shape
+      if flatten == True:
+        data = np.reshape(data, (num_examples, num_rows * num_cols * num_channels))
+      elif flatten is None or flatten == False: # already not flat
+        data = data[None, ...]
+      else:
+        assert False, ("flatten argument must be True, False, or None")
+    elif orig_ndim == 4: # not flat
+      num_examples, num_rows, num_cols, num_channels = data.shape
+      if flatten == True:
+        data = np.reshape(data, (num_examples, num_rows*num_cols*num_channels))
+    else:
+      assert False, ("Data must have 1, 2, 3, or 4 dimensions.")
   else:
-    assert False, ("Data must have 1, 2, 3, or 4 dimensions.")
-  return (data, tuple(orig_shape), num_examples, num_rows, num_cols, num_channels)
-
+    num_examples = None; num_rows=None; num_cols=None; num_channels=None
+    data = np.reshape(data, out_shape)
+  return (data.copy(), orig_shape, num_examples, num_rows, num_cols, num_channels)
 
 def hilbert_amplitude(weights, padding=None):
   """
@@ -441,7 +446,6 @@ def extract_random_tiled_patches(images, out_shape, var_thresh=0,
     crop_edge = np.int32(np.floor(crop_cols/2.0))
     images = images[:, :, crop_edge:im_width-crop_edge, :]
     im_width = images.shape[2]
-  import IPython; IPython.embed()
   # Tile column-wise, then row-wise
   patches = np.asarray(np.split(images, im_width/patch_width, axis=2))
   # patches.shape = [im_width/patch_width, num_im, im_height, patch_height, patch_chan]
@@ -455,7 +459,7 @@ def extract_random_tiled_patches(images, out_shape, var_thresh=0,
   # patches.shape = [patch_height, patch_width, patch_chan, num_patches]
   patches = np.transpose(patches, axes=(3,0,1,2))
   # patches.shape = [num_patches, patch_height, patch_width, patch_chan]
-  patches = patches[(np.var(patches, axis=(1,2)) > var_thresh)]
+  patches = patches[(np.var(patches, axis=(1,2,3)) > var_thresh), :, :, :]
   assert patches.shape[0] >= num_patches, (
     "out_shape (%g) requres too many patches; maximum available is %g."%(
     num_patches, patches.shape[0]))
@@ -473,7 +477,7 @@ def extract_patches_from_single_image(image, out_shape):
       [patch_height, patch_width, patch_chan]
       patch_chan must be the same as im_chan
   Outputs:
-    patches [np.ndarray] of patches of shape [num_patches, patch_height, patch_width, patch_chan]
+    patches [np.ndarray] of patches of shape [num_patches]+list(out_shape)
   """
   assert image.ndim == 3, ("input must have 3 ndim")
   im_height, im_width, im_chan = image.shape
@@ -656,11 +660,14 @@ def rescale_data_to_one(data):
   Outputs:
     data: [np.ndarray] centered data of shape (n, i, j, k) or (n, l)
   """
-  data = reshape_data(data, flatten=None)[0]
+  data, orig_shape = reshape_data(data, flatten=None)[:2]
   data_axis=tuple(range(data.ndim)[1:])
   data_min = np.min(data, axis=data_axis, keepdims=True)
   data_max = np.max(data, axis=data_axis, keepdims=True)
-  return (data - data_min) / (data_max - data_min + 1e-6)
+  data = (data - data_min) / (data_max - data_min + 1e-6)
+  if data.shape != orig_shape:
+    data = reshape_data(data, out_shape=orig_shape)[0]
+  return data
 
 def normalize_data_with_max(data):
   """
@@ -696,29 +703,34 @@ def center_data(data, use_dataset_mean=False):
     data_mean = np.mean(data)
     data -= data_mean
   else:
-    data = reshape_data(data, flatten=None)[0] # reshapes to 4D (not flat) or 2D (flat)
+    data, orig_shape = reshape_data(data, flatten=None)[:2] # reshapes to 4D (not flat) or 2D (flat)
     data_axis=tuple(range(data.ndim)[1:])
     data_mean = np.mean(data, axis=data_axis, keepdims=True)
     data -= data_mean
+    if data.shape != orig_shape:
+      data = reshape_data(data, out_shape=orig_shape)[0]
   return data, data_mean
 
 def standardize_data(data):
   """
   Standardize each image data to have zero mean and unit standard-deviation (z-score)
   Inputs:
-    data: [np.ndarray] unnormalized data of shape
+    data: [np.ndarray] unnormalized data
   Outputs:
     data: [np.ndarray] normalized data
   """
-  if data.ndim == 1:
-      data -= np.mean(data)
-      data /= np.std(data)
-  else:
-    data = reshape_data(data, flatten=None)[0] # reshapes to 4D (not flat) or 2D (flat)
-    data_axis=tuple(range(data.ndim)[1:])
-    data_std = np.maximum(np.std(data, axis=data_axis, keepdims=True), 1.0/np.sqrt(data[0,...].size))
-    data_mean = np.mean(data, axis=data_axis, keepdims=True)
-    data = (data - data_mean) /  data_std
+  data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
+  num_examples = data.shape[0]
+  data_axis = tuple(range(data.ndim)[1:]) # standardize each example individually
+  data_mean = np.mean(data, axis=data_axis, keepdims=True)
+  data_true_std = np.std(data, axis=data_axis, keepdims=True)
+  data_min_std = 1.0/np.sqrt(data[0,...].size)
+  data_std = np.where(data_true_std >= data_min_std, data_true_std,
+    data_min_std*np.ones_like(data_true_std))
+  for idx in range(data.shape[0]): # TODO: Broadcasting should work here
+    data[idx, ...] = (data[idx, ...] - data_mean[idx]) /  data_std[idx]
+  if data.shape != orig_shape:
+    data = reshape_data(data, out_shape=orig_shape)[0]
   return data, data_mean, data_std
 
 def normalize_data_with_var(data):
@@ -769,15 +781,14 @@ def lpf_data(data, cutoff=0.7):
     data_mean [np.ndarray]
     lpf_filter [np.ndarray] information necessary for undoing the filter
   """
-  flatten = False
-  (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+  (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=False)[0:4]
   data, data_mean = center_data(data, use_dataset_mean=False)
   data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
   lpf = generate_lpf_ramp_filters(num_rows, cutoff)[1]
   data = np.multiply(data, lpf[None, ..., None])
   data_lpf = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
   if data_lpf.shape != orig_shape:
-    data_lpf = reshape_data(data_lpf, not flatten, out_shape=orig_shape[1:])[0]
+    data_lpf = reshape_data(data_lpf, out_shape=orig_shape)[0]
   return data_lpf, data_mean, lpf
 
 def whiten_data(data, method="FT", lpf_cutoff=0.7):
@@ -795,8 +806,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
         of SVD of covariance matrix
   """
   if method.upper() == "FT":
-    flatten = False
-    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=False)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
     w_filter, lpf = generate_lpf_ramp_filters(num_rows, cutoff=lpf_cutoff)
@@ -804,8 +814,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
     data = np.multiply(data, full_filter[None, ..., None])
     data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
   elif method.upper() == "PCA":
-    flatten = True
-    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
     u, s, v = np.linalg.svd(cov) # s are singular values, sqrt(s) are eigenvalues
@@ -813,8 +822,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
     w_filter = [u, np.diag(np.sqrt(s+1e-8))] # filter components
     data_wht = np.dot(data, np.dot(u, isqrtS)) 
   elif method.upper() == "ZCA":
-    flatten = True
-    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
     u, s, v = np.linalg.svd(cov)
@@ -824,7 +832,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
   else:
     assert False, ("whitening method must be 'FT', 'ZCA', or 'PCA'")
   if data_wht.shape != orig_shape:
-    data_wht = reshape_data(data_wht, not flatten, out_shape=orig_shape[1:])[0]
+    data_wht = reshape_data(data_wht, out_shape=orig_shape)[0]
   return data_wht, data_mean, w_filter
 
 def unwhiten_data(data, data_mean, w_filter, method="FT"):
@@ -841,20 +849,16 @@ def unwhiten_data(data, data_mean, w_filter, method="FT"):
     unwhitened_data
   """
   if method.upper() == "FT":
-    flatten=False
-    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=False)[0:4]
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
     data = np.multiply(data, (w_filter[None, ..., None]+1e-8)**-1)
     data = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
-    data += data_mean
   elif method.upper() == "PCA":
-    flatten=True
-    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     u, sqrtS = w_filter
     data = np.dot(data, np.dot(u, sqrtS).T)
   elif method.upper() == "ZCA":
-    flatten=True
-    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten)[0:4]
+    (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     u, s = w_filter
     unwhiten_filter = np.dot(np.dot(u, s), u.T)
     data = np.dot(data, unwhiten_filter)
@@ -862,7 +866,7 @@ def unwhiten_data(data, data_mean, w_filter, method="FT"):
     assert False, ("whitening method must be 'FT', 'PCA', or 'ZCA'")
   data += data_mean
   if data.shape != orig_shape:
-    data = reshape_data(data, not flatten, out_shape=orig_shape[1:])[0]
+    data = reshape_data(data, out_shape=orig_shape)[0]
   return data
 
 def generate_local_contrast_normalizer(radius=12):
@@ -888,17 +892,19 @@ def contrast_normalize(data, gauss_patch_size=12):
       (n, k) - n data points, each of length k
       (k) - single data point of length k
     gauss_patch_size: [int] indicates radius of Gaussian function
+    TODO: Not sure if this is the proper operation for color images
   """
-  (data, orig_shape, num_examples, num_rows, num_cols) = reshape_data(data,
-    flatten=False) # Need spatial dim for 2d-Fourier transform
+  # Need spatial dim for 2d-Fourier transform
+  data, orig_shape, num_examples, num_rows, num_cols, num_channels = reshape_data(data,
+    flatten=False)
   pooler = generate_local_contrast_normalizer(gauss_patch_size)
   for ex in range(num_examples):
-    example = data[ex, ...]
-    localIntensityEstimate = scipy.signal.convolve2d(np.square(example), pooler, mode='same')
-    normalizedData = np.divide(example, np.sqrt(localIntensityEstimate))
-    data[ex, ...] = normalizedData
+    for ch in range(num_channels):
+      localIntensityEstimate = scipy.signal.convolve2d(np.square(data[ex, :, :, ch]),
+        pooler, mode='same')
+      data[ex, :, :, ch] = np.divide(data[ex, :, :, ch], np.sqrt(localIntensityEstimate))
   if data.shape != orig_shape:
-    data = reshape_data(data, flatten=True, out_shape=orig_shape[1:])[0]
+    data = reshape_data(data, out_shape=orig_shape)[0]
   return data
 
 def pca_reduction(data, num_pcs=-1):
@@ -935,8 +941,7 @@ def compute_power_spectrum(data):
   Outputs:
     power_spec: [np.ndarray] Fourier power spectrum
   """
-  (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data,
-    flatten=False)
+  data = reshape_data(data, flatten=False)[0]
   data = standardize_data(data)[0]
   dataFT = np.fft.fftshift(np.fft.fft2(data, axes=(1, 2)), axes=(1, 2))
   power_spec = np.multiply(dataFT, np.conjugate(dataFT)).real
@@ -955,8 +960,7 @@ def phase_avg_pow_spec(data):
     phase_avg: [list of np.ndarray] phase averaged power spectrum
       each element in the list corresponds to a data point
   """
-  (data, orig_shape, num_examples, num_rows, num_cols, num_channels) = reshape_data(data,
-    flatten=False)
+  (data, orig_shape, num_examples) = reshape_data(data, flatten=False)[0:3]
   power_spec = compute_power_spectrum(data)
   dims = power_spec[0].shape
   nyq = np.int32(np.floor(np.array(dims)/2.0))
