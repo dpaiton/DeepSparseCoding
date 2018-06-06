@@ -8,7 +8,7 @@ params = {
   "vectorize_data": True,
   "norm_data": False,
   "center_data": False,
-  "standardize_data": True,
+  "standardize_data": False,
   "contrast_normalize": False,
   "whiten_data": True,
   "whiten_method": "FT",
@@ -46,13 +46,13 @@ params = {
 
 schedule = [
   {"weights": ["w_enc", "b_enc", "w_dec", "b_dec", "w_gdn", "b_gdn", "w_igdn", "b_igdn"],
-  "ent_mult": 2.00,
-  "decay_mult": 0.01,
-  "noise_var_mult": 0.000,
+  "ent_mult": 0.2,
+  "decay_mult": 0.00,
+  "noise_var_mult": 0.005,
   "triangle_centers": np.linspace(-1.0, 1.0, params["num_triangles"]),
-  "weight_lr": [0.01,]*4+[0.00,]*4,
+  "weight_lr": [1e-4,]*4+[1e-6,]*4,
   #"weight_lr": [0.005,]*4+[0.01,]*4,
-  "decay_steps": [int(2e5*0.8),]*8,
+  "decay_steps": [int(1e6*0.8),]*8,
   "decay_rate": [0.5,]*8,
   "staircase": [True,]*8,
-  "num_batches": int(5e5)}]
+  "num_batches": int(1e6)}]

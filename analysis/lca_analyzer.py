@@ -57,15 +57,15 @@ class LCA_Analyzer(Analyzer):
     super(LCA_Analyzer, self).run_analysis(images, save_info)
     self.evals = self.evaluate_model(images, self.var_names)
     self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
+    self.atcs = self.compute_atcs(self.evals["inference/activity:0"], images, self.atas)
     self.bf_stats = dp.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
       replace=False)
     self.inference_stats = self.evaluate_inference(images[image_indices, ...])
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
-      data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
-      "inference_stats":self.inference_stats, "var_names":self.var_names,
-      "bf_stats":self.bf_stats})
+      data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas, "atcs":self.atcs,
+      "inference_stats":self.inference_stats, "var_names":self.var_names, "bf_stats":self.bf_stats})
     if (self.ot_contrasts is not None
       and self.ot_orientations is not None
       and self.ot_phases is not None):
@@ -87,6 +87,7 @@ class LCA_Analyzer(Analyzer):
     self.run_stats = analysis["run_stats"]
     self.evals = analysis["evals"]
     self.atas = analysis["atas"]
+    self.atcs = analysis["atcs"]
     self.inference_stats = analysis["inference_stats"]
     self.bf_stats = analysis["bf_stats"]
     tuning_file_locs = [self.analysis_out_dir+"ot_responses_"+save_info+".npz",

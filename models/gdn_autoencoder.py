@@ -83,30 +83,30 @@ class GDN_Autoencoder(Model):
     recon = tf.add(tf.matmul(a_igdn, self.w_dec), self.b_dec)
     return recon
 
-  def compute_gdn_const(self, a_in, inverse, name=None):
+  def compute_gdn_mult(self, a_in, inverse, name=None):
     if inverse:
       name_prefix = "i"
     else:
       name_prefix = ""
     with tf.variable_scope(self.weight_scope, reuse=True) as scope:
-      w_gdn = tf.get_variable(name=name_prefix+"w_gdn", shape=self.w_gdn_shape)
-      b_gdn = tf.get_variable(name=name_prefix+"b_gdn", shape=self.b_gdn_shape)
+      w_gdn = tf.get_variable(name="w_"+name_prefix+"gdn", shape=self.w_gdn_shape)
+      b_gdn = tf.get_variable(name="b_"+name_prefix+"gdn", shape=self.b_gdn_shape)
     w_threshold = tf.where(tf.less(w_gdn, tf.constant(1e-6, dtype=tf.float32)),
       tf.multiply(1e-6, tf.ones_like(w_gdn)), w_gdn)
     b_threshold = tf.where(tf.less(b_gdn, tf.constant(1e-6, dtype=tf.float32)),
       tf.multiply(1e-6, tf.ones_like(b_gdn)), b_gdn)
     symmetric_weights = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
     weighted_norm = tf.matmul(tf.square(a_in), symmetric_weights)
-    GDN_const = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
-    return GDN_const
+    gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
+    return gdn_mult
 
   def gdn(self, a_in, inverse, name=None):
-    GDN_const = self.compute_gdn_const(a_in, inverse, name)
+    gdn_mult = self.compute_gdn_mult(a_in, inverse, name)
     if inverse:
-      a_out = tf.multiply(a_in, GDN_const, name=name)
+      a_out = tf.multiply(a_in, gdn_mult, name=name)
     else:
-      a_out = tf.where(tf.less(GDN_const, tf.constant(1e-6, dtype=tf.float32)), a_in,
-        tf.divide(a_in, GDN_const), name=name)
+      a_out = tf.where(tf.less(gdn_mult, tf.constant(1e-6, dtype=tf.float32)), a_in,
+        tf.divide(a_in, gdn_mult), name=name)
     return a_out
 
   def get_loss_funcs(self):
@@ -134,29 +134,32 @@ class GDN_Autoencoder(Model):
         with tf.name_scope("weight_inits") as scope:
           w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0, stddev=0.1,
             dtype=tf.float32, name="w_init")
-
-          w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=0.0, stddev=0.01,
-            dtype=tf.float32, name="w_gdn_init")
-          #w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=1.0, stddev=0.01,
-          #  dtype=tf.float32, name="w_gdn_init")
-          #w_gdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
-          #  mean=0.0, stddev=0.01), name="w_gdn_init")
-
-          b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=1.0, stddev=0.01,
-            dtype=tf.float32, name="b_gdn_init")
-          #b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=0.0, stddev=0.1,
-          #  dtype=tf.float32, name="b_gdn_init")
-
-          #w_igdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
-          #  mean=0.0, stddev=0.01), name="w_igdn_init")
-          w_igdn_init = tf.identity(tf.transpose(w_gdn_init), name="w_igdn_init")
-
-          b_igdn_init = tf.identity(gdn_b_init, name="b_igdn_init")
-
           b_enc_init = tf.truncated_normal(self.b_enc_shape, mean=0.0, stddev=0.1,
             dtype=tf.float32, name="b_enc_init")
           b_dec_init = tf.truncated_normal(self.b_dec_shape, mean=0.0, stddev=0.1,
             dtype=tf.float32, name="b_dec_init")
+
+          #w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=0.0, stddev=0.01,
+          #  dtype=tf.float32, name="w_gdn_init")
+          #w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=1.0, stddev=0.01,
+          #  dtype=tf.float32, name="w_gdn_init")
+          #w_gdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
+          #  mean=0.0, stddev=0.01), name="w_gdn_init")
+          w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0, dtype=tf.float32)
+
+          #b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=1.0, stddev=0.01,
+          #  dtype=tf.float32, name="b_gdn_init")
+          #b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=0.0, stddev=0.1,
+          #  dtype=tf.float32, name="b_gdn_init")
+          b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0, dtype=tf.float32)
+
+          #w_igdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
+          #  mean=0.0, stddev=0.01), name="w_igdn_init")
+          #w_igdn_init = tf.identity(tf.transpose(w_gdn_init), name="w_igdn_init")
+          w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0, dtype=tf.float32)
+
+          #b_igdn_init = tf.identity(b_gdn_init, name="b_igdn_init")
+          b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0, dtype=tf.float32)
 
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()
@@ -164,23 +167,30 @@ class GDN_Autoencoder(Model):
             initializer=w_init, trainable=True)
           self.b_enc = tf.get_variable(name="b_enc", dtype=tf.float32,
             initializer=b_enc_init, trainable=True)
-          self.w_gdn = tf.get_variable(name="w_gdn", dtype=tf.float32,
-            initializer=w_gdn_init, trainable=True)
-          self.b_gdn = tf.get_variable(name="b_gdn", dtype=tf.float32,
-            initializer=b_gdn_init, trainable=True)
-          self.w_igdn = tf.get_variable(name="w_igdn", dtype=tf.float32,
-            initializer=w_igdn_init, trainable=True)
-          self.b_igdn = tf.get_variable(name="b_igdn", dtype=tf.float32,
-            initializer=b_igdn_init, trainable=True)
           self.w_dec = tf.get_variable(name="w_dec", dtype=tf.float32,
             initializer=tf.transpose(w_init), trainable=True)
           self.b_dec = tf.get_variable(name="b_dec", dtype=tf.float32,
             initializer=b_dec_init, trainable=True)
+          self.w_gdn = tf.get_variable(name="w_gdn", dtype=tf.float32,
+            initializer=w_gdn_init, shape=self.w_gdn_shape, trainable=True)
+          self.b_gdn = tf.get_variable(name="b_gdn", dtype=tf.float32,
+            initializer=b_gdn_init, shape=self.b_gdn_shape, trainable=True)
+          self.w_igdn = tf.get_variable(name="w_igdn", dtype=tf.float32,
+            initializer=w_igdn_init, shape=self.w_gdn_shape, trainable=True)
+          self.b_igdn = tf.get_variable(name="b_igdn", dtype=tf.float32,
+            initializer=b_igdn_init, shape=self.b_gdn_shape, trainable=True)
+
+        with tf.name_scope("norm_weights") as scope:
+          self.norm_w_enc = self.w_enc.assign(tf.nn.l2_normalize(self.w_enc, dim=[0],
+            epsilon=1e-4, name="row_l2_norm"))
+          self.norm_w_dec = self.w_enc.assign(tf.nn.l2_normalize(self.w_dec, dim=[1],
+            epsilon=1e-4, name="col_l2_norm"))
+          self.norm_weights = tf.group(self.norm_w_enc, self.norm_w_dec, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
           self.gdn_output = self.gdn(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
             inverse=False, name="gdn_output")
-          self.gdn_const = self.compute_gdn_const(self.gdn_output, inverse=False, name="gdn_const")
+          self.gdn_mult = self.compute_gdn_mult(self.gdn_output, inverse=False, name="gdn_mult")
           self.gdn_entropies = self.compute_entropies(self.gdn_output)
           noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.gdn_output),
             tf.reduce_min(self.gdn_output))) # 1/2 of 10% of range of gdn output
@@ -311,10 +321,10 @@ class GDN_Autoencoder(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_enc, self.b_enc, self.b_dec, self.w_dec,
       self.w_gdn, self.w_igdn, self.b_gdn, self.b_igdn, self.x_, self.gdn_output,
-      self.gdn_entropies, self.gdn_const]
+      self.gdn_entropies, self.gdn_mult]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
-    w_enc, b_enc, b_dec, w_dec, w_gdn, w_igdn, b_gdn, b_igdn, recon, activity, entropies, gdn_constant = eval_out[1:]
+    w_enc, b_enc, b_dec, w_dec, w_gdn, w_igdn, b_gdn, b_igdn, recon, activity, entropies, gdn_mult = eval_out[1:]
     w_enc_norm = np.linalg.norm(w_enc, axis=1, keepdims=False)
     w_dec_norm = np.linalg.norm(w_dec, axis=0, keepdims=False)
     w_enc = dp.reshape_data(w_enc.T, flatten=False)[0]
@@ -343,8 +353,8 @@ class GDN_Autoencoder(Model):
     fig = pf.plot_activity_hist(b_dec, title="Decoding Bias Histogram",
       save_filename=(self.disp_dir+"b_dec_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(gdn_constant, title="GDN Constant Histogram",
-      save_filename=(self.disp_dir+"gdn_const_v"+self.version+"-"
+    fig = pf.plot_activity_hist(gdn_mult, title="GDN Multiplier Histogram",
+      save_filename=(self.disp_dir+"gdn_mult_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     entropy_sort_indices = np.argsort(entropies)[::-1] # ascending
     for fig_id, neuron_id in enumerate(entropy_sort_indices[:3]):

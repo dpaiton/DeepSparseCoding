@@ -398,11 +398,7 @@ class Model(object):
     assert self.vector_inputs is not None, (
       "Model object must set vector_inputs member variable in __init__() method.")
     for key in dataset.keys():
-      if "data_shape" in params.keys():
-        data_shape = params["data_shape"]
-      else:
-        data_shape = None
-      dataset[key].images = dp.reshape_data(dataset[key].images, self.vector_inputs, data_shape)[0]
+      dataset[key].images = dp.reshape_data(dataset[key].images, self.vector_inputs)[0]
       dataset[key].shape = dataset[key].images.shape
     return dataset
 

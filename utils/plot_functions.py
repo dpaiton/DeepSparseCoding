@@ -474,7 +474,7 @@ def plot_matrix(matrix, title=""):
   plt.show()
   return fig
 
-def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
+def plot_eigenvalues(evals, ylim=None, xlim=None):
   """
   Plot the input eigenvalues
   Inputs:
@@ -484,6 +484,8 @@ def plot_eigenvalues(evals, ylim=[0,1000], xlim=None):
   """
   if xlim is None:
     xlim = [0, evals.shape[0]]
+  if ylim is None:
+    ylim = [np.min(evals), np.max(evals)]
   fig, ax = plt.subplots(1, figsize=(10,10))
   ax.semilogy(evals)
   ax.set_xlim(xlim[0], xlim[1]) # Ignore first eigenvalue

@@ -12,9 +12,9 @@ t0 = ti.time()
 
 ## Specify model type and data type
 #model_type = "mlp"
-model_type = "ica"
+#model_type = "ica"
 #model_type = "ica_pca"
-#model_type = "lca"
+model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "lca_pca_fb"
 #model_type = "conv_lca"

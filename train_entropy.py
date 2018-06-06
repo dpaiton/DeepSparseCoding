@@ -77,7 +77,10 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Update MLE estimate
       sess_run_list.append(model.mle_update)
+
+      # run session
       sess.run(sess_run_list, feed_dict)
+      sess.run(model.norm_weights, feed_dict)
       batch_t1 = ti.time()
       avg_time += (batch_t1-batch_t0)/model.batch_size
 

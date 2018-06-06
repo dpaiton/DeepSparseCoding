@@ -130,26 +130,30 @@ class Analyzer(object):
     atas = images.T.dot(activities) / images.shape[0]
     return atas
 
-  def compute_atcs(self, activities, images):
+  def compute_atcs(self, activities, images, atas=None):
     """
     Returns activity triggered covariances
     Outputs:
-      atcs [np.ndarray] of shape (num_pixels, num_pixels, num_neurons)
+      atcs [np.ndarray] of shape (num_neurons, num_pixels, num_pixels)
     Inputs:
       activities [np.ndarray] of shape (num_imgs, num_neurons)
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
+      atas [np.adarray] of shape (pixels, neurons) of pre-computed act trig avgs
     TODO: is it possible to vectorize this so it is faster?
     """
     num_batch, num_neurons = activities.shape
     images -= np.mean(images)
-    atas = self.compute_atas(activities, images)
+    if atas is None:
+      atas = self.compute_atas(activities, images)
     atcs = [None,]*num_neurons
     for neuron_id in range(num_neurons):
       ata = atas[:, neuron_id] # pixels x 1
       img_deviations = images - ata[None, :] # batch x pixels
-      covs = [x.T.dot(x) for x in img_deviations] # pixels x pixels x batch
-      covs_acts = zip(covs, activities[:, neuron_id]) # (PxPxB, b)
-      atcs[neuron_id] = np.sum([cov*act for cov,act in covs_acts]) / num_batch
+      img_vects = [img[None,:] for img in img_deviations]
+      covs = [x.T.dot(x) for x in img_vects] # pixels x pixels x batch
+      covs_acts = zip(covs, activities[:, neuron_id]) # (PxPxB, B)
+      atcs[neuron_id] = sum([cov*act for cov,act in covs_acts]) / num_batch
+    atcs = np.stack(atcs, axis=0)
     return atcs
 
   def orientation_tuning(self, bf_stats, contrasts=[0.5], orientations=[np.pi],
@@ -245,7 +249,7 @@ class Analyzer(object):
     # Generate a grating with spatial frequency estimated from bf_stats
     grating = lambda neuron_idx,contrast,orientation,phase:dp.generate_grating(
       *dp.get_grating_params(bf_stats, neuron_idx, orientation=orientation,
-      phase=phase, contrast=contrast, diameter=diameter)).reshape(num_pixels)
+      phase=phase, contrast=contrast, diameter=diameter))
     # Output arrays
     base_max_responses = np.zeros((num_neurons, num_contrasts))
     test_max_responses = np.zeros((num_neurons, num_contrasts, num_contrasts, num_orientations))
@@ -255,8 +259,8 @@ class Analyzer(object):
     test_rect_responses = np.zeros((num_neurons, 2, num_contrasts, num_contrasts, num_orientations))
     for bf_idx, neuron_idx in enumerate(neuron_indices): # each neuron produces a base & test output
       for bco_idx, base_contrast in enumerate(contrasts): # loop over base contrast levels
-        base_stims = [grating(neuron_idx, base_contrast, base_orientations[bf_idx], base_phase)
-          for base_phase in phases]
+        base_stims = np.stack([grating(neuron_idx, base_contrast, base_orientations[bf_idx],
+          base_phase) for base_phase in phases], axis=0)
         base_stims = {"test": Dataset(base_stims[:,:,:,None], lbls=None, ignore_lbls=None,
           rand_state=self.rand_state)}
         base_stims = self.model.preprocess_dataset(base_stims,
@@ -274,8 +278,8 @@ class Analyzer(object):
         for co_idx, mask_contrast in enumerate(contrasts): # loop over test contrasts
             test_stims = np.zeros((num_orientations, num_phases, num_phases, num_pixels))
             for or_idx, mask_orientation in enumerate(mask_orientations):
-              mask_stims = [grating(neuron_idx, mask_contrast, mask_orientaiton, mask_phase)
-                for mask_phase in phases]
+              mask_stims = np.stack([grating(neuron_idx, mask_contrast, mask_orientation, mask_phase)
+                for mask_phase in phases], axis=0)
               mask_stims = {"test": Dataset(mask_stims[:,:,:,None], lbls=None, ignore_lbls=None,
                 rand_state=self.rand_state)}
               mask_stims = self.model.preprocess_dataset(mask_stims,
@@ -297,8 +301,9 @@ class Analyzer(object):
               -test_activity), axis=1)
     return {"contrasts":contrasts, "phases":phases, "base_orientations":base_orientations,
       "neuron_indices":neuron_indices, "mask_orientations":mask_orientations,
-      "base_max_responses":base_max_responses, "base_mean_responses":base_mean_responses,
-      "test_max_responses":test_max_responses, "test_mean_responses":test_mean_responses}
+      "base_max_responses":base_max_responses, "test_max_responses":test_max_responses,
+      "base_mean_responses":base_mean_responses,  "test_mean_responses":test_mean_responses,
+      "base_rect_responses":base_rect_responses, "test_rect_responses":test_rect_responses}
 
   def iso_response_contrasts(self, bf_stats, base_contrast=0.5, contrast_resolution=0.01,
     closeness=0.01, num_alt_orientations=1, orientations=[np.pi, np.pi/2], phases=[np.pi],
