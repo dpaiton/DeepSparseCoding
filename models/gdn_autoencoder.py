@@ -58,17 +58,17 @@ class GDN_Autoencoder(Model):
       a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
     return a_entropies
 
-  def compute_weight_decay_loss(self):
-    with tf.name_scope("unsupervised"):
-      decay_loss = tf.multiply(0.5*self.decay_mult,
-        tf.add_n([tf.nn.l2_loss(self.w_enc), tf.nn.l2_loss(self.w_dec)]), name="weight_decay_loss")
-    return decay_loss
-
   def compute_entropy_loss(self, a_in):
     with tf.name_scope("unsupervised"):
       a_entropies = self.compute_entropies(a_in)
       entropy_loss = tf.multiply(self.ent_mult, tf.reduce_sum(a_entropies), name="entropy_loss")
     return entropy_loss
+
+  def compute_weight_decay_loss(self):
+    with tf.name_scope("unsupervised"):
+      decay_loss = tf.multiply(0.5*self.decay_mult,
+        tf.add_n([tf.nn.l2_loss(self.w_enc), tf.nn.l2_loss(self.w_dec)]), name="weight_decay_loss")
+    return decay_loss
 
   def compute_recon_loss(self, a_in):
     with tf.name_scope("unsupervised"):
@@ -116,7 +116,7 @@ class GDN_Autoencoder(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
-        with tf.name_scope("placeholders") as scope:
+        with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.triangle_centers = tf.placeholder(tf.float32, shape=[self.num_triangles],
             name="triangle_centers")
@@ -190,6 +190,7 @@ class GDN_Autoencoder(Model):
         with tf.variable_scope("inference") as scope:
           self.gdn_output = self.gdn(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
             inverse=False, name="gdn_output")
+          # TODO: gdn_mult should be computed on matmul(x,w_enc)+b not on gdn_output right?
           self.gdn_mult = self.compute_gdn_mult(self.gdn_output, inverse=False, name="gdn_mult")
           self.gdn_entropies = self.compute_entropies(self.gdn_output)
           noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.gdn_output),

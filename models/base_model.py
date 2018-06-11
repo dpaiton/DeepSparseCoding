@@ -198,6 +198,7 @@ class Model(object):
       - grads_and_vars holds the gradients for the weight updates
       - apply_grads is the operator to be called to perform weight updates
     """
+    #with tf.device(self.device): # TODO: Should this be here?
     with self.graph.as_default():
       with tf.name_scope("optimizers") as scope:
         self.grads_and_vars = list() # [sch_idx][weight_idx]
@@ -363,7 +364,7 @@ class Model(object):
     placeholders = [op.name
       for op
       in self.graph.get_operations()
-      if ("placeholders" in op.name
+      if ("auto_placeholders" in op.name
       and "input_data" not in op.name
       and "input_label" not in op.name)]
     if input_labels is not None and hasattr(self, "y"):
