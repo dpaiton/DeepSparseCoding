@@ -46,8 +46,8 @@ params = {
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
   "data_file":"/media/tbell/datasets/natural_images.txt"}
 
-train_list = ["w"+str(idx) for idx in range(len(params["input_channels"]))]
-train_list += ["b"+str(idx) for idx in range(len(params["input_channels"]))]
+train_list = ["w"+str(idx) for idx in range(2*len(params["input_channels"]))]
+train_list += ["b"+str(idx) for idx in range(2*len(params["input_channels"]))]
 train_list += ["w_gdn"+str(idx) for idx in range(len(params["input_channels"]))]
 train_list += ["b_gdn"+str(idx) for idx in range(len(params["input_channels"]))]
 train_list += ["w_igdn"+str(idx)
