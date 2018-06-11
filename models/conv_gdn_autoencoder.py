@@ -395,7 +395,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     w_dec_shape = w_dec.shape
     w_dec_norm = np.linalg.norm(w_dec.reshape([np.prod(w_dec_shape[:-1]), w_dec_shape[-1]]),
       axis=1, keepdims=False)
+
     #TODO:
+    ##############
     #w_enc = np.transpose(w_enc, axes=(3,0,1,2))
     #w_enc = dp.reshape_data(w_enc, flatten=True)[0]
     #fig = pf.plot_data_tiled(w_enc, normalize=False,
@@ -407,6 +409,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     #  title="Decoding weights at step "+current_step, vmin=None, vmax=None,
     #  save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
     #  +current_step.zfill(5)+".png"))
+    ##############
+
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.disp_dir+"w_enc_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
@@ -417,18 +421,22 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       fig = pf.plot_weight_image(w_gdn, title="GDN "+str(idx)+" Weights", figsize=(10,10),
         save_filename=(self.disp_dir+"w_gdn_"+str(idx)+"_v"+self.version+"-"
         +current_step.zfill(5)+".png"))
-    for idx, b_gdn in enumerate(b_gdn_list):
-      fig = pf.plot_activity_hist(b_gdn, title="GDN "+str(idx)+" Bias Histogram",
-        save_filename=(self.disp_dir+"b_gdn_"+str(idx)+"_hist_v"+self.version+"-"
-        +current_step.zfill(5)+".png"))
-    for idx, bias in enumerate(b_list):
-      fig = pf.plot_activity_hist(bias, title="Bias "+str(idx)+" Histogram",
-        save_filename=(self.disp_dir+"b_"+str(idx)+"_hist_v"+self.version+"-"
-        +current_step.zfill(5)+".png"))
+
     #TODO:
+    ##############
+    #for idx, b_gdn in enumerate(b_gdn_list):
+    #  fig = pf.plot_activity_hist(b_gdn, title="GDN "+str(idx)+" Bias Histogram",
+    #    save_filename=(self.disp_dir+"b_gdn_"+str(idx)+"_hist_v"+self.version+"-"
+    #    +current_step.zfill(5)+".png"))
+    #for idx, bias in enumerate(b_list):
+    #  fig = pf.plot_activity_hist(bias, title="Bias "+str(idx)+" Histogram",
+    #    save_filename=(self.disp_dir+"b_"+str(idx)+"_hist_v"+self.version+"-"
+    #    +current_step.zfill(5)+".png"))
     #fig = pf.plot_activity_hist(gdn_mult, title="GDN Multiplier Histogram",
     #  save_filename=(self.disp_dir+"gdn_mult_v"+self.version+"-"
     #  +current_step.zfill(5)+".png"))
+    ##############
+
     pre_mem_activity = dp.reshape_data(pre_mem_activity, flatten=True)[0]
     fig = pf.plot_activity_hist(pre_mem_activity, title="Activity Histogram (pre-mem)",
       save_filename=(self.disp_dir+"act_pre_hist_v"+self.version+"-"
