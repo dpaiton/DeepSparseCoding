@@ -34,9 +34,15 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.data_shape = params["data_shape"]
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
+    if "num_preproc_threads" in params.keys():
+      self.num_preproc_threads = 1
+    else:
+      self.num_preproc_threads = int(params["num_preproc_threads"])
     # Dataset parameters
     self.batch_size = int(params["batch_size"])
     self.device = params["device"]
+    self.downsample_images = params["downsample_images"]
+    self.downsample_method = params["downsample_method"]
     # Memristor parameters
     self.memristor_type = params["memristor_type"] # None indicates pasthrough
     self.memristor_data_loc = params["memristor_data_loc"]
@@ -52,6 +58,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     # Architecture parameters
     self.im_size_y = params["im_size_y"]
     self.im_size_x = params["im_size_x"]
+    self.num_colors = params["num_colors"]
     self.patch_size_y = params["patch_size_y"] # list for encoding layers
     self.patch_size_x = params["patch_size_x"] # list for encoding layers
     self.input_channels = params["input_channels"] # list for encoding layers
