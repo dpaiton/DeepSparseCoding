@@ -184,7 +184,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     # Encode & Decode weights are the same shape for the corresponding layer
     # we use conv_transpose to transpose the feature dimension of the weights
     # therefore, bias needs to be size w_shape[3] for encoding and w_shape[2] for decoding
-    bias_shape_id = 2 if decode else 2
+    bias_shape_id = 2 if decode else 3
     with tf.variable_scope(self.weight_scope) as scope:
       b = tf.get_variable(name="b"+str(layer_id), shape=w_shape[bias_shape_id],
         dtype=tf.float32, initializer=self.b_init, trainable=True)
