@@ -18,7 +18,6 @@ params = {
   "im_size_x": 128,
   "batch_size": 10,
   "n_mem": 448, 
-=======
   "num_colors": 1,
   "downsample_images": True,
   "downsample_method": "resize",
