@@ -14,7 +14,6 @@ params = {
   "lpf_data": True,
   "lpf_cutoff": 0.7,
   "extract_patches": False,
-<<<<<<< HEAD
   "im_size_y": 128,
   "im_size_x": 128,
   "batch_size": 10,
@@ -28,7 +27,6 @@ params = {
   "im_size_x": 256,
   "batch_size": 25,
   "n_mem": 32768,
->>>>>>> 1746244962df5e8bb8b3ce17c75d959fa1b4b384
   "mem_v_min": -1.0,
   "mem_v_max": 1.0,
   "sigmoid_beta": 1.0,
