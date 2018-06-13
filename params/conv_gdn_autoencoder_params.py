@@ -40,7 +40,7 @@ params = {
   "max_cp_to_keep": 1,
   "cp_load": False,
   "log_int": 100,
-  "log_to_file": False,
+  "log_to_file": True,
   "gen_plot_int": 1000,
   "save_plots": True,
   "eps": 1e-12,
@@ -48,8 +48,7 @@ params = {
   "rand_seed": 1234567890,
   "out_dir": os.path.expanduser("~")+"/Work/Projects/",
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
-  #"data_file":"/media/tbell/datasets/natural_images.txt"}
-  "data_file":"/media/tbell/datasets/test_images.txt"}
+  "data_file":"/media/tbell/datasets/verified_images.txt"}
 
 train_list = ["w"+str(idx) for idx in range(2*len(params["input_channels"]))]
 train_list += ["b"+str(idx) for idx in range(2*len(params["input_channels"]))]

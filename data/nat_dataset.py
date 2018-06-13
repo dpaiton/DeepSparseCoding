@@ -61,6 +61,7 @@ class Dataset(object):
     """
     Resize images while preserving the aspect ratio then crop them to desired shape
     Resize is better than crop because it gets rid of possible compression artifacts in training data
+    TODO: Crop center out, not from edge
     """
     orig_shape = image.shape
     orig_height = orig_shape[0]
@@ -101,7 +102,7 @@ class Dataset(object):
     if self.lpf_data:
       images, data_mean, lpf_filter = dp.lpf_data(images, cutoff=self.lpf_cutoff)
       self.batch_means.append(data_mean)
-    return images
+    return (images, [self.filenames[idx] for idx in indices])
 
   def next_batch(self, batch_size):
     if self.curr_epoch_idx + batch_size > self.num_examples:
@@ -113,4 +114,5 @@ class Dataset(object):
     self.batches_completed += 1
     self.curr_epoch_idx += batch_size
     set_indices = self.epoch_order[start:self.curr_epoch_idx]
-    return (self.load_images(set_indices), None)
+    images, img_locs = self.load_images(set_indices)
+    return (images, img_locs)

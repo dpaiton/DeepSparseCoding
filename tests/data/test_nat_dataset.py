@@ -12,11 +12,7 @@ params = {
   "data_file":"/home/dpaiton/Work/DeepSparseCoding/broke_ass_imgs.txt"}
   #"data_file":"/media/tbell/datasets/test_images.txt"}
 params["rand_state"] = np.random.RandomState(params["rand_seed"])
-#/media/tbell/datasets/imagenet/ILSVRC/Data/DET/test/ILSVRC2013_test_00000475.JPEG
-#/media/tbell/datasets/imagenet/ILSVRC/Data/DET/test/ILSVRC2013_test_00000476.JPEG
-#/media/tbell/datasets/imagenet/ILSVRC/Data/DET/test/ILSVRC2013_test_00000477.JPEG
-#/media/tbell/datasets/imagenet/ILSVRC/Data/DET/test/ILSVRC2013_test_00000478.JPEG
-#/media/tbell/datasets/imagenet/ILSVRC/Data/DET/test/ILSVRC2013_test_00000479.JPEG
+
 
 data = {"train": Dataset(params["data_file"], params)}
 
