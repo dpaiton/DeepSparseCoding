@@ -390,6 +390,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     eval_list = [self.global_step, self.a, self.u_list[int(self.num_layers/2-1)], self.w_list[0],
       self.w_list[-1], self.u_list[-1], self.gdn_mult]+self.w_gdn_list+self.b_gdn_list+self.b_list
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    assert np.all(np.stack([np.all(np.isfinite(arry)) for arry in eval_out])), (
+      "Some plot evals had non-finite values")
     current_step = str(eval_out[0])
     pre_mem_activity, post_mem_activity, w_enc, w_dec, recon, gdn_mult = eval_out[1:7]
     w_gdn_list = eval_out[7:7+len(self.w_gdn_list)]

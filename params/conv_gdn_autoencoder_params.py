@@ -17,7 +17,7 @@ params = {
   "im_size_y": 128,
   "im_size_x": 128,
   "batch_size": 25,
-  "n_mem": 448, 
+  "n_mem": 448,
   "num_colors": 1,
   "downsample_images": True,
   "downsample_method": "resize",
@@ -48,7 +48,8 @@ params = {
   "rand_seed": 1234567890,
   "out_dir": os.path.expanduser("~")+"/Work/Projects/",
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
-  "data_file":"/media/tbell/datasets/natural_images.txt"}
+  #"data_file":"/media/tbell/datasets/natural_images.txt"}
+  "data_file":"/media/tbell/datasets/test_images.txt"}
 
 train_list = ["w"+str(idx) for idx in range(2*len(params["input_channels"]))]
 train_list += ["b"+str(idx) for idx in range(2*len(params["input_channels"]))]
