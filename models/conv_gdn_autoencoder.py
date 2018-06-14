@@ -43,13 +43,6 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.device = params["device"]
     self.downsample_images = params["downsample_images"]
     self.downsample_method = params["downsample_method"]
-    # Memristor parameters
-    self.memristor_type = params["memristor_type"] # None indicates pasthrough
-    self.memristor_data_loc = params["memristor_data_loc"]
-    self.n_mem = int(params["n_mem"])
-    self.memristor_noise_shape = [self.batch_size, self.n_mem]
-    self.mem_v_min = -1.0
-    self.mem_v_max = 1.0
     # Loss parameters
     self.mle_step_size = float(params["mle_step_size"])
     self.num_mle_steps = int(params["num_mle_steps"])
@@ -63,11 +56,13 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.patch_size_x = params["patch_size_x"] # list for encoding layers
     self.input_channels = params["input_channels"] # list for encoding layers
     self.output_channels = params["output_channels"] # list for encoding layers
+    self.w_strides = params["strides"] # list for encoding layers
+    self.n_mem = self.compute_num_latent([self.im_size_y, self.im_size_x, self.num_colors],
+      self.patch_size_y, self.patch_size_x, self.w_strides, self.output_channels)
     self.x_shape = [None, self.im_size_y, self.im_size_x, self.input_channels[0]]
     self.w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
       self.input_channels, self.output_channels)]
     self.w_shapes += self.w_shapes[::-1]
-    self.w_strides = params["strides"] # list for encoding layers
     self.w_strides += self.w_strides[::-1]
     self.b_shapes = [vals for vals in self.output_channels]
     # Decoding calculation uses conv2d_transpose so input_channels (w_shapes[2]) is actually
@@ -79,6 +74,30 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.input_channels += self.input_channels[::-1]
     self.output_channels += self.output_channels[::-1]
     self.num_layers = len(self.w_shapes)
+    # Memristor parameters
+    self.memristor_type = params["memristor_type"] # None indicates pasthrough
+    self.memristor_data_loc = params["memristor_data_loc"]
+    self.memristor_noise_shape = [self.batch_size, self.n_mem]
+    self.mem_v_min = -1.0
+    self.mem_v_max = 1.0
+
+  def compute_num_latent(self, in_shape, patchY_list, patchX_list, strides, output_chans):
+    inY, inX, inC = in_shape
+    for patchY, patchX, out_chan, stride in zip(patchY_list, patchX_list, output_chans, strides):
+      out_shape, num_out = self.compute_num_out([inY,inX,inC], [patchY,patchX],
+        out_chan, [0,0], stride, stride)
+      inY, inX, inC = out_shape
+    return int(np.ceil(num_out))
+
+  def compute_num_out(self, in_shape, patch_shape, num_features, pad_shape, strideX, strideY):
+    inY, inX, inC = in_shape
+    padY, padX = pad_shape
+    patchY, patchX = patch_shape
+    outX = 1 + (inX - patchX + 2 * padX) / strideX
+    outY = 1 + (inY - patchY + 2 * padY) / strideY
+    out_shape = [outY, outX, num_features]
+    num_out = np.prod(out_shape)
+    return (out_shape, num_out)
 
   def memristorize(self, u_in, memrister_std_eps, memristor_type=None):
     if memristor_type is None:
@@ -105,7 +124,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
 
   def compute_entropies(self, a_in):
     with tf.name_scope("unsupervised"):
-      a_resh = tf.reshape(a_in, [self.batch_size, self.n_mem])
+      #TODO: Verify n_mem = prod(shape(a_in)[1:])
+      num_units = self.n_mem#tf.reduce_prod(tf.shape(a_in)[1:])
+      a_resh = tf.reshape(a_in, [self.batch_size, num_units])
       a_sig = self.sigmoid(a_resh, self.sigmoid_beta)
       a_probs = ef.prob_est(a_sig, self.mle_thetas, self.triangle_centers)
       a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
@@ -236,8 +257,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("probability_estimate") as scope:
-          self.mle_thetas, self.theta_init = ef.construct_thetas(self.n_mem,
-            self.num_triangles)
+          self.mle_thetas, self.theta_init = ef.construct_thetas(self.n_mem, self.num_triangles)
 
         with tf.name_scope("weight_inits") as scope:
           self.w_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False,
@@ -266,6 +286,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           u_out, w, b, w_gdn, b_gdn, conv_out = self.layer_maker(layer_id, self.u_list[layer_id],
             self.w_shapes[layer_id], self.w_strides[layer_id], gdn_inverse)
           if layer_id == self.num_layers/2-1:
+            #TODO: Verify n_mem = prod(shape(u_out)[1:])
+            self.num_latent = self.n_mem#tf.reduce_prod(tf.shape(u_out)[1:], name="num_latent" )
             self.pre_mem = tf.identity(u_out, name="pre_memristor_activity")
             noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.pre_mem),
               tf.reduce_min(self.pre_mem))) # 1/2 of 10% of range of gdn output
@@ -285,7 +307,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           self.a = self.pre_mem
 
         with tf.variable_scope("probability_estimate") as scope:
-          u_resh = tf.reshape(self.a, [self.batch_size, self.n_mem])
+          u_resh = tf.reshape(self.a, [self.batch_size, self.num_latent])
           u_sig = self.sigmoid(u_resh, self.sigmoid_beta)
           ll = ef.log_likelihood(u_sig, self.mle_thetas, self.triangle_centers)
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
@@ -332,7 +354,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
     mem_std_eps = np.random.standard_normal((self.params["batch_size"],
-       self.params["n_mem"])).astype(np.float32)
+       self.n_mem)).astype(np.float32)
     feed_dict[self.memristor_std_eps] = mem_std_eps
     loss_list = [self.loss_dict[key] for key in self.loss_dict.keys()]
     eval_list = [self.global_step]+loss_list+[self.total_loss, self.a, self.u_list[-1]]
@@ -385,7 +407,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
     mem_std_eps = np.random.standard_normal((self.params["batch_size"],
-       self.params["n_mem"])).astype(np.float32)
+       self.n_mem)).astype(np.float32)
     feed_dict[self.memristor_std_eps] = mem_std_eps
     eval_list = [self.global_step, self.a, self.u_list[int(self.num_layers/2-1)], self.w_list[0],
       self.w_list[-1], self.u_list[-1], self.gdn_mult]+self.w_gdn_list+self.b_gdn_list+self.b_list
