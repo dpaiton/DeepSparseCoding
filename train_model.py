@@ -43,7 +43,7 @@ data = model.preprocess_dataset(data, params)
 data = model.reshape_dataset(data, params)
 params["data_shape"] = list(data["train"].shape[1:])
 model.setup(params, schedule)
-if params["standardize_data"]:
+if "standardize_data" in params.keys() and params["standardize_data"]:
   model.log_info("Standardization was performed, mean was "+str(model.data_mean)
     +" and std was "+str(model.data_std))
 
@@ -62,9 +62,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
   if model.cp_load:
     if model.cp_load_step is None:
-      cp_load_prefix = (model.cp_load_dir+model.cp_load_name+"_v"+model.cp_load_ver
-        +"_weights")
-      cp_load_file = tf.train.latest_checkpoint(cp_load_prefix)
+      cp_load_file = tf.train.latest_checkpoint(model.cp_load_dir, model.cp_latest_filename)
     else:
       cp_load_file = (model.cp_load_dir+model.cp_load_name+"_v"+model.cp_load_ver
         +"_weights-"+str(model.cp_load_step))

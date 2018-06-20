@@ -42,7 +42,7 @@ class LCA_PCA_FB(LCA_PCA):
     placeholders = [op.name
       for op
       in self.graph.get_operations()
-      if ("placeholders" in op.name
+      if ("auto_placeholders" in op.name
       and "full_covariance_matrix" not in op.name
       and "input_data" not in op.name
       and "input_label" not in op.name)]
@@ -128,7 +128,7 @@ class LCA_PCA_FB(LCA_PCA):
 
   def build_graph(self):
     with self.graph.as_default():
-      with tf.name_scope("placeholders") as scope:
+      with tf.name_scope("auto_placeholders") as scope:
         self.fb_mult = tf.placeholder(tf.float32, shape=(), name="fb_mult")
     super(LCA_PCA_FB, self).build_graph()
 

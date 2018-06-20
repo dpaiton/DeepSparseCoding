@@ -85,6 +85,7 @@ class Model(object):
     # Checkpointing
     self.cp_int = int(params["cp_int"])
     self.max_cp_to_keep = int(params["max_cp_to_keep"])
+    self.cp_latest_filename = "latest_checkpoint_v"+self.version
     self.cp_load = bool(params["cp_load"])
     if self.cp_load:
       self.cp_load_name = str(params["cp_load_name"])
@@ -198,39 +199,39 @@ class Model(object):
       - grads_and_vars holds the gradients for the weight updates
       - apply_grads is the operator to be called to perform weight updates
     """
-    #with tf.device(self.device): # TODO: Should this be here?
-    with self.graph.as_default():
-      with tf.name_scope("optimizers") as scope:
-        self.grads_and_vars = list() # [sch_idx][weight_idx]
-        self.apply_grads = list() # [sch_idx][weight_idx]
-        for schedule_idx, sch in enumerate(self.sched):
-          sch_grads_and_vars = list() # [weight_idx]
-          sch_apply_grads = list() # [weight_idx]
-          for w_idx, weight in enumerate(sch["weights"]):
-            learning_rates = tf.train.exponential_decay(
-              learning_rate=sch["weight_lr"][w_idx],
-              global_step=self.global_step,
-              decay_steps=sch["decay_steps"][w_idx],
-              decay_rate=sch["decay_rate"][w_idx],
-              staircase=sch["staircase"][w_idx],
-              name="annealing_schedule_"+weight)
-            if self.optimizer == "annealed_sgd":
-              optimizer = tf.train.GradientDescentOptimizer(learning_rates,
-                name="grad_optimizer_"+weight)
-            elif self.optimizer == "adam":
-              optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
-                epsilon=1e-07, name="adam_optimizer_"+weight)
-            elif self.optimizer == "adadelta":
-              optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
-                name="adadelta_optimizer_"+weight)
-            with tf.variable_scope("weights", reuse=True) as scope:
-              weight_op = [tf.get_variable(weight)]
-            sch_grads_and_vars.append(self.compute_weight_gradients(optimizer, weight_op))
-            gstep = self.global_step if w_idx == 0 else None # Only increment once
-            sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
-              global_step=gstep))
-          self.grads_and_vars.append(sch_grads_and_vars)
-          self.apply_grads.append(sch_apply_grads)
+    with tf.device(self.device):
+      with self.graph.as_default():
+        with tf.name_scope("optimizers") as scope:
+          self.grads_and_vars = list() # [sch_idx][weight_idx]
+          self.apply_grads = list() # [sch_idx][weight_idx]
+          for schedule_idx, sch in enumerate(self.sched):
+            sch_grads_and_vars = list() # [weight_idx]
+            sch_apply_grads = list() # [weight_idx]
+            for w_idx, weight in enumerate(sch["weights"]):
+              learning_rates = tf.train.exponential_decay(
+                learning_rate=sch["weight_lr"][w_idx],
+                global_step=self.global_step,
+                decay_steps=sch["decay_steps"][w_idx],
+                decay_rate=sch["decay_rate"][w_idx],
+                staircase=sch["staircase"][w_idx],
+                name="annealing_schedule_"+weight)
+              if self.optimizer == "annealed_sgd":
+                optimizer = tf.train.GradientDescentOptimizer(learning_rates,
+                  name="grad_optimizer_"+weight)
+              elif self.optimizer == "adam":
+                optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
+                  epsilon=1e-07, name="adam_optimizer_"+weight)
+              elif self.optimizer == "adadelta":
+                optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
+                  name="adadelta_optimizer_"+weight)
+              with tf.variable_scope("weights", reuse=True) as scope:
+                weight_op = [tf.get_variable(weight)]
+              sch_grads_and_vars.append(self.compute_weight_gradients(optimizer, weight_op))
+              gstep = self.global_step if w_idx == 0 else None # Only increment once
+              sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
+                global_step=gstep))
+            self.grads_and_vars.append(sch_grads_and_vars)
+            self.apply_grads.append(sch_apply_grads)
     self.optimizers_added = True
 
   def add_initializer_to_graph(self):
@@ -301,12 +302,12 @@ class Model(object):
     full_save_path = self.full_saver.save(session,
       save_path=base_save_path+"_full",
       global_step=self.global_step,
-      latest_filename="latest_checkpoint_v"+self.version)
+      latest_filename=self.cp_latest_filename)
     self.logger.log_info("Full model saved in file %s"%full_save_path)
     weight_save_path = self.weight_saver.save(session,
       save_path=base_save_path+"_weights",
       global_step=self.global_step,
-      latest_filename="latest_checkpoint_v"+self.version)
+      latest_filename=self.cp_latest_filename)
     self.logger.log_info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
 

@@ -37,7 +37,7 @@ class ICA(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
-        with tf.name_scope("placeholders") as scope:
+        with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
 
         with tf.name_scope("step_counter") as scope:
