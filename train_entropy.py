@@ -25,10 +25,10 @@ params, schedule = pp.get_params(model_type)
 if "rand_seed" in params.keys():
   params["rand_state"] = np.random.RandomState(params["rand_seed"])
 params["data_type"] = data_type
+params["data_shape"] = [params["im_size_y"], params["im_size_x"], 1]
 
 ## Import data
 #data = ds.get_data(params)
-params["data_shape"] = [params["im_size_y"], params["im_size_x"], 1]
 data = {"train": Dataset(params["data_file"], params)}
 
 schedule[0]["num_batches"] = (schedule[0]["num_epochs"]*data["train"].num_examples)/params["batch_size"]

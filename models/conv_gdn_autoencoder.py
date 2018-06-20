@@ -57,8 +57,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.input_channels = params["input_channels"] # list for encoding layers
     self.output_channels = params["output_channels"] # list for encoding layers
     self.w_strides = params["strides"] # list for encoding layers
-    self.n_mem = self.compute_num_latent([self.im_size_y, self.im_size_x, self.num_colors],
-      self.patch_size_y, self.patch_size_x, self.w_strides, self.output_channels)
+    self.n_mem = params["n_mem"]
+    #self.n_mem = self.compute_num_latent([self.im_size_y, self.im_size_x, self.num_colors],
+    #  self.patch_size_y, self.patch_size_x, self.w_strides, self.output_channels)
     self.x_shape = [None, self.im_size_y, self.im_size_x, self.input_channels[0]]
     self.w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
       self.input_channels, self.output_channels)]

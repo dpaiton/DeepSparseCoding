@@ -188,32 +188,32 @@ class GDN_Autoencoder(Model):
           self.norm_weights = tf.group(self.norm_w_enc, self.norm_w_dec, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
-          self.gdn_output = self.gdn(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
-            inverse=False, name="gdn_output")
-          # TODO: gdn_mult should be computed on matmul(x,w_enc)+b not on gdn_output right?
-          self.gdn_mult = self.compute_gdn_mult(self.gdn_output, inverse=False, name="gdn_mult")
-          self.gdn_entropies = self.compute_entropies(self.gdn_output)
-          noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.gdn_output),
-            tf.reduce_min(self.gdn_output))) # 1/2 of 10% of range of gdn output
-          uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(self.gdn_output)),
+          self.a = self.gdn(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
+            inverse=False, name="activity")
+          # TODO: gdn_mult should be computed on matmul(x,w_enc)+b not on self.a (gdn_output)?
+          self.gdn_mult = self.compute_gdn_mult(self.a, inverse=False, name="gdn_mult")
+          self.gdn_entropies = self.compute_entropies(self.a)
+          noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.a),
+            tf.reduce_min(self.a))) # 1/2 of 10% of range of gdn output
+          uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(self.a)),
             minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
-          self.a = tf.add(uniform_noise, self.gdn_output, name="activity")
+          self.a_noise = tf.add(uniform_noise, self.a, name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
-          self.a_sig = self.sigmoid(self.a, self.sigmoid_beta)
+          self.a_sig = self.sigmoid(self.a_noise, self.sigmoid_beta)
           ll = ef.log_likelihood(self.a_sig, self.mle_thetas, self.triangle_centers)
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
             for _ in range(self.num_mle_steps)]
 
         with tf.name_scope("loss") as scope:
-          self.loss_dict = {"recon_loss":self.compute_recon_loss(self.a),
-            "entropy_loss":self.compute_entropy_loss(self.a),
+          self.loss_dict = {"recon_loss":self.compute_recon_loss(self.a_noise),
+            "entropy_loss":self.compute_entropy_loss(self.a_noise),
             "weight_decay_loss":self.compute_weight_decay_loss()}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
-            self.x_ = self.compute_recon(self.a)
+            self.x_ = self.compute_recon(self.a_noise)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -321,7 +321,7 @@ class GDN_Autoencoder(Model):
     super(GDN_Autoencoder, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_enc, self.b_enc, self.b_dec, self.w_dec,
-      self.w_gdn, self.w_igdn, self.b_gdn, self.b_igdn, self.x_, self.gdn_output,
+      self.w_gdn, self.w_igdn, self.b_gdn, self.b_igdn, self.x_, self.a,
       self.gdn_entropies, self.gdn_mult]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])

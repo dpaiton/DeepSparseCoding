@@ -3,7 +3,7 @@ import numpy as np
 
 params = {
   "model_type": "conv_gdn_autoencoder",
-  "model_name": "conv_gdn_autoencoder",
+  "model_name": "test",
   "version": "0.0",
   "vectorize_data": False,
   "norm_data": False,
@@ -27,22 +27,26 @@ params = {
   "mle_step_size": 0.01,
   "num_mle_steps": 15,
   "num_triangles": 20,
-  "input_channels": [1, 128, 64, 32],
-  "output_channels": [128, 64, 32, 30],
-  "patch_size_y": [8, 9, 4, 2],
-  "patch_size_x": [8, 9, 4, 2],
-  "strides": [4, 2, 2, 1],
-  #"input_channels": [1, 128, 128],
-  #"output_channels": [128, 128, 7],
-  #"patch_size_y": [9, 5, 5],
-  #"patch_size_x": [9, 5, 5],
-  #"strides": [4, 2, 2],
+  "n_mem": 448,
+  #"input_channels": [1, 128, 64, 32],
+  #"output_channels": [128, 64, 32, 30],
+  #"patch_size_y": [8, 9, 4, 2],
+  #"patch_size_x": [8, 9, 4, 2],
+  #"strides": [4, 2, 2, 1],
+  "input_channels": [1, 128, 128],
+  "output_channels": [128, 128, 7],
+  "patch_size_y": [9, 5, 5],
+  "patch_size_x": [9, 5, 5],
+  "strides": [4, 2, 2],
   "memristor_type": "rram",
   "memristor_data_loc": os.path.expanduser("~")+"/CAE_Project/CAEs/data/Partial_Reset_PCM.pkl",
   "optimizer": "adam",#"annealed_sgd",
   "cp_int": 50000,
   "max_cp_to_keep": 1,
-  "cp_load": False,
+  "cp_load": True,
+  "cp_load_name": "conv_gdn_autoencoder",
+  "cp_load_step": 44640,
+  "cp_load_ver": "0.0",
   "log_int": 1,
   "log_to_file": False,
   "gen_plot_int": 1000,
@@ -62,6 +66,8 @@ train_list += ["w_igdn"+str(idx)
   for idx in range(len(params["input_channels"]), 2*len(params["input_channels"]))]
 train_list += ["b_igdn"+str(idx)
   for idx in range(len(params["input_channels"]), 2*len(params["input_channels"]))]
+
+params["cp_load_var"] = train_list
 
 #num_batches = (params["num_epochs"]*params["batch_size"])/params["epoch_size"]
 weight_lr = [5.0e-4 for _ in range(len(train_list))]
