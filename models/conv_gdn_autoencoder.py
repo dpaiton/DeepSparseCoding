@@ -57,6 +57,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.input_channels = params["input_channels"] # list for encoding layers
     self.output_channels = params["output_channels"] # list for encoding layers
     self.w_strides = params["strides"] # list for encoding layers
+    self.w_thresh_min = params["w_thresh_min"]
+    self.b_thresh_min = params["b_thresh_min"]
+    self.gdn_mult_min = params["gdn_mult_min"]
     self.n_mem = params["n_mem"]
     #self.n_mem = self.compute_num_latent([self.im_size_y, self.im_size_x, self.num_colors],
     #  self.patch_size_y, self.patch_size_x, self.w_strides, self.output_channels)
@@ -160,11 +163,11 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
 
   def compute_gdn_mult(self, layer_id, u_in, w_gdn, b_gdn, inverse):
     u_in_shape = tf.shape(u_in)
-    w_min = 1e-3 # TODO: Make threshold a hyper parameter?
+    w_min = self.w_thresh_min
     w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
       tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
     w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
-    b_min = 1e-3 # TODO: Make threshold a hyper parameter?
+    b_min = self.b_thresh_min
     b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
       tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
     collapsed_u_sq = tf.reshape(tf.square(u_in),
@@ -191,8 +194,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       if inverse:
         u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
       else:
-        gdn_mult_min = 1e-6 # TODO: hyperparameter?
-        u_out = tf.where(tf.less(gdn_mult, tf.constant(gdn_mult_min, dtype=tf.float32)), u_in,
+        u_out = tf.where(tf.less(gdn_mult, tf.constant(self.gdn_mult_min, dtype=tf.float32)), u_in,
           tf.divide(u_in, gdn_mult), name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
@@ -233,9 +235,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       else:
         conv_out = tf.add(tf.nn.conv2d(u_in, w, [1, w_stride, w_stride, 1],
           padding="SAME", use_cudnn_on_gpu=True), b, name="conv_out"+str(layer_id))
-      #TODO: self.gdn_mult is going to get reset each layer - need to fix this for plotting
-      gdn_out, w_gdn, b_gdn, self.gdn_mult = self.gdn(layer_id, conv_out, decode)
-    return gdn_out, w, b, w_gdn, b_gdn, conv_out
+      gdn_out, w_gdn, b_gdn, gdn_mult = self.gdn(layer_id, conv_out, decode)
+    return gdn_out, w, b, w_gdn, b_gdn, conv_out, gdn_mult
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
@@ -280,12 +281,13 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
         self.conv_list = []
         self.w_list = []
         self.w_gdn_list = []
+        self.gdn_mult_list = []
         self.b_list = []
         self.b_gdn_list = []
         for layer_id in range(self.num_layers):
           gdn_inverse = False if layer_id < self.num_layers/2 else True
-          u_out, w, b, w_gdn, b_gdn, conv_out = self.layer_maker(layer_id, self.u_list[layer_id],
-            self.w_shapes[layer_id], self.w_strides[layer_id], gdn_inverse)
+          u_out, w, b, w_gdn, b_gdn, conv_out, gdn_mult = self.layer_maker(layer_id,
+            self.u_list[layer_id], self.w_shapes[layer_id], self.w_strides[layer_id], gdn_inverse)
           if layer_id == self.num_layers/2-1:
             #TODO: Verify n_mem = prod(shape(u_out)[1:])
             self.num_latent = self.n_mem#tf.reduce_prod(tf.shape(u_out)[1:], name="num_latent" )
@@ -301,6 +303,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           self.conv_list.append(conv_out)
           self.w_list.append(w)
           self.w_gdn_list.append(w_gdn)
+          self.gdn_mult_list.append(gdn_mult)
           self.b_list.append(b)
           self.b_gdn_list.append(b_gdn)
 
@@ -411,15 +414,30 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
        self.n_mem)).astype(np.float32)
     feed_dict[self.memristor_std_eps] = mem_std_eps
     eval_list = [self.global_step, self.a, self.u_list[int(self.num_layers/2-1)], self.w_list[0],
-      self.w_list[-1], self.u_list[-1], self.gdn_mult]+self.w_gdn_list+self.b_gdn_list+self.b_list
+      self.w_list[-1], self.u_list[-1]]
+    eval_list += self.w_gdn_list
+    eval_list += self.b_gdn_list
+    eval_list += self.b_list
+    eval_list += self.gdn_mult_list
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     assert np.all(np.stack([np.all(np.isfinite(arry)) for arry in eval_out])), (
       "Some plot evals had non-finite values")
     current_step = str(eval_out[0])
-    pre_mem_activity, post_mem_activity, w_enc, w_dec, recon, gdn_mult = eval_out[1:7]
-    w_gdn_list = eval_out[7:7+len(self.w_gdn_list)]
-    b_gdn_list = eval_out[7+len(self.w_gdn_list):7+len(self.w_gdn_list)+len(self.b_gdn_list)]
-    b_list = eval_out[7+len(self.w_gdn_list)+len(self.b_gdn_list):]
+    start = 1
+    end = 6
+    pre_mem_activity, post_mem_activity, w_enc, w_dec, recon = eval_out[start:end]
+    start = end
+    end += len(self.w_gdn_list)
+    w_gdn_eval_list = eval_out[start:end]
+    start = end
+    end += len(self.b_gdn_list)
+    b_gdn_eval_list = eval_out[start:end]
+    start = end
+    end += len(self.b_gdn_list)
+    b_eval_list = eval_out[start:end]
+    start = end
+    end += len(self.gdn_mult_list)
+    gdn_mult_eval_list = eval_out[start:end]
     w_enc_shape = w_enc.shape
     w_enc_norm = np.linalg.norm(w_enc.reshape([np.prod(w_enc_shape[:-1]), w_enc_shape[-1]]),
       axis=1, keepdims=False)
@@ -427,48 +445,41 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     w_dec_shape = w_dec.shape
     w_dec_norm = np.linalg.norm(w_dec.reshape([np.prod(w_dec_shape[:-1]), w_dec_shape[-1]]),
       axis=1, keepdims=False)
-
-    #TODO:
-    ##############
-    #w_enc = np.transpose(w_enc, axes=(3,0,1,2))
-    #w_enc = dp.reshape_data(w_enc, flatten=True)[0]
-    #fig = pf.plot_data_tiled(w_enc, normalize=False,
-    #  title="Encoding weights at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"
-    #  +current_step.zfill(5)+".png"))
-    #w_dec = dp.reshape_data(w_dec, flatten=True)[0]
-    #fig = pf.plot_data_tiled(w_dec, normalize=False,
-    #  title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
-    #  +current_step.zfill(5)+".png"))
-    ##############
-
+    w_enc = np.transpose(w_enc, axes=(3,0,1,2))
+    w_enc = dp.reshape_data(w_enc, flatten=True)[0]
+    fig = pf.plot_data_tiled(w_enc, normalize=False,
+      title="Encoding weights at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"
+      +current_step.zfill(5)+".png"))
+    w_dec = np.transpose(w_dec, axes=(2,0,1,3))
+    w_dec = dp.reshape_data(w_dec, flatten=True)[0]
+    fig = pf.plot_data_tiled(w_dec, normalize=False,
+      title="Decoding weights at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
+      +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.disp_dir+"w_enc_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_dec_norm, num_xticks=5,
       title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.disp_dir+"w_dec_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    for idx, w_gdn in enumerate(w_gdn_list):
+    for idx, w_gdn in enumerate(w_gdn_eval_list):
       fig = pf.plot_weight_image(w_gdn, title="GDN "+str(idx)+" Weights", figsize=(10,10),
         save_filename=(self.disp_dir+"w_gdn_"+str(idx)+"_v"+self.version+"-"
         +current_step.zfill(5)+".png"))
-
-    #TODO:
-    ##############
-    #for idx, b_gdn in enumerate(b_gdn_list):
-    #  fig = pf.plot_activity_hist(b_gdn, title="GDN "+str(idx)+" Bias Histogram",
-    #    save_filename=(self.disp_dir+"b_gdn_"+str(idx)+"_hist_v"+self.version+"-"
-    #    +current_step.zfill(5)+".png"))
-    #for idx, bias in enumerate(b_list):
-    #  fig = pf.plot_activity_hist(bias, title="Bias "+str(idx)+" Histogram",
-    #    save_filename=(self.disp_dir+"b_"+str(idx)+"_hist_v"+self.version+"-"
-    #    +current_step.zfill(5)+".png"))
-    #fig = pf.plot_activity_hist(gdn_mult, title="GDN Multiplier Histogram",
-    #  save_filename=(self.disp_dir+"gdn_mult_v"+self.version+"-"
-    #  +current_step.zfill(5)+".png"))
-    ##############
-
+    for idx, b_gdn in enumerate(b_gdn_eval_list):
+      fig = pf.plot_activity_hist(b_gdn, title="GDN "+str(idx)+" Bias Histogram",
+        save_filename=(self.disp_dir+"b_gdn_"+str(idx)+"_hist_v"+self.version+"-"
+        +current_step.zfill(5)+".png"))
+    for idx, bias in enumerate(b_eval_list):
+      fig = pf.plot_activity_hist(bias, title="Bias "+str(idx)+" Histogram",
+        save_filename=(self.disp_dir+"b_"+str(idx)+"_hist_v"+self.version+"-"
+        +current_step.zfill(5)+".png"))
+    for idx, gdn_mult_eval in enumerate(gdn_mult_eval_list):
+      gdn_mult_resh = gdn_mult_eval.reshape(np.prod(gdn_mult_eval.shape))
+      fig = pf.plot_activity_hist(gdn_mult_resh, title="GDN Multiplier Histogram",
+        save_filename=(self.disp_dir+"gdn_mult_v"+self.version+"-"
+        +current_step.zfill(5)+".png"))
     pre_mem_activity = dp.reshape_data(pre_mem_activity, flatten=True)[0]
     fig = pf.plot_activity_hist(pre_mem_activity, title="Activity Histogram (pre-mem)",
       save_filename=(self.disp_dir+"act_pre_hist_v"+self.version+"-"

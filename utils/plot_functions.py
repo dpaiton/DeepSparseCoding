@@ -744,15 +744,16 @@ def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   (fig, ax) = plt.subplots(1)
   vals, bins, patches = ax.hist(data, bins=num_bins, histtype="barstacked",
     stacked=True)
-  ax.set_xlim([np.min(data), np.max(data)])
+  if np.min(data) != np.max(data):
+    ax.set_xlim([np.min(data), np.max(data)])
   ax.set_xlabel('Value')
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
   fig.tight_layout()
   if save_filename is not None:
-      fig.savefig(save_filename)
-      plt.close(fig)
-      return None
+    fig.savefig(save_filename)
+    plt.close(fig)
+    return None
   plt.show()
   return fig
 
