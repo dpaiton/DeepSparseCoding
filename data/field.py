@@ -30,7 +30,10 @@ def load_field(kwargs):
   rand_state = kwargs["rand_state"] if "rand_state" in kwargs.keys() else np.random.RandomState()
   num_images = int(kwargs["num_images"]) if "num_images" in kwargs.keys() else None
   image_edge_size = int(kwargs["image_edge_size"]) if "image_edge_size" in kwargs.keys() else None
-  img_filename = data_dir+"/field/IMAGES_RAW.npz" # NOTE: IMAGES.npz has pre-whitened data
+  if "whiten_data" in kwargs.keys() and kwargs["whiten_data"]:
+    img_filename = data_dir+"/field/IMAGES.npz"
+  else:
+    img_filename = data_dir+"/field/IMAGES_RAW.npz"
   field_data = field(img_filename, num_images, rand_state)
   image_dataset = Dataset(field_data.images, lbls=None, ignore_lbls=None, rand_state=rand_state)
   # Resize data
