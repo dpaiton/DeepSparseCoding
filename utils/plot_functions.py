@@ -360,7 +360,7 @@ def plot_bf_stats(bf_stats, num_bf=2):
     sub_ax[plot_id, 2].spines["bottom"].set_linewidth(2.5)
     sub_ax[plot_id, 2].spines["top"].set_color("none")
     sub_ax[plot_id, 2].spines["right"].set_color("none")
-    sub_ax[plot_id, 2].set_ylim([0, fourier.shape[0]-1])
+    sub_ax[plot_id, 2].set_ylim([fourier.shape[0]-1, 0])
     sub_ax[plot_id, 2].set_xlim([0, fourier.shape[1]-1])
     # Fourier summary stats
     sub_ax[plot_id, 3].imshow(bf, interpolation="Nearest", cmap="Greys_r")

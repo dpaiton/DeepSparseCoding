@@ -1,6 +1,7 @@
 import params.mlp_params as mlp
 import params.ica_params as ica
 import params.ica_pca_params as ica_pca
+import params.rica_params as rica
 import params.gradient_sc_params as gsc
 import params.entropy_sc_params as esc
 import params.lca_params as lca
@@ -29,6 +30,8 @@ def get_params(model_type):
     return ica.params, ica.schedule
   if model_type.lower() == "ica_pca":
     return ica_pca.params, ica_pca.schedule
+  if model_type.lower() == "rica":
+    return rica.params, rica.schedule
   if model_type.lower() == "gradient_sc":
     return gsc.params, gsc.schedule
   if model_type.lower() == "entropy_sc":

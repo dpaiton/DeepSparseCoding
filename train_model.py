@@ -14,7 +14,8 @@ t0 = ti.time()
 #model_type = "mlp"
 #model_type = "ica"
 #model_type = "ica_pca"
-model_type = "lca"
+model_type = "rica"
+#model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "lca_pca_fb"
 #model_type = "conv_lca"
@@ -24,8 +25,8 @@ model_type = "lca"
 
 #data_type = "cifar10"
 #data_type = "mnist"
-data_type = "vanhateren"
-#data_type = "field"
+#data_type = "vanhateren"
+data_type = "field"
 #data_type = "synthetic"
 
 ## Import params
