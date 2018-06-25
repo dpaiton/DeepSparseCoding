@@ -7,6 +7,8 @@ import params.param_picker as pp
 import models.model_picker as mp
 import data.data_selector as ds
 
+#from tensorflow.python import debug as tf_debug
+
 import time as ti
 t0 = ti.time()
 
@@ -25,8 +27,8 @@ model_type = "rica"
 
 #data_type = "cifar10"
 #data_type = "mnist"
-#data_type = "vanhateren"
-data_type = "field"
+data_type = "vanhateren"
+#data_type = "field"
 #data_type = "synthetic"
 
 ## Import params
@@ -54,6 +56,9 @@ model.write_saver_defs()
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 with tf.Session(config=config, graph=model.graph) as sess:
+  #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+  #sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
+
   ## Need to provide shape if batch_size is used in graph
   sess.run(model.init_op,
     feed_dict={model.x:np.zeros([params["batch_size"]]+params["data_shape"], dtype=np.float32)})

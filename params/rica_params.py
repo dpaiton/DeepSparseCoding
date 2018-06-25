@@ -10,8 +10,8 @@ params = {
   "standardize_data": False,
   "contrast_normalize": False,
   "whiten_data": True,
-  "whiten_method": "FT",
-  "lpf_data": False, # only for ZCA
+  "whiten_method": "ZCA",
+  "lpf_data": True, # only for ZCA
   "lpf_cutoff": 0.7,
   "extract_patches": True,
   "num_patches": 1e6,
@@ -31,9 +31,9 @@ params = {
   "cp_load_var": ["w"],
   "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 5000,
+  "gen_plot_int": 1000,
   "save_plots": True,
-  "eps": 1e-12,
+  "eps": 1e-7,
   "device": "/gpu:0",
   "rand_seed": 1234567890,
   "out_dir": os.path.expanduser("~")+"/Work/Projects/",
@@ -41,8 +41,8 @@ params = {
 
 schedule = [
   {"weights": ["w"],
-  "recon_mult": 5.0,
-  "weight_lr": [0.001],
+  "recon_mult": 10.0,
+  "weight_lr": [0.01],
   "decay_steps": [int(1e6*0.8)],
   "decay_rate": [0.6],
   "staircase": [True],

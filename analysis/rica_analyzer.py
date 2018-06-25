@@ -3,15 +3,15 @@ import tensorflow as tf
 from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
 
-class SA_Analyzer(Analyzer):
+class RICA_Analyzer(Analyzer):
   def __init__(self, params):
     Analyzer.__init__(self, params)
     self.var_names = [
-      "weights/w_enc:0",
+      "weights/w:0",
       "inference/activity:0"]
 
   def load_params(self, params):
-    super(SA_Analyzer, self).load_params(params)
+    super(RICA_Analyzer, self).load_params(params)
     self.ft_padding = params["ft_padding"]
     self.ot_neurons = params["neuron_indices"]
     self.ot_contrasts = params["contrasts"]
@@ -27,10 +27,10 @@ class SA_Analyzer(Analyzer):
       self.gauss_thresh = 0.2
 
   def run_analysis(self, images, save_info=""):
-    super(SA_Analyzer, self).run_analysis(images, save_info)
+    super(RICA_Analyzer, self).run_analysis(images, save_info)
     self.evals = self.evaluate_model(images, self.var_names)
     self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
-    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/w_enc:0"],
+    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/w:0"],
       padding=self.ft_padding, num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,

@@ -29,17 +29,15 @@ class RICA(Model):
 
   def compute_recon_loss(self, a_in):
     with tf.name_scope("unsupervised"):
-      reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.multiply(self.recon_mult,
         tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon(a_in), self.x)),
-        axis=reduc_dim)), name="recon_loss")
+        axis=[1])), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
     with tf.name_scope("unsupervised"):
-      reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
-      sparse_loss = tf.reduce_mean(tf.reduce_sum(tf.log(tf.cosh(a_in)),
-        axis=reduc_dim), name="sparse_loss")
+      sparse_loss = tf.reduce_mean(tf.reduce_sum(tf.log(tf.cosh(a_in)), axis=[1]),
+        name="sparse_loss")
     return sparse_loss
 
   def compute_total_loss(self, a_in, loss_funcs):
@@ -68,12 +66,12 @@ class RICA(Model):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("weights") as scope:
-          w_init = tf.truncated_normal(self.w_shape, mean=0.0, stddev=0.3,
+          w_init = tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
             dtype=tf.float32, name="w_init")
-          #self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init, trainable=True)
-          w_unconstrained = tf.get_variable(name="w", dtype=tf.float32,
+          w_unnormalized = tf.get_variable(name="w", dtype=tf.float32,
             initializer=w_init, trainable=True)
-          self.w = tf.nn.l2_normalize(w_unconstrained, dim=0, epsilon=self.eps, name="w_norm")
+          w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0]), self.eps))
+          self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
         with tf.name_scope("inference") as scope:
           self.a = tf.matmul(self.x, self.w, name="activity")

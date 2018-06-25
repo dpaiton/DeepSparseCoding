@@ -5,10 +5,11 @@ import data.data_selector as ds
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "lca",
+  "model_type": "rica",
   #"model_name": "ica_test",
   #"model_name": "lca_256_l0_2.5",
-  "model_name": "lca_vh_ft_1c_ht",
+  #"model_name": "lca_vh_ft_1c_ht",
+  "model_name": "rica",
   "version": "0.0",
   "data_type": "vanHateren",
   "device": "/gpu:0",
