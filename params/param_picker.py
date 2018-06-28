@@ -54,7 +54,7 @@ def get_params(model_type):
   if model_type.lower() == "conv_gdn_autoencoder":
     return cga.params, cga.schedule
   if model_type.lower() == "conv_gdn_decoder":
-    return cgd.params, cgd.schedule
+    return cgd.params, None
   if model_type.lower() == "relu_autoencoder":
     return ra.params, ra.schedule
   return False

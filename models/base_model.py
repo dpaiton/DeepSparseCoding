@@ -28,11 +28,12 @@ class Model(object):
     Inputs:
      schedule: [list of dict] learning schedule
     """
-    for sched in schedule:
-      assert len(sched["weights"]) == len(sched["weight_lr"])
-      assert len(sched["weights"]) == len(sched["decay_steps"])
-      assert len(sched["weights"]) == len(sched["decay_rate"])
-      assert len(sched["weights"]) == len(sched["staircase"])
+    if schedule is not None:
+        for sched in schedule:
+          assert len(sched["weights"]) == len(sched["weight_lr"])
+          assert len(sched["weights"]) == len(sched["decay_steps"])
+          assert len(sched["weights"]) == len(sched["decay_rate"])
+          assert len(sched["weights"]) == len(sched["staircase"])
     self.sched = schedule
 
   def load_params(self, params):
@@ -82,6 +83,8 @@ class Model(object):
     if "log_int" in params.keys():
       self.log_int = int(params["log_int"])
       self.log_to_file = bool(params["log_to_file"])
+    else:
+      self.log_to_file = False
     if "gen_plot_int" in params.keys():
       self.gen_plot_int = int(params["gen_plot_int"])
       self.save_plots = bool(params["save_plots"])
