@@ -76,34 +76,39 @@ class Model(object):
     if "num_unlabeled" in params.keys():
       self.num_unlabeled = str(params["num_unlabeled"])
     self.version = str(params["version"])
-    self.optimizer = str(params["optimizer"])
+    if "optimizer" in params.keys():
+      self.optimizer = str(params["optimizer"])
     # Output generation
-    self.log_int = int(params["log_int"])
-    self.log_to_file = bool(params["log_to_file"])
-    self.gen_plot_int = int(params["gen_plot_int"])
-    self.save_plots = bool(params["save_plots"])
+    if "log_int" in params.keys():
+      self.log_int = int(params["log_int"])
+      self.log_to_file = bool(params["log_to_file"])
+    if "gen_plot_int" in params.keys():
+      self.gen_plot_int = int(params["gen_plot_int"])
+      self.save_plots = bool(params["save_plots"])
     # Checkpointing
-    self.cp_int = int(params["cp_int"])
-    self.max_cp_to_keep = int(params["max_cp_to_keep"])
-    self.cp_latest_filename = "latest_checkpoint_v"+self.version
-    self.cp_load = bool(params["cp_load"])
-    if self.cp_load:
-      self.cp_load_name = str(params["cp_load_name"])
-      if "cp_load_step" in params and params["cp_load_step"] is not None:
-        self.cp_load_step = int(params["cp_load_step"])
-      else:
-        self.cp_load_step = None
-      self.cp_load_ver = str(params["cp_load_ver"])
-      if "cp_load_var" in params:
-        self.cp_load_var = [str(var) for var in params["cp_load_var"]]
-      else:
-        self.cp_load_var = []
-      if "cp_set_var" in params:
-        self.cp_set_var = [str(var) for var in params["cp_set_var"]]
-      else:
-        self.cp_set_var = []
-      self.cp_load_dir = (str(params["out_dir"]) + self.cp_load_name
-        + "/checkpoints/")
+    if "cp_int" in params.keys():
+      self.cp_int = int(params["cp_int"])
+      self.max_cp_to_keep = int(params["max_cp_to_keep"])
+      self.cp_latest_filename = "latest_checkpoint_v"+self.version
+    if "cp_load" in params.keys():
+      self.cp_load = bool(params["cp_load"])
+      if self.cp_load:
+        self.cp_load_name = str(params["cp_load_name"])
+        if "cp_load_step" in params and params["cp_load_step"] is not None:
+          self.cp_load_step = int(params["cp_load_step"])
+        else:
+          self.cp_load_step = None
+        self.cp_load_ver = str(params["cp_load_ver"])
+        if "cp_load_var" in params:
+          self.cp_load_var = [str(var) for var in params["cp_load_var"]]
+        else:
+          self.cp_load_var = []
+        if "cp_set_var" in params:
+          self.cp_set_var = [str(var) for var in params["cp_set_var"]]
+        else:
+          self.cp_set_var = []
+        self.cp_load_dir = (str(params["out_dir"]) + self.cp_load_name
+          + "/checkpoints/")
     # Directories
     self.out_dir = str(params["out_dir"])
     if "model_out_dir" in params.keys():
