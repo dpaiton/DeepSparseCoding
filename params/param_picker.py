@@ -11,6 +11,7 @@ import params.conv_lca_params as conv_lca
 import params.sigmoid_autoencoder_params as sa
 import params.gdn_autoencoder_params as ga
 import params.conv_gdn_autoencoder_params as cga
+import params.conv_gdn_decoder_params as cgd
 import params.relu_autoencoder_params as ra
 import params.density_learner_params as density
 
@@ -52,6 +53,8 @@ def get_params(model_type):
     return ga.params, ga.schedule
   if model_type.lower() == "conv_gdn_autoencoder":
     return cga.params, cga.schedule
+  if model_type.lower() == "conv_gdn_decoder":
+    return cgd.params, cgd.schedule
   if model_type.lower() == "relu_autoencoder":
     return ra.params, ra.schedule
   return False
