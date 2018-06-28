@@ -804,6 +804,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
       if method=="FT", then w_filter is np.ndarray representing fourier filter
       if method=="PCA" or "ZCA", then w_filter is a list containing [u, diag(s)]
         of SVD of covariance matrix
+    TODO: Add cutoff parameter for ZCA & PCA in addition to adding epsilon
   """
   if method.upper() == "FT":
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=False)[0:4]
