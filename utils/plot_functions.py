@@ -866,6 +866,10 @@ def plot_stats(data, keys=None, labels=None, figsize=None, save_filename=None):
   assert len(keys) > 0, "Keys must be None or have length > 0."
   if "batch_step" in keys:
     keys.remove("batch_step")
+  if "schedule_index" in keys:
+    keys.remove("schedule_index")
+  if "global_batch_index" in keys:
+    keys.remove("global_batch_index")
   if labels is None:
     labels = keys
   else:
