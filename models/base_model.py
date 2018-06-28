@@ -93,6 +93,8 @@ class Model(object):
       self.cp_int = int(params["cp_int"])
       self.max_cp_to_keep = int(params["max_cp_to_keep"])
       self.cp_latest_filename = "latest_checkpoint_v"+self.version
+    else:
+      self.max_cp_to_keep = 1
     if "cp_load" in params.keys():
       self.cp_load = bool(params["cp_load"])
       if self.cp_load:
@@ -112,6 +114,8 @@ class Model(object):
           self.cp_set_var = []
         self.cp_load_dir = (str(params["out_dir"]) + self.cp_load_name
           + "/checkpoints/")
+    else:
+      self.cp_load = False
     # Directories
     self.out_dir = str(params["out_dir"])
     if "model_out_dir" in params.keys():
@@ -247,7 +251,8 @@ class Model(object):
     Add initializer to the graph
     This must be done after optimizers have been added
     """
-    assert self.optimizers_added
+    if not self.optimizers_added:
+      self.log_info("WARNING: Automatic weight optimizers were not added.")
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("initialization") as scope:
@@ -269,8 +274,8 @@ class Model(object):
 
   def construct_savers(self):
     """Add savers to graph"""
-    assert self.optimizers_added, (
-      "Optimizers must be added to the graph before constructing savers.")
+    if not self.optimizers_added:
+      self.log_info("WARNING: Optimizers must be added to the graph before constructing savers.")
     with self.graph.as_default():
       with tf.variable_scope("weights", reuse=True) as scope:
         weights = [weight for weight in tf.global_variables()

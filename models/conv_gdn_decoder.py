@@ -10,13 +10,8 @@ from models.gdn_autoencoder import GDN_Autoencoder
 
 class Conv_GDN_Decoder(GDN_Autoencoder):
   """
-  Implementation of autoencoder described in Balle, Laparra, Simoncelli (2017)
-  End-to-End Optimized Image Compression
-  ## Key differences:
-  #  Fully connected
-  #  Single hidden layer, complete
-  ## Methods ignored:
-  #  add a small amount of uniform noise to input, to simulate pixel quantization
+  Decoder for the conv_gdn_autoencoder model
+  loads decoding weights from npz files, can decode latent values to images
   """
   def __init__(self):
     super(Conv_GDN_Decoder, self).__init__()
@@ -25,9 +20,10 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
   def setup_graph(self):
     self.graph = tf.Graph()
     self.build_graph()
+    self.optimizers_added = True
     self.add_initializer_to_graph()
     self.construct_savers()
-  
+
   def load_params(self, params):
     """
     Load parameters into object
@@ -46,7 +42,8 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     self.w_thresh_min = params["w_thresh_min"]
     self.b_thresh_min = params["b_thresh_min"]
     self.gdn_mult_min = params["gdn_mult_min"]
-    self.w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x, self.output_channels, self.input_channels)]
+    self.w_shapes = [vals
+      for vals in zip(self.patch_size_y, self.patch_size_x, self.output_channels, self.input_channels)]
     self.w_igdn_shapes = [[pout,pout] for pout in self.output_channels]
     self.b_shapes = [[pout,] for pout in self.output_channels]
     self.b_igdn_shapes = [[pout,] for pout in self.output_channels]
@@ -54,7 +51,7 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     self.x_shape = [None,]+self.input_shape
     self.num_layers = len(self.input_channels)
 
-  def compute_gdn_mult(self, layer_id, u_in, w_gdn, b_gdn, inverse):
+  def compute_gdn_mult(self, layer_id, u_in, w_gdn, b_gdn):
     u_in_shape = tf.shape(u_in)
     w_min = self.w_thresh_min
     w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
@@ -77,7 +74,7 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
       b_gdn = tf.get_variable(name="b_igdn"+str(layer_id),
         dtype=tf.float32, initializer=self.b_igdn_init_list[layer_id], trainable=False)
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      gdn_mult = self.compute_gdn_mult(layer_id, u_in, w_gdn, b_gdn, inverse)
+      gdn_mult = self.compute_gdn_mult(layer_id, u_in, w_gdn, b_gdn)
       u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
@@ -97,13 +94,12 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     with tf.variable_scope(self.weight_scope) as scope:
       b = tf.get_variable(name="b"+str(layer_id),
         dtype=tf.float32, initializer=self.b_init_list[layer_id], trainable=True)
-    print(w_shape)
     with tf.variable_scope("hidden"+str(layer_id)) as scope:
       height_const = 0 if u_in.get_shape()[1] % w_stride == 0 else 1
       out_height = (u_in.get_shape()[1] * w_stride) - height_const
       width_const = 0 if u_in.get_shape()[2] % w_stride == 0 else 1
       out_width = (u_in.get_shape()[2] * w_stride) - width_const
-      out_shape = tf.stack([u_in.get_shape()[0], # Batch
+      out_shape = tf.stack([self.batch_size, # Batch
         out_height, # Height
         out_width, # Width
         tf.constant(w_shape[2], dtype=tf.int32)]) # Channels
@@ -144,7 +140,6 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
         self.b_list = []
         self.b_gdn_list = []
         for layer_id in range(self.num_layers):
-          print(layer_id)
           u_out, w, b, w_gdn, b_gdn, conv_out, gdn_mult = self.layer_maker(layer_id,
             self.u_list[layer_id], self.w_shapes[layer_id], self.w_strides[layer_id])
           self.u_list.append(u_out)
