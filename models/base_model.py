@@ -476,6 +476,7 @@ class Model(object):
               dp.whiten_data(dataset[key].images, method=params["whiten_method"])
       if "norm_data" in params.keys() and params["norm_data"]:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
+        self.data_max = dataset[key].data_max
     return dataset
 
   def print_update(self, input_data, input_labels=None, batch_step=0):
