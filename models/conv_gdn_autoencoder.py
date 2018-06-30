@@ -122,7 +122,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     v_clip = tf.clip_by_value(u_in, clip_value_min=self.mem_v_min,
       clip_value_max=self.mem_v_max)
     r = mem_utils.memristor_output(v_clip, self.memristor_std_eps, vs_data, mus_data, sigs_data,
-      interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'))
+      interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'), error_rate = self.mem_error_rate)
     u_out = tf.reshape(r, shape=u_in_shape, name="mem_r")
     return u_out
 
@@ -250,6 +250,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           self.ramp_slope = tf.placeholder(tf.float32, shape=(), name="ramp_slope")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
           self.noise_var_mult = tf.placeholder(tf.float32, shape=(), name="noise_var_mult")
+          self.mem_error_rate = tf.placeholder(tf.float32, shape=(), name="mem_error_rate")
 
         with tf.name_scope("placeholders") as scope:
           self.memristor_std_eps = tf.placeholder(tf.float32, shape=self.memristor_noise_shape,
@@ -291,14 +292,13 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           if layer_id == self.num_layers/2-1:
             #TODO: Verify n_mem = prod(shape(u_out)[1:])
             self.num_latent = self.n_mem#tf.reduce_prod(tf.shape(u_out)[1:], name="num_latent" )
-            self.pre_mem = tf.identity(u_out, name="pre_memristor_activity")
-            noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.pre_mem),
-              tf.reduce_min(self.pre_mem))) # 1/2 of 10% of range of gdn output
-            uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(self.pre_mem)),
+            noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(u_out),
+              tf.reduce_min(u_out))) # 1/2 of 10% of range of gdn output
+            uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(u_out)),
               minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
-            u_out = tf.add(uniform_noise, self.pre_mem, name="noisy_activity")
-            u_out = self.memristorize(self.sigmoid(u_out, self.sigmoid_beta),
-              self.memristor_std_eps, self.memristor_type)
+            u_out = tf.add(uniform_noise, u_out, name="noisy_activity")
+            self.pre_mem = self.sigmoid(u_out, self.sigmoid_beta)
+            u_out = self.memristorize(self.pre_mem, self.memristor_std_eps, self.memristor_type)
           self.u_list.append(u_out)
           self.conv_list.append(conv_out)
           self.w_list.append(w)
