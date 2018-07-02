@@ -3,8 +3,8 @@ import numpy as np
 
 params = {
   "model_type": "conv_gdn_autoencoder",
-  "model_name": "conv_gdn_autoencoder_pretrain",
-  "version": "0.0",
+  "model_name": "conv_gdn_autoencoder_post_pretrain_test",
+  "version": "1.0",
   "vectorize_data": False,
   "norm_data": False,
   "center_data": False,
@@ -45,12 +45,12 @@ params = {
   "memristor_type": "rram",
   "memristor_data_loc": os.path.expanduser("~")+"/CAE_Project/CAEs/data/Partial_Reset_PCM.pkl",
   "optimizer": "adam",#"annealed_sgd",
-  "cp_int": 50000,
+  "cp_int": 1000,
   "max_cp_to_keep": 1,
-  "cp_load": False,
-  "cp_load_name": "conv_gdn_autoencoder",
-  "cp_load_step": None,
-  "cp_load_ver": "0.0",
+  "cp_load": True,
+  "cp_load_name": "conv_gdn_autoencoder_pretrain",
+  "cp_load_step": 10000,
+  "cp_load_ver": "1.0",
   "log_int": 10,
   "log_to_file": True,
   "gen_plot_int": 1000,
@@ -76,7 +76,7 @@ params["cp_load_var"] = train_list
 #num_batches = (params["num_epochs"]*params["batch_size"])/params["epoch_size"]
 weight_lr = [5.0e-4 for _ in range(len(train_list))]
 #decay_steps = [int(0.8*num_batches) for _ in range(len(train_list))]
-decay_rate = [0.9 for _ in range(len(train_list))]
+decay_rate = [0.8 for _ in range(len(train_list))]
 staircase = [True for _ in range(len(train_list))]
 
 schedule = [
@@ -85,7 +85,7 @@ schedule = [
   "ramp_slope": 1.0,
   "decay_mult": 0.01,
   "noise_var_mult": 0.0,
-  "mem_error_rate":0.0, 
+  "mem_error_rate":0.1, 
   "triangle_centers": np.linspace(-1.0, 1.0, params["num_triangles"]),
   "weight_lr": weight_lr,
   "num_epochs": 10,
