@@ -49,6 +49,9 @@ model.setup(params, schedule)
 if "standardize_data" in params.keys() and params["standardize_data"]:
   model.log_info("Standardization was performed, mean was "+str(model.data_mean)
     +" and std was "+str(model.data_std))
+if "norm_data" in params.keys() and params["norm_data"]:
+  model.log_info("Normalization was performed by dividing the dataset by max(abs(data)), "
+    +"max was "+str(model.data_max))
 
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
@@ -100,15 +103,15 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Generate logs
       current_step = sess.run(model.global_step)
-      if (current_step <= 1 and model.gen_plot_int > 0):
+      if (current_step <= 1 and model.log_int > 0):
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
-      if (current_step % model.log_int == 0
-        and model.log_int > 0):
+      if (current_step % model.log_int == 0 and model.log_int > 0):
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
 
       ## Plot weights & gradients
-      if (current_step % model.gen_plot_int == 0
-        and model.gen_plot_int > 0):
+      if (current_step <= 1 and model.gen_plot_int > 0):
+        model.generate_plots(input_data=input_data, input_labels=input_labels)
+      if (current_step % model.gen_plot_int == 0 and model.gen_plot_int > 0):
         model.generate_plots(input_data=input_data, input_labels=input_labels)
 
       ## Checkpoint

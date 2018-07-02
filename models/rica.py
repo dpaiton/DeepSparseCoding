@@ -36,8 +36,8 @@ class RICA(Model):
 
   def compute_sparse_loss(self, a_in):
     with tf.name_scope("unsupervised"):
-      sparse_loss = tf.reduce_mean(tf.reduce_sum(tf.log(tf.cosh(a_in)), axis=[1]),
-        name="sparse_loss")
+      sparse_loss = tf.multiply(self.sparse_mult,
+        tf.reduce_mean(tf.reduce_sum(tf.log(tf.cosh(a_in)), axis=[1])), name="sparse_loss")
     return sparse_loss
 
   def compute_total_loss(self, a_in, loss_funcs):
@@ -61,17 +61,26 @@ class RICA(Model):
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult") # lambda
+          self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("weights") as scope:
-          w_init = tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
-            dtype=tf.float32, name="w_init")
+          w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
+            dtype=tf.float32), dim=0, name="w_init")
+          #self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init, trainable=True)
           w_unnormalized = tf.get_variable(name="w", dtype=tf.float32,
             initializer=w_init, trainable=True)
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0]), self.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
+
+        #with tf.name_scope("norm_weights") as scope: # Optional weight normalization
+        #  #w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(self.w), axis=[0]), self.eps))
+        #  #self.do_norm_w = self.w.assign(tf.divide(self.w, w_norm, name="row_l2_norm"))
+        #  self.norm_w = self.w.assign(tf.nn.l2_normalize(self.w, dim=[0], epsilon=self.eps,
+        #    name="row_l2_norm"))
+        #  self.norm_weights = tf.group(self.norm_w, name="l2_normalization")
 
         with tf.name_scope("inference") as scope:
           self.a = tf.matmul(self.x, self.w, name="activity")
@@ -156,8 +165,9 @@ class RICA(Model):
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     weights, recon, activity = eval_out[1:]
+    #w_lengths = np.sqrt(np.sum(np.square(weights), axis=0))
     recon = dp.reshape_data(recon, flatten=False)[0]
-    weights = dp.reshape_data(weights.T, flatten=False)[0]
+    weights = dp.reshape_data(weights.T, flatten=False)[0] # [units, pixels]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
       save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
       +current_step.zfill(5)+".png"))
@@ -171,8 +181,9 @@ class RICA(Model):
       +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"w_v"+self.version+"-"+current_step.zfill(5)+".png"))
+    #fig = pf.plot_bar(w_lengths, title="Weight L2 Norms", xlabel="Weight Index", ylabel="L2 Norm",
+    #  save_filename=(self.disp_dir+"w_norms_v"+self.version+"-"+current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
