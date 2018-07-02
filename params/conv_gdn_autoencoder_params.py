@@ -3,8 +3,8 @@ import numpy as np
 
 params = {
   "model_type": "conv_gdn_autoencoder",
-  "model_name": "conv_gdn_autoencoder_4l",
-  "version": "0.1",
+  "model_name": "conv_gdn_autoencoder_pretrain",
+  "version": "0.0",
   "vectorize_data": False,
   "norm_data": False,
   "center_data": False,
@@ -81,10 +81,11 @@ staircase = [True for _ in range(len(train_list))]
 
 schedule = [
   {"weights": train_list,
-  "ent_mult": 0.2,
+  "ent_mult": 0.0,
   "ramp_slope": 1.0,
-  "decay_mult": 0.0,
+  "decay_mult": 0.01,
   "noise_var_mult": 0.0,
+  "mem_error_rate":0.0, 
   "triangle_centers": np.linspace(-1.0, 1.0, params["num_triangles"]),
   "weight_lr": weight_lr,
   "num_epochs": 10,

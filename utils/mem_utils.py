@@ -86,7 +86,7 @@ def gauss_interp(samp, xs, ys, interp_width, ratio=0.75):
     output = tf.reduce_sum(tf.multiply(tf.divide(ys, norm_factor), gauss), axis=[1])
     return output
 
-def memristor_output(v, eps, vs, mus, sigs, interp_width):
+def memristor_output(v, eps, vs, mus, sigs, interp_width, error_rate=0.0):
     """
     Parameters
     ----------
@@ -96,6 +96,10 @@ def memristor_output(v, eps, vs, mus, sigs, interp_width):
     """
     mean = gauss_interp(v, vs, mus, interp_width)
     sdev = gauss_interp(v, vs, sigs, interp_width)
+    if error_rate > 0.0:
+        num_corrupt = int(mean.size*error_rate)
+        indeces = np.random.permutation(mean.size)[:num_corrupt]
+        mean[np.unravel_index(indeces,mean.shape)] = 1.1*np.amin(mean)
     return mean + eps * sdev
 
 # Data Iteration Utils

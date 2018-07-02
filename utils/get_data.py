@@ -159,7 +159,8 @@ def get_rram_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
     Vs = normalizer(Vs, 4, 8) #RRAM goes from 4 to 8 in R_Target (log scale, so actually 10^4, 10^8)
     #################################################
     Vs = np.repeat(Vs,10)
-    eta = np.random.normal(0,b**2,len(Vs))
+    # eta = np.random.normal(0,b**2,len(Vs))
+    eta = np.random.uniform(-b**2, b**2, len(Vs))
     Rs = Vs + eta
     
     orig_min_Vs = np.amin(Vs)
