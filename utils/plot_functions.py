@@ -846,7 +846,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   plt.show()
   return fig
 
-def plot_stats(data, keys=None, labels=None, figsize=None, save_filename=None):
+def plot_stats(data, keys=None, labels=None, start_index=0, figsize=None, save_filename=None):
   """
   Generate time-series plots of stats specified by keys
   Inputs:
@@ -880,13 +880,15 @@ def plot_stats(data, keys=None, labels=None, figsize=None, save_filename=None):
   fig = plt.figure(figsize=figsize)
   axis_image = [None]*num_keys
   for key_idx, key in enumerate(keys):
+    x_dat = data["batch_step"][start_index:]
+    y_dat = data[key][start_index:]
     ax = fig.add_subplot(gs[key_idx])
-    axis_image[key_idx] = ax.plot(data["batch_step"], data[key])
+    axis_image[key_idx] = ax.plot(x_dat, y_dat)
     if key_idx < len(keys)-1:
       ax.get_xaxis().set_ticklabels([])
     ax.locator_params(axis="y", nbins=5)
     ax.set_ylabel("\n".join(re.split("_", labels[key_idx])))
-    ax.set_yticks([np.minimum(0.0, np.min(data[key])), np.maximum(0.0, np.max(data[key]))])
+    ax.set_yticks([np.minimum(0.0, np.min(y_dat)), np.maximum(0.0, np.max(y_dat))])
     ylabel_xpos = -0.15
     ax.yaxis.set_label_coords(ylabel_xpos, 0.5)
   ax.set_xlabel("Batch Number")
