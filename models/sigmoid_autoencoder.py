@@ -124,18 +124,23 @@ class Sigmoid_Autoencoder(Model):
     super(Sigmoid_Autoencoder, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
-      self.loss_dict["weight_decay_loss"], self.total_loss, self.a]
+      self.loss_dict["weight_decay_loss"], self.total_loss, self.a, self.x_, self.learning_rates]
     grad_name_list = []
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+    for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
-      grad_name_list.append(weight_grad_var[0][1].name.split('/')[1].split(':')[0])#2nd is np.split
+      grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
+      grad_name_list.append(grad_name)
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    current_step, recon_loss, sparse_loss, decay_loss, total_loss, a_vals = out_vals[0:6]
+    current_step, recon_loss, sparse_loss, decay_loss, total_loss, a_vals, recon = out_vals[0:7]
     input_mean = np.mean(input_data)
     input_max = np.max(input_data)
     input_min = np.min(input_data)
+    recon_mean = np.mean(recon)
+    recon_max = np.max(recon)
+    recon_min = np.min(recon)
     a_vals_max = np.array(a_vals.max())
     a_vals_min = np.array(a_vals.min())
+    a_vals_mean = np.mean(a_vals)
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
     stat_dict = {"global_batch_index":current_step,
@@ -144,16 +149,18 @@ class Sigmoid_Autoencoder(Model):
       "recon_loss":recon_loss,
       "sparse_loss":sparse_loss,
       "total_loss":total_loss,
-      "a_max":a_vals_max,
-      "a_min":a_vals_min,
       "a_fraction_active":a_frac_act,
-      "x_mean":input_mean,
-      "x_max":input_max,
-      "x_min":input_min}
-    grads = out_vals[6:]
-    for grad, name in zip(grads, grad_name_list):
-      stat_dict[name+"_max_grad"] = np.array(grad.max())
-      stat_dict[name+"_min_grad"] = np.array(grad.min())
+      "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
+      "x_max_mean_min":[input_max, input_mean, input_min],
+      "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
+    lrs = out_vals[7]
+    grads = out_vals[8:]
+    for w_idx, (grad, name) in enumerate(zip(grads, grad_name_list)):
+      grad_max = lrs[0][w_idx]*np.array(grad.max())
+      grad_min = lrs[0][w_idx]*np.array(grad.min())
+      grad_mean = lrs[0][w_idx]*np.mean(np.array(grad))
+      stat_dict[name+"_lr"] = lrs[0][w_idx]
+      stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
     js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 
@@ -182,8 +189,7 @@ class Sigmoid_Autoencoder(Model):
       title="Decoding weights at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram",
-      save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"
+    fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram", save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
       save_filename=(self.disp_dir+"act_hist_v"+self.version+"-"
