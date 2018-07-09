@@ -70,8 +70,7 @@ class LCA(Model):
           self.u_zeros))
     elif self.thresh_type == "hard":
       if self.rectify_a:
-        a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
-          self.u_zeros)
+        a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in, self.u_zeros)
       else:
         a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
           tf.where(tf.less(u_in, -self.sparse_mult), u_in, self.u_zeros))
@@ -138,14 +137,15 @@ class LCA(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
+        phi_norm_dim = list(range(len(self.phi_shape)-1)) # normalize across input dim(s)
+
         with tf.variable_scope("weights") as scope:
-          phi_init = tf.truncated_normal(self.phi_shape, mean=0.0,
-            stddev=0.5, dtype=tf.float32, name="phi_init")
-          self.phi = tf.get_variable(name="phi", dtype=tf.float32,
-            initializer=phi_init, trainable=True)
+          phi_init = tf.nn.l2_normalize(tf.truncated_normal(self.phi_shape, mean=0.0,
+            stddev=0.5, dtype=tf.float32), dim=phi_norm_dim, epsilon=self.eps, name="phi_init")
+          self.phi = tf.get_variable(name="phi", dtype=tf.float32, initializer=phi_init,
+            trainable=True)
 
         with tf.name_scope("norm_weights") as scope:
-          phi_norm_dim = list(range(len(self.phi_shape)-1)) # normalize across input dim(s)
           self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi, dim=phi_norm_dim,
             epsilon=self.eps, name="row_l2_norm"))
           self.norm_weights = tf.group(self.norm_phi, name="l2_normalization")
@@ -256,9 +256,6 @@ class LCA(Model):
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"phi_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    fig = pf.plot_bar(weights_norm, num_xticks=5,
-      title="phi l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"phi_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
