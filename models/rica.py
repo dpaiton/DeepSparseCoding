@@ -16,6 +16,8 @@ class RICA(Model):
 
   def load_params(self, params):
     super(RICA, self).load_params(params)
+    if self.optimizer == "lbfgsb":
+      self.maxiter = int(params["maxiter"])
     self.data_shape = params["data_shape"]
     ## Network Size
     self.batch_size = int(params["batch_size"])
@@ -51,6 +53,44 @@ class RICA(Model):
     total_loss = tf.add_n([func(a_in) for func in loss_funcs.values()], name="total_loss")
     return total_loss
 
+  def add_optimizers_to_graph(self):
+    """
+    Add optimizers to graph
+    Creates member variables grads_and_vars and apply_grads for each weight
+      - both member variables are indexed by [schedule_idx][weight_idx]
+      - grads_and_vars holds the gradients for the weight updates
+      - apply_grads is the operator to be called to perform weight updates
+    NOTE: Overwritten function does not use these member variables. It instead creates
+      the optimizer member variable, which is minimized within the session.
+    TODO: Could use the step_callback and loss_callback args to have functions that get
+      grads (loss_callback) and also increment the global step (step_callback)
+    """
+    if self.optimizer == "lbfgsb":
+      with tf.device(self.device):
+        with self.graph.as_default():
+          with tf.name_scope("optimizers") as scope:
+            self.minimizer = tf.contrib.opt.ScipyOptimizerInterface(self.total_loss,
+              options={"maxiter":self.maxiter}) # default method is L-BFGSB
+            self.grads_and_vars = list() # [sch_idx][weight_idx]
+            self.apply_grads = list() # [sch_idx][weight_idx]
+            for schedule_idx, sch in enumerate(self.sched):
+              sch_grads_and_vars = list() # [weight_idx]
+              sch_apply_grads = list() # [weight_idx]
+              for w_idx, weight in enumerate(sch["weights"]):
+                with tf.variable_scope("weights", reuse=True) as scope:
+                  weight_op = [tf.get_variable(weight)]
+                sch_grads_and_vars.append([(None, weight_op[0])])
+                if w_idx == 0:
+                  update_op = tf.assign_add(self.global_step, 1)
+                else:
+                  update_op = None
+                sch_apply_grads.append(update_op)
+              self.grads_and_vars.append(sch_grads_and_vars)
+              self.apply_grads.append(sch_apply_grads)
+      self.optimizers_added = True
+    else:
+      super(RICA, self).add_optimizers_to_graph()
+
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
@@ -70,8 +110,8 @@ class RICA(Model):
           w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
             dtype=tf.float32), dim=0, name="w_init")
           #self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init, trainable=True)
-          w_unnormalized = tf.get_variable(name="w", dtype=tf.float32,
-            initializer=w_init, trainable=True)
+          w_unnormalized = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
+            trainable=True)
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0]), self.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
@@ -116,13 +156,14 @@ class RICA(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
       self.total_loss, self.a, self.x_]
-    grad_name_list = []
-    learning_rate_dict = {}
-    for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
-      eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
-      grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
-      grad_name_list.append(grad_name)
-      learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
+    if self.optimizer != "lbfgsb":
+      eval_list.append(self.learning_rates)
+      grad_name_list = []
+      for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
+        eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
+        grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
+        grad_name_list.append(grad_name)
+
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, sparse_loss, total_loss, a_vals, recon = out_vals[0:6]
     input_mean = np.mean(input_data)
@@ -143,12 +184,15 @@ class RICA(Model):
       "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
-    grads = out_vals[6:]
-    for grad, name in zip(grads, grad_name_list):
-      grad_max = learning_rate_dict[name]*np.array(grad.max())
-      grad_min = learning_rate_dict[name]*np.array(grad.min())
-      grad_mean = learning_rate_dict[name]*np.mean(np.array(grad))
-      stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
+    if self.optimizer != "lbfgsb":
+      lrs = out_vals[6]
+      grads = out_vals[7:]
+      for w_idx, (grad, name) in enumerate(zip(grads, grad_name_list)):
+        grad_max = lrs[0][w_idx]*np.array(grad.max())
+        grad_min = lrs[0][w_idx]*np.array(grad.min())
+        grad_mean = lrs[0][w_idx]*np.mean(np.array(grad))
+        stat_dict[name+"_lr"] = lrs[0][w_idx]
+        stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
     js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 
@@ -187,11 +231,12 @@ class RICA(Model):
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      grad = weight_grad_var[0][0].eval(feed_dict)
-      shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      grad = dp.reshape_data(grad.T, flatten=False)[0]
-      fig = pf.plot_data_tiled(grad, normalize=True,
-        title="Gradient for w at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"dw_v"+self.version+"_"+current_step.zfill(5)+".png"))
+    if self.optimizer != "lbfgsb":
+      for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+        grad = weight_grad_var[0][0].eval(feed_dict)
+        shape = grad.shape
+        name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+        grad = dp.reshape_data(grad.T, flatten=False)[0]
+        fig = pf.plot_data_tiled(grad, normalize=True,
+          title="Gradient for w at step "+current_step, vmin=None, vmax=None,
+          save_filename=(self.disp_dir+"dw_v"+self.version+"_"+current_step.zfill(5)+".png"))
