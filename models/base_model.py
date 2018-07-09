@@ -216,9 +216,11 @@ class Model(object):
         with tf.name_scope("optimizers") as scope:
           self.grads_and_vars = list() # [sch_idx][weight_idx]
           self.apply_grads = list() # [sch_idx][weight_idx]
+          self.learning_rates = list() # [sch_idx][weight_idx]
           for schedule_idx, sch in enumerate(self.sched):
             sch_grads_and_vars = list() # [weight_idx]
             sch_apply_grads = list() # [weight_idx]
+            sch_lrs = list() # [weight_idx]
             for w_idx, weight in enumerate(sch["weights"]):
               learning_rates = tf.train.exponential_decay(
                 learning_rate=sch["weight_lr"][w_idx],
@@ -227,6 +229,7 @@ class Model(object):
                 decay_rate=sch["decay_rate"][w_idx],
                 staircase=sch["staircase"][w_idx],
                 name="annealing_schedule_"+weight)
+              sch_lrs.append(learning_rates)
               if self.optimizer == "annealed_sgd":
                 optimizer = tf.train.GradientDescentOptimizer(learning_rates,
                   name="grad_optimizer_"+weight)
@@ -242,6 +245,7 @@ class Model(object):
               gstep = self.global_step if w_idx == 0 else None # Only increment once
               sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
                 global_step=gstep))
+            self.learning_rates.append(sch_lrs)
             self.grads_and_vars.append(sch_grads_and_vars)
             self.apply_grads.append(sch_apply_grads)
     self.optimizers_added = True
