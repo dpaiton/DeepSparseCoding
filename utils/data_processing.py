@@ -818,18 +818,19 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
-    u, s, v = np.linalg.svd(cov) # s are singular values, sqrt(s) are eigenvalues
-    isqrtS = np.diag(1 / np.sqrt(s+1e-8))
-    w_filter = [u, np.diag(np.sqrt(s+1e-8))] # filter components
-    data_wht = np.dot(data, np.dot(u, isqrtS)) 
+    d, u = np.linalg.eig(cov)
+    sqrt_inv_d = np.diag(np.sqrt(1./(d+1e-8)))
+    w_filter = [u, np.diag(np.sqrt(d+1e-8))]
+    data_wht = data.dot(u.dot(sqrt_inv_d))
   elif method.upper() == "ZCA":
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     data, data_mean = center_data(data, use_dataset_mean=False)
     cov = np.divide(np.dot(data.T, data), num_examples)
-    u, s, v = np.linalg.svd(cov)
-    isqrtS = np.diag(1 / np.sqrt(s+1e-8))
-    w_filter = [u, np.diag(np.sqrt(s+1e-8))] # filter components
-    data_wht = np.dot(data, np.dot(u, np.dot(isqrtS, u.T)))
+    d, u = np.linalg.eig(cov)
+    sqrt_inv_d = np.diag(np.sqrt(1./(d+1e-8)))
+    w_filter = [u, np.diag(np.sqrt(d+1e-8))]
+    M = u.dot(sqrt_inv_d.dot(u.T))
+    data_wht = data.dot(M)
   else:
     assert False, ("whitening method must be 'FT', 'ZCA', or 'PCA'")
   if data_wht.shape != orig_shape:
@@ -856,12 +857,12 @@ def unwhiten_data(data, data_mean, w_filter, method="FT"):
     data = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
   elif method.upper() == "PCA":
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
-    u, sqrtS = w_filter
-    data = np.dot(data, np.dot(u, sqrtS).T)
+    u, sqrt_d = w_filter
+    data = np.dot(data, np.dot(u, sqrt_d).T)
   elif method.upper() == "ZCA":
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
-    u, s = w_filter
-    unwhiten_filter = np.dot(np.dot(u, s), u.T)
+    u, sqrt_d = w_filter
+    unwhiten_filter = np.dot(np.dot(u, sqrt_d), u.T)
     data = np.dot(data, unwhiten_filter)
   else:
     assert False, ("whitening method must be 'FT', 'PCA', or 'ZCA'")
