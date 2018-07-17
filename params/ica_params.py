@@ -9,10 +9,10 @@ params = {
   "center_data": False,
   "standardize_data": False,
   "contrast_normalize": False,
-  "lpf_data": False, # only for ZCA/PCA
-  "lpf_cutoff": 0.7,
   "whiten_data": True,
-  "whiten_method": "FT",
+  "whiten_method": "ZCA",
+  "lpf_data": True, # only for ZCA/PCA
+  "lpf_cutoff": 0.7,
   "extract_patches": True,
   "num_patches": 1e6,
   "patch_edge_size": 16,
@@ -25,11 +25,11 @@ params = {
   "cp_int": 1000,
   "max_cp_to_keep": 1,
   "cp_load": False,
-  "cp_load_name": "test",
+  "cp_load_name": "pretrain",
   "cp_load_step": None,
   "cp_load_ver": "0.0",
   "cp_load_var": ["w_synth"],
-  "log_int": 10,
+  "log_int": 100,
   "log_to_file": True,
   "gen_plot_int": 1000,
   "save_plots": True,
@@ -43,7 +43,7 @@ schedule = [
   {"weights": ["w_synth"], # A, VS265
   #{"weights": ["w_analysis"], # W=A^-1, Bell & Sejnowski
   "weight_lr": [0.001],
-  "decay_steps": [3e5],
+  "decay_steps": [5e5*0.8],
   "decay_rate": [0.8],
   "staircase": [True],
   "num_batches": 5e5}]
