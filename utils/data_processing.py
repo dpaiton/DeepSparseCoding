@@ -700,7 +700,7 @@ def center_data(data, use_dataset_mean=False):
     data: [np.ndarray] centered data of shape (n, i, j, k) or (n, l)
   """
   if use_dataset_mean or data.ndim == 1:
-    data_mean = np.mean(data)
+    data_mean = np.mean(data, axis=0)
     data -= data_mean
   else:
     data, orig_shape = reshape_data(data, flatten=None)[:2] # reshapes to 4D (not flat) or 2D (flat)
@@ -791,7 +791,7 @@ def lpf_data(data, cutoff=0.7):
     data_lpf = reshape_data(data_lpf, out_shape=orig_shape)[0]
   return data_lpf, data_mean, lpf
 
-def whiten_data(data, method="FT", lpf_cutoff=0.7):
+def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
   """
   Whiten data
   Inputs:
@@ -808,7 +808,9 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
   """
   if method.upper() == "FT":
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=False)[0:4]
-    data, data_mean = center_data(data, use_dataset_mean=False)
+    if subtract_pixel_mean:
+      data, pixel_data_mean = center_data(data, use_dataset_mean=False)
+    data, batch_data_mean = center_data(data, use_dataset_mean=True)
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
     w_filter, lpf = generate_lpf_ramp_filters(num_rows, cutoff=lpf_cutoff)
     full_filter = np.multiply(w_filter, lpf) # filters are in the frequency domain
@@ -816,7 +818,9 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
     data_wht = np.real(np.fft.ifft2(np.fft.ifftshift(data, axes=(1,2,3)), axes=(1,2,3)))
   elif method.upper() == "PCA":
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
-    data, data_mean = center_data(data, use_dataset_mean=False)
+    if subtract_pixel_mean:
+      data, pixel_data_mean = center_data(data, use_dataset_mean=False)
+    data, batch_data_mean = center_data(data, use_dataset_mean=True)
     cov = np.divide(np.dot(data.T, data), num_examples)
     d, u = np.linalg.eig(cov)
     sqrt_inv_d = np.diag(np.sqrt(1./(d+1e-8)))
@@ -824,7 +828,9 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
     data_wht = data.dot(u.dot(sqrt_inv_d))
   elif method.upper() == "ZCA":
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
-    data, data_mean = center_data(data, use_dataset_mean=False)
+    if subtract_pixel_mean:
+      data, pixel_data_mean = center_data(data, use_dataset_mean=False)
+    data, batch_data_mean = center_data(data, use_dataset_mean=True)
     cov = np.divide(np.dot(data.T, data), num_examples)
     d, u = np.linalg.eig(cov)
     sqrt_inv_d = np.diag(np.sqrt(1./(d+1e-8)))
@@ -835,7 +841,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7):
     assert False, ("whitening method must be 'FT', 'ZCA', or 'PCA'")
   if data_wht.shape != orig_shape:
     data_wht = reshape_data(data_wht, out_shape=orig_shape)[0]
-  return data_wht, data_mean, w_filter
+  return data_wht, batch_data_mean, w_filter
 
 def unwhiten_data(data, data_mean, w_filter, method="FT"):
   """

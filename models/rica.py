@@ -112,7 +112,8 @@ class RICA(Model):
           #self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init, trainable=True)
           w_unnormalized = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
             trainable=True)
-          w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0]), self.eps))
+          w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0],
+            keep_dims=True), self.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
         #with tf.name_scope("norm_weights") as scope: # Optional weight normalization
@@ -163,7 +164,6 @@ class RICA(Model):
         eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
         grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
         grad_name_list.append(grad_name)
-
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, sparse_loss, total_loss, a_vals, recon = out_vals[0:6]
     input_mean = np.mean(input_data)

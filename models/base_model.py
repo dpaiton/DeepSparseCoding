@@ -358,7 +358,7 @@ class Model(object):
       return self.sched[self.sched_idx][key]
     return self.sched[self.sched_idx]
 
-  def set_sched(self, key, val):
+  def set_schedule(self, key, val):
     """
     Modifies the internal schedule for the current schedule index
     Inputs:
@@ -443,10 +443,6 @@ class Model(object):
         "You must either provide parameters or load the model params before preprocessing.")
       params = self.params
     for key in dataset.keys():
-      if "center_data" in params.keys() and params["center_data"]:
-        dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
-          use_dataset_mean=True)
-        self.data_mean = dataset[key].data_mean
       if "whiten_data" in params.keys() and params["whiten_data"]:
         if "whiten_method" in params.keys():
           if params["whiten_method"] == "FT": # other methods require patching first
@@ -491,6 +487,10 @@ class Model(object):
           if "whiten_method" in params.keys() and params["whiten_method"] != "FT":
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
               dp.whiten_data(dataset[key].images, method=params["whiten_method"])
+      if "center_data" in params.keys() and params["center_data"]:
+        dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
+          use_dataset_mean=True)
+        self.data_mean = dataset[key].data_mean
       if "norm_data" in params.keys() and params["norm_data"]:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
         self.data_max = dataset[key].data_max
