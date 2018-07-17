@@ -5,11 +5,8 @@ import data.data_selector as ds
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "rica",
-  #"model_name": "ica_test",
-  #"model_name": "lca_256_l0_2.5",
-  #"model_name": "lca_vh_ft_1c_ht",
-  "model_name": "rica",
+  "model_type": "ica",
+  "model_name": "ica",
   "version": "0.0",
   "data_type": "vanHateren",
   "device": "/gpu:0",
@@ -18,14 +15,14 @@ analysis_params = {
   "num_patches": 1e4,
   "ft_padding": 16, #Fourier analysis padding for weight fitting
   "num_inference_images": 5, #How many random images to average over for inference statistics
-  "input_scale": 40, # LCA/SA
+  "input_scale": 15, # LCA/SA
   #"input_scale": 0.5, # ICA
   #"input_scale": 1.0,
   "cov_num_images": int(1e5), #number of images used to compute cov matrix (LCA_PCA)
   "neuron_indices": None,
   "contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
-  "phases": np.linspace(-np.pi, np.pi, 12),
-  "orientations": np.linspace(0.0, np.pi, 32)}
+  "phases": np.linspace(-np.pi, np.pi, 8),
+  "orientations": np.linspace(0.0, np.pi, 16)}
 
 # Computed params
 analysis_params["model_dir"] = (os.path.expanduser("~")+"/Work/Projects/"

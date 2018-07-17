@@ -440,5 +440,5 @@ class Analyzer(object):
     """
     v = bf2 - np.dot(bf2[:,None].T, bf1[:,None]) * bf1
     v = np.squeeze((v / np.linalg.norm(v)).T)
-    proj_matrix = np.stack([bf1,v], axis=0)
+    proj_matrix = np.stack([bf1, v], axis=0)
     return proj_matrix
