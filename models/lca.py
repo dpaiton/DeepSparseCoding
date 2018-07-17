@@ -195,11 +195,11 @@ class LCA(Model):
       learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, sparse_loss, total_loss, a_vals, recon = out_vals[0:6]
-    input_mean = np.mean(input_data)
     input_max = np.max(input_data)
+    input_mean = np.mean(input_data)
     input_min = np.min(input_data)
-    recon_mean = np.mean(recon)
     recon_max = np.max(recon)
+    recon_mean = np.mean(recon)
     recon_min = np.min(recon)
     a_vals_max = np.array(a_vals.max())
     a_vals_mean = np.array(a_vals.mean())

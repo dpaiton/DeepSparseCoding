@@ -119,28 +119,48 @@ class ICA(Model):
     """
     super(ICA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    current_step = np.array(self.global_step.eval())
-    a_vals = tf.get_default_session().run(self.a, feed_dict)
-    a_vals_max = np.array(a_vals.max())
+    eval_list  = [self.global_step, self.a, self.z, self.x_]
+    grad_name_list = []
+    learning_rate_dict = {}
+    for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
+      eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
+      grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
+      grad_name_list.append(grad_name)
+      learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
+    out_vals =  tf.get_default_session().run(eval_list, feed_dict)
+    current_step, a_vals, z_vals, recon_data = out_vals[:4]
+    input_max = np.max(input_data)
+    input_mean = np.mean(input_data)
+    input_min = np.min(input_data)
+    recon_max = np.max(recon_data)
+    recon_mean = np.mean(recon_data)
+    recon_min = np.min(recon_data)
+    a_vals_max = np.max(a_vals)
+    a_vals_mean = np.mean(a_vals)
+    a_vals_min = np.min(a_vals)
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(self.num_neurons * self.batch_size))
-    z_vals = tf.get_default_session().run(self.z, feed_dict)
-    z_vals_max = np.array(z_vals.max())
+    z_vals_max = np.max(z_vals)
+    z_vals_mean = np.mean(z_vals)
+    z_vals_min = np.min(z_vals)
     z_frac_act = np.array(np.count_nonzero(z_vals)
       / float(self.num_neurons * self.batch_size))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "number_of_batch_steps":self.get_schedule("num_batches"),
       "schedule_index":self.sched_idx,
-      "a_max":a_vals_max,
+      "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "a_fraction_active":a_frac_act,
-      "z_max":z_vals_max,
-      "z_fraction_active":z_frac_act}
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      grad = weight_grad_var[0][0].eval(feed_dict)
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      stat_dict[name+"_max_grad"] = np.array(grad.max())
-      stat_dict[name+"_min_grad"] = np.array(grad.min())
+      "z_max_mean_min":[z_vals_max, z_vals_mean, z_vals_min],
+      "z_fraction_active":z_frac_act,
+      "x_max_mean_min":[input_max, input_mean, input_min],
+      "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
+    grads = out_vals[4:]
+    for grad, name in zip(grads, grad_name_list):
+      grad_max = learning_rate_dict[name]*np.array(grad.max())
+      grad_min = learning_rate_dict[name]*np.array(grad.min())
+      grad_mean = learning_rate_dict[name]*np.mean(np.array(grad))
+      stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
     js_str = self.js_dumpstring(stat_dict)
     self.log_info("<stats>"+js_str+"</stats>")
 
