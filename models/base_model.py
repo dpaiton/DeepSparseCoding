@@ -429,6 +429,7 @@ class Model(object):
       params [dict] kwargs for preprocessing, if None then the member variable is used
     Parameters are set using the model parameter dictionary.
     Possible parameters  are:
+      lpf_data: low pass filter data with a Gaussian kernel
       center_data: subtract mean from data
       norm_data: divide data by the maximum
       whiten_data: default method is using the Fourier amplitude spectrium ("FT")
