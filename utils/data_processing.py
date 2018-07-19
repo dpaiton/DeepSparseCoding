@@ -700,7 +700,8 @@ def center_data(data, use_dataset_mean=False):
     data: [np.ndarray] centered data of shape (n, i, j, k) or (n, l)
   """
   if use_dataset_mean or data.ndim == 1:
-    data_mean = np.mean(data, axis=0)
+    # TODO: We want to subtract the dataset mean, but if you do axis=0 you create ghosting
+    data_mean = np.mean(data)#, axis=0)#, keepdims=True) 
     data -= data_mean
   else:
     data, orig_shape = reshape_data(data, flatten=None)[:2] # reshapes to 4D (not flat) or 2D (flat)
@@ -811,6 +812,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     if subtract_pixel_mean:
       data, pixel_data_mean = center_data(data, use_dataset_mean=False)
     data, batch_data_mean = center_data(data, use_dataset_mean=True)
+    # TODO: Buffer fft to an even number of pixels so that fftshift always behaves as expected
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
     w_filter, lpf = generate_lpf_ramp_filters(num_rows, cutoff=lpf_cutoff)
     full_filter = np.multiply(w_filter, lpf) # filters are in the frequency domain
