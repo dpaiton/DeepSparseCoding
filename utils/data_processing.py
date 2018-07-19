@@ -813,6 +813,8 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
       data, pixel_data_mean = center_data(data, use_dataset_mean=False)
     data, batch_data_mean = center_data(data, use_dataset_mean=True)
     # TODO: Buffer fft to an even number of pixels so that fftshift always behaves as expected
+    #   better idea is to use the filter shape as the s parameter to FFT2, and then you can
+    #   reshape filter to whatever you need by specifying num_rows
     data = np.fft.fftshift(np.fft.fft2(data, axes=(1,2,3)), axes=(1,2,3))
     w_filter, lpf = generate_lpf_ramp_filters(num_rows, cutoff=lpf_cutoff)
     full_filter = np.multiply(w_filter, lpf) # filters are in the frequency domain
