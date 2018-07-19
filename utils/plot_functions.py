@@ -1010,7 +1010,7 @@ def plot_inference_traces(data, activation_threshold, img_idx=0):
   return fig
 
 def plot_weight_image(weights, colorbar_aspect=50, title="", figsize=None, save_filename=None):
-  fig, ax = plt.subplots(1, 1, figsize=figsize)
+  fig, ax = plt.subplots(1, 1, figsize=figsize, squeeze=False)
   im = ax.imshow(weights, vmin=np.min(weights), vmax=np.max(weights), cmap="Greys_r")
   ax.set_title(title)
   clear_axis(ax)
@@ -1084,6 +1084,12 @@ def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, **kwargs):
   cbar = im.axes.figure.colorbar(im, cax=cax, **kwargs)
   cbar.ax.tick_params(labelsize=labelsize)
   return cbar
+
+def clear_axes(ax, spines="none"):
+  """
+  TODO: Loop over ax (regardless of shape) and call clear_axis on each element
+  """
+  raise NotImplementedError
 
 def clear_axis(ax, spines="none"):
   ax.spines["right"].set_color(spines)
