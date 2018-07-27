@@ -1,25 +1,21 @@
 import os
 params = {
   "model_type": "conv_lca",
-  "model_name": "conv_lca_cifar",
+  "model_name": "conv_lca",
   "version": "0.0",
-  "center_data": False,
+  "center_data": True,
   "norm_data": False,
   "whiten_data": True,
   "whiten_method": "FT",
   "standardize_data": False,
   "contrast_normalize": False,
-  "extract_patches": True,
-  "num_patches": 1e6,
-  "patch_edge_size": 32, # image patches
-  "overlapping_patches": True,
-  "randomize_patches": True,
-  "patch_variance_threshold": 1e-6,
-  "batch_size": 10,
-  "stride_y": 2,
-  "stride_x": 2,
-  "patch_size_y": 12, # weight receptive field
-  "patch_size_x": 12,
+  "extract_patches": False,
+  "image_edge_size": 128,
+  "batch_size": 100,
+  "stride_y": 8,
+  "stride_x": 8,
+  "patch_size_y": 16, # weight receptive field
+  "patch_size_x": 16,
   "num_neurons": 96, # pixel-overcompleteness is num_neurons/(stride_y * stride_x)
   "num_steps": 120,
   "dt": 0.001,
@@ -31,7 +27,7 @@ params = {
   "cp_int": 1000,
   "max_cp_to_keep": 1,
   "cp_load": False,
-  "log_int": 50,
+  "log_int": 10,
   "log_to_file": True,
   "gen_plot_int": 500,
   "save_plots": True,
@@ -43,8 +39,8 @@ params = {
 
 schedule = [
   {"weights": ["phi"],
-  "sparse_mult": 0.01,
-  "weight_lr": [0.001],
+  "sparse_mult": 0.5,
+  "weight_lr": [0.0005],
   "decay_steps": [int(1e5*0.8)],
   "decay_rate": [0.6],
   "staircase": [True],

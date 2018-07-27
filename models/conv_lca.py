@@ -31,21 +31,31 @@ class CONV_LCA(LCA):
     self.patch_size_x = int(params["patch_size_x"])
     if len(self.data_shape) == 2:
       self.data_shape += [1]
-    self.phi_shape = [int(self.patch_size_y), int(self.patch_size_x),
-      int(self.data_shape[2]), int(self.num_neurons)]
     assert (self.data_shape[0] % self.stride_x == 0), (
       "Stride x must divide evenly into input shape")
     assert (self.data_shape[1] % self.stride_y == 0), (
       "Stride y must divide evenly into input shape")
     self.u_x = int(self.data_shape[0]/self.stride_x)
     self.u_y = int(self.data_shape[1]/self.stride_y)
-    self.u_shape = [int(self.u_y), int(self.u_x), int(self.num_neurons)]
+    self.phi_shape = [self.patch_size_y, self.patch_size_x,
+      int(self.data_shape[2]), int(self.num_neurons)]
+    self.u_shape = [self.u_y, self.u_x, int(self.num_neurons)]
     self.x_shape = [None,]+ self.data_shape
+
+  def compute_recon(self, a_in):
+    x_ = tf.nn.conv2d_transpose(a_in, self.phi, tf.shape(self.x),
+      [1, self.stride_y, self.stride_x, 1], padding="SAME", name="reconstruction")
+    return x_
 
   def step_inference(self, u_in, a_in, step):
     with tf.name_scope("update_u"+str(step)) as scope:
-      recon_grad = tf.gradients(self.compute_recon_loss(a_in), a_in)[0]
-      du = tf.subtract(tf.add(-recon_grad, a_in), u_in, name="du")
+      # Can use reconstruction loss gradient for conv sparse coding
+      #recon_grad = tf.gradients(self.compute_recon_loss(a_in), a_in)[0]
+      #du = tf.subtract(tf.add(-recon_grad, a_in), u_in, name="du")
+      recon_error = self.x - self.compute_recon(a_in)
+      error_injection = tf.nn.conv2d(recon_error, self.phi, [1, self.stride_y, self.stride_x, 1],
+        padding="SAME", use_cudnn_on_gpu=True, name="forward_injection")
+      du = tf.subtract(tf.add(error_injection, a_in), u_in, name="du")
       u_out = tf.add(u_in, tf.multiply(self.eta, du))
     return u_out
 
@@ -57,11 +67,6 @@ class CONV_LCA(LCA):
      u_list.append(u)
      a_list.append(self.threshold_units(u))
    return (u_list, a_list)
-
-  def compute_recon(self, a_in):
-    x_ = tf.nn.conv2d_transpose(a_in, self.phi, tf.shape(self.x),
-      [1, self.stride_y, self.stride_x, 1], padding="SAME", name="reconstruction")
-    return x_
 
   def generate_plots(self, input_data, input_labels=None):
     """
@@ -90,11 +95,11 @@ class CONV_LCA(LCA):
       save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
     pf.plot_data_tiled(weights, normalize=False, title="Dictionary at step "+current_step,
       vmin=np.min(weights), vmax=np.max(weights), cmap=cmap,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"_"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"phi_v"+self.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
         title="Gradient for phi at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))
+        save_filename=(self.disp_dir+"dphi_v"+self.version+"-"+current_step.zfill(5)+".png"))
