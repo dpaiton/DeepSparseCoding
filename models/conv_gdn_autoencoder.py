@@ -361,7 +361,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
        self.n_mem)).astype(np.float32)
     feed_dict[self.memristor_std_eps] = mem_std_eps
     loss_list = [self.loss_dict[key] for key in self.loss_dict.keys()]
-    eval_list = [self.global_step]+loss_list+[self.total_loss, self.a, self.u_list[-1]]
+    eval_list = [self.global_step]+loss_list+[self.total_loss, self.a, self.u_list[-1],
+      self.MSE, self.SNRdB]
     init_eval_length = len(eval_list)
     grad_name_list = []
     learning_rate_dict = {}
@@ -373,7 +374,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step = out_vals[0]
     losses = out_vals[1:len(loss_list)+1]
-    total_loss, a_vals, recon = out_vals[len(loss_list)+1:init_eval_length]
+    total_loss, a_vals, recon, MSE, SNRdB = out_vals[len(loss_list)+1:init_eval_length]
     input_mean = np.mean(input_data)
     input_max = np.max(input_data)
     input_min = np.min(input_data)
@@ -384,6 +385,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     a_vals_min = np.array(a_vals.min())
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
+    MSE = np.array(MSE)
+    SNRdB = np.array(SNRdB)
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
@@ -392,7 +395,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       "a_min":a_vals_min,
       "a_fraction_active":a_frac_act,
       "x_max_mean_min":[input_max, input_mean, input_min],
-      "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
+      "x_hat_max_mean_min":[recon_max, recon_mean, recon_min],
+      "MSE":MSE,
+      "SNRdB":SNRdB}
     for idx, key in enumerate(self.loss_dict.keys()):
       stat_dict[key] = losses[idx]
     grads = out_vals[init_eval_length:]
