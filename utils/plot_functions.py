@@ -1016,6 +1016,7 @@ def plot_inference_traces(data, activation_threshold, img_idx=0):
 
 def plot_weight_image(weights, colorbar_aspect=50, title="", figsize=None, save_filename=None):
   fig, ax = plt.subplots(1, 1, figsize=figsize, squeeze=False)
+  ax = ax.item()
   im = ax.imshow(weights, vmin=np.min(weights), vmax=np.max(weights), cmap="Greys_r")
   ax.set_title(title)
   clear_axis(ax)
