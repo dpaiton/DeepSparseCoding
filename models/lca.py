@@ -25,11 +25,17 @@ class LCA(Model):
       thresh_type  [str] "hard" or "soft" - LCA threshold function specification
     """
     super(LCA, self).load_params(params)
-    self.data_shape = params["data_shape"]
+    self.data_shape = params["data_shape"] # not including batch
     # Meta parameters
-    self.rectify_a = bool(params["rectify_a"])
+    if hasattr(params, "rectify_a"):
+      self.rectify_a = bool(params["rectify_a"])
+    else:
+      self.rectify_a = False
     self.norm_weights = bool(params["norm_weights"])
-    self.thresh_type = str(params["thresh_type"])
+    if hasattr(params, "thresh_type"):
+      self.thresh_type = str(params["thresh_type"])
+    else:
+      self.thresh_type = None
     # Network Size
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
@@ -240,7 +246,7 @@ class LCA(Model):
     weights, recon, activity = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
-    weights = dp.reshape_data(weights.T, flatten=False)[0]
+    weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
       save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
       +current_step.zfill(5)+".png"))

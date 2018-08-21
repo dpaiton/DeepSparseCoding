@@ -7,6 +7,7 @@ import params.entropy_sc_params as esc
 import params.lca_params as lca
 import params.lca_pca_params as lca_pca
 import params.lca_pca_fb_params as lca_pca_fb
+import params.subspace_lca_params as subspace_lca
 import params.conv_lca_params as conv_lca
 import params.sigmoid_autoencoder_params as sa
 import params.gdn_autoencoder_params as ga
@@ -43,6 +44,8 @@ def get_params(model_type):
     return lca_pca.params, lca_pca.schedule
   if model_type.lower() == "lca_pca_fb":
     return lca_pca_fb.params, lca_pca_fb.schedule
+  if model_type.lower() == "subspace_lca":
+    return subspace_lca.params, subspace_lca.schedule
   if model_type.lower() == "conv_lca":
     return conv_lca.params, conv_lca.schedule
   if model_type.lower() == "density_learner":

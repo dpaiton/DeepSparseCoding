@@ -8,6 +8,7 @@ from models.entropy_sc import Entropy_SC as esc
 from models.lca import LCA as lca
 from models.lca_pca import LCA_PCA as lca_pca
 from models.lca_pca_fb import LCA_PCA_FB as lca_pca_fb
+from models.subspace_lca import SUBSPACE_LCA as subspace_lca
 from models.conv_lca import CONV_LCA as conv_lca
 from models.sigmoid_autoencoder import Sigmoid_Autoencoder as sa
 from models.gdn_autoencoder import GDN_Autoencoder as ga
@@ -35,6 +36,8 @@ def get_model(model_type):
     return lca_pca()
   if model_type.lower() == "lca_pca_fb":
     return lca_pca_fb()
+  if model_type.lower() == "subspace_lca":
+    return subspace_lca()
   if model_type.lower() == "conv_lca":
     return conv_lca()
   if model_type.lower() == "sigmoid_autoencoder":

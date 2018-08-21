@@ -130,6 +130,7 @@ class Model(object):
     self.eps = float(params["eps"])
     self.device = str(params["device"])
     self.rand_seed = int(params["rand_seed"])
+    self.rand_state = np.random.RandomState(self.rand_seed)
     self.params_loaded = True
 
   def check_params(self):
@@ -407,6 +408,23 @@ class Model(object):
   def build_graph(self):
     """Build the TensorFlow graph object"""
     pass
+
+  def slice_features(self, input, indices):
+    """
+    Slice input array along last dimension using indices
+      gather_nd only gets first indices,
+      so we permute the last index (or "features', which we want to slice into) to the first index
+    Inputs:
+      input [Tensor] of any shape
+      indices [list or scalar] indices for slicing
+    Outputs:
+      sliced_input [Tensor] where the last index is sliced using indices
+    """
+    t_input = tf.transpose(input)
+    gather_idxs = np.array([[i] for i in indices]).astype(np.int32)
+    t_actual = tf.gather_nd(t_input, gather_idxs)
+    actual = tf.transpose(t_actual)
+    return actual
 
   def reshape_dataset(self, dataset, params):
     """

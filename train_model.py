@@ -16,10 +16,11 @@ t0 = ti.time()
 #model_type = "mlp"
 #model_type = "ica"
 #model_type = "ica_pca"
-model_type = "rica"
+#model_type = "rica"
 #model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "lca_pca_fb"
+model_type = "subspace_lca"
 #model_type = "conv_lca"
 #model_type = "gradient_sc"
 #model_type = "sigmoid_autoencoder"
@@ -33,7 +34,7 @@ data_type = "vanhateren"
 
 ## Import params
 params, schedule = pp.get_params(model_type)
-if "rand_seed" in params.keys():
+if "rand_seed" in params.keys() and "rand_state" not in params.keys():
   params["rand_state"] = np.random.RandomState(params["rand_seed"])
 params["data_type"] = data_type
 

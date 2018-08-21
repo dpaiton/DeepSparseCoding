@@ -92,8 +92,9 @@ class LCA_Analyzer(Analyzer):
     self.bf_stats = analysis["bf_stats"]
     tuning_file_locs = [self.analysis_out_dir+"ot_responses_"+save_info+".npz",
       self.analysis_out_dir+"co_responses_"+save_info+".npz"]
-    if os.path.exists(tuning_file_locs[0]) and os.path.exists(tuning_file_locs[1]):
+    if os.path.exists(tuning_file_locs[0]):
       self.ot_grating_responses = np.load(tuning_file_locs[0])["data"].item()
+    if os.path.exists(tuning_file_locs[1]):
       self.co_grating_responses = np.load(tuning_file_locs[1])["data"].item()
 
   def compute_time_varied_response(self, images, steps_per_image=None):

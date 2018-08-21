@@ -776,9 +776,52 @@ def plot_phase_avg_power_spec(data, title="", save_filename=None):
   plt.show()
   return fig
 
+def plot_group_weights(weights, group_ids, title="", figsize=None,  save_filename=None):
+  """
+    weights: [np.ndarray] of shape [num_neurons, num_input_y, num_input_x]
+    group_ids: [list of lists] containing ids for each group [[,]*neurons_per_group,]*num_groups
+  """
+  num_neurons = weights.shape[0]
+  for weight_id in range(num_neurons):
+    weights[weight_id,...] = weights[weight_id,...] - weights[weight_id,...].mean()
+    weights[weight_id,...] = weights[weight_id,...] / (weights[weight_id,...].max()-weights[weight_id,...].min())
+  vmin = np.min(weights)
+  vmax = np.max(weights)
+  indices = [idx for id_list in group_ids for idx in id_list]
+  num_groups = len(group_ids)
+  num_groups_x = int(np.floor(np.sqrt(num_groups)))
+  num_groups_y = int(np.ceil(np.sqrt(num_groups)))
+  num_neurons_per_group = len(group_ids[0])
+  num_neurons_x = int(np.floor(np.sqrt(num_neurons_per_group)))
+  num_neurons_y = int(np.ceil(np.sqrt(num_neurons_per_group)))
+  outer_spacing = 0.20
+  inner_spacing = 0.1
+  fig = plt.figure(figsize=figsize)
+  gs1 = gridspec.GridSpec(num_groups_y, num_groups_x,
+    hspace=outer_spacing*num_groups_y/(num_groups_x+num_groups_y),
+    wspace=outer_spacing*num_groups_x/(num_groups_x+num_groups_y))
+  neuron_index = 0
+  for group_plot_id in np.ndindex((num_groups_y, num_groups_x)):
+    gs_inner = gridspec.GridSpecFromSubplotSpec(num_neurons_y, num_neurons_x, gs1[group_plot_id],
+      hspace=inner_spacing*num_neurons_y/(num_neurons_x+num_neurons_y),
+      wspace=inner_spacing*num_neurons_x/(num_neurons_x+num_neurons_y))
+    for inner_plot_id in np.ndindex((num_neurons_y, num_neurons_x)):
+      ax = clear_axis(fig.add_subplot(gs_inner[inner_plot_id]))
+      ax.set_aspect("equal")
+      if neuron_index < num_neurons:
+        ax.imshow(weights[indices[neuron_index], ...], cmap="Greys_r")
+        neuron_index += 1
+  fig.suptitle(title, y=0.9, x=0.5, fontsize=20)
+  if save_filename is not None:
+    fig.savefig(save_filename)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
 def plot_weights(weights, title="", save_filename=None):
   """
-    weights: [np.ndarray] of shape [num_outputs, num_input_x, num_input_y]
+    weights: [np.ndarray] of shape [num_outputs, num_input_y, num_input_x]
   """
   for weight_id in range(weights.shape[0]):
     weights[weight_id,...] = weights[weight_id,...] - weights[weight_id,...].mean()
