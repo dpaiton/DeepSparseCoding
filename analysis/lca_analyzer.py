@@ -16,6 +16,10 @@ class LCA_Analyzer(Analyzer):
 
   def load_params(self, params):
     super(LCA_Analyzer, self).load_params(params)
+    if "num_noise_images" in params.keys():
+      self.num_noise_images = params["num_noise_images"]
+    else:
+      self.num_noise_images = 100
     if "num_inference_images" in params.keys():
       self.num_inference_images = params["num_inference_images"]
     else:
@@ -66,6 +70,13 @@ class LCA_Analyzer(Analyzer):
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas, "atcs":self.atcs,
       "inference_stats":self.inference_stats, "var_names":self.var_names, "bf_stats":self.bf_stats})
+    noise_images = self.rand_state.standard_normal([self.num_noise_images]+self.model_params["data_shape"])
+    self.noise_activity = analyzer.compute_activations(noise_images)
+    self.noise_atas = self.compute_atas(noise_activity, noise_images)
+    self.noise_atcs = self.compute_atcs(noise_activity, noise_images, noise_atas)
+    np.savez(self.analysis_out_dir+"noise_responses_"+save_info+".npz",
+      data={"num_noise_images":self.num_noise_images, "noise_activity":noise_activity, "noise_atas":noise_atas,
+      "noise_atcs":noise_atcs})
     if (self.ot_contrasts is not None
       and self.ot_orientations is not None
       and self.ot_phases is not None):
@@ -90,6 +101,13 @@ class LCA_Analyzer(Analyzer):
     self.atcs = analysis["atcs"]
     self.inference_stats = analysis["inference_stats"]
     self.bf_stats = analysis["bf_stats"]
+    noise_file_loc = self.analysis_out_dir+"noise_responses_"+save_info+".npz"
+    if os.path.exists(noise_file_loc):
+      noise_analysis = np.load(noise_file_loc)["data"].item()
+      self.noise_activity = noise_analysis["noise_activity"]
+      self.noise_atas = noise_analysis["noise_atas"]
+      self.noise_atcs = noise_analysis["noise_atcs"]
+      self.num_noise_images = noise_analysis["num_noise_images"]
     tuning_file_locs = [self.analysis_out_dir+"ot_responses_"+save_info+".npz",
       self.analysis_out_dir+"co_responses_"+save_info+".npz"]
     if os.path.exists(tuning_file_locs[0]):

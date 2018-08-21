@@ -1071,6 +1071,71 @@ def plot_weight_image(weights, colorbar_aspect=50, title="", figsize=None, save_
   plt.show()
   return fig
 
+def plot_weight_angle_heatmap(weight_angles, angle_min=0, angle_max=180, title="", figsize=None, save_filename=None):
+  vmin = angle_min
+  vmax = angle_max
+  cmap = plt.get_cmap('viridis')
+  cNorm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+  scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
+  scalarMap._A = []
+  fig, ax = plt.subplots(1, figsize=figsize)
+  im = ax.imshow(weight_angles, vmin=vmin, vmax=vmax)
+  ax.set_title(title)
+  cbar = pf.add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, ticks=[vmin, vmax])
+  cbar.ax.set_yticklabels(["{:.0f}".format(vmin), "{:.0f}".format(vmax)])
+  if save_filename is not None:
+    fig.savefig(save_filename, transparent=True)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
+def plot_weight_angle_histogram(weight_angles, num_bins=50, angle_min=0, angle_max=180, figsize=None, save_filename=None):
+  bins = np.linspace(angle_min, angle_max, num_bins)
+  hist, bin_edges = np.histogram(weight_angles.flatten(), bins)
+  bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
+  bin_centers = bin_left + (bin_right - bin_left)/2
+  fig, ax = plt.subplots(1, figsize=figsize)
+  ax.bar(bin_centers, hist, width=2.0, log=True, align="center")
+  ax.set_xticks(bin_left, minor=True)
+  ax.set_xticks(bin_left[::4], minor=False)
+  ax.xaxis.set_major_formatter(FormatStrFormatter("%0.0f"))
+  ax.set_xlim([angle_min, angle_max])
+  ax.set_title("Neuron Angle Histogram")
+  ax.set_xlabel("Angle (Degrees)")
+  ax.set_ylabel("Count")
+  if save_filename is not None:
+    fig.savefig(save_filename)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
+def plot_weight_nearest_neighbor_histogram(weight_angles, num_bins=25, angle_min=0, angle_max=90,
+  figsize=None, save_filename=None):
+  nn_angles = np.zeros(weight_angles.shape[0])
+  for neuron_id in range(weight_angles.shape[0]):
+    neighbors = weight_angles[neuron_id,:]
+    nn_angles[neuron_id] = np.min(np.delete(neighbors, neuron_id))
+  bins = np.linspace(angle_min, angle_max, num_bins)
+  hist, bin_edges = np.histogram(nn_angles.flatten(), bins)
+  bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
+  bin_centers = bin_left + (bin_right - bin_left)/2
+  fig, ax = plt.subplots(1, figsize=figsize)
+  ax.bar(bin_centers, hist, width=2.0, log=True, align="center")
+  ax.set_xticks(bin_left, minor=False)
+  ax.xaxis.set_major_formatter(FormatStrFormatter("%0.0f"))
+  ax.set_xlim([angle_min, angle_max])
+  ax.set_title("Neuron Nearest Neighbor Angle")
+  ax.set_xlabel("Angle (Degrees)")
+  ax.set_ylabel("Count")
+  if save_filename is not None:
+    fig.savefig(save_filename)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
 def pad_data(data, pad_values=1):
   """
   Pad data with ones for visualization
