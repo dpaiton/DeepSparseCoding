@@ -57,8 +57,7 @@ class LCA_Analyzer(Analyzer):
     else:
       self.ot_phases = None
 
-  def run_analysis(self, images, save_info=""):
-    super(LCA_Analyzer, self).run_analysis(images, save_info)
+  def run_base_analysis(self, images, save_info):
     self.evals = self.evaluate_model(images, self.var_names)
     self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
     self.atcs = self.compute_atcs(self.evals["inference/activity:0"], images, self.atas)
@@ -70,6 +69,12 @@ class LCA_Analyzer(Analyzer):
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas, "atcs":self.atcs,
       "inference_stats":self.inference_stats, "var_names":self.var_names, "bf_stats":self.bf_stats})
+    self.analysis_logger.log_info("Base analysis is complete.")
+
+  def run_noise_analysis(self, save_info, batch_size=100):
+    """
+    TODO: compute per batch
+    """
     noise_images = self.rand_state.standard_normal([self.num_noise_images]+self.model_params["data_shape"])
     self.noise_activity = analyzer.compute_activations(noise_images)
     self.noise_atas = self.compute_atas(noise_activity, noise_images)
@@ -77,19 +82,29 @@ class LCA_Analyzer(Analyzer):
     np.savez(self.analysis_out_dir+"noise_responses_"+save_info+".npz",
       data={"num_noise_images":self.num_noise_images, "noise_activity":noise_activity, "noise_atas":noise_atas,
       "noise_atcs":noise_atcs})
+    self.analysis_logger.log_info("Noise analysis is complete.")
+
+  def run_grating_analysis(self, save_info):
+    self.ot_grating_responses = self.orientation_tuning(self.bf_stats, self.ot_contrasts,
+      self.ot_orientations, self.ot_phases, self.ot_neurons, scale=self.input_scale)
+    np.savez(self.analysis_out_dir+"ot_responses_"+save_info+".npz", data=self.ot_grating_responses)
+    ot_mean_activations = self.ot_grating_responses["mean_responses"]
+    base_orientations = [self.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
+      for bf_idx in range(len(self.ot_grating_responses["neuron_indices"]))]
+    self.co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
+      self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons,
+      scale=self.input_scale)
+    np.savez(self.analysis_out_dir+"co_responses_"+save_info+".npz", data=self.co_grating_responses)
+    self.analysis_logger.log_info("Grating  analysis is complete.")
+
+  def run_analysis(self, images, save_info=""):
+    super(LCA_Analyzer, self).run_analysis(images, save_info)
+    self.run_base_analysis(images, save_info)
+    self.run_noise_analysis(save_info)
     if (self.ot_contrasts is not None
       and self.ot_orientations is not None
       and self.ot_phases is not None):
-      self.ot_grating_responses = self.orientation_tuning(self.bf_stats, self.ot_contrasts,
-        self.ot_orientations, self.ot_phases, self.ot_neurons, scale=self.input_scale)
-      np.savez(self.analysis_out_dir+"ot_responses_"+save_info+".npz", data=self.ot_grating_responses)
-      ot_mean_activations = self.ot_grating_responses["mean_responses"]
-      base_orientations = [self.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
-        for bf_idx in range(len(self.ot_grating_responses["neuron_indices"]))]
-      self.co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
-        self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons,
-        scale=self.input_scale)
-      np.savez(self.analysis_out_dir+"co_responses_"+save_info+".npz", data=self.co_grating_responses)
+      self.run_grating_analysis(save_info)
 
   def load_analysis(self, save_info=""):
     file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
