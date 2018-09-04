@@ -33,17 +33,22 @@ class GDN_Autoencoder(Model):
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
     self.num_neurons = int(params["num_neurons"])
+    # Loss parameters
+    self.mle_step_size = float(params["mle_step_size"])
+    self.num_mle_steps = int(params["num_mle_steps"])
+    self.num_triangles = int(params["num_triangles"])
+    self.sigmoid_beta = float(params["sigmoid_beta"])
+    # GDN Parameters
+    self.w_thresh_min = float(params["w_thresh_min"])
+    self.b_thresh_min = float(params["b_thresh_min"])
+    self.gdn_mult_min = float(params["gdn_mult_min"])
+    # Computed parameters
     self.x_shape = [None, self.num_pixels]
     self.w_enc_shape = [self.num_pixels, self.num_neurons]
     self.b_enc_shape = [self.num_neurons]
     self.b_dec_shape = [self.num_pixels]
     self.w_gdn_shape = [self.num_neurons, self.num_neurons]
     self.b_gdn_shape = [1, self.num_neurons]
-    # Hyper Parameters
-    self.mle_step_size = float(params["mle_step_size"])
-    self.num_mle_steps = int(params["num_mle_steps"])
-    self.num_triangles = int(params["num_triangles"])
-    self.sigmoid_beta = float(params["sigmoid_beta"])
 
   def sigmoid(self, a_in, beta=1):
     """Hyperbolic tangent non-linearity"""
@@ -52,10 +57,9 @@ class GDN_Autoencoder(Model):
     return a_out
 
   def compute_entropies(self, a_in):
-    with tf.name_scope("unsupervised"):
-      a_sig = self.sigmoid(a_in, self.sigmoid_beta)
-      a_probs = ef.prob_est(a_sig, self.mle_thetas, self.triangle_centers)
-      a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
+    a_sig = self.sigmoid(a_in, self.sigmoid_beta)
+    a_probs = ef.prob_est(a_sig, self.mle_thetas, self.triangle_centers)
+    a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
     return a_entropies
 
   def compute_entropy_loss(self, a_in):
@@ -67,47 +71,49 @@ class GDN_Autoencoder(Model):
   def compute_weight_decay_loss(self):
     with tf.name_scope("unsupervised"):
       decay_loss = tf.multiply(0.5*self.decay_mult,
-        tf.add_n([tf.nn.l2_loss(self.w_enc), tf.nn.l2_loss(self.w_dec)]), name="weight_decay_loss")
+        tf.add_n([tf.nn.l2_loss(weight) for weight in self.w_list]), name="weight_decay_loss")
     return decay_loss
 
-  def compute_recon_loss(self, a_in):
+  def compute_recon_loss(self, recon):
     with tf.name_scope("unsupervised"):
-      reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
-      x_ = self.compute_recon(a_in)
-      recon_loss = tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(tf.subtract(self.x, x_)),
+      reduc_dim = list(range(1, len(recon.shape))) # Want to avg over batch, sum over the rest
+      recon_loss = tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(tf.subtract(self.x, recon)),
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
-  def compute_recon(self, a_in):
-    a_igdn = self.gdn(a_in, inverse=True, name="igdn")
-    recon = tf.add(tf.matmul(a_igdn, self.w_dec), self.b_dec)
-    return recon
-
-  def compute_gdn_mult(self, a_in, inverse, name=None):
-    if inverse:
-      name_prefix = "i"
-    else:
-      name_prefix = ""
-    with tf.variable_scope(self.weight_scope, reuse=True) as scope:
-      w_gdn = tf.get_variable(name="w_"+name_prefix+"gdn", shape=self.w_gdn_shape)
-      b_gdn = tf.get_variable(name="b_"+name_prefix+"gdn", shape=self.b_gdn_shape)
-    w_threshold = tf.where(tf.less(w_gdn, tf.constant(1e-6, dtype=tf.float32)),
-      tf.multiply(1e-6, tf.ones_like(w_gdn)), w_gdn)
-    b_threshold = tf.where(tf.less(b_gdn, tf.constant(1e-6, dtype=tf.float32)),
-      tf.multiply(1e-6, tf.ones_like(b_gdn)), b_gdn)
-    symmetric_weights = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
-    weighted_norm = tf.matmul(tf.square(a_in), symmetric_weights)
+  def compute_gdn_mult(self, u_in, w_gdn, b_gdn):
+    w_min = self.w_thresh_min
+    w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
+      tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
+    w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
+    b_min = self.b_thresh_min
+    b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
+      tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
+    weighted_norm = tf.matmul(tf.square(u_in), w_symmetric)
     gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
     return gdn_mult
 
-  def gdn(self, a_in, inverse, name=None):
-    gdn_mult = self.compute_gdn_mult(a_in, inverse, name)
-    if inverse:
-      a_out = tf.multiply(a_in, gdn_mult, name=name)
-    else:
-      a_out = tf.where(tf.less(gdn_mult, tf.constant(1e-6, dtype=tf.float32)), a_in,
-        tf.divide(a_in, gdn_mult), name=name)
-    return a_out
+  def gdn(self, layer_id, u_in, inverse):
+    """Devisive normalizeation nonlinearity"""
+    with tf.variable_scope(self.weight_scope) as scope:
+      if inverse:
+        w_gdn = tf.get_variable(name="w_igdn"+str(layer_id), shape=self.w_gdn_shape,
+          dtype=tf.float32, initializer=self.w_igdn_init, trainable=True)
+        b_gdn = tf.get_variable(name="b_igdn"+str(layer_id), shape=self.b_gdn_shape,
+          dtype=tf.float32, initializer=self.b_igdn_init, trainable=True)
+      else:
+        w_gdn = tf.get_variable(name="w_gdn"+str(layer_id), shape=self.w_gdn_shape,
+          dtype=tf.float32, initializer=self.w_gdn_init, trainable=True)
+        b_gdn = tf.get_variable(name="b_gdn"+str(layer_id), shape=self.b_gdn_shape,
+          dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
+    with tf.variable_scope("gdn"+str(layer_id)) as scope:
+      gdn_mult = self.compute_gdn_mult(u_in, w_gdn, b_gdn)
+      if inverse:
+        u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
+      else:
+        u_out = tf.where(tf.less(gdn_mult, tf.constant(self.gdn_mult_min, dtype=tf.float32)), u_in,
+          tf.divide(u_in, gdn_mult), name="gdn_output"+str(layer_id))
+    return u_out, w_gdn, b_gdn, gdn_mult
 
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "entropy_loss":self.compute_entropy_loss}
@@ -134,32 +140,33 @@ class GDN_Autoencoder(Model):
         with tf.name_scope("weight_inits") as scope:
           w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0, stddev=0.1,
             dtype=tf.float32, name="w_init")
+          # TODO: Init b to zeros?
           b_enc_init = tf.truncated_normal(self.b_enc_shape, mean=0.0, stddev=0.1,
             dtype=tf.float32, name="b_enc_init")
           b_dec_init = tf.truncated_normal(self.b_dec_shape, mean=0.0, stddev=0.1,
             dtype=tf.float32, name="b_dec_init")
 
-          #w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=0.0, stddev=0.01,
+          #self.w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=0.0, stddev=0.01,
           #  dtype=tf.float32, name="w_gdn_init")
-          #w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=1.0, stddev=0.01,
+          #self.w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=1.0, stddev=0.01,
           #  dtype=tf.float32, name="w_gdn_init")
-          #w_gdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
+          #self.w_gdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
           #  mean=0.0, stddev=0.01), name="w_gdn_init")
-          w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0, dtype=tf.float32)
+          self.w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0, dtype=tf.float32)
 
-          #b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=1.0, stddev=0.01,
+          #self.b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=1.0, stddev=0.01,
           #  dtype=tf.float32, name="b_gdn_init")
-          #b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=0.0, stddev=0.1,
+          #self.b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=0.0, stddev=0.1,
           #  dtype=tf.float32, name="b_gdn_init")
-          b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0, dtype=tf.float32)
+          self.b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0, dtype=tf.float32)
 
-          #w_igdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
+          #self.w_igdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
           #  mean=0.0, stddev=0.01), name="w_igdn_init")
-          #w_igdn_init = tf.identity(tf.transpose(w_gdn_init), name="w_igdn_init")
-          w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0, dtype=tf.float32)
+          #self.w_igdn_init = tf.identity(tf.transpose(self.w_gdn_init), name="w_igdn_init")
+          self.w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0, dtype=tf.float32)
 
-          #b_igdn_init = tf.identity(b_gdn_init, name="b_igdn_init")
-          b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0, dtype=tf.float32)
+          #self.b_igdn_init = tf.identity(b_gdn_init, name="b_igdn_init")
+          self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0, dtype=tf.float32)
 
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()
@@ -171,14 +178,18 @@ class GDN_Autoencoder(Model):
             initializer=tf.transpose(w_init), trainable=True)
           self.b_dec = tf.get_variable(name="b_dec", dtype=tf.float32,
             initializer=b_dec_init, trainable=True)
-          self.w_gdn = tf.get_variable(name="w_gdn", dtype=tf.float32,
-            initializer=w_gdn_init, shape=self.w_gdn_shape, trainable=True)
-          self.b_gdn = tf.get_variable(name="b_gdn", dtype=tf.float32,
-            initializer=b_gdn_init, shape=self.b_gdn_shape, trainable=True)
-          self.w_igdn = tf.get_variable(name="w_igdn", dtype=tf.float32,
-            initializer=w_igdn_init, shape=self.w_gdn_shape, trainable=True)
-          self.b_igdn = tf.get_variable(name="b_igdn", dtype=tf.float32,
-            initializer=b_igdn_init, shape=self.b_gdn_shape, trainable=True)
+          self.w_list = [w_enc, w_dec]
+          self.b_list = [b_enc, b_dec]
+          #self.w_gdn = tf.get_variable(name="w_gdn", dtype=tf.float32,
+          #  initializer=w_gdn_init, shape=self.w_gdn_shape, trainable=True)
+          #self.b_gdn = tf.get_variable(name="b_gdn", dtype=tf.float32,
+          #  initializer=b_gdn_init, shape=self.b_gdn_shape, trainable=True)
+          #self.w_igdn = tf.get_variable(name="w_igdn", dtype=tf.float32,
+          #  initializer=w_igdn_init, shape=self.w_gdn_shape, trainable=True)
+          #self.b_igdn = tf.get_variable(name="b_igdn", dtype=tf.float32,
+          #  initializer=b_igdn_init, shape=self.b_gdn_shape, trainable=True)
+          #self.w_gdn_list = [w_gdn, w_igdn]
+          #self.b_gdn_list = [b_gdn, b_igdn]
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_w_enc = self.w_enc.assign(tf.nn.l2_normalize(self.w_enc, dim=[0],
@@ -188,10 +199,8 @@ class GDN_Autoencoder(Model):
           self.norm_weights = tf.group(self.norm_w_enc, self.norm_w_dec, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
-          self.a = self.gdn(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
-            inverse=False, name="activity")
-          # TODO: gdn_mult should be computed on matmul(x,w_enc)+b not on self.a (gdn_output)?
-          self.gdn_mult = self.compute_gdn_mult(self.a, inverse=False, name="gdn_mult")
+          u_enc = tf.add(tf.matmul(self.x, self.w_enc), self.b_enc, name="u_enc")
+          self.a, self.w_gdn, self.b_gdn, self.gdn_mult = self.gdn(u_enc, inverse=False)
           self.gdn_entropies = self.compute_entropies(self.a)
           noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.a),
             tf.reduce_min(self.a))) # 1/2 of 10% of range of gdn output
@@ -205,15 +214,17 @@ class GDN_Autoencoder(Model):
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
             for _ in range(self.num_mle_steps)]
 
+        with tf.name_scope("output") as scope:
+          u_dec = tf.add(tf.matmul(self.a_noise, self.w_dec), self.b_dec, name="u_dec")
+          self.x_, self.w_igdn, self.b_igdn, self.igdn_mult = self.gdn(u_dec, inverse=True)
+          self.w_gdn_list = [w_gdn, w_igdn]
+          self.b_gdn_list = [b_gdn, b_igdn]
+
         with tf.name_scope("loss") as scope:
-          self.loss_dict = {"recon_loss":self.compute_recon_loss(self.a_noise),
+          self.loss_dict = {"recon_loss":self.compute_recon_loss(self.x_),
             "entropy_loss":self.compute_entropy_loss(self.a_noise),
             "weight_decay_loss":self.compute_weight_decay_loss()}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
-
-        with tf.name_scope("output") as scope:
-          with tf.name_scope("image_estimate"):
-            self.x_ = self.compute_recon(self.a_noise)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
