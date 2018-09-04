@@ -12,9 +12,6 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
   """
   Implementation of autoencoder described in Balle, Laparra, Simoncelli (2017)
   End-to-End Optimized Image Compression
-  ## Key differences:
-  #  Fully connected
-  #  Single hidden layer, complete
   ## Methods ignored:
   #  add a small amount of uniform noise to input, to simulate pixel quantization
   """
@@ -31,14 +28,13 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     Modifiable Parameters:
     """
     super(GDN_Autoencoder, self).load_params(params)
-    self.data_shape = params["data_shape"]
-    self.batch_size = int(params["batch_size"])
-    self.num_pixels = int(np.prod(self.data_shape))
     if "num_preproc_threads" in params.keys():
       self.num_preproc_threads = 1
     else:
       self.num_preproc_threads = int(params["num_preproc_threads"])
     # Dataset parameters
+    self.data_shape = params["data_shape"]
+    self.num_pixels = int(np.prod(self.data_shape))
     self.batch_size = int(params["batch_size"])
     self.device = params["device"]
     self.downsample_images = params["downsample_images"]
@@ -136,19 +132,6 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
     return a_entropies
 
-  def compute_recon_loss(self, recon):
-    with tf.name_scope("unsupervised"):
-      reduc_dim = list(range(1, len(recon.shape))) # Want to avg over batch, sum over the rest
-      recon_loss = tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(tf.subtract(self.x, recon)),
-        axis=reduc_dim), name="recon_loss")
-    return recon_loss
-
-  def compute_weight_decay_loss(self):
-    with tf.name_scope("unsupervised"):
-      decay_loss = tf.multiply(0.5*self.decay_mult,
-        tf.add_n([tf.nn.l2_loss(weight) for weight in self.w_list]), name="weight_decay_loss")
-    return decay_loss
-
   def compute_ramp_loss(self, a_in):
     ramp_loss = tf.reduce_mean(tf.reduce_sum(self.ramp_slope
       * (tf.nn.relu(a_in - self.mem_v_max)
@@ -161,7 +144,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       "weight_decay_loss":self.compute_weight_decay_loss,
       "ramp_loss":self.compute_ramp_loss}
 
-  def compute_gdn_mult(self, layer_id, u_in, w_gdn, b_gdn, inverse):
+  def compute_gdn_mult(self, u_in, w_gdn, b_gdn):
     u_in_shape = tf.shape(u_in)
     w_min = self.w_thresh_min
     w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
@@ -190,14 +173,13 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
         b_gdn = tf.get_variable(name="b_gdn"+str(layer_id), shape=self.b_gdn_shapes[layer_id],
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      gdn_mult = self.compute_gdn_mult(layer_id, u_in, w_gdn, b_gdn, inverse)
+      gdn_mult = self.compute_gdn_mult(u_in, w_gdn, b_gdn)
       if inverse:
         u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
       else:
         u_out = tf.where(tf.less(gdn_mult, tf.constant(self.gdn_mult_min, dtype=tf.float32)), u_in,
           tf.divide(u_in, gdn_mult), name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
-
 
   def layer_maker(self, layer_id, u_in, w_shape, w_stride, decode):
     """
