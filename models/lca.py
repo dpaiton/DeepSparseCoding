@@ -27,12 +27,12 @@ class LCA(Model):
     super(LCA, self).load_params(params)
     self.data_shape = params["data_shape"] # not including batch
     # Meta parameters
-    if hasattr(params, "rectify_a"):
+    if "rectify_a" in params.keys():
       self.rectify_a = bool(params["rectify_a"])
     else:
       self.rectify_a = False
     self.norm_weights = bool(params["norm_weights"])
-    if hasattr(params, "thresh_type"):
+    if "thresh_type" in params.keys():
       self.thresh_type = str(params["thresh_type"])
     else:
       self.thresh_type = None
@@ -80,6 +80,8 @@ class LCA(Model):
       else:
         a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
           tf.where(tf.less(u_in, -self.sparse_mult), u_in, self.u_zeros))
+    else:
+      a_out = tf.identity(u_in)
     return a_out
 
   def infer_coefficients(self):
