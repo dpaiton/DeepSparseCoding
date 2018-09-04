@@ -1081,7 +1081,7 @@ def plot_weight_angle_heatmap(weight_angles, angle_min=0, angle_max=180, title="
   fig, ax = plt.subplots(1, figsize=figsize)
   im = ax.imshow(weight_angles, vmin=vmin, vmax=vmax)
   ax.set_title(title)
-  cbar = pf.add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, ticks=[vmin, vmax])
+  cbar = add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, ticks=[vmin, vmax])
   cbar.ax.set_yticklabels(["{:.0f}".format(vmin), "{:.0f}".format(vmax)])
   if save_filename is not None:
     fig.savefig(save_filename, transparent=True)
