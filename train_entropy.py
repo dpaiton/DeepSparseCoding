@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import params.param_picker as pp
 import models.model_picker as mp
-#import data.data_selector as ds
+import data.data_selector as ds
 from data.nat_dataset import Dataset
 
 import time as ti
@@ -25,20 +25,26 @@ params, schedule = pp.get_params(model_type)
 if "rand_seed" in params.keys():
   params["rand_state"] = np.random.RandomState(params["rand_seed"])
 params["data_type"] = data_type
-params["data_shape"] = [params["im_size_y"], params["im_size_x"], 1]
+if params["vectorize_data"]:
+  params["data_shape"] = [params["patch_edge_size"]]
+else:
+  params["data_shape"] = [params["im_size_y"], params["im_size_x"], 1]
+
 
 ## Import data
-#data = ds.get_data(params)
-data = {"train": Dataset(params["data_file"], params)}
-
-schedule[0]["num_batches"] = (schedule[0]["num_epochs"]*data["train"].num_examples)/params["batch_size"]
-schedule[0]["decay_steps"] = [int(0.8*schedule[0]["num_batches"])
-  for _ in range(len(schedule[0]["weights"]))]
+if data_type.lower() == "vanhateren":
+  data = ds.get_data(params)
+elif data_type.lower() is "nat_images":
+  data = {"train": Dataset(params["data_file"], params)}
+  schedule[0]["num_batches"] = (schedule[0]["num_epochs"]*data["train"].num_examples)/params["batch_size"]
+  schedule[0]["decay_steps"] = [int(0.8*schedule[0]["num_batches"])
+    for _ in range(len(schedule[0]["weights"]))]
 
 ## Import model
 model = mp.get_model(model_type)
-#data = model.preprocess_dataset(data, params)
-#data = model.reshape_dataset(data, params)
+if data_type.lower() == "vanhateren":
+  data = model.preprocess_dataset(data, params)
+  data = model.reshape_dataset(data, params)
 model.setup(params, schedule)
 
 ## Write model weight savers for checkpointing and visualizing graph
