@@ -76,7 +76,7 @@ class Sigmoid_Autoencoder(Model):
 
         with tf.name_scope("weight_inits") as scope:
           w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0,
-            stddev=0.5, dtype=tf.float32, name="w_init")
+            stddev=0.1, dtype=tf.float32, name="w_init")
           b_enc_init = tf.zeros([1, self.num_neurons])
           b_dec_init = tf.zeros([1, self.num_pixels])
 
@@ -101,8 +101,7 @@ class Sigmoid_Autoencoder(Model):
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
         with tf.name_scope("output") as scope:
-          with tf.name_scope("image_estimate"):
-            self.x_ = self.compute_recon(self.a)
+          self.x_ = self.compute_recon(self.a)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -189,8 +188,8 @@ class Sigmoid_Autoencoder(Model):
       title="Decoding weights at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram", save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
+    fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram",
+      save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"+current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
       save_filename=(self.disp_dir+"act_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))

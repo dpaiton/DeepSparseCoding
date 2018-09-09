@@ -137,8 +137,7 @@ class ReLU_Autoencoder(Model):
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
         with tf.name_scope("output") as scope:
-          with tf.name_scope("image_estimate"):
-            self.x_ = self.compute_recon(self.a)
+          self.x_ = self.compute_recon(self.a)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):

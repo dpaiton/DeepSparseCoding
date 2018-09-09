@@ -164,8 +164,7 @@ class LCA(Model):
          self.a = tf.identity(a_list[-1], name="activity")
 
         with tf.name_scope("output") as scope:
-          with tf.name_scope("image_estimate"):
-            self.x_ = self.compute_recon(self.a)
+          self.x_ = self.compute_recon(self.a)
 
         with tf.name_scope("loss") as scope:
           loss_funcs = self.get_loss_funcs()
