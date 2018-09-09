@@ -31,9 +31,9 @@ params = {
   "cp_load_step": None, # latest checkpoint
   "cp_load_ver": "0.0",
   "cp_load_var": ["w"],
-  "log_int": 1,#10,
+  "log_int": 10,
   "log_to_file": True,
-  "gen_plot_int": 1,#5000,
+  "gen_plot_int": 5000,
   "save_plots": True,
   "eps": 1e-7,
   "device": "/gpu:0",

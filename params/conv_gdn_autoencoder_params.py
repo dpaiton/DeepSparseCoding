@@ -3,8 +3,8 @@ import numpy as np
 
 params = {
   "model_type": "conv_gdn_autoencoder",
-  "model_name": "conv_gdn_autoencoder_post_pretrain_test",
-  "version": "1.0",
+  "model_name": "test",
+  "version": "0.0",
   "vectorize_data": False,
   "norm_data": False,
   "center_data": False,

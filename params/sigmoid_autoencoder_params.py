@@ -25,7 +25,7 @@ params = {
   "cp_int": 10000,
   "max_cp_to_keep": 1,
   "cp_load": False,
-  "log_int": 100,
+  "log_int": 10,
   "log_to_file": True,
   "gen_plot_int": 1000,
   "save_plots": True,

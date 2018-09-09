@@ -21,7 +21,7 @@ params = {
   "patch_variance_threshold": 0.0,
   "batch_size": 80,
   "num_neurons": 768,
-  "num_groups": 128,
+  "num_groups": 192,
   "num_steps": 60,
   "dt": 0.001,
   "tau": 0.03,
@@ -48,7 +48,7 @@ schedule = [
   {"weights": ["phi"],
   "sparse_mult": 8.0,
   "weight_lr": [0.01],
-  "decay_steps": [int(4e4*0.5)],
+  "decay_steps": [int(5e4*0.5)],
   "decay_rate": [0.5],
   "staircase": [True],
-  "num_batches": int(4e4)}]
+  "num_batches": int(5e4)}]
