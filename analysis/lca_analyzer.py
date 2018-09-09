@@ -11,7 +11,7 @@ class LCA_Analyzer(Analyzer):
       "weights/phi:0",
       "inference/u:0",
       "inference/activity:0",
-      "output/image_estimate/reconstruction:0",
+      "output/reconstruction:0",
       "performance_metrics/reconstruction_quality/recon_quality:0"]
 
   def load_params(self, params):
@@ -24,38 +24,27 @@ class LCA_Analyzer(Analyzer):
       self.num_inference_images = params["num_inference_images"]
     else:
       self.num_inference_images = 1
-    if "ft_padding" in params.keys():
-      self.ft_padding = params["ft_padding"]
-    else:
-      self.ft_padding = None
-    if "num_gauss_fits" in params.keys():
-      self.num_gauss_fits = params["num_gauss_fits"]
-    else:
-      self.num_gauss_fits = 20
-    if "gauss_thresh" in params.keys():
-      self.gauss_thresh = params["gauss_thresh"]
-    else:
-      self.gauss_thresh = 0.2
-    if "input_scale" in params.keys():
-      self.input_scale = params["input_scale"]
-    else:
-      self.input_scale = 1.0
-    if "neuron_indices" in params.keys():
-      self.ot_neurons = params["neuron_indices"]
-    else:
-      self.ot_neurons = None
-    if "contrasts" in params.keys():
-      self.ot_contrasts = params["contrasts"]
-    else:
-      self.ot_contrasts = None
-    if "orientations" in params.keys():
-      self.ot_orientations = params["orientations"]
-    else:
-      self.ot_orientations = None
-    if "phases" in params.keys():
-      self.ot_phases = params["phases"]
-    else:
-      self.ot_phases = None
+
+  def run_recon_analysis(self, full_image, save_info):
+    wht_img, img_mean, ft_filter = dp.whiten_data(full_image,
+      method=self.model_params["whiten_method"], lpf_cutoff=self.model_params["lpf_cutoff"])
+    img_patches = dp.extract_patches(wht_img,
+      out_shape=(1, self.model_params["patch_edge_size"], self.model_params["patch_edge_size"], 1),
+      overlapping=False, randomize=False, var_thresh=0.0)
+    img_patches, orig_shape = dp.reshape_data(img_patches, flatten=True)[:2]
+    model_eval = self.evaluate_model(img_patches,
+      ["inference/activity:0", "output/reconstruction:0"])
+    recon_patches = model_eval["output/reconstruction:0"]
+    a_vals = model_eval["inference/activity:0"]
+    self.recon_frac_act = np.array(np.count_nonzero(a_vals) / float(a_vals.size))
+    recon_patches = dp.reshape_data(recon_patches, flatten=False, out_shape=orig_shape)[0]
+    wht_recon = dp.patches_to_image(recon_patches, full_image.shape)
+    self.full_image = full_image
+    self.full_recon = dp.unwhiten_data(wht_recon, img_mean, ft_filter, method="FT")
+    np.savez(self.analysis_out_dir+"full_recon_"+save_info+".npz",
+      data={"full_image":self.full_image, "full_recon":self.full_recon,
+      "recon_frac_act":self.recon_frac_act})
+    self.analysis_logger.log_info("Recon analysis is complete.")
 
   def run_base_analysis(self, images, save_info):
     self.evals = self.evaluate_model(images, self.var_names)
@@ -70,19 +59,6 @@ class LCA_Analyzer(Analyzer):
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas, "atcs":self.atcs,
       "inference_stats":self.inference_stats, "var_names":self.var_names, "bf_stats":self.bf_stats})
     self.analysis_logger.log_info("Base analysis is complete.")
-
-  def run_noise_analysis(self, save_info, batch_size=100):
-    """
-    TODO: compute per batch
-    """
-    noise_images = self.rand_state.standard_normal([self.num_noise_images]+self.model_params["data_shape"])
-    self.noise_activity = analyzer.compute_activations(noise_images)
-    self.noise_atas = self.compute_atas(noise_activity, noise_images)
-    self.noise_atcs = self.compute_atcs(noise_activity, noise_images, noise_atas)
-    np.savez(self.analysis_out_dir+"noise_responses_"+save_info+".npz",
-      data={"num_noise_images":self.num_noise_images, "noise_activity":noise_activity, "noise_atas":noise_atas,
-      "noise_atcs":noise_atcs})
-    self.analysis_logger.log_info("Noise analysis is complete.")
 
   def run_grating_analysis(self, save_info):
     self.ot_grating_responses = self.orientation_tuning(self.bf_stats, self.ot_contrasts,
@@ -129,6 +105,12 @@ class LCA_Analyzer(Analyzer):
       self.ot_grating_responses = np.load(tuning_file_locs[0])["data"].item()
     if os.path.exists(tuning_file_locs[1]):
       self.co_grating_responses = np.load(tuning_file_locs[1])["data"].item()
+    recon_file_loc = self.analysis_out_dir+"full_recon_"+save_info+".npz"
+    if os.path.exists(recon_file_loc):
+      recon_analysis = np.load(recon_file_loc)["data"].item()
+      self.full_image = recon_analysis["full_image"]
+      self.full_recon = recon_analysis["full_recon"]
+      self.recon_frac_act = recon_analysis["recon_frac_act"]
 
   def compute_time_varied_response(self, images, steps_per_image=None):
     """

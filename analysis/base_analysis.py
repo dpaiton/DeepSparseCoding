@@ -57,6 +57,38 @@ class Analyzer(object):
       self.device = self.model_params["device"]
     if "data_dir" in params.keys():
       self.model_params["data_dir"] = params["data_dir"]
+    if "ft_padding" in params.keys():
+      self.ft_padding = params["ft_padding"]
+    else:
+      self.ft_padding = None
+    if "num_gauss_fits" in params.keys():
+      self.num_gauss_fits = params["num_gauss_fits"]
+    else:
+      self.num_gauss_fits = 20
+    if "gauss_thresh" in params.keys():
+      self.gauss_thresh = params["gauss_thresh"]
+    else:
+      self.gauss_thresh = 0.2
+    if "input_scale" in params.keys():
+      self.input_scale = params["input_scale"]
+    else:
+      self.input_scale = 1.0
+    if "neuron_indices" in params.keys():
+      self.ot_neurons = params["neuron_indices"]
+    else:
+      self.ot_neurons = None
+    if "contrasts" in params.keys():
+      self.ot_contrasts = params["contrasts"]
+    else:
+      self.ot_contrasts = None
+    if "orientations" in params.keys():
+      self.ot_orientations = params["orientations"]
+    else:
+      self.ot_orientations = None
+    if "phases" in params.keys():
+      self.ot_phases = params["phases"]
+    else:
+      self.ot_phases = None
 
   def make_dirs(self):
     """Make output directories"""
@@ -78,6 +110,19 @@ class Analyzer(object):
     this method will be overwritten for specific models
     """
     self.run_stats = self.get_log_stats()
+
+  def run_noise_analysis(self, save_info, batch_size=100):
+    """
+    TODO: compute per batch
+    """
+    noise_images = self.rand_state.standard_normal([self.num_noise_images]+self.model_params["data_shape"])
+    self.noise_activity = self.compute_activations(noise_images)
+    self.noise_atas = self.compute_atas(self.noise_activity, noise_images)
+    self.noise_atcs = self.compute_atcs(self.noise_activity, noise_images, self.noise_atas)
+    np.savez(self.analysis_out_dir+"noise_responses_"+save_info+".npz",
+      data={"num_noise_images":self.num_noise_images, "noise_activity":self.noise_activity,
+      "noise_atas":self.noise_atas, "noise_atcs":self.noise_atcs})
+    self.analysis_logger.log_info("Noise analysis is complete.")
 
   def evaluate_model(self, images, var_names):
     """
