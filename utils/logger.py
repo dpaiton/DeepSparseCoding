@@ -116,6 +116,8 @@ class Logger(object):
     js_matches = self.read_js(tokens, text)
     stats = {}
     for js_match in js_matches:
+      if type(js_match) is str:
+        js_match = {js_match:js_match}
       for key in js_match.keys():
         if key in stats:
           stats[key].append(js_match[key])
