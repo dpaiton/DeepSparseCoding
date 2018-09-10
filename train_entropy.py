@@ -13,12 +13,12 @@ t0 = ti.time()
 
 ## Specify model type and data type
 #model_type = "entropy_sc"
-#model_type = "gdn_autoencoder"
-model_type = "conv_gdn_autoencoder"
+model_type = "gdn_autoencoder"
+#model_type = "conv_gdn_autoencoder"
 #model_type = "relu_autoencoder"
 
-#data_type = "vanhateren"
-data_type = "nat_images"
+data_type = "vanhateren"
+#data_type = "nat_images"
 
 ## Import params
 params, schedule = pp.get_params(model_type)
@@ -26,7 +26,7 @@ if "rand_seed" in params.keys():
   params["rand_state"] = np.random.RandomState(params["rand_seed"])
 params["data_type"] = data_type
 if params["vectorize_data"]:
-  params["data_shape"] = [params["patch_edge_size"]]
+  params["data_shape"] = [params["patch_edge_size"]**2]
 else:
   params["data_shape"] = [params["im_size_y"], params["im_size_x"], 1]
 
@@ -81,9 +81,10 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Get feed dictionary for placeholders
       feed_dict = model.get_feed_dict(input_data, input_labels)
-      mem_std_eps = np.random.standard_normal((model.params["batch_size"],
-         model.params["n_mem"])).astype(np.float32)
-      feed_dict[model.memristor_std_eps] = mem_std_eps
+      if model.model_name == "conv_gdn_autoencoder":
+        mem_std_eps = np.random.standard_normal((model.params["batch_size"],
+           model.params["n_mem"])).astype(np.float32)
+        feed_dict[model.memristor_std_eps] = mem_std_eps
 
       batch_t0 = ti.time()
 

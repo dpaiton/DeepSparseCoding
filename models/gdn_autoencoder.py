@@ -45,10 +45,13 @@ class GDN_Autoencoder(Model):
     # Computed parameters
     self.x_shape = [None, self.num_pixels]
     self.w_enc_shape = [self.num_pixels, self.num_neurons]
+    self.w_dec_shape = [self.num_neurons, self.num_pixels]
     self.b_enc_shape = [self.num_neurons]
     self.b_dec_shape = [self.num_pixels]
     self.w_gdn_shape = [self.num_neurons, self.num_neurons]
     self.b_gdn_shape = [1, self.num_neurons]
+    self.w_igdn_shape = [self.num_pixels, self.num_pixels]
+    self.b_igdn_shape = [1, self.num_pixels]
 
   def sigmoid(self, a_in, beta=1):
     """Hyperbolic tangent non-linearity"""
@@ -97,9 +100,9 @@ class GDN_Autoencoder(Model):
     """Devisive normalizeation nonlinearity"""
     with tf.variable_scope(self.weight_scope) as scope:
       if inverse:
-        w_gdn = tf.get_variable(name="w_igdn"+str(layer_id), shape=self.w_gdn_shape,
+        w_gdn = tf.get_variable(name="w_igdn"+str(layer_id), shape=self.w_igdn_shape,
           dtype=tf.float32, initializer=self.w_igdn_init, trainable=True)
-        b_gdn = tf.get_variable(name="b_igdn"+str(layer_id), shape=self.b_gdn_shape,
+        b_gdn = tf.get_variable(name="b_igdn"+str(layer_id), shape=self.b_igdn_shape,
           dtype=tf.float32, initializer=self.b_igdn_init, trainable=True)
       else:
         w_gdn = tf.get_variable(name="w_gdn"+str(layer_id), shape=self.w_gdn_shape,
@@ -138,72 +141,38 @@ class GDN_Autoencoder(Model):
             self.num_triangles)
 
         with tf.name_scope("weight_inits") as scope:
-          w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0, stddev=0.1,
-            dtype=tf.float32, name="w_init")
-          # TODO: Init b to zeros?
-          b_enc_init = tf.truncated_normal(self.b_enc_shape, mean=0.0, stddev=0.1,
-            dtype=tf.float32, name="b_enc_init")
-          b_dec_init = tf.truncated_normal(self.b_dec_shape, mean=0.0, stddev=0.1,
-            dtype=tf.float32, name="b_dec_init")
-
-          #self.w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=0.0, stddev=0.01,
-          #  dtype=tf.float32, name="w_gdn_init")
-          #self.w_gdn_init = tf.truncated_normal(self.w_gdn_shape, mean=1.0, stddev=0.01,
-          #  dtype=tf.float32, name="w_gdn_init")
-          #self.w_gdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
-          #  mean=0.0, stddev=0.01), name="w_gdn_init")
-          self.w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0, dtype=tf.float32)
-
-          #self.b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=1.0, stddev=0.01,
-          #  dtype=tf.float32, name="b_gdn_init")
-          #self.b_gdn_init = tf.truncated_normal(self.b_gdn_shape, mean=0.0, stddev=0.1,
-          #  dtype=tf.float32, name="b_gdn_init")
-          self.b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0, dtype=tf.float32)
-
-          #self.w_igdn_init = tf.add(tf.eye(self.w_gdn_shape[0]), tf.truncated_normal(self.w_gdn_shape,
-          #  mean=0.0, stddev=0.01), name="w_igdn_init")
-          #self.w_igdn_init = tf.identity(tf.transpose(self.w_gdn_init), name="w_igdn_init")
-          self.w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0, dtype=tf.float32)
-
-          #self.b_igdn_init = tf.identity(b_gdn_init, name="b_igdn_init")
-          self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0, dtype=tf.float32)
+          self.w_init = tf.initializers.random_normal(mean=0.0, stddev=0.1,
+            seed=self.rand_seed, dtype=tf.float32)
+          self.b_init = tf.initializers.zeros(dtype=tf.float32)
+          self.w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
+            seed=self.rand_seed, dtype=tf.float32)
+          self.b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
+            seed=self.rand_seed, dtype=tf.float32)
+          self.w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
+            seed=self.rand_seed, dtype=tf.float32)
+          self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
+            seed=self.rand_seed, dtype=tf.float32)
 
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()
-          self.w_enc = tf.get_variable(name="w_enc", dtype=tf.float32,
-            initializer=w_init, trainable=True)
-          self.b_enc = tf.get_variable(name="b_enc", dtype=tf.float32,
-            initializer=b_enc_init, trainable=True)
-          self.w_dec = tf.get_variable(name="w_dec", dtype=tf.float32,
-            initializer=tf.transpose(w_init), trainable=True)
-          self.b_dec = tf.get_variable(name="b_dec", dtype=tf.float32,
-            initializer=b_dec_init, trainable=True)
-          self.w_list = [w_enc, w_dec]
-          self.b_list = [b_enc, b_dec]
-          #self.w_gdn = tf.get_variable(name="w_gdn", dtype=tf.float32,
-          #  initializer=w_gdn_init, shape=self.w_gdn_shape, trainable=True)
-          #self.b_gdn = tf.get_variable(name="b_gdn", dtype=tf.float32,
-          #  initializer=b_gdn_init, shape=self.b_gdn_shape, trainable=True)
-          #self.w_igdn = tf.get_variable(name="w_igdn", dtype=tf.float32,
-          #  initializer=w_igdn_init, shape=self.w_gdn_shape, trainable=True)
-          #self.b_igdn = tf.get_variable(name="b_igdn", dtype=tf.float32,
-          #  initializer=b_igdn_init, shape=self.b_gdn_shape, trainable=True)
-          #self.w_gdn_list = [w_gdn, w_igdn]
-          #self.b_gdn_list = [b_gdn, b_igdn]
-
-        with tf.name_scope("norm_weights") as scope:
-          self.norm_w_enc = self.w_enc.assign(tf.nn.l2_normalize(self.w_enc, dim=[0],
-            epsilon=1e-4, name="row_l2_norm"))
-          self.norm_w_dec = self.w_enc.assign(tf.nn.l2_normalize(self.w_dec, dim=[1],
-            epsilon=1e-4, name="col_l2_norm"))
-          self.norm_weights = tf.group(self.norm_w_enc, self.norm_w_dec, name="l2_normalization")
+          self.w_enc = tf.get_variable(name="w_enc", shape=self.w_enc_shape, dtype=tf.float32,
+            initializer=self.w_init, trainable=True)
+          self.b_enc = tf.get_variable(name="b_enc", shape=self.b_enc_shape, dtype=tf.float32,
+            initializer=self.b_init, trainable=True)
+          self.w_dec = tf.get_variable(name="w_dec", shape=self.w_dec_shape, dtype=tf.float32,
+            initializer=self.w_init, trainable=True)
+          self.b_dec = tf.get_variable(name="b_dec", shape=self.b_dec_shape, dtype=tf.float32,
+            initializer=self.b_init, trainable=True)
+          self.w_list = [self.w_enc, self.w_dec]
+          self.b_list = [self.b_enc, self.b_dec]
 
         with tf.variable_scope("inference") as scope:
           u_enc = tf.add(tf.matmul(self.x, self.w_enc), self.b_enc, name="u_enc")
-          self.a, self.w_gdn, self.b_gdn, self.gdn_mult = self.gdn(u_enc, inverse=False)
+          self.a, self.w_gdn, self.b_gdn, self.gdn_mult = self.gdn(layer_id=0, u_in=u_enc,
+            inverse=False)
           self.gdn_entropies = self.compute_entropies(self.a)
           noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.a),
-            tf.reduce_min(self.a))) # 1/2 of 10% of range of gdn output
+            tf.reduce_min(self.a)))
           uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(self.a)),
             minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
           self.a_noise = tf.add(uniform_noise, self.a, name="activity")
@@ -216,9 +185,10 @@ class GDN_Autoencoder(Model):
 
         with tf.name_scope("output") as scope:
           u_dec = tf.add(tf.matmul(self.a_noise, self.w_dec), self.b_dec, name="u_dec")
-          self.x_, self.w_igdn, self.b_igdn, self.igdn_mult = self.gdn(u_dec, inverse=True)
-          self.w_gdn_list = [w_gdn, w_igdn]
-          self.b_gdn_list = [b_gdn, b_igdn]
+          self.x_, self.w_igdn, self.b_igdn, self.igdn_mult = self.gdn(layer_id=1, u_in=u_dec,
+            inverse=True)
+          self.w_gdn_list = [self.w_gdn, self.w_igdn]
+          self.b_gdn_list = [self.b_gdn, self.b_igdn]
 
         with tf.name_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.x_),
