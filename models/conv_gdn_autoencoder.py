@@ -80,6 +80,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.memristor_noise_shape = [self.batch_size, self.n_mem]
     self.mem_v_min = -1.0
     self.mem_v_max = 1.0
+    self.ramp_min = self.mem_v_min
+    self.ramp_max = self.mem_v_max
 
   def compute_num_latent(self, in_shape, patchY_list, patchX_list, strides, output_chans):
     inY, inX, inC = in_shape
@@ -134,8 +136,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
 
   def compute_ramp_loss(self, a_in):
     ramp_loss = tf.reduce_mean(tf.reduce_sum(self.ramp_slope
-      * (tf.nn.relu(a_in - self.mem_v_max)
-      + tf.nn.relu(self.mem_v_min - a_in)), axis=[1,2,3]))
+      * (tf.nn.relu(a_in - self.ramp_max)
+      + tf.nn.relu(self.ramp_min - a_in)), axis=[1,2,3]))
     return ramp_loss
 
   def get_loss_funcs(self):
