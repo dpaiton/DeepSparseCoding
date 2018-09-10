@@ -12,19 +12,6 @@ class SA_Analyzer(Analyzer):
 
   def load_params(self, params):
     super(SA_Analyzer, self).load_params(params)
-    self.ft_padding = params["ft_padding"]
-    self.ot_neurons = params["neuron_indices"]
-    self.ot_contrasts = params["contrasts"]
-    self.ot_orientations = params["orientations"]
-    self.ot_phases = params["phases"]
-    if "num_gauss_fits" in params.keys():
-      self.num_gauss_fits = params["num_gauss_fits"]
-    else:
-      self.num_gauss_fits = 20
-    if "gauss_thresh" in params.keys():
-      self.gauss_thresh = params["gauss_thresh"]
-    else:
-      self.gauss_thresh = 0.2
     if "num_noise_images" in params.keys():
       self.num_noise_images = params["num_noise_images"]
     else:

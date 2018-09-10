@@ -6,8 +6,8 @@ import utils.data_processing as dp
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "sigmoid_autoencoder",
-  "model_name": "sigmoid_autoencoder",
+  "model_type": "subspace_lca",
+  "model_name": "subspace_lca",
   "version": "0.0",
   "data_type": "vanHateren",
   "device": "/gpu:0",
@@ -17,15 +17,15 @@ analysis_params = {
   "ft_padding": 32, #Fourier analysis padding for weight fitting
   "num_inference_images": 5, #How many random images to average over for inference statistics
   "num_noise_images": 300, #How many noise images to compute noise ATAs
-  #"input_scale": 18, # LCA/SA
+  "input_scale": 18, # LCA/SA
   #"input_scale": 0.5, # ICA
-  "input_scale": 13, # RICA
+  #"input_scale": 13, # RICA
   #"input_scale": 1.0,
   "cov_num_images": int(1e5), #number of images used to compute cov matrix (LCA_PCA)
-  "neuron_indices": None, # which neurons to run tuning experiments on
-  "contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
-  "phases": np.linspace(-np.pi, np.pi, 8),
-  "orientations": np.linspace(0.0, np.pi, 16)}
+  "neuron_indices": None}#, # which neurons to run tuning experiments on
+  #"contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
+  #"phases": np.linspace(-np.pi, np.pi, 8),
+  #"orientations": np.linspace(0.0, np.pi, 16)}
 
 # Computed params
 analysis_params["model_dir"] = (os.path.expanduser("~")+"/Work/Projects/"
