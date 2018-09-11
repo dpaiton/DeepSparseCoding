@@ -124,7 +124,7 @@ class Analyzer(object):
   def stats_analysis(self, save_info):
     """Run stats extracted from the logfile"""
     run_stats = self.get_log_stats()
-    np.savez(self.analysis_out_dir+"run_stats_"+save_info+".npz", data={"run_stats":self.run_stats})
+    np.savez(self.analysis_out_dir+"run_stats_"+save_info+".npz", data={"run_stats":run_stats})
     self.analysis_logger.log_info("Run stats analysis is complete.")
     return run_stats
 
@@ -137,11 +137,11 @@ class Analyzer(object):
   def basis_analysis(self, weights, save_info):
     bf_stats = dp.get_dictionary_stats(weights, padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
-    np.savez(self.analysis_out_dir+"basis_"+save_info+".npz", data={"bf_stats":self.bf_stats})
+    np.savez(self.analysis_out_dir+"basis_"+save_info+".npz", data={"bf_stats":bf_stats})
     self.analysis_logger.log_info("Dictionary analysis is complete.")
     return bf_stats
 
-  def ata_analysis(self, images, activity, save_info)
+  def ata_analysis(self, images, activity, save_info):
     atas = self.compute_atas(activity, images)
     atcs = self.compute_atcs(activity, images, atas)
     np.savez(self.analysis_out_dir+"resopnse_"+save_info+".npz",
@@ -211,7 +211,7 @@ class Analyzer(object):
     Log statistics should be consistent across models, but in general it is expected that
     this method will be overwritten for specific models
     """
-    self.run_stats = stats_analysis(save_info)
+    self.run_stats = self.stats_analysis(save_info)
 
   def load_analysis(self, save_info=""):
     # Run statistics

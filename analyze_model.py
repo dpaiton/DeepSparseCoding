@@ -6,8 +6,8 @@ import utils.data_processing as dp
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "subspace_lca",
-  "model_name": "subspace_lca",
+  "model_type": "gdn_autoencoder",
+  "model_name": "gdn_autoencoder",
   "version": "0.0",
   "data_type": "vanHateren",
   "device": "/gpu:0",
@@ -16,16 +16,13 @@ analysis_params = {
   "num_patches": 1e4,
   "do_basis_analysis": True,
   "ft_padding": 32, # Fourier analysis padding for weight fitting
-  "do_inference": True,
+  "do_inference": False,
   "num_inference_images": 5, # How many random images to average over for inference statistics
-  "do_atas": False,
+  "do_atas": True,
   "num_noise_images": 300, # How many noise images to compute noise ATAs
-  "input_scale": 18, # LCA/SA
-  #"input_scale": 0.5, # ICA
-  #"input_scale": 13, # RICA
-  #"input_scale": 1.0,
+  "input_scale": 15, # Will vary depending on preprocessing
   "cov_num_images": int(1e5), # Number of images used to compute cov matrix (LCA_PCA)
-  "neuron_indices": None} # Which neurons to run tuning experiments on
+  "neuron_indices": None} # Which neurons to run tuning experiments on (None to do all)
   #"contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
   #"phases": np.linspace(-np.pi, np.pi, 8),
   #"orientations": np.linspace(0.0, np.pi, 16)}
