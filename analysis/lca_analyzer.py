@@ -16,10 +16,6 @@ class LCA_Analyzer(Analyzer):
 
   def load_params(self, params):
     super(LCA_Analyzer, self).load_params(params)
-    if "num_noise_images" in params.keys():
-      self.num_noise_images = params["num_noise_images"]
-    else:
-      self.num_noise_images = 100
     if "num_inference_images" in params.keys():
       self.num_inference_images = params["num_inference_images"]
     else:
@@ -48,13 +44,21 @@ class LCA_Analyzer(Analyzer):
 
   def run_base_analysis(self, images, save_info):
     self.evals = self.evaluate_model(images, self.var_names)
-    self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
-    self.atcs = self.compute_atcs(self.evals["inference/activity:0"], images, self.atas)
+    self.analysis_logger.log_info("Image analysis is complete.")
+    if self.do_atas:
+      self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
+      self.atcs = self.compute_atcs(self.evals["inference/activity:0"], images, self.atas)
+    else:
+      self.atas = None
+      self.atcs = None
+    self.analysis_logger.log_info("Activitity triggered response analysis is complete.")
     self.bf_stats = dp.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
       num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
+    self.analysis_logger.log_info("Dictionary analysis is complete.")
     image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
       replace=False)
     self.inference_stats = self.evaluate_inference(images[image_indices, ...])
+    self.analysis_logger.log_info("Inference analysis is complete.")
     np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas, "atcs":self.atcs,
       "inference_stats":self.inference_stats, "var_names":self.var_names, "bf_stats":self.bf_stats})

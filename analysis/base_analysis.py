@@ -89,6 +89,14 @@ class Analyzer(object):
       self.ot_phases = params["phases"]
     else:
       self.ot_phases = None
+    if "num_noise_images" in params.keys():
+      self.num_noise_images = params["num_noise_images"]
+    else:
+      self.num_noise_images = 100
+    if "atas" in params.keys():
+      self.do_atas = params["atas"]
+    else:
+      self.do_atas = True
 
   def make_dirs(self):
     """Make output directories"""

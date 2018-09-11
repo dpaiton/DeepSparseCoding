@@ -17,6 +17,7 @@ analysis_params = {
   "ft_padding": 32, #Fourier analysis padding for weight fitting
   "num_inference_images": 5, #How many random images to average over for inference statistics
   "num_noise_images": 300, #How many noise images to compute noise ATAs
+  "atas": False,
   "input_scale": 18, # LCA/SA
   #"input_scale": 0.5, # ICA
   #"input_scale": 13, # RICA
