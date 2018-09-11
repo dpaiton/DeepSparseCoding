@@ -14,16 +14,18 @@ analysis_params = {
   "save_info": "analysis",
   "overwrite_analysis": True,
   "num_patches": 1e4,
-  "ft_padding": 32, #Fourier analysis padding for weight fitting
-  "num_inference_images": 5, #How many random images to average over for inference statistics
-  "num_noise_images": 300, #How many noise images to compute noise ATAs
-  "atas": False,
+  "do_basis_analysis": True,
+  "ft_padding": 32, # Fourier analysis padding for weight fitting
+  "do_inference": True,
+  "num_inference_images": 5, # How many random images to average over for inference statistics
+  "do_atas": False,
+  "num_noise_images": 300, # How many noise images to compute noise ATAs
   "input_scale": 18, # LCA/SA
   #"input_scale": 0.5, # ICA
   #"input_scale": 13, # RICA
   #"input_scale": 1.0,
-  "cov_num_images": int(1e5), #number of images used to compute cov matrix (LCA_PCA)
-  "neuron_indices": None}#, # which neurons to run tuning experiments on
+  "cov_num_images": int(1e5), # Number of images used to compute cov matrix (LCA_PCA)
+  "neuron_indices": None} # Which neurons to run tuning experiments on
   #"contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
   #"phases": np.linspace(-np.pi, np.pi, 8),
   #"orientations": np.linspace(0.0, np.pi, 16)}
@@ -50,4 +52,4 @@ analyzer.run_analysis(data["train"].images, save_info=analysis_params["save_info
 img_params = {"data_type": analysis_params["data_type"], "num_images": 2, "extract_patches": False,
   "image_edge_size": 256, "data_dir": os.path.expanduser("~")+"/Work/Datasets/", "random_seed": 5}
 full_img = dp.reshape_data(ds.get_data(img_params)["train"].images[0], flatten=False)[0]
-analyzer.run_recon_analysis(full_img, save_info=analysis_params["save_info"])
+analyzer.run_patch_recon_analysis(full_img, save_info=analysis_params["save_info"])

@@ -9,9 +9,6 @@ class LCA_PCA_Analyzer(LCA_Analyzer):
 
   def load_params(self, params):
     super(LCA_PCA_Analyzer, self).load_params(params)
-    if "rand_seed" in params.keys():
-      self.rand_seed = params["rand_seed"]
-      self.rand_state = np.random.RandomState(self.rand_seed)
     self.cov_num_images = params["cov_num_images"]
 
   def run_analysis(self, images, save_info=""):

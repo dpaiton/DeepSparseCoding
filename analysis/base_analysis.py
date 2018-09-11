@@ -57,6 +57,14 @@ class Analyzer(object):
       self.device = self.model_params["device"]
     if "data_dir" in params.keys():
       self.model_params["data_dir"] = params["data_dir"]
+    if "rand_seed" in params.keys():
+      self.rand_seed = params["rand_seed"]
+      self.rand_state = np.random.RandomState(self.rand_seed)
+    # BF Fits
+    if "do_basis_analysis" in params.keys():
+      self.do_basis_analysis = params["do_basis_analysis"]
+    else:
+      self.do_basis_analysis = False
     if "ft_padding" in params.keys():
       self.ft_padding = params["ft_padding"]
     else:
@@ -69,6 +77,16 @@ class Analyzer(object):
       self.gauss_thresh = params["gauss_thresh"]
     else:
       self.gauss_thresh = 0.2
+    # Activity Triggered Averages
+    if "do_atas" in params.keys():
+      self.do_atas = params["do_atas"]
+    else:
+      self.do_atas = False
+    if "num_noise_images" in params.keys():
+      self.num_noise_images = params["num_noise_images"]
+    else:
+      self.num_noise_images = 100
+    #  Orientation Selectivity
     if "input_scale" in params.keys():
       self.input_scale = params["input_scale"]
     else:
@@ -89,14 +107,6 @@ class Analyzer(object):
       self.ot_phases = params["phases"]
     else:
       self.ot_phases = None
-    if "num_noise_images" in params.keys():
-      self.num_noise_images = params["num_noise_images"]
-    else:
-      self.num_noise_images = 100
-    if "atas" in params.keys():
-      self.do_atas = params["atas"]
-    else:
-      self.do_atas = True
 
   def make_dirs(self):
     """Make output directories"""
@@ -111,26 +121,137 @@ class Analyzer(object):
     """Wrapper function for parsing the log statistics"""
     return self.model_logger.read_stats(self.model_log_text)
 
+  def stats_analysis(self, save_info):
+    """Run stats extracted from the logfile"""
+    run_stats = self.get_log_stats()
+    np.savez(self.analysis_out_dir+"run_stats_"+save_info+".npz", data={"run_stats":self.run_stats})
+    self.analysis_logger.log_info("Run stats analysis is complete.")
+    return run_stats
+
+  def eval_analysis(self, images, var_names, save_info):
+    evals = self.evaluate_model(images, var_names)
+    np.savez(self.analysis_out_dir+"evals_"+save_info+".npz", data={"evals":evals})
+    self.analysis_logger.log_info("Image analysis is complete.")
+    return evals
+
+  def basis_analysis(self, weights, save_info):
+    bf_stats = dp.get_dictionary_stats(weights, padding=self.ft_padding,
+      num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
+    np.savez(self.analysis_out_dir+"basis_"+save_info+".npz", data={"bf_stats":self.bf_stats})
+    self.analysis_logger.log_info("Dictionary analysis is complete.")
+    return bf_stats
+
+  def ata_analysis(self, images, activity, save_info)
+    atas = self.compute_atas(activity, images)
+    atcs = self.compute_atcs(activity, images, atas)
+    np.savez(self.analysis_out_dir+"resopnse_"+save_info+".npz",
+      data={"atas":atas, "atcs":atcs})
+    self.analysis_logger.log_info("Activity triggered analysis is complete.")
+    return (atas, atcs)
+
+  def run_noise_analysis(self, save_info, batch_size=100):
+    """
+    TODO: compute per batch
+    """
+    noise_shape = [self.num_noise_images] + self.model_params["data_shape"]
+    noise_images = self.rand_state.standard_normal(noise_shape)
+    noise_activity = self.compute_activations(noise_images)
+    noise_atas = self.compute_atas(noise_activity, noise_images)
+    noise_atcs = self.compute_atcs(noise_activity, noise_images, noise_atas)
+    np.savez(self.analysis_out_dir+"noise_responses_"+save_info+".npz",
+      data={"num_noise_images":self.num_noise_images, "noise_activity":noise_activity,
+      "noise_atas":noise_atas, "noise_atcs":noise_atcs})
+    self.analysis_logger.log_info("Noise analysis is complete.")
+    return (noise_activity, noise_atas, noise_atcs)
+
+  def grating_analysis(self, weight_stats, save_info):
+    ot_grating_responses = self.orientation_tuning(weight_stats, self.ot_contrasts,
+      self.ot_orientations, self.ot_phases, self.ot_neurons, scale=self.input_scale)
+    np.savez(self.analysis_out_dir+"ot_responses_"+save_info+".npz", data=ot_grating_responses)
+    ot_mean_activations = ot_grating_responses["mean_responses"]
+    base_orientations = [self.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
+      for bf_idx in range(len(ot_grating_responses["neuron_indices"]))]
+    co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
+      self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons,
+      scale=self.input_scale)
+    np.savez(self.analysis_out_dir+"co_responses_"+save_info+".npz", data=co_grating_responses)
+    self.analysis_logger.log_info("Grating  analysis is complete.")
+    return (ot_grating_responses, co_grating_responses)
+
+  def run_patch_recon_analysis(self, full_image, save_info):
+    """
+    Break image into patches, compute recons, reassemble recons back into a full image
+    """
+    self.full_image = full_image
+    if self.model_params["whiten_data"]:
+      # FT method is the only one that works on full images
+      wht_img, img_mean, ft_filter = dp.whiten_data(full_image,
+        method="FT", lpf_cutoff=self.model_params["lpf_cutoff"])
+    img_patches = dp.extract_patches(wht_img,
+      out_shape=(1, self.model_params["patch_edge_size"], self.model_params["patch_edge_size"], 1),
+      overlapping=False, randomize=False, var_thresh=0.0)
+    img_patches, orig_shape = dp.reshape_data(img_patches, flatten=True)[:2]
+    model_eval = self.evaluate_model(img_patches,
+      ["inference/activity:0", "output/reconstruction:0"])
+    recon_patches = model_eval["output/reconstruction:0"]
+    a_vals = model_eval["inference/activity:0"]
+    self.recon_frac_act = np.array(np.count_nonzero(a_vals) / float(a_vals.size))
+    recon_patches = dp.reshape_data(recon_patches, flatten=False, out_shape=orig_shape)[0]
+    self.full_recon = dp.patches_to_image(recon_patches, full_image.shape)
+    if self.model_params["whiten_data"]:
+      self.full_recon = dp.unwhiten_data(self.full_recon, img_mean, ft_filter, method="FT")
+    np.savez(self.analysis_out_dir+"full_recon_"+save_info+".npz",
+      data={"full_image":self.full_image, "full_recon":self.full_recon,
+      "recon_frac_act":self.recon_frac_act})
+    self.analysis_logger.log_info("Patch recon analysis is complete.")
+
   def run_analysis(self, images, save_info=""):
     """
     Wrapper function for running all available model analyses
     Log statistics should be consistent across models, but in general it is expected that
     this method will be overwritten for specific models
     """
-    self.run_stats = self.get_log_stats()
+    self.run_stats = stats_analysis(save_info)
 
-  def run_noise_analysis(self, save_info, batch_size=100):
-    """
-    TODO: compute per batch
-    """
-    noise_images = self.rand_state.standard_normal([self.num_noise_images]+self.model_params["data_shape"])
-    self.noise_activity = self.compute_activations(noise_images)
-    self.noise_atas = self.compute_atas(self.noise_activity, noise_images)
-    self.noise_atcs = self.compute_atcs(self.noise_activity, noise_images, self.noise_atas)
-    np.savez(self.analysis_out_dir+"noise_responses_"+save_info+".npz",
-      data={"num_noise_images":self.num_noise_images, "noise_activity":self.noise_activity,
-      "noise_atas":self.noise_atas, "noise_atcs":self.noise_atcs})
-    self.analysis_logger.log_info("Noise analysis is complete.")
+  def load_analysis(self, save_info=""):
+    # Run statistics
+    stats_file_loc = self.analysis_out_dir+"run_stats_"+save_info+".npz"
+    if os.path.exists(stats_file_loc):
+      self.run_stats = np.load(stats_file_loc)["data"].item()["run_stats"]
+    # var_names evaluated
+    eval_file_loc = self.analysis_out_dir+"evals_"+save_info+".npz"
+    if os.path.exists(eval_file_loc):
+      self.evals = np.load(eval_file_loc)["data"].item()["evals"]
+    # Basis function fits
+    bf_file_loc = self.analysis_out_dir
+    if os.path.exists(bf_file_loc):
+      self.bf_stats = np.load(bf_file_loc)["data"].item()["bf_stats"]
+    # Activity triggered analysis
+    act_file_loc = self.analysis_out_dir+"response_"+save_info+".npz"
+    if os.path.exists(act_file_loc):
+      act_analysis = np.load(act_file_loc)["data"].item()
+      self.atas = act_analysis["atas"]
+      self.atcs = act_analysis["atcs"]
+    noise_file_loc = self.analysis_out_dir+"noise_responses_"+save_info+".npz"
+    if os.path.exists(noise_file_loc):
+      noise_analysis = np.load(noise_file_loc)["data"].item()
+      self.noise_activity = noise_analysis["noise_activity"]
+      self.noise_atas = noise_analysis["noise_atas"]
+      self.noise_atcs = noise_analysis["noise_atcs"]
+      self.num_noise_images = self.noise_activity.shape[0]
+    # Orientation analysis
+    tuning_file_locs = [self.analysis_out_dir+"ot_responses_"+save_info+".npz",
+      self.analysis_out_dir+"co_responses_"+save_info+".npz"]
+    if os.path.exists(tuning_file_locs[0]):
+      self.ot_grating_responses = np.load(tuning_file_locs[0])["data"].item()
+    if os.path.exists(tuning_file_locs[1]):
+      self.co_grating_responses = np.load(tuning_file_locs[1])["data"].item()
+    recon_file_loc = self.analysis_out_dir+"full_recon_"+save_info+".npz"
+    if os.path.exists(recon_file_loc):
+      recon_analysis = np.load(recon_file_loc)["data"].item()
+      self.full_image = recon_analysis["full_image"]
+      self.full_recon = recon_analysis["full_recon"]
+      self.recon_frac_act = recon_analysis["recon_frac_act"]
 
   def evaluate_model(self, images, var_names):
     """
