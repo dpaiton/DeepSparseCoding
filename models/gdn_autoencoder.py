@@ -168,31 +168,33 @@ class GDN_Autoencoder(Model):
 
         with tf.variable_scope("inference") as scope:
           u_enc = tf.add(tf.matmul(self.x, self.w_enc), self.b_enc, name="u_enc")
-          self.a, self.w_gdn, self.b_gdn, self.gdn_mult = self.gdn(layer_id=0, u_in=u_enc,
+          u_out, self.w_gdn, self.b_gdn, self.gdn_mult = self.gdn(layer_id=0, u_in=u_enc,
             inverse=False)
-          self.gdn_entropies = self.compute_entropies(self.a)
-          noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.a),
-            tf.reduce_min(self.a)))
-          uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(self.a)),
+          self.gdn_entropies = self.compute_entropies(u_out)
+          noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(u_out),
+            tf.reduce_min(u_out)))
+          uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(u_out)),
             minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
-          self.a_noise = tf.add(uniform_noise, self.a, name="activity")
+          a_noise = tf.add(uniform_noise, u_out, name="activity")
+          self.a = tf.identity(u_out, name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
-          self.a_sig = self.sigmoid(self.a_noise, self.sigmoid_beta)
-          ll = ef.log_likelihood(self.a_sig, self.mle_thetas, self.triangle_centers)
+          a_sig = self.sigmoid(a_noise, self.sigmoid_beta)
+          ll = ef.log_likelihood(a_sig, self.mle_thetas, self.triangle_centers)
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
             for _ in range(self.num_mle_steps)]
 
         with tf.name_scope("output") as scope:
-          u_dec = tf.add(tf.matmul(self.a_noise, self.w_dec), self.b_dec, name="u_dec")
-          self.x_, self.w_igdn, self.b_igdn, self.igdn_mult = self.gdn(layer_id=1, u_in=u_dec,
+          u_dec = tf.add(tf.matmul(a_noise, self.w_dec), self.b_dec, name="u_dec")
+          x_, self.w_igdn, self.b_igdn, self.igdn_mult = self.gdn(layer_id=1, u_in=u_dec,
             inverse=True)
+          self.x_ = tf.identity(x_, name="reconstruction")
           self.w_gdn_list = [self.w_gdn, self.w_igdn]
           self.b_gdn_list = [self.b_gdn, self.b_igdn]
 
         with tf.name_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.x_),
-            "entropy_loss":self.compute_entropy_loss(self.a_noise),
+            "entropy_loss":self.compute_entropy_loss(a_noise),
             "weight_decay_loss":self.compute_weight_decay_loss()}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
@@ -367,11 +369,11 @@ class GDN_Autoencoder(Model):
       fig = pf.plot_data_tiled(recon, normalize=False,
         title="Recons at step "+current_step, vmin=None, vmax=None,
         save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
-      for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-        grad = weight_grad_var[0][0].eval(feed_dict)
-        shape = grad.shape
-        name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-        grad = dp.reshape_data(grad.T, flatten=False)[0]
-        fig = pf.plot_data_tiled(grad, normalize=True,
-          title="Gradient for"+name+" at step "+current_step, vmin=None, vmax=None,
-          save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+      #  grad = weight_grad_var[0][0].eval(feed_dict)
+      #  shape = grad.shape
+      #  name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+      #  grad = dp.reshape_data(grad.T, flatten=False)[0]
+      #  fig = pf.plot_data_tiled(grad, normalize=True,
+      #    title="Gradient for"+name+" at step "+current_step, vmin=None, vmax=None,
+      #    save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"-"+current_step.zfill(5)+".png"))
