@@ -192,7 +192,7 @@ class LCA(Model):
     super(LCA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
-      self.total_loss, self.a, self.x_]
+      self.total_loss, self.a, self.x_, self.pSNRdB]
     grad_name_list = []
     learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
@@ -201,7 +201,7 @@ class LCA(Model):
       grad_name_list.append(grad_name)
       learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    current_step, recon_loss, sparse_loss, total_loss, a_vals, recon = out_vals[0:6]
+    current_step, recon_loss, sparse_loss, total_loss, a_vals, recon, pSNRdB = out_vals[0:7]
     input_max = np.max(input_data)
     input_mean = np.mean(input_data)
     input_min = np.min(input_data)
@@ -213,6 +213,7 @@ class LCA(Model):
     a_vals_min = np.array(a_vals.min())
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
+    avg_psnr = np.mean(pSNRdB)
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
@@ -220,10 +221,11 @@ class LCA(Model):
       "sparse_loss":sparse_loss,
       "total_loss":total_loss,
       "a_fraction_active":a_frac_act,
+      "pSNRdB":avg_psnr,
       "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
-    grads = out_vals[6:]
+    grads = out_vals[7:]
     for grad, name in zip(grads, grad_name_list):
       grad_max = learning_rate_dict[name]*np.array(grad.max())
       grad_min = learning_rate_dict[name]*np.array(grad.min())
