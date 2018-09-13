@@ -24,7 +24,7 @@ class SUBSPACE_LCA(LCA):
     #    neuron indices assigned to that group
     self.group_ids = [neuron_ids[start:start+self.num_neurons_per_group]
       for start in range(0, self.num_neurons, self.num_neurons_per_group)]
-    # group_assignemnts is an array of shape [self.num_neurons] that conatins a group assignemnt
+    # group_assignemnts is an array of shape [self.num_neurons] that conatins a group assignment
     #    for each neuron index
     self.group_assignments = np.zeros(self.num_neurons, dtype=np.float32) 
     for group_index, group_member_indices in enumerate(self.group_ids):
@@ -81,6 +81,37 @@ class SUBSPACE_LCA(LCA):
       sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(sigmas, axis=1),
         name="group_sparse_loss")
     return sparse_loss
+
+  def compute_group_orthogonalization_loss(self, a_in):
+    with tf.name_scope("unsupervised"):
+      # For each group
+        # assemble matrix of W = [num_pixels, num_neurons_in_group]
+        # compute E =  ( W^T * W ) - I
+        # loss = mean(loss_mult * E)
+      w_slices = [self.slice_features(self.phi, group_member_indices)
+        for group_member_indices in self.group_ids]
+      w_orth_list = [tf.subtract(tf.matmul(tf.transpose(w_slice[group_idx]), w_slice[group_idx]),
+        tf.eye(tf.shape(w_slice[group_idx])[0], tf.shape(w_slice[group_idx])[1]))
+        for group_idx in self.group_ids]
+      group_orthogonalization_loss = tf.multiply(self.group_orth_mult, tf.add_n(w_orth_list),
+        name="group_orth_loss")
+    return group_orthogonalization_loss
+
+  def get_loss_funcs(self):
+    return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss,
+      "orthogonalization_loss":self.compute_group_orthogonalization_loss}
+
+  def build_graph(self):
+    """Build the TensorFlow graph object"""
+    with tf.device(self.device):
+      with self.graph.as_default():
+        with tf.name_scope("auto_placeholders") as scope:
+          self.group_orth_mult = tf.placeholder(tf.float32, shape=(), name="group_orth_mult")
+    
+    super(SUBSPACE_LCA, self).build_graph()
+  #      with tf.name_scope("norm_groups") as scope:
+  #        self.norm_group = # orthogonalize weights within group
+  #        self.norm_groups = tf.group(self.norm_phi, name="group_orthogonlization")
 
   def generate_plots(self, input_data, input_labels=None):
     """
