@@ -223,7 +223,7 @@ class Analyzer(object):
     if os.path.exists(eval_file_loc):
       self.evals = np.load(eval_file_loc)["data"].item()["evals"]
     # Basis function fits
-    bf_file_loc = self.analysis_out_dir
+    bf_file_loc = self.analysis_out_dir+"basis_"+save_info+".npz"
     if os.path.exists(bf_file_loc):
       self.bf_stats = np.load(bf_file_loc)["data"].item()["bf_stats"]
     # Activity triggered analysis
