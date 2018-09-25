@@ -21,13 +21,13 @@ params = {
   "patch_variance_threshold": 0.0,
   "batch_size": 100,
   "num_neurons": 768,
-  "optimizer": "adam",#"annealed_sgd",
+  "optimizer": "annealed_sgd",#"adam",
   "cp_int": 10000,
   "max_cp_to_keep": 1,
   "cp_load": False,
-  "log_int": 10,
+  "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 1000,
+  "gen_plot_int": 10000,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/gpu:0",
@@ -37,11 +37,11 @@ params = {
 
 schedule = [
   {"weights": ["w_enc", "b_enc", "w_dec", "b_dec"],
-  "sparse_mult": 4.0,
+  "sparse_mult": 5.0,
   "decay_mult": 0.02,
   "target_act": 0.01,
-  "weight_lr": [0.01,]*4,
-  "decay_steps": [int(1e4*0.5),]*4,
+  "weight_lr": [0.002,]*4,
+  "decay_steps": [int(1e6*0.5),]*4,
   "decay_rate": [0.5,]*4,
   "staircase": [True,]*4,
-  "num_batches": int(1e4)}]
+  "num_batches": int(1e6)}]

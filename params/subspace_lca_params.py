@@ -34,7 +34,7 @@ params = {
   "cp_load_step": None, # latest checkpoint
   "cp_load_ver": "0.0",
   "cp_load_var": ["phi"],
-  "log_int": 10,
+  "log_int": 100,
   "log_to_file": True,
   "gen_plot_int": 1000,
   "save_plots": True,
@@ -52,4 +52,4 @@ schedule = [
   "decay_steps": [int(5e4*0.5)],
   "decay_rate": [0.5],
   "staircase": [True],
-  "num_batches": 5000}]#int(5e4)}]
+  "num_batches": int(5e4)}]

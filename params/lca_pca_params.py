@@ -6,7 +6,7 @@ params = {
   "num_images": 150,
   "vectorize_data": True,
   "norm_data": False,
-  "center_data": False,
+  "center_data": True,
   "standardize_data": False,
   "contrast_normalize": False,
   "whiten_data": True,
@@ -22,7 +22,7 @@ params = {
   "batch_size": 100,
   "num_neurons": 768,
   "num_pooling_units": 192,
-  "num_steps": 50,
+  "num_steps": 60,
   "dt": 0.001,
   "tau": 0.03,
   "rectify_a": True,
@@ -48,7 +48,7 @@ params = {
 
 schedule = [
   {"weights": ["phi"],
-  "sparse_mult": 0.8,
+  "sparse_mult": 1.0,
   "weight_lr": [0.01],
   "decay_steps": [int(1e5*0.5)],
   "decay_rate": [0.8],
