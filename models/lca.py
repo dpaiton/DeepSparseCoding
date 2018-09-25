@@ -148,6 +148,7 @@ class LCA(Model):
         phi_norm_dim = list(range(len(self.phi_shape)-1)) # normalize across input dim(s)
 
         with tf.variable_scope("weights") as scope:
+          self.weight_scope = tf.get_variable_scope()
           phi_init = tf.nn.l2_normalize(tf.truncated_normal(self.phi_shape, mean=0.0,
             stddev=0.5, dtype=tf.float32), dim=phi_norm_dim, epsilon=self.eps, name="phi_init")
           self.phi = tf.get_variable(name="phi", dtype=tf.float32, initializer=phi_init,

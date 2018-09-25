@@ -26,7 +26,7 @@ class SUBSPACE_LCA(LCA):
       for start in range(0, self.num_neurons, self.num_neurons_per_group)]
     # group_assignemnts is an array of shape [self.num_neurons] that conatins a group assignment
     #    for each neuron index
-    self.group_assignments = np.zeros(self.num_neurons, dtype=np.float32) 
+    self.group_assignments = np.zeros(self.num_neurons, dtype=np.float32)
     for group_index, group_member_indices in enumerate(self.group_ids):
       for neuron_id in group_member_indices:
         self.group_assignments[neuron_id] = group_index
@@ -38,22 +38,23 @@ class SUBSPACE_LCA(LCA):
     """
     sigmas_resh = tf.stack([group_amplitudes[:, int(group_index)]
       for group_index in self.group_assignments], axis=-1, name=name)
-    return sigmas_resh 
+    return sigmas_resh
 
   def group_amplitudes(self, a_in, name=None):
     """
     group_amplitudes returns each neuron's group index:
       sigma_i = ||a_{j in i}||_2
-    Although sigmas should be the shape [num_batch, num_group], here we reshape it so that 
+    TODO: This comment and the ones inline are confusing...
+    Although sigmas should be the shape [num_batch, num_group], here we reshape it so that
     it can be easily used for thresholding later.
     """
     # [num_batch, num_neurons_per_group, num_groups]
     a_column_slices = tf.stack([self.slice_features(a_in, group_member_indices)
-      for group_member_indices in self.group_ids], axis=-1) 
+      for group_member_indices in self.group_ids], axis=-1)
     # [num_batch, num_groups]
     sigmas = tf.sqrt(tf.reduce_sum(tf.square(a_column_slices), axis=1, keep_dims=False))
-    return sigmas 
-  
+    return sigmas
+
   def group_directions(self, a_in, sigmas, name=None):
     """
     group_directions returns each neurons direction normalized by the group amplitude:
@@ -63,6 +64,11 @@ class SUBSPACE_LCA(LCA):
     """
     directions = tf.divide(a_in, sigmas, name=name)
     return directions
+
+  def get_group_weights(self):
+    weights = [self.slice_features(self.phi, group_member_indices)
+      for group_member_indices in self.group_ids]
+    return weights
 
   def threshold_units(self, u_in):
     """
@@ -88,11 +94,10 @@ class SUBSPACE_LCA(LCA):
         # assemble matrix of W = [num_pixels, num_neurons_in_group]
         # compute E =  ( W^T * W ) - I
         # loss = mean(loss_mult * E)
-      w_slices = [self.slice_features(self.phi, group_member_indices)
-        for group_member_indices in self.group_ids]
-      w_orth_list = [tf.subtract(tf.matmul(tf.transpose(w_slice[group_idx]), w_slice[group_idx]),
-        tf.eye(tf.shape(w_slice[group_idx])[0], tf.shape(w_slice[group_idx])[1]))
-        for group_idx in self.group_ids]
+      w_slices = self.get_group_weights()
+      w_orth_list = [tf.reduce_sum(tf.abs(tf.subtract(tf.matmul(tf.transpose(w_slices[group_idx]),
+        w_slices[group_idx]), tf.eye(self.num_neurons_per_group, self.num_neurons_per_group))))
+        for group_idx in range(self.num_groups)]
       group_orthogonalization_loss = tf.multiply(self.group_orth_mult, tf.add_n(w_orth_list),
         name="group_orth_loss")
     return group_orthogonalization_loss
@@ -107,8 +112,13 @@ class SUBSPACE_LCA(LCA):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.group_orth_mult = tf.placeholder(tf.float32, shape=(), name="group_orth_mult")
-    
     super(SUBSPACE_LCA, self).build_graph()
+    with tf.device(self.device):
+      with self.graph.as_default():
+        with tf.variable_scope(self.weight_scope):
+          self.group_weights = tf.stack(self.get_group_weights(), axis=1, name="group_weights")
+        with tf.variable_scope("inference"):
+          self.group_activity = tf.identity(self.group_amplitudes(self.a), name="group_activity")
   #      with tf.name_scope("norm_groups") as scope:
   #        self.norm_group = # orthogonalize weights within group
   #        self.norm_groups = tf.group(self.norm_phi, name="group_orthogonlization")
@@ -121,7 +131,7 @@ class SUBSPACE_LCA(LCA):
       input_labels: data object containing the current label batch
     """
     # super gets feed_dict, phi, and current_step
-    super(SUBSPACE_LCA, self).generate_plots(input_data, input_labels) 
+    super(SUBSPACE_LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.phi]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)

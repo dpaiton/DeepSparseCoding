@@ -209,11 +209,11 @@ class Sigmoid_Autoencoder(Model):
       fig = pf.plot_data_tiled(recon, normalize=False,
         title="Recons at step "+current_step, vmin=None, vmax=None,
         save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
-      for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-        grad = weight_grad_var[0][0].eval(feed_dict)
-        shape = grad.shape
-        name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-        grad = dp.reshape_data(grad.T, flatten=False)[0]
-        fig = pf.plot_data_tiled(grad, normalize=True,
-          title="Gradient for"+name+" at step "+current_step, vmin=None, vmax=None,
-          save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+      #  grad = weight_grad_var[0][0].eval(feed_dict)
+      #  shape = grad.shape
+      #  name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+      #  grad = dp.reshape_data(grad.T, flatten=False)[0]
+      #  fig = pf.plot_data_tiled(grad, normalize=True,
+      #    title="Gradient for"+name+" at step "+current_step, vmin=None, vmax=None,
+      #    save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"-"+current_step.zfill(5)+".png"))
