@@ -30,7 +30,7 @@ class LCA_Analyzer(Analyzer):
       replace=False)
     inference_stats = self.evaluate_inference(images[image_indices, ...])
     np.savez(self.analysis_out_dir+"inference_"+save_info+".npz",
-      data={"inference_stats":self.inference_stats})
+      data={"inference_stats":inference_stats})
     self.analysis_logger.log_info("Inference analysis is complete.")
     return inference_stats
 

@@ -6,19 +6,19 @@ import utils.data_processing as dp
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "gdn_autoencoder",
-  "model_name": "gdn_autoencoder",
+  "model_type": "subspace_lca",
+  "model_name": "subspace_lca",
   "version": "0.0",
   "data_type": "vanHateren",
   "device": "/gpu:0",
   "save_info": "analysis",
-  "overwrite_analysis": True,
+  "overwrite_analysis_log": True,
   "num_patches": 1e4,
   "do_basis_analysis": True,
   "ft_padding": 32, # Fourier analysis padding for weight fitting
   "do_inference": False,
   "num_inference_images": 5, # How many random images to average over for inference statistics
-  "do_atas": True,
+  "do_atas": False,
   "num_noise_images": 300, # How many noise images to compute noise ATAs
   "input_scale": 15, # Will vary depending on preprocessing
   "cov_num_images": int(1e5), # Number of images used to compute cov matrix (LCA_PCA)

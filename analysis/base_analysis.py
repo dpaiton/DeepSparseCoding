@@ -22,7 +22,7 @@ class Analyzer(object):
     self.analysis_out_dir = params["model_dir"]+"/analysis/"+params["version"]+"/"
     self.make_dirs() # If analysis log does not exist then we want to make the folder first
     self.analysis_log_file = self.analysis_out_dir+"analysis.log"
-    if "overwrite_analysis" in params.keys() and params["overwrite_analysis"]:
+    if "overwrite_analysis_log" in params.keys() and params["overwrite_analysis_log"]:
       if os.path.exists(self.analysis_log_file):
         os.remove(self.analysis_log_file)
     if os.path.exists(self.analysis_log_file) and os.stat(self.analysis_log_file).st_size != 0:
@@ -615,4 +615,4 @@ class Analyzer(object):
     v = bf2 - np.dot(bf2[:,None].T, bf1[:,None]) * bf1
     v = np.squeeze((v / np.linalg.norm(v)).T)
     proj_matrix = np.stack([bf1, v], axis=0)
-    return proj_matrix
+    return proj_matrix, v
