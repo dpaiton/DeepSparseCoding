@@ -13,7 +13,7 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
     image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
       replace=False)
     self.inference_stats = self.evaluate_inference(images[image_indices, ...])
-    np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
+    np.savez(self.analysis_out_dir+"savefiles/analysis_"+save_info+".npz",
       data={"run_stats":self.run_stats, "evals":self.evals, "inference_stats":self.inference_stats,
       "var_names":self.var_names})
 

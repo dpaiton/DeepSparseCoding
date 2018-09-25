@@ -21,7 +21,7 @@ class LCA_PCA_Analyzer(LCA_Analyzer):
     self.act_cov, self.a_eigvals, self.a_eigvecs, self.pooling_filters, self.a2, self.pooled_act = cov
     self.evec_atas = self.compute_atas(self.a2, image_dataset["test"].images)
     self.pool_atas = self.compute_atas(self.pooled_act, image_dataset["test"].images)
-    np.savez(self.analysis_out_dir+"second_layer_atas_"+save_info+".npz",
+    np.savez(self.analysis_out_dir+"savefiles/second_layer_atas_"+save_info+".npz",
       data={"evec_atas":self.evec_atas, "pool_atas":self.pool_atas})
     self.analysis_logger.log_info("2nd layer activity  analysis is complete.")
 
@@ -85,7 +85,7 @@ class LCA_PCA_Analyzer(LCA_Analyzer):
       run_list = [self.model.eigen_vals, self.model.eigen_vecs, self.model.pooling_filters,
         self.model.a2, self.model.pooled_activity]
       a_eigvals, a_eigvecs, pooling_filters, a2, pooled_act = sess.run(run_list, feed_dict)
-    np.savez(self.analysis_out_dir+"pca_"+save_info+".npz",
+    np.savez(self.analysis_out_dir+"savefiles/pca_"+save_info+".npz",
       data={"act_cov":act_cov, "a_eigvals":a_eigvals, "a_eigvecs":a_eigvecs,
       "pooling_filters":pooling_filters, "a2":a2, "pooled_act":pooled_act})
     self.analysis_logger.log_info("PCA analysis is complete.")

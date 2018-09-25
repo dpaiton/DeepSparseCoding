@@ -29,7 +29,7 @@ class LCA_Analyzer(Analyzer):
     image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
       replace=False)
     inference_stats = self.evaluate_inference(images[image_indices, ...])
-    np.savez(self.analysis_out_dir+"inference_"+save_info+".npz",
+    np.savez(self.analysis_out_dir+"savefiles/inference_"+save_info+".npz",
       data={"inference_stats":inference_stats})
     self.analysis_logger.log_info("Inference analysis is complete.")
     return inference_stats
@@ -55,7 +55,7 @@ class LCA_Analyzer(Analyzer):
   def load_analysis(self, save_info=""):
     super(LCA_Analyzer, self).load_analysis(save_info)
     # Inference analysis
-    inference_file_loc = self.analysis_out_dir+"inference_"+save_info+".npz"
+    inference_file_loc = self.analysis_out_dir+"savefiles/inference_"+save_info+".npz"
     if os.path.exists(inference_file_loc):
       self.inference_stats = np.load(inference_file_loc)["data"].item()["inference_stats"]
 
