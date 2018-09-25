@@ -286,7 +286,6 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
   gs = gridspec.GridSpec(num_bases, num_top_cov_bases+2, hspace=0.6)
   for x_id in range(num_bases):
     primary_bf_idx = bf_indices[x_id]
-    a_cov_row = a_cov[primary_bf_idx, :]
     sorted_cov_indices = np.argsort(a_cov[primary_bf_idx, :])[-2::-1]
     primary_bf = np.squeeze(dp.reshape_data(weights.T[primary_bf_idx,...],
       flatten=False)[0])
