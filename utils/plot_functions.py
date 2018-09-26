@@ -992,19 +992,25 @@ def plot_inference_stats(data, title="", save_filename=None):
   plt.show()
   return fig
 
-def plot_inference_traces(data, activation_threshold, img_idx=0):
+def plot_inference_traces(data, activation_threshold, img_idx=0, act_indicator_threshold=None):
   """
   Plot of model neurons' inputs over time
   Args:
     data: [dict] with each trace, with keys [b, u, a, ga, images]
       Dictionary is created by analyze_lca.evaluate_inference()
     img_idx: [int] which image in data["images"] to run analysis on
+    act_indicator_threshold: [float] sets the threshold for when a neuron is marked as "recently active"
+      Recently active neurons are those that became active towards the end of the inference process
+      Recency is computed as any time step that is greater than num_inference_steps * act_indicator_threshold
+      Recently active neurons are indicated by a dotted magenta border
+      This input must be between 0.0 and 1.0
   """
   plt.rc('text', usetex=True)
   (num_images, num_time_steps, num_neurons) = data["b"].shape
   sqrt_nn = int(np.sqrt(num_neurons))
   global_max_val = float(np.max(np.abs([data["b"][img_idx,...],
-    data["u"][img_idx,...], data["ga"][img_idx,...], data["a"][img_idx,...]])))
+    data["u"][img_idx,...], data["ga"][img_idx,...], data["a"][img_idx,...],
+    np.ones_like(data["b"][img_idx,...])*activation_threshold])))
   fig, sub_axes = plt.subplots(sqrt_nn+2, sqrt_nn+1, figsize=(20, 20))
   fig.subplots_adjust(hspace=0.20, wspace=0.20)
   for (axis_idx, axis) in enumerate(fig.axes): # one axis per neuron
@@ -1038,8 +1044,20 @@ def plot_inference_traces(data, activation_threshold, img_idx=0):
       fig.lines.append(line)
       if (a[-1] > 0):
         clear_axis(axis, spines="magenta")
+        if act_indicator_threshold is not None:
+          assert act_indicator_threshold > 0.0 and act_indicator_threshold < 1.0, (
+            "act_indicator_threshold must be between 0.0 and 1.0")
+          thresh_index = int(num_time_steps * act_indicator_threshold)
+          if np.all([a[idx] == 0 for idx in range(0, thresh_index)]): # neuron has recently become active
+             for ax_loc in ["top", "bottom", "left", "right"]:
+              axis.spines[ax_loc].set_linestyle((1, (1, 3))) #length, spacing (on, off)
       else:
         clear_axis(axis, spines="black")
+        if act_indicator_threshold is not None:
+          thresh_index = int(num_time_steps * act_indicator_threshold)
+          if np.any([a[idx] > 0 for idx in range(thresh_index, num_time_steps)]): # neuron has recently become inactive
+             for ax_loc in ["top", "bottom", "left", "right"]:
+              axis.spines[ax_loc].set_linestyle((1, (1, 3))) #length, spacing (on, off)
     else:
       clear_axis(axis)
   num_pixels = np.size(data["images"][img_idx])
@@ -1205,10 +1223,8 @@ def clear_axes(ax, spines="none"):
   raise NotImplementedError
 
 def clear_axis(ax, spines="none"):
-  ax.spines["right"].set_color(spines)
-  ax.spines["top"].set_color(spines)
-  ax.spines["left"].set_color(spines)
-  ax.spines["bottom"].set_color(spines)
+  for ax_loc in ["top", "bottom", "left", "right"]:
+    ax.spines[ax_loc].set_color(spines)
   ax.set_yticklabels([])
   ax.set_xticklabels([])
   ax.get_xaxis().set_visible(False)

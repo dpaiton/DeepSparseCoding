@@ -6,21 +6,22 @@ import utils.data_processing as dp
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "subspace_lca",
-  "model_name": "subspace_lca",
+  "model_type": "lca",
+  "model_name": "lca",
   "version": "0.0",
   "data_type": "vanHateren",
   "device": "/gpu:0",
   "save_info": "analysis",
   "overwrite_analysis_log": True,
-  "num_patches": 1e4,
-  "do_basis_analysis": True,
-  "ft_padding": 32, # Fourier analysis padding for weight fitting
-  "do_inference": False,
-  "num_inference_images": 5, # How many random images to average over for inference statistics
+  "do_basis_analysis": False,
+  "do_inference": True,
   "do_atas": False,
+  "do_full_recon": False,
+  "num_patches": 1e4,
+  "ft_padding": 32, # Fourier analysis padding for weight fitting
+  "num_inference_images": 5, # How many random images to average over for inference statistics
   "num_noise_images": 300, # How many noise images to compute noise ATAs
-  "input_scale": 15, # Will vary depending on preprocessing
+  "input_scale": 13, # Will vary depending on preprocessing
   "cov_num_images": int(1e5), # Number of images used to compute cov matrix (LCA_PCA)
   "neuron_indices": None} # Which neurons to run tuning experiments on (None to do all)
   #"contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
@@ -46,7 +47,8 @@ analyzer.model_params["input_shape"] = [
 
 analyzer.run_analysis(data["train"].images, save_info=analysis_params["save_info"])
 
-img_params = {"data_type": analysis_params["data_type"], "num_images": 2, "extract_patches": False,
-  "image_edge_size": 256, "data_dir": os.path.expanduser("~")+"/Work/Datasets/", "random_seed": 5}
-full_img = dp.reshape_data(ds.get_data(img_params)["train"].images[0], flatten=False)[0]
-analyzer.run_patch_recon_analysis(full_img, save_info=analysis_params["save_info"])
+if analysis_params["do_full_recon"]:
+  img_params = {"data_type": analysis_params["data_type"], "num_images": 2, "extract_patches": False,
+    "image_edge_size": 256, "data_dir": os.path.expanduser("~")+"/Work/Datasets/", "random_seed": 5}
+  full_img = dp.reshape_data(ds.get_data(img_params)["train"].images[0], flatten=False)[0]
+  analyzer.run_patch_recon_analysis(full_img, save_info=analysis_params["save_info"])
