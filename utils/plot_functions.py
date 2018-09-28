@@ -992,7 +992,7 @@ def plot_inference_stats(data, title="", save_filename=None):
   plt.show()
   return fig
 
-def plot_inference_traces(data, activation_threshold, img_idx=0, act_indicator_threshold=None):
+def plot_inference_traces(data, activation_threshold, img_idx=None, act_indicator_threshold=None):
   """
   Plot of model neurons' inputs over time
   Args:
@@ -1008,6 +1008,8 @@ def plot_inference_traces(data, activation_threshold, img_idx=0, act_indicator_t
   plt.rc('text', usetex=True)
   (num_images, num_time_steps, num_neurons) = data["b"].shape
   sqrt_nn = int(np.sqrt(num_neurons))
+  if img_idx is None:
+    img_idx = np.random.choice(num_images)
   global_max_val = float(np.max(np.abs([data["b"][img_idx,...],
     data["u"][img_idx,...], data["ga"][img_idx,...], data["a"][img_idx,...],
     np.ones_like(data["b"][img_idx,...])*activation_threshold])))
