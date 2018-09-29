@@ -21,7 +21,7 @@ class Analyzer(object):
     # Load or create analysis params log
     self.analysis_out_dir = params["model_dir"]+"/analysis/"+params["version"]+"/"
     self.make_dirs() # If analysis log does not exist then we want to make the folder first
-    self.analysis_log_file = self.analysis_out_dir+"analysis.log"
+    self.analysis_log_file = self.analysis_out_dir+"/logfiles/analysis.log"
     if "overwrite_analysis_log" in params.keys() and params["overwrite_analysis_log"]:
       if os.path.exists(self.analysis_log_file):
         os.remove(self.analysis_log_file)
@@ -189,6 +189,8 @@ class Analyzer(object):
       # FT method is the only one that works on full images
       wht_img, img_mean, ft_filter = dp.whiten_data(full_image,
         method="FT", lpf_cutoff=self.model_params["lpf_cutoff"])
+    else:
+      wht_img = full_image
     img_patches = dp.extract_patches(wht_img,
       out_shape=(1, self.model_params["patch_edge_size"], self.model_params["patch_edge_size"], 1),
       overlapping=False, randomize=False, var_thresh=0.0)

@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
+import utils.plot_functions as pf
 
 class LCA_Analyzer(Analyzer):
   def __init__(self, params):
@@ -32,6 +33,16 @@ class LCA_Analyzer(Analyzer):
       self.num_inference_images = params["num_inference_images"]
     else:
       self.num_inference_images = 1
+    if "do_adversaries" in params.keys():
+      self.do_adversaries = params["do_adversaries"]
+      if "adversarial_eps" in params.keys():
+        self.adversarial_eps = params["adversarial_eps"]
+      else:
+        self.adversarial_eps = 0.01
+      if "adversarial_num_steps" in params.keys():
+        self.adversarial_num_steps = params["adversarial_num_steps"]
+      else:
+        self.adversarial_num_steps = 200
 
   def inference_analysis(self, images, save_info):
     image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
@@ -42,6 +53,18 @@ class LCA_Analyzer(Analyzer):
       data={"inference_stats":inference_stats})
     self.analysis_logger.log_info("Inference analysis is complete.")
     return inference_stats
+
+  def adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100):
+    input_image = images[input_id, ...][None,...].astype(np.float32)
+    target_image = images[target_id, ...][None,...].astype(np.float32)
+    adversarial_losses, adversarial_recons, adversarial_images = self.construct_adversarial_stimulus(input_image,
+      target_image, eps, num_steps)
+    np.savez(self.analysis_out_dir+"savefiles/adversary_losses_"+save_info+".npz",
+      data={"adversarial_losses":adversarial_losses, "adversarial_recons":adversarial_recons,
+      "adversarial_images":adversarial_images, "eps":eps, "num_steps":num_steps,
+      "input_id":input_id, "target_id":target_id})
+    self.analysis_logger.log_info("Adversary analysis is complete.")
+    return adversarial_losses, adversarial_recons, adversarial_images
 
   def run_analysis(self, images, save_info=""):
     super(LCA_Analyzer, self).run_analysis(images, save_info)
@@ -54,6 +77,9 @@ class LCA_Analyzer(Analyzer):
       self.noise_activity, self.noise_atas, self.noise_atcs = self.run_noise_analysis(save_info)
     if self.do_inference:
       self.inference_stats = self.inference_analysis(images, save_info)
+    if self.do_adversaries:
+      self.adversarial_losses, self.adversarial_recons, self.adversarial_images = self.adversary_analysis(images,
+        input_id=0, target_id=25, eps=self.adversarial_eps, num_steps=self.adversarial_num_steps)
     if (self.ot_contrasts is not None
       and self.ot_orientations is not None
       and self.ot_phases is not None
@@ -63,10 +89,53 @@ class LCA_Analyzer(Analyzer):
 
   def load_analysis(self, save_info=""):
     super(LCA_Analyzer, self).load_analysis(save_info)
+    # Adversarial analysis
+    adversarial_file_loc = self.analysis_out_dir+"savefiles/adversary_losses_"+save_info+".npz"
+    if os.path.exists(adversarial_file_loc):
+      data = np.load(adversarial_file_loc)["data"].item()
+      self.adversarial_losses = data["adversarial_losses"]
+      self.adversarial_images = data["adversarial_images"]
+      self.adversarial_recons = data["adversarial_recons"]
+      self.adversarial_eps = data["adversarial_eps"]
+      self.adversarial_num_steps = data["adversarial_num_steps"]
+      self.adversarial_input_id = data["input_id"]
+      self.adversarial_target_id = data["target_id"]
     # Inference analysis
     inference_file_loc = self.analysis_out_dir+"savefiles/inference_"+save_info+".npz"
     if os.path.exists(inference_file_loc):
       self.inference_stats = np.load(inference_file_loc)["data"].item()["inference_stats"]
+
+  def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=100):
+    losses = []
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      feed_dict = self.model.get_feed_dict(input_image)
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_weights(sess, self.cp_loc)
+      orig = tf.constant(input_image, dtype=tf.float32, name="original_image")
+      target = tf.constant(target_image, dtype=tf.float32, name="target_image")
+      reduc_dim = list(range(1, len(self.model.a.shape))) # Want to avg over batch, sum over the rest
+      target_recon_loss = tf.reduce_mean(0.5 *
+        tf.reduce_sum(tf.square(tf.subtract(target, self.model.compute_recon(self.model.a))),
+        axis=reduc_dim), name="target_recon_loss")
+      orig_recon_loss = tf.reduce_mean(0.5 *
+        tf.reduce_sum(tf.square(tf.subtract(orig, self.model.compute_recon(self.model.a))),
+        axis=reduc_dim), name="orig_recon_loss")
+      losses.append((sess.run(orig_recon_loss, feed_dict), sess.run(target_recon_loss, feed_dict)))
+      dx = tf.gradients(target_recon_loss, self.model.x)[0]
+      new_feed_dict = self.model.get_feed_dict(input_image)
+      adversarial_images = []
+      recons = []
+      for step in range(num_steps):
+        new_img = sess.run(tf.add(self.model.x, tf.multiply(-eps, tf.sign(dx))), new_feed_dict)
+        recon = sess.run(self.model.x_, new_feed_dict)
+        recons.append(recon)
+        adversarial_images.append(new_img)
+        new_feed_dict = self.model.get_feed_dict(new_img)
+        run_output = sess.run([orig_recon_loss, target_recon_loss], new_feed_dict)
+        losses.append(tuple(run_output[:2]))
+      return losses, adversarial_images, recons
 
   def compute_time_varied_response(self, images, steps_per_image=None):
     """

@@ -7,21 +7,22 @@ import analysis.analysis_picker as ap
 
 analysis_params = {
   "model_type": "lca",
-  "model_name": "lca",
+  "model_name": "lca_mnist",#"lca",
   "version": "0.0",
-  "data_type": "vanHateren",
+  "data_type": "MNIST",#"vanHateren",
   "device": "/gpu:0",
   "save_info": "analysis",
-  "overwrite_analysis_log": True,
+  "overwrite_analysis_log": False,
   "do_basis_analysis": False,
-  "do_inference": True,
+  "do_inference": False,
   "do_atas": False,
   "do_full_recon": False,
+  "do_adversaries": True,
   "num_patches": 1e4,
   "ft_padding": 32, # Fourier analysis padding for weight fitting
   "num_inference_images": 5, # How many random images to average over for inference statistics
   "num_noise_images": 300, # How many noise images to compute noise ATAs
-  "input_scale": 13, # Will vary depending on preprocessing
+  "input_scale": 0.5,#13, # Will vary depending on preprocessing
   "cov_num_images": int(1e5), # Number of images used to compute cov matrix (LCA_PCA)
   "neuron_indices": None} # Which neurons to run tuning experiments on (None to do all)
   #"contrasts": [0.1, 0.2, 0.3, 0.4, 0.5],
