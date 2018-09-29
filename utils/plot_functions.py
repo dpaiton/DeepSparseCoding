@@ -458,7 +458,7 @@ def plot_hilbert_analysis(weights, padding=None):
   plt.show()
   return fig
 
-def plot_matrix(matrix, title=""):
+def plot_matrix(matrix, title="", save_filename=None):
   """
   Plot covariance matrix as an image
   Inputs:
@@ -470,6 +470,10 @@ def plot_matrix(matrix, title=""):
   im.set_clim(vmin=np.min(matrix), vmax=np.max(matrix))
   ax.set_title(title, fontsize=20)
   add_colorbar_to_im(im)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
   plt.show()
   return fig
 
