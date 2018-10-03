@@ -205,7 +205,7 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
   gauss_orientations = [None]*num_outputs
   envelope_centers = [None]*num_outputs
   fourier_centers = [None]*num_outputs
-  orientations = [None]*num_outputs
+  ellipse_orientations = [None]*num_outputs
   fourier_maps = [None]*num_outputs
   spatial_frequencies = [None]*num_outputs
   areas = [None]*num_outputs
@@ -231,7 +231,7 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     evals, evecs = np.linalg.eigh(gauss_cov)
     sort_indices = np.argsort(evals)[::-1]
     gauss_orientations[bf_idx] = (evals[sort_indices], evecs[:,sort_indices])
-    width, height = evals[sort_indices]
+    width, height = evals[sort_indices] # Width & height are relative to orientation
     diameters[bf_idx] = np.sqrt(width**2+height**2)
     # Fourier function center, spatial frequency, orientation
     fourier_map = np.sqrt(np.real(bffs[bf_idx, ...])**2+np.imag(bffs[bf_idx, ...])**2)
@@ -244,7 +244,7 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     fy_cen = (max_fys[max_fx] - (N/2)) * (patch_edge_size/N)
     fx_cen = (max_fx - (N/2)) * (patch_edge_size/N)
     fourier_centers[bf_idx] = [fy_cen, fx_cen]
-    orientations[bf_idx] = np.arctan2(*fourier_centers[bf_idx])
+    ellipse_orientations[bf_idx] = np.arctan2(*fourier_centers[bf_idx])
     spatial_frequencies[bf_idx] = np.sqrt(fy_cen**2 + fx_cen**2)
     areas[bf_idx] = np.pi * np.prod(evals)
     phases[bf_idx] = np.angle(bffs[bf_idx])[y_cen, x_cen]
@@ -253,7 +253,7 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     "fourier_centers":fourier_centers, "fourier_maps":fourier_maps, "num_inputs":num_inputs,
     "spatial_frequencies":spatial_frequencies, "envelope_centers":envelope_centers,
     "num_outputs":num_outputs, "patch_edge_size":patch_edge_size, "phases":phases,
-    "orientations":orientations, "diameters":diameters}
+    "ellipse_orientations":ellipse_orientations, "diameters":diameters}
   return output
 
 def get_grating_params(bf_stats, bf_idx, patch_edge=None, location=None, diameter=None,
@@ -262,7 +262,7 @@ def get_grating_params(bf_stats, bf_idx, patch_edge=None, location=None, diamete
   patch_edge = bf_stats["patch_edge_size"] if patch_edge is None else patch_edge
   location = bf_stats["gauss_centers"][bf_idx] if location is None else location
   diameter = bf_stats["diameters"][bf_idx] if diameter is None else diameter
-  orientation = bf_stats["orientations"][bf_idx] if orientation is None else orientation
+  orientation = bf_stats["ellipse_orientations"][bf_idx] if orientation is None else orientation
   frequency = bf_stats["spatial_frequencies"][bf_idx] if frequency is None else frequency
   phase = bf_stats["phases"][bf_idx] if phase is None else phase
   contrast = 1.0 if contrast is None else contrast
