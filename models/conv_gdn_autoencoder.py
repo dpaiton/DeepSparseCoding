@@ -12,8 +12,6 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
   """
   Implementation of autoencoder described in Balle, Laparra, Simoncelli (2017)
   End-to-End Optimized Image Compression
-  ## Methods ignored:
-  #  add a small amount of uniform noise to input, to simulate pixel quantization
   """
   def __init__(self):
     super(Conv_GDN_Autoencoder, self).__init__()
@@ -36,10 +34,10 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.data_shape = params["data_shape"]
     self.num_pixels = int(np.prod(self.data_shape))
     self.batch_size = int(params["batch_size"])
-    self.device = params["device"]
+    self.device = params["device"] # base_model casts this to a string
     self.downsample_images = params["downsample_images"]
     self.downsample_method = params["downsample_method"]
-    # Loss parameters
+    # Entropy calculation parameters
     self.mle_step_size = float(params["mle_step_size"])
     self.num_mle_steps = int(params["num_mle_steps"])
     self.num_triangles = int(params["num_triangles"])
@@ -53,17 +51,16 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.input_channels = params["input_channels"] # list for encoding layers
     self.output_channels = params["output_channels"] # list for encoding layers
     self.w_strides = params["strides"] # list for encoding layers
+    # GDN Parameters
     self.w_thresh_min = params["w_thresh_min"]
     self.b_thresh_min = params["b_thresh_min"]
     self.gdn_mult_min = params["gdn_mult_min"]
-    self.n_mem = params["n_mem"]
-    #self.n_mem = self.compute_num_latent([self.im_size_y, self.im_size_x, self.num_colors],
-    #  self.patch_size_y, self.patch_size_x, self.w_strides, self.output_channels)
+    # Calculated parameters
     self.x_shape = [None, self.im_size_y, self.im_size_x, self.input_channels[0]]
     self.w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
       self.input_channels, self.output_channels)]
-    self.w_shapes += self.w_shapes[::-1]
-    self.w_strides += self.w_strides[::-1]
+    self.w_shapes += self.w_shapes[::-1] # decoder mirrors the encoder
+    self.w_strides += self.w_strides[::-1] # decoder mirrors the encoder
     self.b_shapes = [vals for vals in self.output_channels]
     # Decoding calculation uses conv2d_transpose so input_channels (w_shapes[2]) is actually
     # the number of output channels in the decoding direction
@@ -75,6 +72,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.output_channels += self.output_channels[::-1]
     self.num_layers = len(self.w_shapes)
     # Memristor parameters
+    self.n_mem = params["n_mem"]
+    #self.n_mem = self.compute_num_latent([self.im_size_y, self.im_size_x, self.num_colors],
+    #  self.patch_size_y, self.patch_size_x, self.w_strides, self.output_channels)
     self.memristor_type = params["memristor_type"] # None indicates pasthrough
     self.memristor_data_loc = params["memristor_data_loc"]
     self.memristor_noise_shape = [self.batch_size, self.n_mem]
@@ -133,18 +133,6 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       a_probs = ef.prob_est(a_sig, self.mle_thetas, self.triangle_centers)
       a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
     return a_entropies
-
-  def compute_ramp_loss(self, a_in):
-    ramp_loss = tf.reduce_mean(tf.reduce_sum(self.ramp_slope
-      * (tf.nn.relu(a_in - self.ramp_max)
-      + tf.nn.relu(self.ramp_min - a_in)), axis=[1,2,3]))
-    return ramp_loss
-
-  def get_loss_funcs(self):
-    return {"recon_loss":self.compute_recon_loss,
-      "entropy_loss":self.compute_entropy_loss,
-      "weight_decay_loss":self.compute_weight_decay_loss,
-      "ramp_loss":self.compute_ramp_loss}
 
   def compute_gdn_mult(self, u_in, w_gdn, b_gdn):
     u_in_shape = tf.shape(u_in)
@@ -281,8 +269,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
             uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(u_out)),
               minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
             u_out = tf.add(uniform_noise, u_out, name="noisy_activity")
-            self.pre_mem = self.sigmoid(u_out, self.sigmoid_beta)
-            u_out = self.memristorize(self.pre_mem, self.memristor_std_eps, self.memristor_type)
+            latent_activity = u_out
+            self.a_sig = self.sigmoid(u_out, self.sigmoid_beta)
+            u_out = self.memristorize(self.a_sig, self.memristor_std_eps, self.memristor_type)
           self.u_list.append(u_out)
           self.conv_list.append(conv_out)
           self.w_list.append(w)
@@ -292,18 +281,17 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           self.b_gdn_list.append(b_gdn)
 
         with tf.name_scope("inference") as scope:
-          self.a = self.pre_mem
+          self.a = latent_activity
 
         with tf.variable_scope("probability_estimate") as scope:
-          u_resh = tf.reshape(self.a, [self.batch_size, self.num_latent])
-          u_sig = self.sigmoid(u_resh, self.sigmoid_beta)
-          ll = ef.log_likelihood(u_sig, self.mle_thetas, self.triangle_centers)
+          a_sig_resh = tf.reshape(self.a_sig, [self.batch_size, self.num_latent])
+          ll = ef.log_likelihood(a_sig_resh, self.mle_thetas, self.triangle_centers)
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
             for _ in range(self.num_mle_steps)]
 
         with tf.name_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.u_list[-1]),
-            "entropy_loss":self.compute_entropy_loss(self.a),
+            "entropy_loss":self.compute_entropy_loss(self.a_sig),
             "weight_decay_loss":self.compute_weight_decay_loss(),
             "ramp_loss":self.compute_ramp_loss(self.a)}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")

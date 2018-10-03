@@ -33,11 +33,14 @@ class GDN_Autoencoder(Model):
     self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
     self.num_neurons = int(params["num_neurons"])
-    # Loss parameters
+    # Entropy calculation parameters
     self.mle_step_size = float(params["mle_step_size"])
     self.num_mle_steps = int(params["num_mle_steps"])
     self.num_triangles = int(params["num_triangles"])
     self.sigmoid_beta = float(params["sigmoid_beta"])
+    # Loss parameters
+    self.ramp_min = float(params["ramp_min"])
+    self.ramp_max = float(params["ramp_max"])
     # GDN Parameters
     self.w_thresh_min = float(params["w_thresh_min"])
     self.b_thresh_min = float(params["b_thresh_min"])
@@ -53,10 +56,10 @@ class GDN_Autoencoder(Model):
     self.w_igdn_shape = [self.num_pixels, self.num_pixels]
     self.b_igdn_shape = [1, self.num_pixels]
 
-  def sigmoid(self, a_in, beta=1):
+  def sigmoid(self, a_in, beta=1, name=None):
     """Hyperbolic tangent non-linearity"""
     a_out = tf.subtract(tf.multiply(2.0, tf.divide(1.0,
-      tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0)
+      tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0, name=name)
     return a_out
 
   def compute_entropies(self, a_in):
@@ -76,6 +79,13 @@ class GDN_Autoencoder(Model):
       decay_loss = tf.multiply(0.5*self.decay_mult,
         tf.add_n([tf.nn.l2_loss(weight) for weight in self.w_list]), name="weight_decay_loss")
     return decay_loss
+
+  def compute_ramp_loss(self, a_in):
+    reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch
+    ramp_loss = tf.reduce_mean(tf.reduce_sum(self.ramp_slope
+      * (tf.nn.relu(a_in - self.ramp_max)
+      + tf.nn.relu(self.ramp_min - a_in)), axis=reduc_dim))
+    return ramp_loss
 
   def compute_recon_loss(self, recon):
     with tf.name_scope("unsupervised"):
@@ -118,9 +128,6 @@ class GDN_Autoencoder(Model):
           tf.divide(u_in, gdn_mult), name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
-  def get_loss_funcs(self):
-    return {"recon_loss":self.compute_recon_loss, "entropy_loss":self.compute_entropy_loss}
-
   def build_graph(self):
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
@@ -130,6 +137,7 @@ class GDN_Autoencoder(Model):
           self.triangle_centers = tf.placeholder(tf.float32, shape=[self.num_triangles],
             name="triangle_centers")
           self.ent_mult = tf.placeholder(tf.float32, shape=(), name="ent_mult")
+          self.ramp_slope = tf.placeholder(tf.float32, shape=(), name="ramp_slope")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
           self.noise_var_mult = tf.placeholder(tf.float32, shape=(), name="noise_var_mult")
 
@@ -176,11 +184,10 @@ class GDN_Autoencoder(Model):
           uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(u_out)),
             minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
           a_noise = tf.add(uniform_noise, u_out, name="activity")
-          self.a = tf.identity(u_out, name="activity")
+          self.a = self.sigmoid(u_out, , self.sigmoid_beta, name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
-          a_sig = self.sigmoid(a_noise, self.sigmoid_beta)
-          ll = ef.log_likelihood(a_sig, self.mle_thetas, self.triangle_centers)
+          ll = ef.log_likelihood(self.a, self.mle_thetas, self.triangle_centers)
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
             for _ in range(self.num_mle_steps)]
 
@@ -194,8 +201,9 @@ class GDN_Autoencoder(Model):
 
         with tf.name_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.x_),
-            "entropy_loss":self.compute_entropy_loss(a_noise),
-            "weight_decay_loss":self.compute_weight_decay_loss()}
+            "entropy_loss":self.compute_entropy_loss(self.a),
+            "weight_decay_loss":self.compute_weight_decay_loss(),
+            "ramp_loss":self.compute_ramp_loss(a_noise)}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
         with tf.name_scope("performance_metrics") as scope:
