@@ -8,14 +8,19 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
     self.var_names = ["weights/phi:0"]
 
   def run_analysis(self, images, save_info=""):
-    self.run_stats = self.get_log_stats()
-    self.evals = self.evaluate_model(images, self.var_names)
-    image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
-      replace=False)
-    self.inference_stats = self.evaluate_inference(images[image_indices, ...])
-    np.savez(self.analysis_out_dir+"savefiles/analysis_"+save_info+".npz",
-      data={"run_stats":self.run_stats, "evals":self.evals, "inference_stats":self.inference_stats,
-      "var_names":self.var_names})
+    super(LCA_Analyzer, self).run_analysis(images, save_info)
+    self.evals = self.eval_analysis(images, self.var_names, save_info)
+    if self.do_basis_analysis:
+      self.bf_stats = self.basis_analysis(self.evals["weights/phi:0"], save_info)
+    if self.do_atas:
+      self.atas, self.atcs = self.ata_analysis(images, self.evals["inference/activity:0"],
+        save_info)
+      self.noise_activity, self.noise_atas, self.noise_atcs = self.run_noise_analysis(save_info)
+    if self.do_inference:
+      self.inference_stats = self.inference_analysis(images, save_info)
+    if self.do_adversaries:
+      self.adversarial_losses, self.adversarial_recons, self.adversarial_images = self.adversary_analysis(images,
+        input_id=0, target_id=25, eps=self.adversarial_eps, num_steps=self.adversarial_num_steps)
 
   def load_analysis(self, save_info=""):
     file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
@@ -24,6 +29,14 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
     self.run_stats = analysis["run_stats"]
     self.evals = analysis["evals"]
     self.inference_stats = analysis["inference_stats"]
+
+  def eval_analysis(self, images, var_names, save_info):
+    evals = self.evaluate_model(images, var_names)
+    evals["weights/phi:0"] = evals["weights/phi:0"].reshape(self.model.num_pixels,
+      self.model.num_neurons)
+    np.savez(self.analysis_out_dir+"savefiles/evals_"+save_info+".npz", data={"evals":evals})
+    self.analysis_logger.log_info("Image analysis is complete.")
+    return evals
 
   def evaluate_inference(self, images, num_inference_steps=None):
     if num_inference_steps is None:

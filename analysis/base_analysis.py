@@ -114,6 +114,8 @@ class Analyzer(object):
       os.makedirs(self.analysis_out_dir)
     if not os.path.exists(self.analysis_out_dir+"/savefiles"):
       os.makedirs(self.analysis_out_dir+"/savefiles")
+    if not os.path.exists(self.analysis_out_dir+"/logfiles"):
+      os.makedirs(self.analysis_out_dir+"/logfiles")
 
   def load_model(self):
     """Load model object into analysis object"""

@@ -17,22 +17,20 @@ class LCA_Analyzer(Analyzer):
 
   def load_params(self, params):
     super(LCA_Analyzer, self).load_params(params)
-    if "inference_img_idx" in params.keys():
-      self.inference_img_idx = params["inference_img_idx"]
-    else:
-      self.inference_img_idx = None
-    if "num_inference_steps" in params.keys():
-      self.num_inference_steps = params["num_inference_steps"]
-    else:
-      self.num_inference_steps = None
     if "do_inference" in params.keys():
       self.do_inference = params["do_inference"]
+      if "num_inference_steps" in params.keys():
+        self.num_inference_steps = params["num_inference_steps"]
+      else:
+        self.num_inference_steps = None
+      if "num_inference_images" in params.keys():
+        self.num_inference_images = params["num_inference_images"]
+      else:
+        self.num_inference_images = 1
     else:
       self.do_inference = False
-    if "num_inference_images" in params.keys():
-      self.num_inference_images = params["num_inference_images"]
-    else:
-      self.num_inference_images = 1
+      self.num_inference_images = None
+      self.num_inference_steps = None
     if "do_adversaries" in params.keys():
       self.do_adversaries = params["do_adversaries"]
       if "adversarial_eps" in params.keys():
@@ -44,11 +42,14 @@ class LCA_Analyzer(Analyzer):
       else:
         self.adversarial_num_steps = 200
 
-  def inference_analysis(self, images, save_info):
-    image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
-      replace=False)
+  def inference_analysis(self, images, save_info, num_inference_images=None):
+    if num_inference_images is None:
+      image_indices = np.arange(images.shape[0])
+    else:
+      image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
+        replace=False)
     inference_stats = self.evaluate_inference(images[image_indices, ...],
-      num_inference_steps=self.num_inference_steps, img_idx=self.inference_img_idx)
+      num_inference_steps=self.num_inference_steps)
     np.savez(self.analysis_out_dir+"savefiles/inference_"+save_info+".npz",
       data={"inference_stats":inference_stats})
     self.analysis_logger.log_info("Inference analysis is complete.")
@@ -169,7 +170,7 @@ class LCA_Analyzer(Analyzer):
           inference_idx += 1
     return a
 
-  def evaluate_inference(self, images, num_inference_steps=None, img_idx=None):
+  def evaluate_inference(self, images, num_inference_steps=None):
     """Evaluates inference on images, produces outputs over time"""
     if num_inference_steps is None:
       num_inference_steps = self.model_params["num_steps"]
@@ -185,12 +186,10 @@ class LCA_Analyzer(Analyzer):
       [np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
       for _ in range(len(loss_funcs))]))
     total_loss = np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
-    if img_idx is None:
-      img_idx = self.rand_state.randint(0, num_imgs)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
-      sess.run(self.model.init_op, self.model.get_feed_dict(images[img_idx, None, ...]))
+      sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
       self.model.load_weights(sess, self.cp_loc)
       for img_idx in range(num_imgs):
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
