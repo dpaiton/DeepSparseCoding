@@ -527,7 +527,16 @@ class Model(object):
       logged with <stats> </stats> tags.
       For example: logging.info("<stats>"+self.js_dumpstring(output_dictionary)+"</stats>")
     """
+    update_dict = self.generate_update_dict(input_data, input_labels, batch_step)
+    js_str = self.js_dumpstring(update_dict)
+    self.log_info("<stats>"+js_str+"</stats>")
     pass
+
+    def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
+      """
+      Generates a dictionary to be logged in the print_update function
+      """
+      return dict()
 
   def generate_plots(self, input_data, input_labels=None):
     """

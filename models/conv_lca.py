@@ -37,10 +37,11 @@ class CONV_LCA(LCA):
       "Stride y must divide evenly into input shape")
     self.u_x = int(self.data_shape[0]/self.stride_x)
     self.u_y = int(self.data_shape[1]/self.stride_y)
+    self.num_pixels = int(self.patch_size_y * self.patch_size_x * self.data_shape[2])
     self.phi_shape = [self.patch_size_y, self.patch_size_x,
       int(self.data_shape[2]), int(self.num_neurons)]
     self.u_shape = [self.u_y, self.u_x, int(self.num_neurons)]
-    self.x_shape = [None,]+ self.data_shape
+    self.x_shape = [None,] + self.data_shape
 
   def compute_recon(self, a_in):
     x_ = tf.nn.conv2d_transpose(a_in, self.phi, tf.shape(self.x),
