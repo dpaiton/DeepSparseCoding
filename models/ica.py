@@ -106,9 +106,9 @@ class ICA(Model):
     #gradient = -tf.add(weight_op[0], tf.multiply(self.z, tf.matmul(self.a, weight_op[0])
     return [(gradient, weight_op[0])]
 
-  def print_update(self, input_data, input_labels=None, batch_step=0):
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
-    Logs progress information
+    Generates a dictionary to be logged in the print_update function
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
@@ -117,7 +117,7 @@ class ICA(Model):
       to write an np function that converts numpy types to their corresponding
       python types.
     """
-    super(ICA, self).print_update(input_data, input_labels, batch_step)
+    update_dict = super(ICA, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list  = [self.global_step, self.a, self.z, self.x_]
     grad_name_list = []
@@ -161,8 +161,9 @@ class ICA(Model):
       grad_min = learning_rate_dict[name]*np.array(grad.min())
       grad_mean = learning_rate_dict[name]*np.mean(np.array(grad))
       stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
-    js_str = self.js_dumpstring(stat_dict)
-    self.log_info("<stats>"+js_str+"</stats>")
+    update_dict.update(stat_dict) # stat_dict vals overwrite
+    return update_dict
+
 
   def generate_plots(self, input_data, input_labels=None):
     """

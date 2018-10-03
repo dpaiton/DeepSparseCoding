@@ -144,15 +144,15 @@ class RICA(Model):
               name="recon_quality")
     self.graph_built = True
 
-  def print_update(self, input_data, input_labels=None, batch_step=0):
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
-    Log train progress information
+    Generates a dictionary to be logged in the print_update function
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    super(RICA, self).print_update(input_data, input_labels, batch_step)
+    update_dict = super(RICA, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
       self.total_loss, self.a, self.x_]
@@ -192,8 +192,8 @@ class RICA(Model):
         grad_mean = lrs[0][w_idx]*np.mean(np.array(grad))
         stat_dict[name+"_lr"] = lrs[0][w_idx]
         stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
-    js_str = self.js_dumpstring(stat_dict)
-    self.log_info("<stats>"+js_str+"</stats>")
+    update_dict.update(stat_dict)
+    return update_dict
 
   def generate_plots(self, input_data, input_labels=None):
     """

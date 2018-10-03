@@ -130,7 +130,6 @@ class SUBSPACE_LCA(LCA):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    # super gets feed_dict, phi, and current_step
     super(SUBSPACE_LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.phi]

@@ -198,9 +198,9 @@ class Density_Learner(Model):
   #  #  self.sigma), 1.0)), self.v)), name=weight_name+"_gradient")
   #  return [(gradient, weight_op[0])]
 
-  def print_update(self, input_data, input_labels=None, batch_step=0):
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
-    Log train progress information
+    Generates a dictionary to be logged in the print_update function
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
@@ -210,7 +210,6 @@ class Density_Learner(Model):
       to write a numpy function that converts numpy types to their corresponding
       python types.
     """
-    super(density_learner, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval())
     recon_loss = np.array(self.recon_loss.eval(feed_dict))
@@ -243,8 +242,7 @@ class Density_Learner(Model):
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       stat_dict[name+"_max_grad"] = np.array(grad.max())
       stat_dict[name+"_min_grad"] = np.array(grad.min())
-    js_str = self.js_dumpstring(stat_dict)
-    self.log_info("<stats>"+js_str+"</stats>")
+    return stat_dict
 
   def generate_plots(self, input_data, input_labels=None):
     """

@@ -137,15 +137,15 @@ class MLP(Model):
               tf.float32), name="avg_accuracy")
     self.graph_built = True
 
-  def print_update(self, input_data, input_labels=None, batch_step=0):
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
-    Log train progress information
+    Generates a dictionary to be logged in the print_update function
     Inputs:
       input_data: load_MNIST data object containing the current image batch
       input_labels: load_MNIST data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    super(MLP, self).print_update(input_data, input_labels, batch_step)
+    update_dict = super(MLP, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval())
     total_loss = np.array(self.total_loss.eval(feed_dict))
@@ -162,8 +162,8 @@ class MLP(Model):
       "a_max":a_vals_max,
       "a_frac_active":a_frac_act,
       "train_accuracy":accuracy}
-    js_str = self.js_dumpstring(stat_dict)
-    self.log_info("<stats>"+js_str+"</stats>")
+    update_dict.update(stat_dict) #stat_dict overwrites
+    return update_dict
 
   def generate_plots(self, input_data, input_labels=None):
     """

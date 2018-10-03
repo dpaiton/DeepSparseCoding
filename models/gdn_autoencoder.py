@@ -245,14 +245,16 @@ class GDN_Autoencoder(Model):
           self.apply_grads.append(sch_apply_grads)
     self.optimizers_added = True
 
-  def print_update(self, input_data, input_labels=None, batch_step=0):
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
-    Log train progress information
+    Generates a dictionary to be logged in the print_update function
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
+    update_dict = super(GDN_Autoencoder, self).generate_update_dict(input_data, input_labels,
+      batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["entropy_loss"],
       self.total_loss, self.a, self.x_]
@@ -291,8 +293,8 @@ class GDN_Autoencoder(Model):
     for grad, name in zip(grads, grad_name_list):
       stat_dict[name+"_max_grad"] = learning_rate_dict[name]*np.array(grad.max())
       stat_dict[name+"_min_grad"] = learning_rate_dict[name]*np.array(grad.min())
-    js_str = self.js_dumpstring(stat_dict)
-    self.log_info("<stats>"+js_str+"</stats>")
+    update_dict.update(stat_dict) # stat_dict overwrites
+    return update_dict
 
   def generate_plots(self, input_data, input_labels=None):
     """

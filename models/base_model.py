@@ -530,13 +530,13 @@ class Model(object):
     update_dict = self.generate_update_dict(input_data, input_labels, batch_step)
     js_str = self.js_dumpstring(update_dict)
     self.log_info("<stats>"+js_str+"</stats>")
-    pass
 
-    def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
       """
       Generates a dictionary to be logged in the print_update function
       """
-      return dict()
+      update_dict = dict()
+      return update_dict
 
   def generate_plots(self, input_data, input_labels=None):
     """
