@@ -111,9 +111,7 @@ class LCA_Analyzer(Analyzer):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
-      feed_dict = self.model.get_feed_dict(input_image)
-      sess.run(self.model.init_op, feed_dict)
-      self.model.load_weights(sess, self.cp_loc)
+      ## Additional network components
       orig = tf.constant(input_image, dtype=tf.float32, name="original_image")
       target = tf.constant(target_image, dtype=tf.float32, name="target_image")
       reduc_dim = list(range(1, len(self.model.a.shape))) # Want to avg over batch, sum over the rest
@@ -125,11 +123,16 @@ class LCA_Analyzer(Analyzer):
         axis=reduc_dim), name="orig_recon_loss")
       losses.append((sess.run(orig_recon_loss, feed_dict), sess.run(target_recon_loss, feed_dict)))
       dx = tf.gradients(target_recon_loss, self.model.x)[0]
+      img_update = tf.add(self.model.x, tf.multiply(-eps, tf.sign(dx)), name="Image Update")
+      ## Setup session
+      feed_dict = self.model.get_feed_dict(input_image)
       new_feed_dict = self.model.get_feed_dict(input_image)
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_weights(sess, self.cp_loc)
       adversarial_images = []
       recons = []
       for step in range(num_steps):
-        new_img = sess.run(tf.add(self.model.x, tf.multiply(-eps, tf.sign(dx))), new_feed_dict)
+        new_img = sess.run(img_update, new_feed_dict)
         recon = sess.run(self.model.x_, new_feed_dict)
         recons.append(recon)
         adversarial_images.append(new_img)
@@ -147,8 +150,8 @@ class LCA_Analyzer(Analyzer):
       steps_per_image = self.model_params["num_steps"]
     num_imgs, num_pixels = images.shape
     num_neurons = self.model_params["num_neurons"]
-    u = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32)
-    a = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32)
+    u = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32) # membrane potential
+    a = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32) # output activity
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:

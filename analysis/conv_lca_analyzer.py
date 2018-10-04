@@ -7,6 +7,14 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
     super(CONV_LCA_Analyzer, self).__init__(params)
     self.var_names = ["weights/phi:0"]
 
+  def eval_analysis(self, images, var_names, save_info):
+    evals = self.evaluate_model(images, var_names)
+    evals["weights/phi:0"] = evals["weights/phi:0"].reshape(self.model.num_pixels,
+      self.model.num_neurons)
+    np.savez(self.analysis_out_dir+"savefiles/evals_"+save_info+".npz", data={"evals":evals})
+    self.analysis_logger.log_info("Image analysis is complete.")
+    return evals
+
   def run_analysis(self, images, save_info=""):
     super(LCA_Analyzer, self).run_analysis(images, save_info)
     self.evals = self.eval_analysis(images, self.var_names, save_info)
@@ -29,14 +37,6 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
     self.run_stats = analysis["run_stats"]
     self.evals = analysis["evals"]
     self.inference_stats = analysis["inference_stats"]
-
-  def eval_analysis(self, images, var_names, save_info):
-    evals = self.evaluate_model(images, var_names)
-    evals["weights/phi:0"] = evals["weights/phi:0"].reshape(self.model.num_pixels,
-      self.model.num_neurons)
-    np.savez(self.analysis_out_dir+"savefiles/evals_"+save_info+".npz", data={"evals":evals})
-    self.analysis_logger.log_info("Image analysis is complete.")
-    return evals
 
   def evaluate_inference(self, images, num_inference_steps=None):
     if num_inference_steps is None:
