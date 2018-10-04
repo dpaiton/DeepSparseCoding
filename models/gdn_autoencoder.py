@@ -184,7 +184,7 @@ class GDN_Autoencoder(Model):
           uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(u_out)),
             minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
           a_noise = tf.add(uniform_noise, u_out, name="activity")
-          self.a = self.sigmoid(u_out, , self.sigmoid_beta, name="activity")
+          self.a = self.sigmoid(u_out, self.sigmoid_beta, name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
           ll = ef.log_likelihood(self.a, self.mle_thetas, self.triangle_centers)
