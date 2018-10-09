@@ -15,7 +15,7 @@ params = {
   "extract_patches": False,
   "batch_size": 100,
   "num_neurons": 512,
-  "num_groups": 64,
+  "num_groups": 128,
   "num_steps": 50,
   "dt": 0.001,
   "tau": 0.03,
@@ -24,9 +24,13 @@ params = {
   "cp_int": 10000,
   "max_cp_to_keep": 1,
   "cp_load": False,
+  "cp_load_name": "subspace_lca_mnist",
+  "cp_load_step": None, # latest checkpoint
+  "cp_load_ver": "0.0",
+  "cp_load_var": ["phi"],
   "log_int": 10,
   "log_to_file": True,
-  "gen_plot_int": 2000,
+  "gen_plot_int": 5000,
   "save_plots": True,
   "eps": 1e-9,
   "device": "/gpu:0",
@@ -36,10 +40,10 @@ params = {
 
 schedule = [
   {"weights": ["phi"],
-  "sparse_mult": 1.03,
+  "sparse_mult": 0.50,
   "group_orth_mult": 0.1,
-  "weight_lr": [0.04],
-  "decay_steps": [int(5e4*0.5)],
+  "weight_lr": [0.05],
+  "decay_steps": [int(1e5*0.5)],
   "decay_rate": [0.5],
   "staircase": [True],
-  "num_batches": int(5e4)}]
+  "num_batches": int(1e5)}]
