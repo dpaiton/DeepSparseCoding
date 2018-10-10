@@ -60,6 +60,10 @@ class Analyzer(object):
     if "rand_seed" in params.keys():
       self.rand_seed = params["rand_seed"]
       self.rand_state = np.random.RandomState(self.rand_seed)
+    if "input_scale" in params.keys():
+      self.input_scale = params["input_scale"]
+    else:
+      self.input_scale = 1.0
     # BF Fits
     if "do_basis_analysis" in params.keys():
       self.do_basis_analysis = params["do_basis_analysis"]
@@ -87,26 +91,24 @@ class Analyzer(object):
     else:
       self.num_noise_images = 100
     #  Orientation Selectivity
-    if "input_scale" in params.keys():
-      self.input_scale = params["input_scale"]
-    else:
-      self.input_scale = 1.0
-    if "neuron_indices" in params.keys():
-      self.ot_neurons = params["neuron_indices"]
-    else:
-      self.ot_neurons = None
-    if "contrasts" in params.keys():
-      self.ot_contrasts = params["contrasts"]
-    else:
-      self.ot_contrasts = None
-    if "orientations" in params.keys():
-      self.ot_orientations = params["orientations"]
-    else:
-      self.ot_orientations = None
-    if "phases" in params.keys():
-      self.ot_phases = params["phases"]
-    else:
-      self.ot_phases = None
+    if "do_orientation_analysis" in params.keys() and params["do_orientation_analysis"]:
+      self.do_orientation_analysis = params["do_orientation_analysis"]
+      if "neuron_indices" in params.keys():
+        self.ot_neurons = params["neuron_indices"]
+      else:
+        self.ot_neurons = None
+      if "contrasts" in params.keys():
+        self.ot_contrasts = params["contrasts"]
+      else:
+        self.ot_contrasts = None
+      if "orientations" in params.keys():
+        self.ot_orientations = params["orientations"]
+      else:
+        self.ot_orientations = None
+      if "phases" in params.keys():
+        self.ot_phases = params["phases"]
+      else:
+        self.ot_phases = None
 
   def make_dirs(self):
     """Make output directories"""

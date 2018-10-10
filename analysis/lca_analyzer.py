@@ -108,6 +108,8 @@ class LCA_Analyzer(Analyzer):
 
   def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=100):
     losses = []
+    adversarial_images = []
+    recons = []
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
@@ -121,23 +123,19 @@ class LCA_Analyzer(Analyzer):
       orig_recon_loss = tf.reduce_mean(0.5 *
         tf.reduce_sum(tf.square(tf.subtract(orig, self.model.compute_recon(self.model.a))),
         axis=reduc_dim), name="orig_recon_loss")
-      losses.append((sess.run(orig_recon_loss, feed_dict), sess.run(target_recon_loss, feed_dict)))
       dx = tf.gradients(target_recon_loss, self.model.x)[0]
       img_update = tf.add(self.model.x, tf.multiply(-eps, tf.sign(dx)), name="Image Update")
       ## Setup session
       feed_dict = self.model.get_feed_dict(input_image)
-      new_feed_dict = self.model.get_feed_dict(input_image)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_weights(sess, self.cp_loc)
-      adversarial_images = []
-      recons = []
       for step in range(num_steps):
-        new_img = sess.run(img_update, new_feed_dict)
-        recon = sess.run(self.model.x_, new_feed_dict)
+        recon = sess.run(self.model.x_, feed_dict)
         recons.append(recon)
+        new_img = sess.run(img_update, feed_dict)
         adversarial_images.append(new_img)
-        new_feed_dict = self.model.get_feed_dict(new_img)
-        run_output = sess.run([orig_recon_loss, target_recon_loss], new_feed_dict)
+        feed_dict = self.model.get_feed_dict(new_img)
+        run_output = sess.run([orig_recon_loss, target_recon_loss], feed_dict)
         losses.append(tuple(run_output[:2]))
       return losses, adversarial_images, recons
 
