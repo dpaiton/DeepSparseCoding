@@ -45,7 +45,7 @@ data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
 data = analyzer.model.reshape_dataset(data, analyzer.model_params)
 
 analyzer.model_params["data_shape"] = list(data["train"].shape[1:])
-analyzer.model.setup(analyzer.model_params, analyzer.model_schedule)
+analyzer.setup_model(analyzer.model_params, analyzer.model_schedule)
 analyzer.model_params["input_shape"] = [
   data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
 
