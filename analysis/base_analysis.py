@@ -42,8 +42,16 @@ class Analyzer(object):
 
   def setup_model(self, params, schedule):
     """
-    Run model setup, but first add adversarial nodes to graph
+    Run model setup, but also add adversarial nodes to graph
     """
+    self.model.load_schedule(schedule)
+    self.model.sched_idx = 0
+    self.model.load_params(params)
+    self.model.check_params()
+    self.model.make_dirs()
+    self.model.init_logging()
+    self.model.log_params()
+    self.model.log_schedule()
     self.model.graph = tf.Graph()
     self.model.build_graph()
     self.add_advserarial_ops_to_graph()
@@ -61,12 +69,14 @@ class Analyzer(object):
           self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.x_shape,
             name="adversarial_target_data")
         with tf.name_scope("loss") as scope:
+          # Want to avg over batch, sum over the rest
+          reduc_dim = list(range(1, len(self.model.a.shape)))
           self.model.adv_recon_loss = tf.reduce_mean(0.5 *
             tf.reduce_sum(tf.square(tf.subtract(self.model.adv_target,
             self.model.compute_recon(self.model.a))), axis=reduc_dim),
             name="target_recon_loss")
-         with tf.name_scope("adversarial") as scope:
-           self.model.adv_dx = -tf.gradients(self.model.adv_recon_loss, self.model.x)[0]
+        with tf.name_scope("adversarial") as scope:
+          self.model.adv_dx = -tf.gradients(self.model.adv_recon_loss, self.model.x)[0]
 
   def adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100):
     input_image = images[input_id, ...][None,...].astype(np.float32)
@@ -96,7 +106,7 @@ class Analyzer(object):
     with tf.Session(config=config, graph=self.model.graph) as sess:
       ## Setup session
       feed_dict = self.model.get_feed_dict(input_image)
-      feed_dict{self.model.adv_target} = target_image
+      feed_dict[self.model.adv_target] = target_image
       sess.run(self.model.init_op, feed_dict)
       self.model.load_weights(sess, self.cp_loc)
       new_image = input_image.copy()
@@ -112,7 +122,7 @@ class Analyzer(object):
         adv_recon_mses.append(mse(new_img, recon))
         adversarial_images.append(new_img)
         recons.append(recon)
-        feed_dict{self.model.x} = new_img
+        feed_dict[self.model.x] = new_img
       mses = {"input_target_mse":input_target_mse, "input_recon_mses":input_recon_mses,
       "input_adv_mses":input_adv_mses, "target_recon_mses":target_recon_mses,
       "target_adv_mses":target_adv_mses, "adv_recon_mses":adv_recon_mses}

@@ -25,7 +25,7 @@ analysis_params = {
   "inference_img_indices": None, # Which dataset images to use for inference
   "cov_num_images": int(1e5), # Number of images used to compute cov matrix (LCA_PCA)
   "num_noise_images": 300, # How many noise images to compute noise ATAs
-  "adversarial_num_steps": 10, # Number of adversarial image updates
+  "adversarial_num_steps": 100, # Number of adversarial image updates
   "input_scale": 2.0,#13, # Will vary depending on preprocessing
   "neuron_indices": None, # Which neurons to run tuning experiments on (None to do all)
   "contrasts": [0.1, 0.2, 0.3, 0.4, 0.5], # Contrasts for orientation experiments
