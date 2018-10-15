@@ -57,7 +57,7 @@ class LCA_Analyzer(Analyzer):
       image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
         replace=False)
     inference_stats = self.evaluate_inference(images[image_indices, ...],
-      num_inference_steps=self.num_inference_steps)
+      num_inference_steps = self.num_inference_steps)
     np.savez(self.analysis_out_dir+"savefiles/inference_"+save_info+".npz",
       data={"inference_stats":inference_stats})
     self.analysis_logger.log_info("Inference analysis is complete.")
@@ -110,7 +110,7 @@ class LCA_Analyzer(Analyzer):
     """
     if steps_per_image is None:
       steps_per_image = self.model_params["num_steps"]
-    num_imgs, num_pixels = images.shape
+    num_imgs = images.shape[0]
     num_neurons = self.model_params["num_neurons"]
     u = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32) # membrane potential
     a = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32) # output activity
@@ -139,13 +139,13 @@ class LCA_Analyzer(Analyzer):
     """Evaluates inference on images, produces outputs over time"""
     if num_inference_steps is None:
       num_inference_steps = self.model_params["num_steps"]
-    num_imgs, num_pixels = images.shape
+    num_imgs = images.shape[0]
     num_neurons = self.model_params["num_neurons"]
     loss_funcs = self.model.get_loss_funcs()
-    b = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)
-    ga = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)
-    u = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)
-    a = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)
+    b = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
+    ga = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
+    u = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
+    a = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
     psnr = np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
     losses = dict(zip([str(key) for key in loss_funcs.keys()],
       [np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
@@ -155,21 +155,21 @@ class LCA_Analyzer(Analyzer):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
+      sess.graph.finalize() # Graph is read-only after this statement
       self.model.load_weights(sess, self.cp_loc)
       for img_idx in range(num_imgs):
+        self.analysis_logger.log_info("Inference analysis on image "+str(img_idx))
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
         lca_b = sess.run(self.model.compute_excitatory_current(), feed_dict)
         lca_g = sess.run(self.model.compute_inhibitory_connectivity(), feed_dict)
         for step in range(1, num_inference_steps):
+          self.analysis_logger.log_info((
+            "Inference analysis on step "+str(step)," of "+str(num_inference_steps)))
           current_u = u[img_idx, step-1, :][None, ...]
           current_a = a[img_idx, step-1, :][None, ...]
-          x_ = self.model.compute_recon(current_a)
-          MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.x, x_)), axis=[1, 0])
-          img_var = tf.nn.moments(self.model.x, axes=[1])[1]
-          pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(img_var), MSE)))
           loss_list = [func(current_a) for func in loss_funcs.values()]
           run_list = [self.model.step_inference(current_u, current_a, lca_b, lca_g, step),
-            self.model.compute_total_loss(current_a, loss_funcs), pSNRdB]+loss_list
+            self.model.compute_total_loss(current_a, loss_funcs), self.model.pSNRdB]+loss_list
           run_outputs = sess.run(run_list, feed_dict)
           [lca_u_and_ga, current_total_loss, current_psnr] = run_outputs[0:3]
           current_losses = run_outputs[3:]

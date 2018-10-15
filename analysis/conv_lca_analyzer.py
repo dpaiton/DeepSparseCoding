@@ -39,6 +39,7 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
     self.inference_stats = analysis["inference_stats"]
 
   def evaluate_inference(self, images, num_inference_steps=None):
+    """Evaluates inference on images, produces outputs over time"""
     if num_inference_steps is None:
       num_inference_steps = self.model_params["num_steps"]
     num_imgs = images.shape[0]
@@ -50,28 +51,28 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
       [np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
       for _ in range(len(loss_funcs))]))
     total_loss = np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
-    with self.model.graph.as_default():
-      u_list, a_list = self.model.infer_coefficients()
-    with tf.Session(graph=self.model.graph) as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
+      sess.graph.finalize() # Graph is read-only after this statement
       self.model.load_weights(sess, self.cp_loc)
       for img_idx in range(num_imgs):
+        self.analysis_logger.log_info("Inference analysis on image "+str(img_idx))
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
-        u_vals, a_vals = sess.run([u_list, a_list], feed_dict)
-        for step, vals in enumerate(zip(u_vals, a_vals)):
-          u_val, a_val = vals
-          x_ = self.model.compute_recon(a_val)
-          reduce_axis = list(np.arange(images.ndim)[::-1]) # images should have same ndim as x_
-          MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.x, x_)), axis=reduce_axis)
-          img_var = tf.nn.moments(self.model.x, axes=reduce_axis[:-1])[1]
-          pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(img_var), MSE)))
+        for step in range(1, num_inference_steps):
+          current_u = u[img_idx, step-1, ...][None, ...]
+          current_a = a[img_idx, step-1, ...][None, ...]
+          self.analysis_logger.log_info((
+            "Inference analysis on step "+str(step)," of "+str(num_inference_steps)))
           loss_list = [func(a_val) for func in loss_funcs.values()]
-          run_list = [self.model.compute_total_loss(a_val, loss_funcs), pSNRdB]+loss_list
+          run_list = [self.model.step_inference(current_u, current_a, step),
+            self.model.compute_total_loss(a_val, loss_funcs), self.model.pSNRdB]+loss_list
           run_outputs = sess.run(run_list, feed_dict)
-          [current_total_loss, current_psnr] = run_outputs[0:2]
-          current_losses = run_outputs[2:]
-          u[img_idx, step, ...] = u_val
-          a[img_idx, step, ...] = a_val
+          [lca_u, current_total_loss, current_psnr] = run_outputs[0:3]
+          current_losses = run_outputs[3:]
+          u[img_idx, step, ...] = lca_u
+          a[img_idx, step, ...] = sess.run(self.model.threshold_units(lca_u), feed_dict)
           total_loss[img_idx, step] = current_total_loss
           psnr[img_idx, step] = current_psnr
           for idx, key in enumerate(loss_funcs.keys()):

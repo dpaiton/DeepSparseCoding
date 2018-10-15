@@ -61,7 +61,7 @@ class Analyzer(object):
 
   def add_advserarial_ops_to_graph(self):
     """
-    Append some opes to the graph for adversarial analysis
+    Append opes to the graph for adversarial analysis
     """
     with tf.device(self.model.device):
       with self.model.graph.as_default():
