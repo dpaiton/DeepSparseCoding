@@ -65,9 +65,9 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
           current_a = a[img_idx, step-1, ...][None, ...]
           self.analysis_logger.log_info((
             "Inference analysis on step "+str(step)," of "+str(num_inference_steps)))
-          loss_list = [func(a_val) for func in loss_funcs.values()]
+          loss_list = [func(current_a) for func in loss_funcs.values()]
           run_list = [self.model.step_inference(current_u, current_a, step),
-            self.model.compute_total_loss(a_val, loss_funcs), self.model.pSNRdB]+loss_list
+            self.model.compute_total_loss(current_a, loss_funcs), self.model.pSNRdB]+loss_list
           run_outputs = sess.run(run_list, feed_dict)
           [lca_u, current_total_loss, current_psnr] = run_outputs[0:3]
           current_losses = run_outputs[3:]

@@ -7,8 +7,7 @@ import utils.data_processing as dp
 class SUBSPACE_LCA_Analyzer(LCA_Analyzer):
   def __init__(self, params):
     super(SUBSPACE_LCA_Analyzer, self).__init__(params)
-    self.var_names += ["weights/group_weights:0"]
-    self.var_names += ["inference/group_activity:0"]
+    #self.var_names += ["weights/group_weights:0", "inference/group_activity:0"]
 
   def compute_pooled_activations(self, images):
     """
