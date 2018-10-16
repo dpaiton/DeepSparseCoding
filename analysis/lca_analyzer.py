@@ -165,17 +165,16 @@ class LCA_Analyzer(Analyzer):
           self.ga_list.append(ga)
           loss_funcs = self.model.get_loss_funcs()
           current_loss_list = [func(self.a_list[-1]) for func in loss_funcs.values()]
-          current_loss_list += [self.model.compute_total_loss(self.a_list[-1], loss_funcs)]
           for index, key in enumerate(loss_funcs.keys()):
             self.loss_list[key].append(current_loss_list[index])
-          self.loss_list["total_loss"].append(self.model.compute_total_loss(self.a_list[0],
+          self.loss_list["total_loss"].append(self.model.compute_total_loss(self.a_list[-1],
             loss_funcs))
           current_x_ = self.model.compute_recon(self.a_list[-1])
           MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.x, current_x_)), axis=[1, 0])
           pixel_var = tf.nn.moments(self.model.x, axes=[1])[1]
           pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)))
           self.psnr_list.append(pSNRdB)
-          
+
   def evaluate_inference(self, images):
     num_imgs = images.shape[0]
     b = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
@@ -190,7 +189,7 @@ class LCA_Analyzer(Analyzer):
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
       sess.graph.finalize() # Graph is read-only after this statement
       self.model.load_weights(sess, self.cp_loc)
-      for img_idx in range(num_imgs): # TODO: Why not just compute this over batch?
+      for img_idx in range(num_imgs):
         self.analysis_logger.log_info("Inference analysis on image "+str(img_idx))
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
         run_list = [self.lca_b, self.u_list, self.a_list, self.ga_list, self.psnr_list,
@@ -202,56 +201,7 @@ class LCA_Analyzer(Analyzer):
         a[img_idx, ...] = np.stack(np.squeeze(evals[3]), axis=0)
         psnr[img_idx, ...] = np.stack(np.squeeze(evals[4]), axis=0)
         losses[img_idx].update(evals[5])
-    return {"b":b, "ga":ga, "u":u, "a":a, "psnr":psnr, "losses":losses, "images":images}
-    
-  #def evaluate_inference(self, images, num_inference_steps=None):
-  #  """Evaluates inference on images, produces outputs over time"""
-  #  if num_inference_steps is None:
-  #    num_inference_steps = self.model_params["num_steps"]
-  #  num_imgs = images.shape[0]
-  #  num_neurons = self.model_params["num_neurons"]
-  #  loss_funcs = self.model.get_loss_funcs()
-  #  b = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
-  #  ga = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
-  #  u = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
-  #  a = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
-  #  psnr = np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
-  #  total_loss = np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
-  #  losses = dict(zip([str(key) for key in loss_funcs.keys()],
-  #    [np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
-  #    for _ in range(len(loss_funcs))]))
-  #  config = tf.ConfigProto()
-  #  config.gpu_options.allow_growth = True
-  #  with tf.Session(config=config, graph=self.model.graph) as sess:
-  #    sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
-  #    sess.graph.finalize() # Graph is read-only after this statement
-  #    self.model.load_weights(sess, self.cp_loc)
-  #    for img_idx in range(num_imgs):
-  #      self.analysis_logger.log_info("Inference analysis on image "+str(img_idx))
-  #      feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
-  #      lca_b = sess.run(self.model.compute_excitatory_current(), feed_dict)
-  #      lca_g = sess.run(self.model.compute_inhibitory_connectivity(), feed_dict)
-  #      for step in range(1, num_inference_steps):
-  #        self.analysis_logger.log_info((
-  #          "Inference analysis on step "+str(step)," of "+str(num_inference_steps)))
-  #        current_u = u[img_idx, step-1, :][None, ...]
-  #        current_a = a[img_idx, step-1, :][None, ...]
-  #        loss_list = [func(current_a) for func in loss_funcs.values()]
-  #        # TODO: Running compute_total_loss with np arrays as input creates new ops,
-  #        # which now fails because we finalize the graph.
-  #        run_list = [self.model.step_inference(current_u, current_a, lca_b, lca_g, step),
-  #          self.model.compute_total_loss(current_a, loss_funcs), self.model.pSNRdB]+loss_list
-  #        run_outputs = sess.run(run_list, feed_dict)
-  #        [lca_u_and_ga, current_total_loss, current_psnr] = run_outputs[0:3]
-  #        current_losses = run_outputs[3:]
-  #        lca_a = sess.run(self.model.threshold_units(lca_u_and_ga[0]), feed_dict)
-  #        b[img_idx, step, :] = lca_b
-  #        u[img_idx, step, :] = lca_u_and_ga[0]
-  #        ga[img_idx, step, :] = lca_u_and_ga[1]
-  #        a[img_idx, step, :] = lca_a
-  #        total_loss[img_idx, step] = current_total_loss
-  #        psnr[img_idx, step] = current_psnr
-  #        for idx, key in enumerate(loss_funcs.keys()):
-  #            losses[key][img_idx, step] = current_losses[idx]
-  #  losses["total"] = total_loss
-  #  return {"b":b, "ga":ga, "u":u, "a":a, "psnr":psnr, "losses":losses, "images":images}
+    out_losses = dict.fromkeys(losses[0].keys())
+    for key in losses[0].keys():
+      out_losses[key] = np.array([losses[idx][key] for idx in range(len(losses))])
+    return {"b":b, "ga":ga, "u":u, "a":a, "psnr":psnr, "losses":out_losses, "images":images}

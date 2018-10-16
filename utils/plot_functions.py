@@ -956,6 +956,8 @@ def plot_inference_stats(data, title="", save_filename=None):
   Inputs:
     data: [dict] that must contain the "losses"
       this can be created by using the LCA analyzer objects
+  TODO: Add a 4th plot that shows the % change in active coefficients (inactive-to-active + active-to-inactive)
+        e.g. in bottom left of figure 7 in rozell et al 2008 LCA paper
   """
   labels = [key for key in data["losses"].keys()]
   losses = [val for val in data["losses"].values()]
