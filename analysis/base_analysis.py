@@ -54,12 +54,15 @@ class Analyzer(object):
     self.model.log_schedule()
     self.model.graph = tf.Graph()
     self.model.build_graph()
-    self.add_advserarial_ops_to_graph()
+    self.add_pre_init_ops_to_graph()
     self.model.add_optimizers_to_graph()
     self.model.add_initializer_to_graph()
     self.model.construct_savers()
 
-  def add_advserarial_ops_to_graph(self):
+  def add_pre_init_ops_to_graph(self):
+    self.add_adversarial_ops_to_graph()
+
+  def add_adversarial_ops_to_graph(self):
     """
     Append opes to the graph for adversarial analysis
     """
@@ -197,6 +200,11 @@ class Analyzer(object):
         self.ot_phases = params["phases"]
       else:
         self.ot_phases = None
+    else:
+      self.ot_neurons = None
+      self.ot_contrasts = None
+      self.ot_orientations = None
+      self.ot_phases = None
 
   def make_dirs(self):
     """Make output directories"""

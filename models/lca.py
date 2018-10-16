@@ -56,13 +56,6 @@ class LCA(Model):
    return (tf.matmul(tf.transpose(self.phi), self.phi, name="gram_matrix")
      - tf.constant(np.identity(self.phi_shape[1], dtype=np.float32), name="identity_matrix"))
 
-  def step_inference(self, u_in, a_in, b, g, step):
-    with tf.name_scope("update_u"+str(step)) as scope:
-      lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
-      du = tf.subtract(tf.subtract(b, lca_explain_away), u_in, name="du")
-      u_out = tf.add(u_in, tf.multiply(self.eta, du))
-    return u_out, lca_explain_away
-
   def threshold_units(self, u_in):
     if self.thresh_type == "soft":
       if self.rectify_a:
@@ -83,6 +76,13 @@ class LCA(Model):
     else:
       a_out = tf.identity(u_in)
     return a_out
+
+  def step_inference(self, u_in, a_in, b, g, step):
+    with tf.name_scope("update_u"+str(step)) as scope:
+      lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
+      du = tf.subtract(tf.subtract(b, lca_explain_away), u_in, name="du")
+      u_out = tf.add(u_in, tf.multiply(self.eta, du))
+    return u_out, lca_explain_away
 
   def infer_coefficients(self):
    lca_b = self.compute_excitatory_current()
