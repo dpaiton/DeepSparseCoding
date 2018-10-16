@@ -15,42 +15,43 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
     self.analysis_logger.log_info("Image analysis is complete.")
     return evals
 
-  def run_analysis(self, images, save_info=""):
-    super(LCA_Analyzer, self).run_analysis(images, save_info)
-    self.evals = self.eval_analysis(images, self.var_names, save_info)
-    if self.do_basis_analysis:
-      self.bf_stats = self.basis_analysis(self.evals["weights/phi:0"], save_info)
-    if self.do_atas:
-      self.atas, self.atcs = self.ata_analysis(images, self.evals["inference/activity:0"],
-        save_info)
-      self.noise_activity, self.noise_atas, self.noise_atcs = self.run_noise_analysis(save_info)
-    if self.do_inference:
-      self.inference_stats = self.inference_analysis(images, save_info)
-    if self.do_adversaries:
-      self.adversarial_losses, self.adversarial_recons, self.adversarial_images = self.adversary_analysis(images,
-        input_id=0, target_id=25, eps=self.adversarial_eps, num_steps=self.adversarial_num_steps)
-
-  def load_analysis(self, save_info=""):
-    file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
-    analysis = np.load(file_loc)["data"].item()
-    self.var_names = analysis["var_names"]
-    self.run_stats = analysis["run_stats"]
-    self.evals = analysis["evals"]
-    self.inference_stats = analysis["inference_stats"]
-
-  def evaluate_inference(self, images, num_inference_steps=None):
-    """Evaluates inference on images, produces outputs over time"""
-    if num_inference_steps is None:
-      num_inference_steps = self.model_params["num_steps"]
-    num_imgs = images.shape[0]
+  def add_inference_ops_to_graph(self, num_imgs, num_inference_steps):
     loss_funcs = self.model.get_loss_funcs()
-    u = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
-    a = np.zeros([num_imgs, num_inference_steps]+self.model.u_shape, dtype=np.float32)
-    psnr = np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
     losses = dict(zip([str(key) for key in loss_funcs.keys()],
       [np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
       for _ in range(len(loss_funcs))]))
-    total_loss = np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
+    with tf.device(self.model.device):
+      with self.model.graph.as_default():
+        self.u_list = [self.model.u_zeros]
+        self.a_list = [self.model.threshold_units(self.u_list[0])]
+        self.psnr_list = [tf.constant(0.0, dtype=tf.float32)]
+        self.loss_list = {}
+        current_loss_list = [func(self.a_list[0]) for func in loss_funcs.values()]
+        for index, key in enumerate(loss_funcs.keys()):
+          self.loss_list[key] = [current_loss_list[index]]
+        self.loss_list["total_loss"] = [self.model.compute_total_loss(self.a_list[0], loss_funcs)]
+        for step in range(num_inference_steps-1):
+          u = self.model.step_inference(self.u_list[step], self.a_list[step], step)
+          self.u_list.append(u)
+          self.a_list.append(self.model.threshold_units(self.u_list[step+1]))
+          loss_funcs = self.model.get_loss_funcs()
+          current_loss_list = [func(self.a_list[-1]) for func in loss_funcs.values()]
+          for index, key in enumerate(loss_funcs.keys()):
+            self.loss_list[key].append(current_loss_list[index])
+          self.loss_list["total_loss"].append(self.model.compute_total_loss(self.a_list[-1],
+            loss_funcs))
+          current_x_ = self.model.compute_recon(self.a_list[-1])
+          MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.x, current_x_)), axis=[1, 0])
+          pixel_var = tf.nn.moments(self.model.x, axes=[1])[1]
+          pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)))
+          self.psnr_list.append(pSNRdB)
+
+  def evaluate_inference(self, images):
+    num_imgs = images.shape[0]
+    u = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
+    a = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
+    psnr = np.zeros((num_imgs, self.num_inference_steps), dtype=np.float32)
+    losses = [{} for _ in range(num_imgs)]
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
@@ -60,22 +61,13 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
       for img_idx in range(num_imgs):
         self.analysis_logger.log_info("Inference analysis on image "+str(img_idx))
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
-        for step in range(1, num_inference_steps):
-          current_u = u[img_idx, step-1, ...][None, ...]
-          current_a = a[img_idx, step-1, ...][None, ...]
-          self.analysis_logger.log_info((
-            "Inference analysis on step "+str(step)," of "+str(num_inference_steps)))
-          loss_list = [func(current_a) for func in loss_funcs.values()]
-          run_list = [self.model.step_inference(current_u, current_a, step),
-            self.model.compute_total_loss(current_a, loss_funcs), self.model.pSNRdB]+loss_list
-          run_outputs = sess.run(run_list, feed_dict)
-          [lca_u, current_total_loss, current_psnr] = run_outputs[0:3]
-          current_losses = run_outputs[3:]
-          u[img_idx, step, ...] = lca_u
-          a[img_idx, step, ...] = sess.run(self.model.threshold_units(lca_u), feed_dict)
-          total_loss[img_idx, step] = current_total_loss
-          psnr[img_idx, step] = current_psnr
-          for idx, key in enumerate(loss_funcs.keys()):
-              losses[key][img_idx, step] = current_losses[idx]
-      losses["total"] = total_loss
-    return {"u":u, "a":a, "psnr":psnr, "losses":losses, "images":images}
+        run_list = [self.u_list, self.a_list, self.psnr_list, self.loss_list]
+        evals = sess.run(run_list, feed_dict)
+        u[img_idx, ...] = np.stack(np.squeeze(evals[0]), axis=0)
+        a[img_idx, ...] = np.stack(np.squeeze(evals[1]), axis=0)
+        psnr[img_idx, ...] = np.stack(np.squeeze(evals[3]), axis=0)
+        losses[img_idx].update(evals[4])
+    out_losses = dict.fromkeys(losses[0].keys())
+    for key in losses[0].keys():
+      out_losses[key] = np.array([losses[idx][key] for idx in range(len(losses))])
+    return {"u":u, "a":a, "psnr":psnr, "losses":out_losses, "images":images}
