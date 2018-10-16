@@ -31,36 +31,6 @@ class LCA_Analyzer(Analyzer):
       self.do_inference = False
       self.num_inference_images = None
       self.num_inference_steps = None
-    if "do_adversaries" in params.keys():
-      self.do_adversaries = params["do_adversaries"]
-      if "adversarial_eps" in params.keys():
-        self.adversarial_eps = params["adversarial_eps"]
-      else:
-        self.adversarial_eps = 0.01
-      if "adversarial_num_steps" in params.keys():
-        self.adversarial_num_steps = params["adversarial_num_steps"]
-      else:
-        self.adversarial_num_steps = 200
-      if "adversarial_input_id" in params.keys():
-        self.adversarial_input_id = params["adversarial_input_id"]
-      else:
-        self.adversarial_input_id = 0
-      if "adversarial_target_id" in params.keys():
-        self.adversarial_target_id = params["adversarial_target_id"]
-      else:
-        self.adversarial_target_id = 1
-
-  def inference_analysis(self, images, save_info, num_inference_images=None):
-    if num_inference_images is None:
-      image_indices = np.arange(images.shape[0])
-    else:
-      image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
-        replace=False)
-    inference_stats = self.evaluate_inference(images[image_indices, ...])
-    np.savez(self.analysis_out_dir+"savefiles/inference_"+save_info+".npz",
-      data={"inference_stats":inference_stats})
-    self.analysis_logger.log_info("Inference analysis is complete.")
-    return inference_stats
 
   def run_analysis(self, images, save_info=""):
     super(LCA_Analyzer, self).run_analysis(images, save_info)
@@ -72,11 +42,12 @@ class LCA_Analyzer(Analyzer):
         save_info)
       self.noise_activity, self.noise_atas, self.noise_atcs = self.run_noise_analysis(save_info)
     if self.do_inference:
-      self.inference_stats = self.inference_analysis(images, save_info, self.num_inference_steps)
+      self.inference_stats = self.inference_analysis(images, save_info,
+        self.num_inference_images, self.num_inference_steps)
     if self.do_adversaries:
       self.adversarial_images, self.adversarial_recons, self.adversarial_mses = self.adversary_analysis(images,
         input_id=self.adversarial_input_id, target_id=self.adversarial_target_id,
-        eps=self.adversarial_eps, num_steps=self.adversarial_num_steps)
+        eps=self.adversarial_eps, num_steps=self.adversarial_num_steps, save_info=save_info)
     if (self.ot_contrasts is not None
       and self.ot_orientations is not None
       and self.ot_phases is not None
@@ -134,16 +105,29 @@ class LCA_Analyzer(Analyzer):
           inference_idx += 1
     return a
 
+  def inference_analysis(self, images, save_info, num_images=None, num_steps=None):
+    if num_images is None:
+      image_indices = np.arange(images.shape[0])
+    else:
+      image_indices = np.random.choice(np.arange(images.shape[0]), self.num_inference_images,
+        replace=False)
+    if num_steps is None:
+      num_steps = self.model.num_steps # this is replicated in self.add_inference_ops_to_graph
+    inference_stats = self.evaluate_inference(images[image_indices, ...], num_steps)
+    np.savez(self.analysis_out_dir+"savefiles/inference_"+save_info+".npz",
+      data={"inference_stats":inference_stats})
+    self.analysis_logger.log_info("Inference analysis is complete.")
+    return inference_stats
+
   def add_pre_init_ops_to_graph(self):
     super(LCA_Analyzer, self).add_pre_init_ops_to_graph()
     if self.do_inference:
       self.add_inference_ops_to_graph(self.num_inference_images, self.num_inference_steps)
 
-  def add_inference_ops_to_graph(self, num_imgs, num_inference_steps):
+  def add_inference_ops_to_graph(self, num_imgs=1, num_inference_steps=None):
+    if num_inference_steps is None:
+      num_inference_steps = self.model.num_steps # this is replicated in self.inference_analysis
     loss_funcs = self.model.get_loss_funcs()
-    losses = dict(zip([str(key) for key in loss_funcs.keys()],
-      [np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
-      for _ in range(len(loss_funcs))]))
     with tf.device(self.model.device):
       with self.model.graph.as_default():
         self.lca_b = self.model.compute_excitatory_current()
@@ -175,13 +159,13 @@ class LCA_Analyzer(Analyzer):
           pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)))
           self.psnr_list.append(pSNRdB)
 
-  def evaluate_inference(self, images):
+  def evaluate_inference(self, images, num_steps):
     num_imgs = images.shape[0]
-    b = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
-    u = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
-    ga = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
-    a = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
-    psnr = np.zeros((num_imgs, self.num_inference_steps), dtype=np.float32)
+    b = np.zeros([num_imgs, num_steps]+self.model.u_shape, dtype=np.float32)
+    u = np.zeros([num_imgs, num_steps]+self.model.u_shape, dtype=np.float32)
+    ga = np.zeros([num_imgs, num_steps]+self.model.u_shape, dtype=np.float32)
+    a = np.zeros([num_imgs, num_steps]+self.model.u_shape, dtype=np.float32)
+    psnr = np.zeros((num_imgs, num_steps), dtype=np.float32)
     losses = [{} for _ in range(num_imgs)]
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True

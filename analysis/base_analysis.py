@@ -29,110 +29,17 @@ class Analyzer(object):
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=False)
       analysis_text = self.analysis_logger.load_file()
       prev_analysis_params = self.analysis_logger.read_params(analysis_text)
-      if type(prev_analysis_params) == dict: # there was only one param entry
-        params.update(prev_analysis_params)
-      else: # type is list, which means where were multiple param entries in the log
-        for param_item in prev_analysis_params:
-          params.update(param_item)
+      # Deprecated: This code was causing unwanted bahavior.
+      #if type(prev_analysis_params) == dict: # there was only one param entry
+      #  params.update(prev_analysis_params)
+      #else: # type is list, which means where were multiple param entries in the log
+      #  for param_item in prev_analysis_params:
+      #    params.update(param_item)
     else: # File is empty
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=True)
       self.analysis_logger.log_params(params)
     self.load_params(params)
     self.load_model() # Adds "self.model" member variable that is another model class
-
-  def setup_model(self, params, schedule):
-    """
-    Run model setup, but also add adversarial nodes to graph
-    """
-    self.model.load_schedule(schedule)
-    self.model.sched_idx = 0
-    self.model.load_params(params)
-    self.model.check_params()
-    self.model.make_dirs()
-    self.model.init_logging()
-    self.model.log_params()
-    self.model.log_schedule()
-    self.model.graph = tf.Graph()
-    self.model.build_graph()
-    self.add_pre_init_ops_to_graph()
-    self.model.add_optimizers_to_graph()
-    self.model.add_initializer_to_graph()
-    self.model.construct_savers()
-
-  def add_pre_init_ops_to_graph(self):
-    self.add_adversarial_ops_to_graph()
-
-  def add_adversarial_ops_to_graph(self):
-    """
-    Append opes to the graph for adversarial analysis
-    """
-    with tf.device(self.model.device):
-      with self.model.graph.as_default():
-        with tf.name_scope("placeholders") as scope:
-          self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.x_shape,
-            name="adversarial_target_data")
-        with tf.name_scope("loss") as scope:
-          # Want to avg over batch, sum over the rest
-          reduc_dim = list(range(1, len(self.model.a.shape)))
-          self.model.adv_recon_loss = tf.reduce_mean(0.5 *
-            tf.reduce_sum(tf.square(tf.subtract(self.model.adv_target,
-            self.model.compute_recon(self.model.a))), axis=reduc_dim),
-            name="target_recon_loss")
-        with tf.name_scope("adversarial") as scope:
-          self.model.adv_dx = -tf.gradients(self.model.adv_recon_loss, self.model.x)[0]
-
-  def adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100):
-    input_image = images[input_id, ...][None,...].astype(np.float32)
-    target_image = images[target_id, ...][None,...].astype(np.float32)
-    adversarial_images, recons, mses = self.construct_adversarial_stimulus(input_image,
-      target_image, eps, num_steps)
-    out_dict = {"adversarial_images":adversarial_images, "recons":recons, "eps":eps,
-      "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
-    out_dict.update(mses)
-    np.savez(self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz", data=out_dict)
-    self.analysis_logger.log_info("Adversary analysis is complete.")
-    return adversarial_images, recons, mses
-
-  def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=10):
-    mse = lambda x,y: np.mean(np.square(x - y))
-    losses = []
-    adversarial_images = [input_image]
-    recons = []
-    input_recon_mses = []
-    input_adv_mses = []
-    target_recon_mses = []
-    target_adv_mses = []
-    adv_recon_mses = []
-    input_target_mse = mse(input_image, target_image)
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
-      ## Setup session
-      feed_dict = self.model.get_feed_dict(input_image)
-      feed_dict[self.model.adv_target] = target_image
-      #TODO: GraphDef cannot be larger than 2GB error from here when using conv_lca
-      # Try finalizing the graph and see if the error changes.
-      #import IPython; IPython.embed(); raise SystemExit
-      sess.run(self.model.init_op, feed_dict)
-      self.model.load_weights(sess, self.cp_loc)
-      new_image = input_image.copy()
-      for step in range(num_steps):
-        self.analysis_logger.log_info("Adversarial analysis, step "+step)
-        eval_ops = [self.model.x_, self.model.adv_dx]
-        recon, adv_dx = sess.run(eval_ops, feed_dict)
-        new_image += eps * adv_dx
-        input_recon_mses.append(mse(input_image, recon))
-        input_adv_mses.append(mse(input_image, new_img))
-        target_recon_mses.append(mse(target_image, recon))
-        target_adv_mses.append(mse(target_image, new_img))
-        adv_recon_mses.append(mse(new_img, recon))
-        adversarial_images.append(new_img)
-        recons.append(recon)
-        feed_dict[self.model.x] = new_img
-      mses = {"input_target_mse":input_target_mse, "input_recon_mses":input_recon_mses,
-      "input_adv_mses":input_adv_mses, "target_recon_mses":target_recon_mses,
-      "target_adv_mses":target_adv_mses, "adv_recon_mses":adv_recon_mses}
-      return adversarial_images, recons, mses
 
   def load_params(self, params):
     """
@@ -184,6 +91,27 @@ class Analyzer(object):
       self.num_noise_images = params["num_noise_images"]
     else:
       self.num_noise_images = 100
+    # Adversarial analysis
+    if "do_adversaries" in params.keys():
+      self.do_adversaries = params["do_adversaries"]
+      if "adversarial_eps" in params.keys():
+        self.adversarial_eps = params["adversarial_eps"]
+      else:
+        self.adversarial_eps = 0.01
+      if "adversarial_num_steps" in params.keys():
+        self.adversarial_num_steps = params["adversarial_num_steps"]
+      else:
+        self.adversarial_num_steps = 200
+      if "adversarial_input_id" in params.keys():
+        self.adversarial_input_id = params["adversarial_input_id"]
+      else:
+        self.adversarial_input_id = 0
+      if "adversarial_target_id" in params.keys():
+        self.adversarial_target_id = params["adversarial_target_id"]
+      else:
+        self.adversarial_target_id = 1
+    else:
+      self.do_adversaries = False
     #  Orientation Selectivity
     if "do_orientation_analysis" in params.keys() and params["do_orientation_analysis"]:
       self.do_orientation_analysis = params["do_orientation_analysis"]
@@ -221,6 +149,29 @@ class Analyzer(object):
   def load_model(self):
     """Load model object into analysis object"""
     self.model = mp.get_model(self.model_params["model_type"])
+
+  def setup_model(self, params, schedule):
+    """
+    Run model setup, but also add adversarial nodes to graph
+    """
+    self.model.load_schedule(schedule)
+    self.model.sched_idx = 0
+    self.model.load_params(params)
+    self.model.check_params()
+    self.model.make_dirs()
+    self.model.init_logging()
+    self.model.log_params()
+    self.model.log_schedule()
+    self.model.graph = tf.Graph()
+    self.model.build_graph()
+    self.add_pre_init_ops_to_graph()
+    self.model.add_optimizers_to_graph()
+    self.model.add_initializer_to_graph()
+    self.model.construct_savers()
+
+  def add_pre_init_ops_to_graph(self):
+    if self.do_adversaries:
+      self.add_adversarial_ops_to_graph()
 
   def get_log_stats(self):
     """Wrapper function for parsing the log statistics"""
@@ -723,3 +674,77 @@ class Analyzer(object):
     v = np.squeeze((v / np.linalg.norm(v)).T)
     proj_matrix = np.stack([bf1, v], axis=0)
     return proj_matrix, v
+
+  def add_adversarial_ops_to_graph(self):
+    """
+    Append opes to the graph for adversarial analysis
+    """
+    with tf.device(self.model.device):
+      with self.model.graph.as_default():
+        with tf.name_scope("placeholders") as scope:
+          self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.x_shape,
+            name="adversarial_target_data")
+        with tf.name_scope("loss") as scope:
+          # Want to avg over batch, sum over the rest
+          reduc_dim = list(range(1, len(self.model.a.shape)))
+          self.model.adv_recon_loss = tf.reduce_mean(0.5 *
+            tf.reduce_sum(tf.square(tf.subtract(self.model.adv_target,
+            self.model.compute_recon(self.model.a))), axis=reduc_dim),
+            name="target_recon_loss")
+        with tf.name_scope("adversarial") as scope:
+          self.model.adv_dx = -tf.gradients(self.model.adv_recon_loss, self.model.x)[0]
+
+  def adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100,
+    save_info=""):
+    input_image = images[input_id, ...][None,...].astype(np.float32)
+    target_image = images[target_id, ...][None,...].astype(np.float32)
+    adversarial_images, recons, mses = self.construct_adversarial_stimulus(input_image,
+      target_image, eps, num_steps)
+    out_dict = {"adversarial_images":adversarial_images, "recons":recons, "eps":eps,
+      "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
+    out_dict.update(mses)
+    np.savez(self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz", data=out_dict)
+    self.analysis_logger.log_info("Adversary analysis is complete.")
+    return adversarial_images, recons, mses
+
+  def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=10):
+    mse = lambda x,y: np.mean(np.square(x - y))
+    losses = []
+    adversarial_images = [input_image]
+    recons = []
+    input_recon_mses = []
+    input_adv_mses = []
+    target_recon_mses = []
+    target_adv_mses = []
+    adv_recon_mses = []
+    input_target_mse = mse(input_image, target_image)
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      ## Setup session
+      feed_dict = self.model.get_feed_dict(input_image)
+      feed_dict[self.model.adv_target] = target_image
+      #TODO: GraphDef cannot be larger than 2GB error from here when using conv_lca
+      # Try finalizing the graph and see if the error changes.
+      #import IPython; IPython.embed(); raise SystemExit
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_weights(sess, self.cp_loc)
+      new_image = input_image.copy()
+      for step in range(num_steps):
+        self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
+        eval_ops = [self.model.x_, self.model.adv_dx]
+        recon, adv_dx = sess.run(eval_ops, feed_dict)
+        new_image += eps * adv_dx
+        input_recon_mses.append(mse(input_image, recon))
+        input_adv_mses.append(mse(input_image, new_image))
+        target_recon_mses.append(mse(target_image, recon))
+        target_adv_mses.append(mse(target_image, new_image))
+        adv_recon_mses.append(mse(new_image, recon))
+        adversarial_images.append(new_image)
+        recons.append(recon)
+        feed_dict[self.model.x] = new_image
+      mses = {"input_target_mse":input_target_mse, "input_recon_mses":input_recon_mses,
+      "input_adv_mses":input_adv_mses, "target_recon_mses":target_recon_mses,
+      "target_adv_mses":target_adv_mses, "adv_recon_mses":adv_recon_mses}
+      return adversarial_images, recons, mses
+

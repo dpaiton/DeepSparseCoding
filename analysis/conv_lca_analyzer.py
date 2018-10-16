@@ -15,11 +15,10 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
     self.analysis_logger.log_info("Image analysis is complete.")
     return evals
 
-  def add_inference_ops_to_graph(self, num_imgs, num_inference_steps):
+  def add_inference_ops_to_graph(self, num_imgs, num_inference_steps=None):
+    if num_inference_steps is None:
+      num_inference_steps = self.model.num_steps
     loss_funcs = self.model.get_loss_funcs()
-    losses = dict(zip([str(key) for key in loss_funcs.keys()],
-      [np.zeros((num_imgs, num_inference_steps), dtype=np.float32)
-      for _ in range(len(loss_funcs))]))
     with tf.device(self.model.device):
       with self.model.graph.as_default():
         self.u_list = [self.model.u_zeros]
@@ -41,16 +40,17 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
           self.loss_list["total_loss"].append(self.model.compute_total_loss(self.a_list[-1],
             loss_funcs))
           current_x_ = self.model.compute_recon(self.a_list[-1])
-          MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.x, current_x_)), axis=[1, 0])
-          pixel_var = tf.nn.moments(self.model.x, axes=[1])[1]
+          MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.x, current_x_)))
+          reduc_dim = list(range(1, len(self.model.x.shape)))
+          pixel_var = tf.nn.moments(self.model.x, axes=reduc_dim)[1]
           pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)))
           self.psnr_list.append(pSNRdB)
 
-  def evaluate_inference(self, images):
+  def evaluate_inference(self, images, num_steps):
     num_imgs = images.shape[0]
-    u = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
-    a = np.zeros([num_imgs, self.num_inference_steps]+self.model.u_shape, dtype=np.float32)
-    psnr = np.zeros((num_imgs, self.num_inference_steps), dtype=np.float32)
+    u = np.zeros([num_imgs, num_steps]+self.model.u_shape, dtype=np.float32)
+    a = np.zeros([num_imgs, num_steps]+self.model.u_shape, dtype=np.float32)
+    psnr = np.zeros((num_imgs, num_steps), dtype=np.float32)
     losses = [{} for _ in range(num_imgs)]
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -63,10 +63,10 @@ class CONV_LCA_Analyzer(LCA_Analyzer):
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
         run_list = [self.u_list, self.a_list, self.psnr_list, self.loss_list]
         evals = sess.run(run_list, feed_dict)
-        u[img_idx, ...] = np.stack(np.squeeze(evals[0]), axis=0)
-        a[img_idx, ...] = np.stack(np.squeeze(evals[1]), axis=0)
-        psnr[img_idx, ...] = np.stack(np.squeeze(evals[3]), axis=0)
-        losses[img_idx].update(evals[4])
+        u[img_idx, ...] = np.squeeze(np.stack(evals[0], axis=0))
+        a[img_idx, ...] = np.squeeze(np.stack(evals[1], axis=0))
+        psnr[img_idx, ...] = np.stack(np.squeeze(evals[2]), axis=0)
+        losses[img_idx].update(evals[3])
     out_losses = dict.fromkeys(losses[0].keys())
     for key in losses[0].keys():
       out_losses[key] = np.array([losses[idx][key] for idx in range(len(losses))])
