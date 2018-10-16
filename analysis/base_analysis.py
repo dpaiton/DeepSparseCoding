@@ -107,6 +107,9 @@ class Analyzer(object):
       ## Setup session
       feed_dict = self.model.get_feed_dict(input_image)
       feed_dict[self.model.adv_target] = target_image
+      #TODO: GraphDef cannot be larger than 2GB error from here when using conv_lca
+      # Try finalizing the graph and see if the error changes.
+      #import IPython; IPython.embed(); raise SystemExit
       sess.run(self.model.init_op, feed_dict)
       self.model.load_weights(sess, self.cp_loc)
       new_image = input_image.copy()

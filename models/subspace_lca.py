@@ -113,6 +113,10 @@ class SUBSPACE_LCA(LCA):
           self.group_activity = tf.identity(self.group_amplitudes(self.a), name="group_activity")
           self.group_angles = tf.identity(self.group_directions(self.a, self.group_activity),
             name="group_directions")
+        with tf.variable_scope(self.weight_scope):
+          self.group_weights = tf.reshape(self.phi,
+            shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group],
+            name="group_weights")
 
   def generate_plots(self, input_data, input_labels=None):
     """
