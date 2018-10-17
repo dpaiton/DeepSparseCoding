@@ -57,17 +57,6 @@ class LCA_Analyzer(Analyzer):
 
   def load_analysis(self, save_info=""):
     super(LCA_Analyzer, self).load_analysis(save_info)
-    # Adversarial analysis
-    adversarial_file_loc = self.analysis_out_dir+"savefiles/adversary_losses_"+save_info+".npz"
-    if os.path.exists(adversarial_file_loc):
-      data = np.load(adversarial_file_loc)["data"].item()
-      self.adversarial_mses = data["adversarial_mses"]
-      self.adversarial_images = data["adversarial_images"]
-      self.adversarial_recons = data["adversarial_recons"]
-      self.adversarial_eps = data["eps"]
-      self.adversarial_num_steps = data["num_steps"]
-      self.adversarial_input_id = data["input_id"]
-      self.adversarial_target_id = data["target_id"]
     # Inference analysis
     inference_file_loc = self.analysis_out_dir+"savefiles/inference_"+save_info+".npz"
     if os.path.exists(inference_file_loc):

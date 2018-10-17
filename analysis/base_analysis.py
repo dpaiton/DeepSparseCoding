@@ -310,6 +310,22 @@ class Analyzer(object):
       self.full_image = recon_analysis["full_image"]
       self.full_recon = recon_analysis["full_recon"]
       self.recon_frac_act = recon_analysis["recon_frac_act"]
+    # Adversarial analysis
+    adversarial_file_loc = self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz"
+    if os.path.exists(adversarial_file_loc):
+      data = np.load(adversarial_file_loc)["data"].item()
+      self.adversarial_images = data["adversarial_images"]
+      self.adversarial_recons = data["adversarial_recons"]
+      self.adversarial_eps = data["eps"]
+      self.adversarial_num_steps = data["num_steps"]
+      self.adversarial_input_id = data["input_id"]
+      self.adversarial_target_id = data["target_id"]
+      self.adversarial_input_target_mses = data["input_target_mse"]
+      self.adversarial_input_recon_mses = data["input_recon_mses"]
+      self.adversarial_input_adv_mses = data["input_adv_mses"]
+      self.adversarial_target_recon_mses = data["target_recon_mses"]
+      self.adversarial_target_adv_mses = data["target_adv_mses"]
+      self.adversarial_adv_recon_mses = data["adv_recon_mses"]
 
   def evaluate_model(self, images, var_names):
     """
@@ -694,19 +710,6 @@ class Analyzer(object):
         with tf.name_scope("adversarial") as scope:
           self.model.adv_dx = -tf.gradients(self.model.adv_recon_loss, self.model.x)[0]
 
-  def adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100,
-    save_info=""):
-    input_image = images[input_id, ...][None,...].astype(np.float32)
-    target_image = images[target_id, ...][None,...].astype(np.float32)
-    adversarial_images, recons, mses = self.construct_adversarial_stimulus(input_image,
-      target_image, eps, num_steps)
-    out_dict = {"adversarial_images":adversarial_images, "recons":recons, "eps":eps,
-      "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
-    out_dict.update(mses)
-    np.savez(self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz", data=out_dict)
-    self.analysis_logger.log_info("Adversary analysis is complete.")
-    return adversarial_images, recons, mses
-
   def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
     losses = []
@@ -748,3 +751,21 @@ class Analyzer(object):
       "target_adv_mses":target_adv_mses, "adv_recon_mses":adv_recon_mses}
       return adversarial_images, recons, mses
 
+  def adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100,
+    save_info=""):
+    input_image = images[input_id, ...][None,...].astype(np.float32)
+    target_image = images[target_id, ...][None,...].astype(np.float32)
+    self.adversarial_images, self.adversarial_recons, mses = self.construct_adversarial_stimulus(input_image,
+      target_image, eps, num_steps)
+    self.adversarial_input_target_mses = mses["input_target_mse"]
+    self.adversarial_input_recon_mses = mses["input_recon_mses"]
+    self.adversarial_input_adv_mses = mses["input_adv_mses"]
+    self.adversarial_target_recon_mses = mses["target_recon_mses"]
+    self.adversarial_target_adv_mses = mses["target_adv_mses"]
+    self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
+    out_dict = {"adversarial_images":adversarial_images, "adversarial_recons":recons, "eps":eps,
+      "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
+    out_dict.update(mses)
+    np.savez(self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz", data=out_dict)
+    self.analysis_logger.log_info("Adversary analysis is complete.")
+    return adversarial_images, recons, mses
