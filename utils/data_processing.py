@@ -806,6 +806,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
       if method=="PCA" or "ZCA", then w_filter is a list containing [u, diag(s)]
         of SVD of covariance matrix
     TODO: Add cutoff parameter for ZCA & PCA in addition to adding epsilon
+          Add "whitening_filter" parameter, so that if a user passes in a specific filter then it will use it
   """
   if method.upper() == "FT":
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=False)[0:4]

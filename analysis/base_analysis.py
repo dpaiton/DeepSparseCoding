@@ -713,7 +713,7 @@ class Analyzer(object):
   def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
     losses = []
-    adversarial_images = [input_image]
+    adversarial_images = []
     recons = []
     input_recon_mses = []
     input_adv_mses = []
@@ -727,13 +727,11 @@ class Analyzer(object):
       ## Setup session
       feed_dict = self.model.get_feed_dict(input_image)
       feed_dict[self.model.adv_target] = target_image
-      #TODO: GraphDef cannot be larger than 2GB error from here when using conv_lca
-      # Try finalizing the graph and see if the error changes.
-      #import IPython; IPython.embed(); raise SystemExit
       sess.run(self.model.init_op, feed_dict)
       self.model.load_weights(sess, self.cp_loc)
       new_image = input_image.copy()
       for step in range(num_steps):
+        adversarial_images.append(new_image.copy())
         self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
         eval_ops = [self.model.x_, self.model.adv_dx]
         recon, adv_dx = sess.run(eval_ops, feed_dict)
@@ -743,7 +741,6 @@ class Analyzer(object):
         target_recon_mses.append(mse(target_image, recon))
         target_adv_mses.append(mse(target_image, new_image))
         adv_recon_mses.append(mse(new_image, recon))
-        adversarial_images.append(new_image)
         recons.append(recon)
         feed_dict[self.model.x] = new_image
       mses = {"input_target_mse":input_target_mse, "input_recon_mses":input_recon_mses,
