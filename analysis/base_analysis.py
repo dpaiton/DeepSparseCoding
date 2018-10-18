@@ -708,7 +708,7 @@ class Analyzer(object):
             self.model.compute_recon(self.model.a))), axis=reduc_dim),
             name="target_recon_loss")
         with tf.name_scope("adversarial") as scope:
-          self.model.adv_dx = -tf.gradients(self.model.adv_recon_loss, self.model.x)[0]
+          self.model.adv_dx = -tf.sign(tf.gradients(self.model.adv_recon_loss, self.model.x)[0])
 
   def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
