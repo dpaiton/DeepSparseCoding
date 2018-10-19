@@ -760,9 +760,10 @@ class Analyzer(object):
     self.adversarial_target_recon_mses = mses["target_recon_mses"]
     self.adversarial_target_adv_mses = mses["target_adv_mses"]
     self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
-    out_dict = {"adversarial_images":adversarial_images, "adversarial_recons":recons, "eps":eps,
+    out_dict = {"adversarial_images":self.adversarial_images,
+      "adversarial_recons":self.adversarial_recons, "eps":eps,
       "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
     out_dict.update(mses)
     np.savez(self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz", data=out_dict)
     self.analysis_logger.log_info("Adversary analysis is complete.")
-    return adversarial_images, recons, mses
+    return self.adversarial_images, self.adversarial_recons, mses
