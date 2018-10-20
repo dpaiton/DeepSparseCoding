@@ -109,7 +109,7 @@ class SUBSPACE_LCA(LCA):
     super(SUBSPACE_LCA, self).build_graph()
     with tf.device(self.device):
       with self.graph.as_default():
-        with tf.variable_scope("inference"):
+        with tf.variable_scope(self.inference_scope):
           self.group_activity = tf.identity(self.group_amplitudes(self.a), name="group_activity")
           self.group_angles = tf.identity(self.group_directions(self.a, self.group_activity),
             name="group_directions")

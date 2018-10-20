@@ -160,9 +160,10 @@ class LCA(Model):
           self.norm_weights = tf.group(self.norm_phi, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
-         u_list, a_list = self.infer_coefficients()
-         self.u = tf.identity(u_list[-1], name="u")
-         self.a = tf.identity(a_list[-1], name="activity")
+          self.inference_scope = tf.get_variable_scope()
+          u_list, a_list = self.infer_coefficients()
+          self.u = tf.identity(u_list[-1], name="u")
+          self.a = tf.identity(a_list[-1], name="activity")
 
         with tf.name_scope("output") as scope:
           self.x_ = self.compute_recon(self.a)

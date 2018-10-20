@@ -20,4 +20,4 @@ class SUBSPACE_LCA_Analyzer(LCA_Analyzer):
       sess.run(self.model.init_op, feed_dict)
       self.model.load_weights(sess, self.cp_loc)
       activations = sess.run(self.model.group_activity, feed_dict)
-    return activations
+    return np.squeeze(activations)

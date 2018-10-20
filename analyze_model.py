@@ -6,18 +6,19 @@ import utils.data_processing as dp
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "conv_lca",
-  "model_name": "conv_lca",
+  "model_type": "subspace_lca",
+  "model_name": "subspace_lca_mnist",
   "version": "0.0",
   "save_info": "analysis",
   "device": "/gpu:0",
-  "data_type": "vanHateren",
-  "num_patches": 1e4,
-  "overwrite_analysis_log": False,
+  "data_type": "mnist",
+  "num_patches": 1e4, # How many input patches to create - only used if model calls for patching
+  "overwrite_analysis_log": True, # If false, append to log file
   "do_basis_analysis": False, # Dictionary fitting
   "do_inference": False, # LCA Inference analysis
   "do_atas": False, # Activity triggered averages
-  "do_adversaries": True, # Adversarial image analysis
+  #TODO: Adversaries does not seem to work on subspace_lca_mnist
+  "do_adversaries": False, # Adversarial image analysis
   "do_full_recon": False, # Patchwise image recon
   "do_orientation_analysis": False, # Orientation and Cross-Orientation analysis
   "ft_padding": 32, # Fourier analysis padding for weight fitting
@@ -39,7 +40,8 @@ analysis_params["model_dir"] = (os.path.expanduser("~")+"/Work/Projects/"
 analyzer = ap.get_analyzer(analysis_params)
 
 analyzer.model_params["data_type"] = analysis_params["data_type"]
-analyzer.model_params["num_patches"] = analysis_params["num_patches"]
+if "extract_patches" in analyzer.model_params.keys() and analyzer.model_params["extract_patches"]:
+  analyzer.model_params["num_patches"] = analysis_params["num_patches"]
 
 data = ds.get_data(analyzer.model_params)
 data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
