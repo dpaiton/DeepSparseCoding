@@ -13,12 +13,12 @@ t0 = ti.time()
 
 ## Specify model type and data type
 #model_type = "entropy_sc"
-model_type = "gdn_autoencoder"
-#model_type = "conv_gdn_autoencoder"
+#model_type = "gdn_autoencoder"
+model_type = "conv_gdn_autoencoder"
 #model_type = "relu_autoencoder"
 
-data_type = "vanhateren"
-#data_type = "nat_images"
+#data_type = "vanhateren"
+data_type = "nat_images"
 
 ## Import params
 params, schedule = pp.get_params(model_type)
@@ -34,7 +34,7 @@ else:
 ## Import data
 if data_type.lower() == "vanhateren":
   data = ds.get_data(params)
-elif data_type.lower() is "nat_images":
+elif data_type.lower() == "nat_images":
   data = {"train": Dataset(params["data_file"], params)}
   schedule[0]["num_batches"] = (schedule[0]["num_epochs"]*data["train"].num_examples)/params["batch_size"]
   schedule[0]["decay_steps"] = [int(0.8*schedule[0]["num_batches"])
@@ -81,9 +81,13 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Get feed dictionary for placeholders
       feed_dict = model.get_feed_dict(input_data, input_labels)
-      if model.model_name == "conv_gdn_autoencoder":
-        mem_std_eps = np.random.standard_normal((model.params["batch_size"],
-           model.params["n_mem"])).astype(np.float32)
+      if model.model_type== "conv_gdn_autoencoder":
+        if model.params["memristor_type"] == "rram":
+          mem_std_eps = np.random.uniform(low=-1.0, high=1.0,
+             size=(model.params["batch_size"],  model.params["n_mem"])).astype(np.float32)
+        else:
+          mem_std_eps = np.random.standard_normal((model.params["batch_size"],
+             model.params["n_mem"])).astype(np.float32)
         feed_dict[model.memristor_std_eps] = mem_std_eps
 
       batch_t0 = ti.time()

@@ -101,7 +101,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     num_out = np.prod(out_shape)
     return (out_shape, num_out)
 
-  def memristorize(self, u_in, memrister_std_eps, memristor_type=None):
+  def memristorize(self, u_in, memristor_std_eps, memristor_type=None):
     if memristor_type is None:
       return u_in
     elif memristor_type == "gauss":
@@ -119,7 +119,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       norm_min=self.mem_v_min, norm_max=self.mem_v_max)
     v_clip = tf.clip_by_value(u_in, clip_value_min=self.mem_v_min,
       clip_value_max=self.mem_v_max)
-    r = mem_utils.memristor_output(v_clip, self.memristor_std_eps, vs_data, mus_data, sigs_data,
+    r = mem_utils.memristor_output(v_clip, memristor_std_eps, vs_data, mus_data, sigs_data,
       interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'), error_rate = self.mem_error_rate)
     u_out = tf.reshape(r, shape=u_in_shape, name="mem_r")
     return u_out

@@ -344,24 +344,22 @@ def Q(Varray, Rarray, nx=2000, ny=2000,print_points=True):
 
 
 def moments(Varray, Rarray):
-    '''Returns mean, std of a R(V) dataset'''
+    '''
+    Returns mean, variance of a R(V) dataset
+    '''
     V_list = np.sort(np.unique(Varray))
     data_mean = np.zeros(V_list.size)
-    data_std = np.zeros(V_list.size)
+    data_var = np.zeros(V_list.size)
     Vs = np.zeros(V_list.size)
 
     for i, v in enumerate(V_list):
         idx = (Varray == v)
         data = Rarray[idx]
         data_mean[i] = np.mean(data)
-        data_std[i] = np.std(data)
+        data_var[i] = np.var(data)
         Vs[i] = v
     
-    return data_mean, data_std, Vs
-    
-
-
-
+    return data_mean, data_var, Vs
 
 #==============================================================================
 # Classes

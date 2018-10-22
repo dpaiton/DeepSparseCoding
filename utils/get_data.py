@@ -109,7 +109,9 @@ def get_pcm_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
 
     Vs, Rs, _, _ = range_extender(Vs,Rs,num_ext)
 
-    mus, sigs, vs = blahut.moments(Vs,Rs)
+    mus, variances, vs = blahut.moments(Vs,Rs)
+    sigs = np.sqrt(variances)
+
 
     vs = np.broadcast_to(vs[:,None], (vs.size, n_mem)).astype(np.float32)
     mus = np.broadcast_to(mus[:,None], (mus.size, n_mem)).astype(np.float32)
@@ -138,7 +140,8 @@ def get_gauss_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
 
     Vs, Rs, _, _ = range_extender(Vs,Rs,num_ext)
 
-    mus, sigs, vs = blahut.moments(Vs,Rs)
+    mus, variances, vs = blahut.moments(Vs,Rs)
+    sigs = np.sqrt(varainces)
 
     vs = np.broadcast_to(vs[:,None], (vs.size, n_mem)).astype(np.float32)
     mus = np.broadcast_to(mus[:,None], (mus.size, n_mem)).astype(np.float32)
@@ -149,18 +152,17 @@ def get_gauss_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
 def get_rram_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
     """
     Simulates rram array.
-
     """
-    Vs,_ = get_raw_data(path)
+    Vs = get_raw_data(path)[0]
     Vs = np.array(Vs)
     
     ## for RRAM device with read/verify scheme ##
     b = np.log10(np.sqrt(2.0))
     Vs = normalizer(Vs, 4, 8) #RRAM goes from 4 to 8 in R_Target (log scale, so actually 10^4, 10^8)
-    #################################################
-    Vs = np.repeat(Vs,10)
-    # eta = np.random.normal(0,b**2,len(Vs))
-    eta = np.random.uniform(-b**2, b**2, len(Vs))
+    ## ##
+
+    Vs = np.repeat(Vs, 10)
+    eta = np.random.uniform(-b, b, len(Vs))
     Rs = Vs + eta
     
     orig_min_Vs = np.amin(Vs)
@@ -168,18 +170,20 @@ def get_rram_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
     orig_min_Rs = np.amin(Rs)
     orig_max_Rs = np.amax(Rs)
 
-    Vs = normalizer(Vs,norm_min,norm_max)
-    Rs = normalizer(Rs,norm_min,norm_max)
+    Vs = normalizer(Vs, norm_min, norm_max)
+    Rs = normalizer(Rs, norm_min, norm_max)
 
-    Vs, Rs, _, _ = range_extender(Vs,Rs,num_ext)
+    Vs, Rs, _, _ = range_extender(Vs, Rs, num_ext)
 
-    mus, sigs, vs = blahut.moments(Vs,Rs)
+    mus, variances, vs = blahut.moments(Vs, Rs)
+    uniform_range = b * np.ones_like(variances)
 
     vs = np.broadcast_to(vs[:,None], (vs.size, n_mem)).astype(np.float32)
     mus = np.broadcast_to(mus[:,None], (mus.size, n_mem)).astype(np.float32)
-    sigs = np.broadcast_to(sigs[:,None], (sigs.size, n_mem)).astype(np.float32)
+    uniform_range = np.broadcast_to(uniform_range[:,None],
+      (uniform_range.size, n_mem)).astype(np.float32)
 
-    return vs, mus, sigs, orig_min_Vs, orig_max_Vs, orig_min_Rs, orig_max_Rs
+    return vs, mus, uniform_range, orig_min_Vs, orig_max_Vs, orig_min_Rs, orig_max_Rs
 
 
 def make_piecewise():

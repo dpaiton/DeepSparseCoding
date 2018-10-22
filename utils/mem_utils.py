@@ -57,6 +57,8 @@ def tensor_scaler(x,new_min,new_max):
 
 def gauss_interp(samp, xs, ys, interp_width, ratio=0.75):
     """
+    Smoothly interpolates between samples
+
     Parameters
     ----------
     samp : tf.tensor (batch_size, n_m)
@@ -92,7 +94,6 @@ def memristor_output(v, eps, vs, mus, sigs, interp_width, error_rate=0.0):
     ----------
     mu, sig, eps : tf.tensor (batch_size, n_m)
         mean, standard deviation, noise
-
     """
     mean = gauss_interp(v, vs, mus, interp_width)
     sdev = gauss_interp(v, vs, sigs, interp_width)
@@ -108,7 +109,7 @@ def memristor_output(v, eps, vs, mus, sigs, interp_width, error_rate=0.0):
     mean_drop = tf.nn.dropout(mean, 1-error_rate)
     drop_val = tf.multiply(1.1, tf.reduce_min(mean))
     drop_val_tensor = tf.multiply(drop_val, tf.ones_like(mean))
-    mean = tf.where(tf.equal(mean_drop,tf.constant(0.0)), drop_val_tensor, mean)
+    mean = tf.where(tf.equal(mean_drop, tf.constant(0.0)), drop_val_tensor, mean)
     return mean + eps * sdev
 
 # Data Iteration Utils
