@@ -207,7 +207,15 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       else:
         conv_out = tf.add(tf.nn.conv2d(u_in, w, [1, w_stride, w_stride, 1],
           padding="SAME", use_cudnn_on_gpu=True), b, name="conv_out"+str(layer_id))
-      gdn_out, w_gdn, b_gdn, gdn_mult = self.gdn(layer_id, conv_out, decode)
+      
+      if layer_id == self.num_layers-1: # we don't want to use GDN on the last layer (recon)
+        gdn_out = conv_out
+        w_gdn = None
+        b_gdn = None
+        gdn_mult = None
+      else:
+        gdn_out, w_gdn, b_gdn, gdn_mult = self.gdn(layer_id, conv_out, decode)
+
     return gdn_out, w, b, w_gdn, b_gdn, conv_out, gdn_mult
 
   def build_graph(self):
@@ -269,19 +277,21 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
             uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(u_out)),
               minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
             u_out = tf.add(uniform_noise, u_out, name="noisy_activity")
-            latent_activity = u_out
             self.a_sig = self.sigmoid(u_out, self.sigmoid_beta)
             u_out = self.memristorize(self.a_sig, self.memristor_std_eps, self.memristor_type)
           self.u_list.append(u_out)
           self.conv_list.append(conv_out)
           self.w_list.append(w)
-          self.w_gdn_list.append(w_gdn)
-          self.gdn_mult_list.append(gdn_mult)
           self.b_list.append(b)
-          self.b_gdn_list.append(b_gdn)
+          if w_gdn is not None:
+            self.w_gdn_list.append(w_gdn)
+          if gdn_mult is not None:
+            self.gdn_mult_list.append(gdn_mult)
+          if b_gdn is not None:
+            self.b_gdn_list.append(b_gdn)
 
         with tf.name_scope("inference") as scope:
-          self.a = latent_activity
+          self.a = tf.identity(self.u_list[int(self.num_layers/2-1)], name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
           a_sig_resh = tf.reshape(self.a_sig, [self.batch_size, self.num_latent])
@@ -334,7 +344,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     feed_dict[self.memristor_std_eps] = mem_std_eps
     loss_list = [self.loss_dict[key] for key in self.loss_dict.keys()]
     eval_list = [self.global_step]+loss_list+[self.total_loss, self.a, self.u_list[-1],
-      self.MSE, self.SNRdB]
+      self.batch_MSE, self.SNRdB]
     init_eval_length = len(eval_list)
     grad_name_list = []
     learning_rate_dict = {}

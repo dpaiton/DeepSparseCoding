@@ -90,6 +90,10 @@ with tf.Session(config=config, graph=model.graph) as sess:
              model.params["n_mem"])).astype(np.float32)
         feed_dict[model.memristor_std_eps] = mem_std_eps
 
+      ## Generate plots before any updates
+      if (b_step <= 1 and sch_idx <= 1 and model.gen_plot_int > 0):
+        model.generate_plots(input_data=input_data, input_labels=input_labels)
+
       batch_t0 = ti.time()
 
       ## Update MLE estimate
@@ -117,8 +121,6 @@ with tf.Session(config=config, graph=model.graph) as sess:
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
 
       ## Plot weights & gradients
-      if (current_step <= 1 and model.gen_plot_int > 0):
-        model.generate_plots(input_data=input_data, input_labels=input_labels)
       if (current_step % model.gen_plot_int == 0 and model.gen_plot_int > 0):
         model.generate_plots(input_data=input_data, input_labels=input_labels)
 
@@ -153,7 +155,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
   t1=ti.time()
   tot_time=float(t1-t0)
   out_str = (
-    "Training on "+str(sch_idx*model.get_schedule("num_batches")*model.params["batch_size"])
+    "Training on "+str((1+sch_idx)*model.get_schedule("num_batches")*model.params["batch_size"])
     +" Images is Complete. Total time was "+str(tot_time)+" seconds.\n")
   model.log_info(out_str)
   print("Training Complete\n")
