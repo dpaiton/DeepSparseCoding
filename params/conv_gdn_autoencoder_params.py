@@ -4,7 +4,7 @@ import numpy as np
 params = {
   "model_type": "conv_gdn_autoencoder",
   "model_name": "conv_gdn_autoencoder_pretrain_exp",
-  "version": "0.0",
+  "version": "4.0",
   "vectorize_data": False,
   "norm_data": False,
   "center_data": False,
@@ -56,30 +56,35 @@ params = {
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
   "data_file":"/media/tbell/datasets/verified_images.txt"}
 
-train_list = ["w"+str(idx) for idx in range(2*len(params["input_channels"]))]
-train_list += ["b"+str(idx) for idx in range(2*len(params["input_channels"]))]
-train_list += ["w_gdn"+str(idx) for idx in range(len(params["input_channels"]))]
-train_list += ["b_gdn"+str(idx) for idx in range(len(params["input_channels"]))]
-train_list += ["w_igdn"+str(idx)
-  for idx in range(len(params["input_channels"]), 2*len(params["input_channels"]))]
-train_list += ["b_igdn"+str(idx)
-  for idx in range(len(params["input_channels"]), 2*len(params["input_channels"]))]
+w_list = ["w"+str(idx) for idx in range(2*len(params["input_channels"]))]
+b_list = ["b"+str(idx) for idx in range(2*len(params["input_channels"]))]
+w_gdn_list = ["w_gdn"+str(idx) for idx in range(len(params["input_channels"]))]
+b_gdn_list = ["b_gdn"+str(idx) for idx in range(len(params["input_channels"]))]
+# Don't do igdn on last layer (reconstruction)
+w_igdn_list = ["w_igdn"+str(idx)
+  for idx in range(len(params["input_channels"]), 2*len(params["input_channels"])-1)]
+b_igdn_list = ["b_igdn"+str(idx)
+  for idx in range(len(params["input_channels"]), 2*len(params["input_channels"])-1)]
 
+conv_list = w_list + b_list
+gdn_list = w_gdn_list + b_gdn_list + w_igdn_list + b_igdn_list
+train_list = conv_list +  gdn_list
 params["cp_load_var"] = train_list
 
-weight_lr = [5.0e-4 for _ in range(len(train_list))]
+weight_lr = [1.0e-3 for _ in range(len(conv_list))]
+weight_lr += [6.0e-4 for _ in range(len(gdn_list))]
 decay_rate = [0.8 for _ in range(len(train_list))]
 staircase = [True for _ in range(len(train_list))]
 
-schedule = [
+schedule = [ # TODO SCHEDULE
   {"weights": train_list,
-  "ent_mult": 0.001,
-  "ramp_slope": 1.0,
-  "decay_mult": 0.0001,
+  "ent_mult": 0.1,
+  "ramp_slope": 0.8,
+  "decay_mult": 0.001,
   "noise_var_mult": 0.0,
   "mem_error_rate": 0.0,
   "triangle_centers": np.linspace(-1.0, 1.0, params["num_triangles"]),
   "weight_lr": weight_lr,
-  "num_epochs": 2,
+  "num_epochs": 10,
   "decay_rate": decay_rate,
   "staircase": staircase}]

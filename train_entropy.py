@@ -97,7 +97,8 @@ with tf.Session(config=config, graph=model.graph) as sess:
       batch_t0 = ti.time()
 
       ## Update MLE estimate
-      sess.run(model.mle_update, feed_dict)
+      if model.get_schedule("ent_mult") > 0:
+        sess.run(model.mle_update, feed_dict)
 
       ## Update model weights
       sess_run_list = []
