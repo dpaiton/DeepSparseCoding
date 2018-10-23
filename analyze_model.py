@@ -6,8 +6,8 @@ import utils.data_processing as dp
 import analysis.analysis_picker as ap
 
 analysis_params = {
-  "model_type": "subspace_lca",
-  "model_name": "subspace_lca_mnist",
+  "model_type": "lca",
+  "model_name": "lca_mnist",
   "version": "0.0",
   "save_info": "analysis",
   "device": "/gpu:0",
@@ -18,7 +18,7 @@ analysis_params = {
   "do_inference": False, # LCA Inference analysis
   "do_atas": False, # Activity triggered averages
   #TODO: Adversaries does not seem to work on subspace_lca_mnist
-  "do_adversaries": False, # Adversarial image analysis
+  "do_adversaries": True, # Adversarial image analysis
   "do_full_recon": False, # Patchwise image recon
   "do_orientation_analysis": False, # Orientation and Cross-Orientation analysis
   "ft_padding": 32, # Fourier analysis padding for weight fitting
@@ -28,6 +28,7 @@ analysis_params = {
   "cov_num_images": int(1e5), # Number of images used to compute cov matrix (LCA_PCA)
   "num_noise_images": 300, # How many noise images to compute noise ATAs
   "adversarial_num_steps": 1000, # Number of adversarial image updates
+  "adversarial_eps": 0.01, # Step size for adversarial attacks
   "input_scale": 4.0, # Will vary depending on preprocessing
   "neuron_indices": None, # Which neurons to run tuning experiments on (None to do all)
   "contrasts": [0.1, 0.2, 0.3, 0.4, 0.5], # Contrasts for orientation experiments
@@ -48,6 +49,7 @@ data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
 data = analyzer.model.reshape_dataset(data, analyzer.model_params)
 
 analyzer.model_params["data_shape"] = list(data["train"].shape[1:])
+analyzer.model_schedule[0]["sparse_mult"]  = 0.4
 analyzer.setup_model(analyzer.model_params, analyzer.model_schedule)
 analyzer.model_params["input_shape"] = [
   data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]

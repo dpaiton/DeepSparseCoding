@@ -26,3 +26,13 @@ class SA_Analyzer(Analyzer):
       and self.do_basis_analysis):
       self.ot_grating_responses, self.co_grating_responses = self.grating_analysis(self.bf_stats,
         save_info)
+    if self.do_adversaries:
+      self.adversarial_images, self.adversarial_recons, mses = self.adversary_analysis(images,
+        input_id=self.adversarial_input_id, target_id=self.adversarial_target_id,
+        eps=self.adversarial_eps, num_steps=self.adversarial_num_steps, save_info=save_info)
+      self.adversarial_input_target_mses = mses["input_target_mse"]
+      self.adversarial_input_recon_mses = mses["input_recon_mses"]
+      self.adversarial_input_adv_mses = mses["input_adv_mses"]
+      self.adversarial_target_recon_mses = mses["target_recon_mses"]
+      self.adversarial_target_adv_mses = mses["target_adv_mses"]
+      self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
