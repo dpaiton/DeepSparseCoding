@@ -134,4 +134,4 @@ class SUBSPACE_LCA(LCA):
       int(np.sqrt(self.num_pixels))])
     fig = pf.plot_group_weights(np.squeeze(weights), self.group_ids,
       title="Dictionary at step "+current_step, figsize=(18,18),
-      save_filename=(self.disp_dir+"group_phi_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"group_phi_v"+self.version+"-"+current_step.zfill(6)+".png"))
