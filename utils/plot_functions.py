@@ -824,6 +824,7 @@ def plot_group_weights(weights, group_ids, title="", figsize=None,  save_filenam
 def plot_weights(weights, title="", save_filename=None):
   """
     weights: [np.ndarray] of shape [num_outputs, num_input_y, num_input_x]
+    The matrices are renormalized before plotting.
   """
   for weight_id in range(weights.shape[0]):
     weights[weight_id,...] = weights[weight_id,...] - weights[weight_id,...].mean()
