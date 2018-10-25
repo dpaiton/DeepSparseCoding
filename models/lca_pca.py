@@ -4,6 +4,8 @@ from models.lca import LCA
 
 class LCA_PCA(LCA):
   def setup(self, params, schedule):
+    # TODO: this code is to allow parameter inheritance,
+    #       which can be removed once the params object is made
     lca_params, lca_schedule = pp.get_params("lca")
     new_params = lca_params.copy()
     new_params.update(params)
