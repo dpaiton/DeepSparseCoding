@@ -468,21 +468,21 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
         +current_step.zfill(5)+".png"))
     pre_mem_activity = dp.reshape_data(pre_mem_activity, flatten=True)[0]
     fig = pf.plot_activity_hist(pre_mem_activity, title="Activity Histogram (pre-mem)",
-      save_filename=(self.disp_dir+"act_pre_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"act_pre_mem_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     post_mem_activity = dp.reshape_data(post_mem_activity, flatten=True)[0]
     fig = pf.plot_activity_hist(post_mem_activity, title="Activity Histogram (post-mem)",
-      save_filename=(self.disp_dir+"act_post_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"act_post_mem_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    input_data, input_orig_shape = dp.reshape_data(input_data, flatten=True)[:2]
-    fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    input_data = dp.reshape_data(input_data, flatten=False, out_shape=input_orig_shape)[0]
-    fig = pf.plot_data_tiled(input_data, normalize=False,
-      title="Images at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"images_"+self.version+"-"
-      +current_step.zfill(5)+".png"))
+    #input_data, input_orig_shape = dp.reshape_data(input_data, flatten=True)[:2]
+    #fig = pf.plot_activity_hist(input_data, title="Image Histogram",
+    #  save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
+    #  +current_step.zfill(5)+".png"))
+    #input_data = dp.reshape_data(input_data, flatten=False, out_shape=input_orig_shape)[0]
+    #fig = pf.plot_data_tiled(input_data, normalize=False,
+    #  title="Images at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
+    #  +current_step.zfill(5)+".png"))
     recon = dp.reshape_data(recon, flatten=False)[0]
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,

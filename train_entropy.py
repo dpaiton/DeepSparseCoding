@@ -15,6 +15,7 @@ t0 = ti.time()
 #model_type = "entropy_sc"
 #model_type = "gdn_autoencoder"
 model_type = "conv_gdn_autoencoder"
+#model_type = "johannes_gdn"
 #model_type = "relu_autoencoder"
 
 #data_type = "vanhateren"
