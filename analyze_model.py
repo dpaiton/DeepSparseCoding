@@ -28,7 +28,7 @@ analysis_params = {
   "cov_num_images": int(1e5), # Number of images used to compute cov matrix (LCA_PCA)
   "num_noise_images": 300, # How many noise images to compute noise ATAs
   "adversarial_num_steps": 1000, # Number of adversarial image updates
-  "adversarial_eps": 0.01, # Step size for adversarial attacks
+  "adversarial_eps": 0.005, # Step size for adversarial attacks
   "input_scale": 4.0, # Will vary depending on preprocessing
   "neuron_indices": None, # Which neurons to run tuning experiments on (None to do all)
   "contrasts": [0.1, 0.2, 0.3, 0.4, 0.5], # Contrasts for orientation experiments
