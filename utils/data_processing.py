@@ -266,7 +266,7 @@ def get_grating_params(bf_stats, bf_idx, patch_edge=None, location=None, diamete
   frequency = bf_stats["spatial_frequencies"][bf_idx] if frequency is None else frequency
   phase = bf_stats["phases"][bf_idx] if phase is None else phase
   contrast = 1.0 if contrast is None else contrast
-  return(patch_edge, location, diameter, orientation, frequency, phase, contrast)
+  return (patch_edge, location, diameter, orientation, frequency, phase, contrast)
 
 def generate_grating(patch_edge_size, location, diameter, orientation, frequency, phase, contrast):
   """
