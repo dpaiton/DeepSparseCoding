@@ -110,9 +110,9 @@ class SUBSPACE_LCA(LCA):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.variable_scope(self.inference_scope):
-          self.group_activity = tf.identity(self.group_amplitudes(self.a), name="group_activity")
-          self.group_angles = tf.identity(self.group_directions(self.a, self.group_activity),
-            name="group_directions")
+          self.group_activity = tf.identity(self.group_amplitudes(self.u), name="group_activity")
+          self.group_angles = tf.identity(self.group_directions(self.u,
+            self.reshape_groups_per_neuron(self.group_activity)), name="group_directions")
         with tf.variable_scope(self.weight_scope):
           self.group_weights = tf.reshape(self.phi,
             shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group],
