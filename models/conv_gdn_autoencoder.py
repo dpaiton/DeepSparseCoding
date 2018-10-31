@@ -6,6 +6,7 @@ import utils.data_processing as dp
 import utils.entropy_funcs as ef
 import utils.get_data as get_data
 import utils.mem_utils as mem_utils
+from layers.non_linearities import conv_gdn
 from models.gdn_autoencoder import GDN_Autoencoder
 
 class Conv_GDN_Autoencoder(GDN_Autoencoder):
@@ -134,20 +135,20 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
     return a_entropies
 
-  def compute_gdn_mult(self, u_in, w_gdn, b_gdn):
-    u_in_shape = tf.shape(u_in)
-    w_min = self.w_thresh_min
-    w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
-      tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
-    w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
-    b_min = self.b_thresh_min
-    b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
-      tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
-    collapsed_u_sq = tf.reshape(tf.square(u_in),
-      shape=tf.stack([u_in_shape[0]*u_in_shape[1]*u_in_shape[2], u_in_shape[3]]))
-    weighted_norm = tf.reshape(tf.matmul(collapsed_u_sq, w_symmetric), shape=u_in_shape)
-    gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
-    return gdn_mult
+  #def compute_gdn_mult(self, u_in, w_gdn, b_gdn):
+  #  u_in_shape = tf.shape(u_in)
+  #  w_min = self.w_thresh_min
+  #  w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
+  #    tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
+  #  w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
+  #  b_min = self.b_thresh_min
+  #  b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
+  #    tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
+  #  collapsed_u_sq = tf.reshape(tf.square(u_in),
+  #    shape=tf.stack([u_in_shape[0]*u_in_shape[1]*u_in_shape[2], u_in_shape[3]]))
+  #  weighted_norm = tf.reshape(tf.matmul(collapsed_u_sq, w_symmetric), shape=u_in_shape)
+  #  gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
+  #  return gdn_mult
 
   def gdn(self, layer_id, u_in, inverse):
     """Devisive normalizeation nonlinearity"""
@@ -163,12 +164,14 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
         b_gdn = tf.get_variable(name="b_gdn"+str(layer_id), shape=self.b_gdn_shapes[layer_id],
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      gdn_mult = self.compute_gdn_mult(u_in, w_gdn, b_gdn)
-      if inverse:
-        u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
-      else:
-        u_out = tf.where(tf.less(gdn_mult, tf.constant(self.gdn_mult_min, dtype=tf.float32)), u_in,
-          tf.divide(u_in, gdn_mult), name="gdn_output"+str(layer_id))
+      u_out, gdn_mult = conv_gdn(u_in, w_gdn, b_gdn, self.gdn_mult_min, self.w_thresh_min,
+        self.b_thresh_min, inverse, name="gdn_output"+str(layer_id))
+      #gdn_mult = self.compute_gdn_mult(u_in, w_gdn, b_gdn)
+      #if inverse:
+      #  u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
+      #else:
+      #  u_out = tf.where(tf.less(gdn_mult, tf.constant(self.gdn_mult_min, dtype=tf.float32)), u_in,
+      #    tf.divide(u_in, gdn_mult), name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
   def layer_maker(self, layer_id, u_in, w_shape, w_stride, decode):
@@ -207,7 +210,6 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       else:
         conv_out = tf.add(tf.nn.conv2d(u_in, w, [1, w_stride, w_stride, 1],
           padding="SAME", use_cudnn_on_gpu=True), b, name="conv_out"+str(layer_id))
-      
       if layer_id == self.num_layers-1: # we don't want to use GDN on the last layer (recon)
         gdn_out = conv_out
         w_gdn = None
@@ -215,7 +217,6 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
         gdn_mult = None
       else:
         gdn_out, w_gdn, b_gdn, gdn_mult = self.gdn(layer_id, conv_out, decode)
-
     return gdn_out, w, b, w_gdn, b_gdn, conv_out, gdn_mult
 
   def build_graph(self):
