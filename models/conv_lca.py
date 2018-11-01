@@ -84,10 +84,10 @@ class CONV_LCA(LCA):
       assert False, ("Input_data.shape[-1] should indicate color channel, and should be 1 or 3")
     feed_dict = self.get_feed_dict(input_data, input_labels)
     weights, recon = tf.get_default_session().run([self.phi, self.x_], feed_dict)
-    recon = dp.rescale_data_to_one(recon)
-    weights = np.transpose(dp.rescale_data_to_one(weights.T).T, axes=(3,0,1,2))
+    recon = dp.rescale_data_to_one(recon)[0]
+    weights = np.transpose(dp.rescale_data_to_one(weights.T)[0].T, axes=(3,0,1,2))
     current_step = str(self.global_step.eval())
-    input_data = dp.rescale_data_to_one(input_data)
+    input_data = dp.rescale_data_to_one(input_data)[0]
     pf.plot_data_tiled(input_data[0,...], normalize=False,
       title="Images at step "+current_step, vmin=None, vmax=None, cmap=cmap,
       save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".png"))

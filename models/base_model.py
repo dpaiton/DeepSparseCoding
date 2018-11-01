@@ -450,6 +450,7 @@ class Model(object):
       lpf_data: low pass filter data with a Gaussian kernel
       center_data: subtract mean from data
       norm_data: divide data by the maximum
+      rescale_data: rescale data to be between 0 and 1
       whiten_data: default method is using the Fourier amplitude spectrium ("FT")
         change default with whiten_method param
       standardize_data: subtract mean and divide by the standard deviation
@@ -513,6 +514,10 @@ class Model(object):
       if "norm_data" in params.keys() and params["norm_data"]:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
         self.data_max = dataset[key].data_max
+      if "rescale_data" in params.keys() and params["rescale_data"]:
+        dataset[key].images, dataset[key].data_min, dataset[key].data_max = dp.rescale_data_to_one(dataset[key].images)
+        self.data_max = dataset[key].data_max
+        self.data_min = dataset[key].data_min
     return dataset
 
   def print_update(self, input_data, input_labels=None, batch_step=0):

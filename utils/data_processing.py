@@ -667,7 +667,7 @@ def rescale_data_to_one(data):
   data = (data - data_min) / (data_max - data_min + 1e-6)
   if data.shape != orig_shape:
     data = reshape_data(data, out_shape=orig_shape)[0]
-  return data
+  return data, data_min, data_max
 
 def normalize_data_with_max(data):
   """
