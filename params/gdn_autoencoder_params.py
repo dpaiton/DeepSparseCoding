@@ -2,7 +2,7 @@ import os
 import numpy as np
 params = {
   "model_type": "gdn_autoencoder",
-  "model_name": "gdn_autoencoder",
+  "model_name": "test",
   "version": "0.0",
   "num_images": 150,
   "vectorize_data": True,
@@ -28,9 +28,11 @@ params = {
   "sigmoid_beta": 1.0,
   "ramp_min": -1.0,
   "ramp_max": 1.0,
-  "w_thresh_min": 1e-3,
-  "b_thresh_min": 1e-3,
-  "gdn_mult_min": 1e-6,
+  "gdn_w_init_const": 0.1,
+  "gdn_b_init_const": 0.1,
+  "gdn_w_thresh_min": 1e-6,
+  "gdn_b_thresh_min": 1e-6,
+  "gdn_eps": 1e-6,
   "optimizer": "adam",#"annealed_sgd",
   "cp_int": 10000,
   "max_cp_to_keep": 1,

@@ -14,7 +14,6 @@ from models.sigmoid_autoencoder import Sigmoid_Autoencoder as sa
 from models.gdn_autoencoder import GDN_Autoencoder as ga
 from models.conv_gdn_autoencoder import Conv_GDN_Autoencoder as cga
 from models.conv_gdn_decoder import Conv_GDN_Decoder as cgd
-from models.johannes_gdn import Johannes_GDN as jga
 from models.relu_autoencoder import ReLU_Autoencoder as ra
 from models.density_learner import Density_Learner as dl
 
@@ -49,8 +48,6 @@ def get_model(model_type):
     return cga()
   if model_type.lower() == "conv_gdn_decoder":
     return cgd()
-  if model_type.lower() == "johannes_gdn":
-    return jga()
   if model_type.lower() == "relu_autoencoder":
     return ra()
   if model_type.lower() == "density_learner":

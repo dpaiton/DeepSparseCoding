@@ -7,6 +7,7 @@ import utils.entropy_funcs as ef
 import utils.get_data as get_data
 import utils.mem_utils as mem_utils
 from layers.non_linearities import gdn
+from ops.init_ops import GDNGammaInitializer
 from models.gdn_autoencoder import GDN_Autoencoder
 
 class Conv_GDN_Autoencoder(GDN_Autoencoder):
@@ -53,9 +54,11 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.output_channels = params["output_channels"] # list for encoding layers
     self.w_strides = params["strides"] # list for encoding layers
     # GDN Parameters
-    self.w_thresh_min = params["w_thresh_min"]
-    self.b_thresh_min = params["b_thresh_min"]
-    self.gdn_mult_min = params["gdn_mult_min"]
+    self.gdn_w_init_const = float(params["gdn_w_init_const"])
+    self.gdn_b_init_const = float(params["gdn_b_init_const"])
+    self.gdn_w_thresh_min = float(params["gdn_w_thresh_min"])
+    self.gdn_b_thresh_min = float(params["gdn_b_thresh_min"])
+    self.gdn_eps = float(params["gdn_eps"])
     # Calculated parameters
     self.x_shape = [None, self.im_size_y, self.im_size_x, self.input_channels[0]]
     self.w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
@@ -149,8 +152,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
         b_gdn = tf.get_variable(name="b_gdn"+str(layer_id), shape=self.b_gdn_shapes[layer_id],
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_mult_min, self.w_thresh_min,
-        self.b_thresh_min, inverse, conv=True, name="gdn_output"+str(layer_id))
+      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
+        self.gdn_b_thresh_min, self.gdn_eps, inverse, conv=True, name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
   def layer_maker(self, layer_id, u_in, w_shape, w_stride, decode):
@@ -226,14 +229,20 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           self.w_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False,
             seed=self.rand_seed, dtype=tf.float32)
           self.b_init = tf.initializers.zeros(dtype=tf.float32)
-          self.w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
-            dtype=tf.float32)
-          self.b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
-            dtype=tf.float32)
-          self.w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
-            dtype=tf.float32)
-          self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
-            dtype=tf.float32)
+          #self.w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
+          #  dtype=tf.float32)
+          #self.b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
+          #  dtype=tf.float32)
+          #self.w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
+          #  dtype=tf.float32)
+          #self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
+          #  dtype=tf.float32)
+          self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
+            off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
+          self.w_igdn_init = self.w_gdn_init
+          b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
+          self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
+          self.b_igdn_init = self.b_gdn_init
 
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()

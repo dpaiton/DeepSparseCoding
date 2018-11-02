@@ -3,7 +3,7 @@ import numpy as np
 
 params = {
   "model_type": "conv_gdn_autoencoder",
-  "model_name": "conv_gdn_autoencoder_pretrain_exp",
+  "model_name": "test",
   "version": "0.0",
   "vectorize_data": False,
   "norm_data": False,
@@ -34,9 +34,11 @@ params = {
   "patch_size_y": [8, 9, 4],
   "patch_size_x": [8, 9, 4],
   "strides": [4, 2, 2],
-  "w_thresh_min": 1e-3,
-  "b_thresh_min": 1e-3,
-  "gdn_mult_min": 1e-5,
+  "gdn_w_init_const": 0.1,
+  "gdn_b_init_const": 0.1,
+  "gdn_w_thresh_min": 1e-6,
+  "gdn_b_thresh_min": 1e-6,
+  "gdn_eps": 1e-6,
   "memristor_type": "rram",
   "memristor_data_loc": os.path.expanduser("~")+"/CAE_Project/CAEs/data/Partial_Reset_PCM.pkl",
   "optimizer": "annealed_sgd",

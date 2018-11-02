@@ -5,6 +5,7 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_funcs as ef
 from layers.non_linearities import gdn
+from ops.init_ops import GDNGammaInitializer
 from models.base_model import Model
 
 class GDN_Autoencoder(Model):
@@ -43,9 +44,11 @@ class GDN_Autoencoder(Model):
     self.ramp_min = float(params["ramp_min"])
     self.ramp_max = float(params["ramp_max"])
     # GDN Parameters
-    self.w_thresh_min = float(params["w_thresh_min"])
-    self.b_thresh_min = float(params["b_thresh_min"])
-    self.gdn_mult_min = float(params["gdn_mult_min"])
+    self.gdn_w_init_const = params["gdn_w_init_const"]
+    self.gdn_b_init_const = params["gdn_b_init_const"]
+    self.gdn_w_thresh_min = float(params["gdn_w_thresh_min"])
+    self.gdn_b_thresh_min = float(params["gdn_b_thresh_min"])
+    self.gdn_eps = float(params["gdn_eps"])
     # Computed parameters
     self.x_shape = [None, self.num_pixels]
     self.w_enc_shape = [self.num_pixels, self.num_neurons]
@@ -109,8 +112,8 @@ class GDN_Autoencoder(Model):
         b_gdn = tf.get_variable(name="b_gdn"+str(layer_id), shape=self.b_gdn_shape,
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_mult_min, self.w_thresh_min,
-        self.b_thresh_min, inverse, conv=False, name="gdn_output"+str(layer_id))
+      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
+        self.gdn_b_thresh_min, self.gdn_eps, inverse, conv=False, name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
   def build_graph(self):
@@ -137,14 +140,20 @@ class GDN_Autoencoder(Model):
           self.w_init = tf.initializers.random_normal(mean=0.0, stddev=0.1,
             seed=self.rand_seed, dtype=tf.float32)
           self.b_init = tf.initializers.zeros(dtype=tf.float32)
-          self.w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
-            seed=self.rand_seed, dtype=tf.float32)
-          self.b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
-            seed=self.rand_seed, dtype=tf.float32)
-          self.w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
-            seed=self.rand_seed, dtype=tf.float32)
-          self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
-            seed=self.rand_seed, dtype=tf.float32)
+          #self.w_gdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
+          #  seed=self.rand_seed, dtype=tf.float32)
+          #self.b_gdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
+          #  seed=self.rand_seed, dtype=tf.float32)
+          #self.w_igdn_init = tf.initializers.random_uniform(minval=-1.0, maxval=1.0,
+          #  seed=self.rand_seed, dtype=tf.float32)
+          #self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
+          #  seed=self.rand_seed, dtype=tf.float32)
+          self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
+            off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
+          self.w_igdn_init = self.w_gdn_init
+          b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
+          self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
+          self.b_igdn_init = self.b_gdn_init
 
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()
