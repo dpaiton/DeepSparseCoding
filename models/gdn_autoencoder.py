@@ -4,6 +4,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_funcs as ef
+from layers.non_linearities import gdn
 from models.base_model import Model
 
 class GDN_Autoencoder(Model):
@@ -94,18 +95,6 @@ class GDN_Autoencoder(Model):
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
-  def compute_gdn_mult(self, u_in, w_gdn, b_gdn):
-    w_min = self.w_thresh_min
-    w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
-      tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
-    w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
-    b_min = self.b_thresh_min
-    b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
-      tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
-    weighted_norm = tf.matmul(tf.square(u_in), w_symmetric)
-    gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
-    return gdn_mult
-
   def gdn(self, layer_id, u_in, inverse):
     """Devisive normalizeation nonlinearity"""
     with tf.variable_scope(self.weight_scope) as scope:
@@ -120,12 +109,8 @@ class GDN_Autoencoder(Model):
         b_gdn = tf.get_variable(name="b_gdn"+str(layer_id), shape=self.b_gdn_shape,
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      gdn_mult = self.compute_gdn_mult(u_in, w_gdn, b_gdn)
-      if inverse:
-        u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
-      else:
-        u_out = tf.where(tf.less(gdn_mult, tf.constant(self.gdn_mult_min, dtype=tf.float32)), u_in,
-          tf.divide(u_in, gdn_mult), name="gdn_output"+str(layer_id))
+      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_mult_min, self.w_thresh_min,
+        self.b_thresh_min, inverse, conv=False, name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
   def build_graph(self):
