@@ -11,6 +11,15 @@ class SA_Analyzer(Analyzer):
       "weights/w_enc:0",
       "inference/activity:0"]
 
+  def add_pre_init_ops_to_graph(self):
+    super(SA_Analyzer, self).add_pre_init_ops_to_graph()
+    self.add_a_deriv_ops_to_graph()
+
+  def add_a_deriv_ops_to_graph(self):
+    with tf.device(self.model.device):
+      with self.model.graph.as_default():
+        self.model.ax_grad = tf.gradients(tf.slice(self.model.a, [0, 0], [-1, 1]), self.model.x)[0]
+
   def run_analysis(self, images, save_info=""):
     super(SA_Analyzer, self).run_analysis(images, save_info)
     self.evals = self.eval_analysis(images, self.var_names, save_info)
