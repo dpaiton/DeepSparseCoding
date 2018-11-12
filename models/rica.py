@@ -108,12 +108,12 @@ class RICA(Model):
 
         with tf.variable_scope("weights") as scope:
           w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
-            dtype=tf.float32), dim=0, name="w_init")
+            dtype=tf.float32), axis=[0], name="w_init")
           #self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init, trainable=True)
           w_unnormalized = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
             trainable=True)
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0],
-            keep_dims=True), self.eps))
+            keepdims=True), self.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
         #with tf.name_scope("norm_weights") as scope: # Optional weight normalization

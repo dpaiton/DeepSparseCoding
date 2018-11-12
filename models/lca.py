@@ -150,12 +150,12 @@ class LCA(Model):
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()
           phi_init = tf.nn.l2_normalize(tf.truncated_normal(self.phi_shape, mean=0.0,
-            stddev=0.5, dtype=tf.float32), dim=phi_norm_dim, epsilon=self.eps, name="phi_init")
+            stddev=0.5, dtype=tf.float32), axis=phi_norm_dim, epsilon=self.eps, name="phi_init")
           self.phi = tf.get_variable(name="phi", dtype=tf.float32, initializer=phi_init,
             trainable=True)
 
         with tf.name_scope("norm_weights") as scope:
-          self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi, dim=phi_norm_dim,
+          self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi, axis=phi_norm_dim,
             epsilon=self.eps, name="row_l2_norm"))
           self.norm_weights = tf.group(self.norm_phi, name="l2_normalization")
 
