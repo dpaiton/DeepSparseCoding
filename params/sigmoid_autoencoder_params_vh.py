@@ -40,7 +40,7 @@ schedule = [
   {"weights": ["w_enc", "b_enc", "w_dec", "b_dec"],
   "decay_mult": 0.02,
   "sparse_mult": 4.0, # How important is the sparse loss (tradeoff parameter)
-  "target_act": 0.10, # Target firing rate for neurons
+  "target_act": 0.05, # Target firing rate for neurons
   "weight_lr": [0.004,]*4,
   "decay_steps": [int(3e6*0.4),]*4,
   "decay_rate": [0.5,]*4,

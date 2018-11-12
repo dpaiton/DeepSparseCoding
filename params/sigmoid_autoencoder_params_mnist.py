@@ -1,25 +1,25 @@
 import os
 params = {
   "model_type": "sigmoid_autoencoder",
-  "model_name": "sigmoid_autoencoder",
+  "model_name": "sigmoid_autoencoder_mnist",
   "version": "0.0",
-  "num_images": 150,
+  #"num_images": 150,
   "vectorize_data": True,
   "norm_data": False,
-  "rescale_data": False,
+  "rescale_data": True,
   "center_data": False,
   "standardize_data": False,
   "contrast_normalize": False,
-  "whiten_data": True,
-  "whiten_method": "FT",
-  "lpf_data": True,
+  "whiten_data": False,#True,
+  #"whiten_method": "FT",
+  "lpf_data": False,
   "lpf_cutoff": 0.7,
-  "extract_patches": True,
-  "num_patches": 1e6,
-  "patch_edge_size": 16,
-  "overlapping_patches": True,
-  "randomize_patches": True,
-  "patch_variance_threshold": 0.0,
+  "extract_patches": False,#True,
+  #"num_patches": 1e6,
+  #"patch_edge_size": 16,
+  #"overlapping_patches": True,
+  #"randomize_patches": True,
+  #"patch_variance_threshold": 0.0,
   "batch_size": 200,
   "num_neurons": 768,
   "optimizer": "annealed_sgd",#"adam",
@@ -38,10 +38,10 @@ params = {
 
 schedule = [
   {"weights": ["w_enc", "b_enc", "w_dec", "b_dec"],
-  "decay_mult": 0.02,
-  "sparse_mult": 4.0, # How important is the sparse loss (tradeoff parameter)
-  "target_act": 0.10, # Target firing rate for neurons
-  "weight_lr": [0.004,]*4,
+  "decay_mult": 0.005,
+  "sparse_mult": 0.01, # How important is the sparse loss (tradeoff parameter)
+  "target_act": 0.09, # Target firing rate for neurons
+  "weight_lr": [0.01,]*4,
   "decay_steps": [int(3e6*0.4),]*4,
   "decay_rate": [0.5,]*4,
   "staircase": [True,]*4,

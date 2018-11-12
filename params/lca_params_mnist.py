@@ -31,7 +31,7 @@ params = {
   "cp_load_var": ["phi"],
   "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 10000,
+  "gen_plot_int": 100000,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/gpu:0",

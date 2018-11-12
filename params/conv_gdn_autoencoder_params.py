@@ -3,14 +3,14 @@ import numpy as np
 
 params = {
   "model_type": "conv_gdn_autoencoder",
-  "model_name": "test",
+  "model_name": "conv_gdn_autoencoder_ent",
   "version": "0.0",
   "vectorize_data": False,
   "norm_data": False,
   "center_data": False,
   "standardize_data": False,
   "contrast_normalize": False,
-  "whiten_data": True,
+  "whiten_data": False,
   "whiten_method": "FT",
   "lpf_data": True,
   "lpf_cutoff": 0.7,
@@ -82,7 +82,7 @@ staircase = [True for _ in range(len(train_list))]
 schedule = [
   {"weights": train_list,
   "ent_mult": 0.1,
-  "ramp_slope": 0.8,
+  "ramp_slope": 1.0,
   "decay_mult": 0.002,
   "noise_var_mult": 0.0,
   "mem_error_rate": 0.0,

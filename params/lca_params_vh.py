@@ -1,7 +1,7 @@
 import os
 params = {
   "model_type": "lca",
-  "model_name": "lca_mnist",
+  "model_name": "lca",
   "version": "0.0",
   "vectorize_data": True,
   "norm_data": False,
@@ -9,7 +9,7 @@ params = {
   "center_data": False,
   "standardize_data": False,
   "contrast_normalize": False,
-  "whiten_data": False,
+  "whiten_data": True,
   "lpf_data": False, # only for ZCA
   "lpf_cutoff": 0.7,
   "extract_patches": False,
@@ -31,7 +31,7 @@ params = {
   "cp_load_var": ["phi"],
   "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 10000,
+  "gen_plot_int": 100000,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/gpu:0",
@@ -41,8 +41,8 @@ params = {
 
 schedule = [
   {"weights": ["phi"],
-  "sparse_mult": 0.21,
-  "weight_lr": [0.1],
+  "sparse_mult": 0.8,
+  "weight_lr": [0.01],
   "decay_steps": [int(1e5*0.5)],
   "decay_rate": [0.8],
   "staircase": [True],
