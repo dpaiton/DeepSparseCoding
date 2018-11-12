@@ -26,15 +26,16 @@ class Analyzer(object):
       if os.path.exists(self.analysis_log_file):
         os.remove(self.analysis_log_file)
     if os.path.exists(self.analysis_log_file) and os.stat(self.analysis_log_file).st_size != 0:
+      # TODO: This code needs to be well tested - I don't think it is always behaving as expected
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=False)
       analysis_text = self.analysis_logger.load_file()
       prev_analysis_params = self.analysis_logger.read_params(analysis_text)
-      # Deprecated: This code was causing unwanted bahavior.
-      #if type(prev_analysis_params) == dict: # there was only one param entry
-      #  params.update(prev_analysis_params)
-      #else: # type is list, which means where were multiple param entries in the log
-      #  for param_item in prev_analysis_params:
-      #    params.update(param_item)
+      if type(prev_analysis_params) == dict: # there was only one param entry
+        prev_analysis_params.pop("save_info")
+        params.update(prev_analysis_params)
+      else: # type is list, which means where were multiple param entries in the log
+        for param_item in prev_analysis_params:
+          params.update(param_item)
     else: # File is empty
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=True)
       self.analysis_logger.log_params(params)
@@ -760,9 +761,9 @@ class Analyzer(object):
     self.adversarial_target_recon_mses = mses["target_recon_mses"]
     self.adversarial_target_adv_mses = mses["target_adv_mses"]
     self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
-    out_dict = {"adversarial_images":self.adversarial_images,
-      "adversarial_recons":self.adversarial_recons, "eps":eps,
-      "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
+    out_dict = {"input_image": input_image, "target_image":target_image,
+      "adversarial_images":self.adversarial_images, "adversarial_recons":self.adversarial_recons,
+      "eps":eps, "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
     out_dict.update(mses)
     np.savez(self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz", data=out_dict)
     self.analysis_logger.log_info("Adversary analysis is complete.")
