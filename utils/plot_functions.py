@@ -1237,5 +1237,5 @@ def clear_axis(ax, spines="none"):
   ax.set_xticklabels([])
   ax.get_xaxis().set_visible(False)
   ax.get_yaxis().set_visible(False)
-  ax.tick_params(axis="both", bottom="off", top="off", left="off", right="off")
+  ax.tick_params(axis="both", bottom=False, top=False, left=False, right=False)
   return ax
