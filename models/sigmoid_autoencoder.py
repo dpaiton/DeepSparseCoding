@@ -39,21 +39,26 @@ class Sigmoid_Autoencoder(Model):
 
   def compute_weight_decay_loss(self):
     with tf.name_scope("unsupervised"):
-      decay_loss = tf.multiply(0.5*self.decay_mult,
-        tf.add_n([tf.nn.l2_loss(self.w_enc), tf.nn.l2_loss(self.w_dec)]), name="weight_decay_loss")
+      #w_enc_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(tf.square(self.w_enc),
+      #axis=[0]), 1.0)))
+      #w_dec_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(tf.square(self.w_dec),
+      #axis=[1]), 1.0)))
+      w_enc_decay = tf.reduce_sum(tf.square(self.w_enc))
+      w_dec_decay = tf.reduce_sum(tf.square(self.w_dec))
+      decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n([w_enc_decay, w_dec_decay]))
     return decay_loss
 
   def compute_recon_loss(self, a_in):
     with tf.name_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.reduce_mean(0.5 *
-        tf.reduce_sum(tf.square(tf.subtract(self.compute_recon(a_in), self.x)),
+        tf.reduce_sum(tf.square(tf.subtract(self.x, self.compute_recon(a_in))),
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
     with tf.name_scope("unsupervised"):
-      avg_act = tf.reduce_mean(a_in, axis=0, name="batch_avg_activity")
+      avg_act = tf.reduce_mean(a_in, axis=[0], name="batch_avg_activity")
       p_dist = self.target_act * tf.subtract(tf.log(self.target_act), tf.log(avg_act), name="kl_p")
       q_dist = (1-self.target_act) * tf.subtract(tf.log(1-self.target_act), tf.log(1-avg_act),
         name="kl_q")
@@ -76,9 +81,9 @@ class Sigmoid_Autoencoder(Model):
 
         with tf.name_scope("weight_inits") as scope:
           w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0,
-            stddev=0.1, dtype=tf.float32, name="w_init")
-          b_enc_init = tf.zeros([1, self.num_neurons])
-          b_dec_init = tf.zeros([1, self.num_pixels])
+            stddev=0.2, dtype=tf.float32, name="w_init")
+          b_enc_init = tf.ones([1, self.num_neurons])*0.0001
+          b_dec_init = tf.ones([1, self.num_pixels])*0.0001
 
         with tf.variable_scope("weights") as scope:
           self.w_enc = tf.get_variable(name="w_enc", dtype=tf.float32,
@@ -177,8 +182,8 @@ class Sigmoid_Autoencoder(Model):
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     w_enc, b_enc, w_dec, recon, activity = eval_out[1:]
-    w_enc_norm = np.linalg.norm(w_enc, axis=1, keepdims=False)
-    w_dec_norm = np.linalg.norm(w_dec, axis=0, keepdims=False)
+    w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
+    w_dec_norm = np.linalg.norm(w_dec, axis=1, keepdims=False)
     w_enc = dp.reshape_data(w_enc.T, flatten=False)[0]
     w_dec = dp.reshape_data(w_dec, flatten=False)[0]
     fig = pf.plot_data_tiled(w_enc, normalize=False,
