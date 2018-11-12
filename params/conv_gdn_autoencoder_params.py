@@ -42,22 +42,22 @@ params = {
   "memristor_type": "rram",
   "memristor_data_loc": os.path.expanduser("~")+"/CAE_Project/CAEs/data/Partial_Reset_PCM.pkl",
   "optimizer": "annealed_sgd",
-  "cp_int": 10000,
+  "cp_int": 100000,
   "max_cp_to_keep": 1,
   "cp_load": False,
-  "cp_load_name": "conv_gdn_autoencoder_pretrain",
-  "cp_load_step": 10000,
-  "cp_load_ver": "1.0",
+  "cp_load_name": "conv_gdn_autoencoder_dropout",
+  "cp_load_step": None,
+  "cp_load_ver": "0.0",
   "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 10000,
+  "gen_plot_int": 100000,
   "save_plots": True,
   "eps": 1e-12,
   "device": "/gpu:0",
   "rand_seed": 1234567890,
   "out_dir": os.path.expanduser("~")+"/Work/Projects/",
   "data_dir": os.path.expanduser("~")+"/Work/Datasets/",
-  "data_file":"/media/tbell/datasets/verified_images.txt"}
+  "data_file":"/home/dpaiton/Work/Datasets/verified_images.txt"}
 
 w_list = ["w"+str(idx) for idx in range(2*len(params["input_channels"]))]
 b_list = ["b"+str(idx) for idx in range(2*len(params["input_channels"]))]
@@ -85,7 +85,7 @@ schedule = [
   "ramp_slope": 1.0,
   "decay_mult": 0.002,
   "noise_var_mult": 0.0,
-  "mem_error_rate": 0.0,
+  "mem_error_rate": 0.02,
   "triangle_centers": np.linspace(-1.0, 1.0, params["num_triangles"]),
   "weight_lr": weight_lr,
   "num_epochs": 10, #10 takes about 13 hours on rw1 with batch size 50
