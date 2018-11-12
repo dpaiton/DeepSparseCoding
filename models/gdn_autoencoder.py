@@ -80,8 +80,13 @@ class GDN_Autoencoder(Model):
 
   def compute_weight_decay_loss(self):
     with tf.name_scope("unsupervised"):
-      decay_loss = tf.multiply(0.5*self.decay_mult,
-        tf.add_n([tf.nn.l2_loss(weight) for weight in self.w_list]), name="weight_decay_loss")
+      #decay_loss = tf.multiply(0.5*self.decay_mult,
+      #  tf.add_n([tf.nn.l2_loss(weight) for weight in self.w_list]), name="weight_decay_loss")
+      w_enc_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(self.w_list[0],
+        axis=[0]), 1.0)))
+      w_dec_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(self.w_list[1],
+        axis=[1]), 1.0)))
+      decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n([w_enc_decay, w_dec_decay]))
     return decay_loss
 
   def compute_ramp_loss(self, a_in):
@@ -277,6 +282,7 @@ class GDN_Autoencoder(Model):
     recon_max = np.max(recon)
     recon_min = np.min(recon)
     a_vals_max = np.array(a_vals.max())
+    a_vals_mean = np.array(np.mean(a_vals))
     a_vals_min = np.array(a_vals.min())
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
@@ -286,8 +292,7 @@ class GDN_Autoencoder(Model):
       "recon_loss":recon_loss,
       "entropy_loss":entropy_loss,
       "total_loss":total_loss,
-      "a_max":a_vals_max,
-      "a_min":a_vals_min,
+      "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "a_fraction_active":a_frac_act,
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
@@ -313,10 +318,10 @@ class GDN_Autoencoder(Model):
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     w_enc, b_enc, b_dec, w_dec, w_gdn, w_igdn, b_gdn, b_igdn, recon, activity, entropies, gdn_mult = eval_out[1:]
-    w_enc_norm = np.linalg.norm(w_enc, axis=1, keepdims=False)
-    w_dec_norm = np.linalg.norm(w_dec, axis=0, keepdims=False)
-    w_enc = dp.reshape_data(w_enc.T, flatten=False)[0]
-    w_dec = dp.reshape_data(w_dec, flatten=False)[0]
+    w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False) # norm over pixel dimension
+    w_dec_norm = np.linalg.norm(w_dec, axis=1, keepdims=False) # norm over pixel dimension
+    w_enc = np.squeeze(dp.reshape_data(w_enc.T, flatten=False)[0]) # neurons x pixels
+    w_dec = np.squeeze(dp.reshape_data(w_dec, flatten=False)[0]) # neurons x pixels
     fig = pf.plot_weight_image(w_gdn, title="GDN Weights", figsize=(10,10),
       save_filename=self.disp_dir+"w_gdn_v"+self.version+"-"+current_step.zfill(5)+".png")
     fig = pf.plot_weight_image(w_igdn, title="Inverse GDN Weights", figsize=(10,10),
@@ -327,14 +332,18 @@ class GDN_Autoencoder(Model):
     fig = pf.plot_activity_hist(b_igdn, title="IGDN Bias Histogram",
       save_filename=(self.disp_dir+"b_igdn_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
-    fig = pf.plot_data_tiled(w_enc, normalize=False,
-      title="Encoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    fig = pf.plot_data_tiled(w_dec, normalize=False,
-      title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
+    fig = pf.plot_weights(w_enc, title="Encoding weights at step "+current_step,
+      save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"+current_step.zfill(5)+".png"))
+    #fig = pf.plot_data_tiled(w_enc, normalize=False,
+    #  title="Encoding weights at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"
+    #  +current_step.zfill(5)+".png"))
+    fig = pf.plot_weights(w_dec, title="Decoding weights at step "+current_step,
+      save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"+current_step.zfill(5)+".png"))
+    #fig = pf.plot_data_tiled(w_dec, normalize=False,
+    #  title="Decoding weights at step "+current_step, vmin=None, vmax=None,
+    #  save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
+    #  +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram",
       save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
