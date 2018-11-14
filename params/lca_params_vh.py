@@ -1,18 +1,25 @@
 import os
 params = {
   "model_type": "lca",
-  "model_name": "lca",
+  "model_name": "lca_vh",
   "version": "0.0",
+  "num_images": 150,
   "vectorize_data": True,
   "norm_data": False,
-  "rescale_data": True,
+  "rescale_data": False,
   "center_data": False,
   "standardize_data": False,
   "contrast_normalize": False,
   "whiten_data": True,
-  "lpf_data": False, # only for ZCA
+  "whiten_method": "FT",
+  "lpf_data": False, # FT whitening already does LPF
   "lpf_cutoff": 0.7,
-  "extract_patches": False,
+  "extract_patches": True,
+  "num_patches": 1e6,
+  "patch_edge_size": 16,
+  "overlapping_patches": True,
+  "randomize_patches": True,
+  "patch_variance_threshold": 0.0,
   "batch_size": 100,
   "num_neurons": 768,
   "num_steps": 50,
@@ -22,10 +29,10 @@ params = {
   "norm_weights": True,
   "thresh_type": "soft",
   "optimizer": "annealed_sgd",
-  "cp_int": 10000,
+  "cp_int": 100000,
   "max_cp_to_keep": 1,
   "cp_load": False,
-  "cp_load_name": "pretrain",
+  "cp_load_name": "lca",
   "cp_load_step": None, # latest checkpoint
   "cp_load_ver": "0.0",
   "cp_load_var": ["phi"],
@@ -43,7 +50,7 @@ schedule = [
   {"weights": ["phi"],
   "sparse_mult": 0.8,
   "weight_lr": [0.01],
-  "decay_steps": [int(1e5*0.5)],
+  "decay_steps": [int(3e5*0.5)],
   "decay_rate": [0.8],
   "staircase": [True],
-  "num_batches": int(1e5)}]
+  "num_batches": int(3e5)}]
