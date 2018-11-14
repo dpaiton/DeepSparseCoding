@@ -457,6 +457,28 @@ def plot_hilbert_analysis(weights, padding=None):
   plt.show()
   return fig
 
+def plot_image(image, vmin=None, vmax=None, title="", save_filename=None):
+  """
+  Plot single image
+  Inputs:
+    image [np.ndarray] 2-D image
+    title [str] indicating the title for the figure
+  """
+  if vmin is None:
+    vmin = np.min(image)
+  if vmax is None:
+    vmax = np.max(image)
+  fig, ax = plt.subplots(1, figsize=(10,10))
+  ax = clear_axis(ax)
+  im = ax.imshow(image, cmap="Greys_r", vmin=vmin, vmax=vmax, interpolation="nearest")
+  ax.set_title(title, fontsize=20)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
+  plt.show()
+  return fig
+
 def plot_matrix(matrix, title="", save_filename=None):
   """
   Plot covariance matrix as an image
