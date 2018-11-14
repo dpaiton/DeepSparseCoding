@@ -256,7 +256,7 @@ class Analyzer(object):
     a_vals = model_eval["inference/activity:0"]
     self.recon_frac_act = np.array(np.count_nonzero(a_vals) / float(a_vals.size))
     recon_patches = dp.reshape_data(recon_patches, flatten=False, out_shape=orig_shape)[0]
-    self.full_recon = dp.patches_to_image(recon_patches, full_image.shape)
+    self.full_recon = dp.patches_to_image(recon_patches, full_image.shape).astype(np.float32)
     if self.model_params["whiten_data"]:
       self.full_recon = dp.unwhiten_data(self.full_recon, img_mean, ft_filter, method="FT")
     np.savez(self.analysis_out_dir+"savefiles/full_recon_"+save_info+".npz",
@@ -315,6 +315,8 @@ class Analyzer(object):
     adversarial_file_loc = self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz"
     if os.path.exists(adversarial_file_loc):
       data = np.load(adversarial_file_loc)["data"].item()
+      self.adversarial_input_image = data["input_image"]
+      self.adversarial_target_image = data["target_image"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_recons = data["adversarial_recons"]
       self.adversarial_eps = data["eps"]
@@ -761,6 +763,8 @@ class Analyzer(object):
     self.adversarial_target_recon_mses = mses["target_recon_mses"]
     self.adversarial_target_adv_mses = mses["target_adv_mses"]
     self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
+    self.adversarial_input_image = input_image
+    self.adversarial_target_image = target_image
     out_dict = {"input_image": input_image, "target_image":target_image,
       "adversarial_images":self.adversarial_images, "adversarial_recons":self.adversarial_recons,
       "eps":eps, "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
