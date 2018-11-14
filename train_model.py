@@ -17,10 +17,10 @@ t0 = ti.time()
 #model_type = "ica"
 #model_type = "ica_pca"
 #model_type = "rica"
-#model_type = "lca"
+model_type = "lca"
 #model_type = "lca_pca"
 #model_type = "lca_pca_fb"
-model_type = "subspace_lca"
+#model_type = "subspace_lca"
 #model_type = "conv_lca"
 #model_type = "gradient_sc"
 #model_type = "sigmoid_autoencoder"
@@ -48,8 +48,8 @@ data = model.reshape_dataset(data, params)
 params["data_shape"] = list(data["train"].shape[1:])
 model.setup(params, schedule)
 if "standardize_data" in params.keys() and params["standardize_data"]:
-  model.log_info("Standardization was performed, mean was "+str(model.data_mean)
-    +" and std was "+str(model.data_std))
+  model.log_info("Standardization was performed, dataset mean was "+str(np.mean(model.data_mean))
+    +" and std was "+str(np.mean(model.data_std)))
 if "norm_data" in params.keys() and params["norm_data"]:
   model.log_info("Normalization was performed by dividing the dataset by max(abs(data)), "
     +"max was "+str(model.data_max))
@@ -72,7 +72,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
   if model.cp_load:
     if model.cp_load_step is None:
-      cp_load_file = tf.train.latest_checkpoint(model.cp_load_dir, model.cp_latest_filename)
+      cp_load_file = tf.train.latest_checkpoint(model.cp_load_dir, model.cp_load_latest_filename)
     else:
       cp_load_file = (model.cp_load_dir+model.cp_load_name+"_v"+model.cp_load_ver
         +"_weights-"+str(model.cp_load_step))
