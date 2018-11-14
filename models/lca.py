@@ -179,6 +179,7 @@ class LCA(Model):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.x_)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
+            # TODO: pSNRdB could possibly be infinity, need to check for that and set it to a cap
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
@@ -215,7 +216,6 @@ class LCA(Model):
     a_vals_min = np.array(a_vals.min())
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
-    avg_psnr = np.mean(pSNRdB)
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
@@ -223,7 +223,6 @@ class LCA(Model):
       "sparse_loss":sparse_loss,
       "total_loss":total_loss,
       "a_fraction_active":a_frac_act,
-      "pSNRdB":avg_psnr,
       "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
