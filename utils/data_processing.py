@@ -649,7 +649,11 @@ def patches_to_image(patches, im_shape):
   return images
 
 def downsample_data(data, scale_factor, order):
-  """Downsample data"""
+  """
+  Downsample data
+  TODO: Scikit-image has a transform module that works better,
+  this function should have the option to use either
+  """
   return scipy.ndimage.interpolation.zoom(data, scale_factor, order=order, mode="constant")
 
 def rescale_data_to_one(data):
