@@ -202,6 +202,9 @@ class Sigmoid_Autoencoder(Model):
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.disp_dir+"w_enc_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
+    fig = pf.plot_bar(w_dec_norm, num_xticks=5,
+      title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+      save_filename=(self.disp_dir+"w_dec_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
     if eval_out[0]*10 % self.cp_int == 0:
       fig = pf.plot_activity_hist(input_data, title="Image Histogram",
         save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
