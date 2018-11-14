@@ -104,6 +104,7 @@ class Model(object):
         else:
           self.cp_load_step = None
         self.cp_load_ver = str(params["cp_load_ver"])
+        self.cp_load_latest_filename = "latest_checkpoint_v"+self.cp_load_ver
         if "cp_load_var" in params:
           self.cp_load_var = [str(var) for var in params["cp_load_var"]]
         else:
