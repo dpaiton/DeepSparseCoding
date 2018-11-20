@@ -6,6 +6,8 @@ import utils.data_processing as dp
 import utils.entropy_funcs as ef
 import utils.get_data as get_data
 import utils.mem_utils as mem_utils
+from layers.non_linearities import gdn
+from ops.init_ops import GDNGammaInitializer
 from models.gdn_autoencoder import GDN_Autoencoder
 
 class Conv_GDN_Decoder(GDN_Autoencoder):
@@ -51,32 +53,32 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     self.x_shape = [None,]+self.input_shape
     self.num_layers = len(self.input_channels)
 
-  def compute_gdn_mult(self, layer_id, u_in, w_gdn, b_gdn):
-    u_in_shape = tf.shape(u_in)
-    w_min = self.w_thresh_min
-    w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
-      tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
-    w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
-    b_min = self.b_thresh_min
-    b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
-      tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
-    collapsed_u_sq = tf.reshape(tf.square(u_in),
-      shape=tf.stack([u_in_shape[0]*u_in_shape[1]*u_in_shape[2], u_in_shape[3]]))
-    weighted_norm = tf.reshape(tf.matmul(collapsed_u_sq, w_symmetric), shape=u_in_shape)
-    gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
-    return gdn_mult
+  #def compute_gdn_mult(self, layer_id, u_in, w_gdn, b_gdn):
+  #  u_in_shape = tf.shape(u_in)
+  #  w_min = self.w_thresh_min
+  #  w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
+  #    tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
+  #  w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
+  #  b_min = self.b_thresh_min
+  #  b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
+  #    tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
+  #  collapsed_u_sq = tf.reshape(tf.square(u_in),
+  #    shape=tf.stack([u_in_shape[0]*u_in_shape[1]*u_in_shape[2], u_in_shape[3]]))
+  #  weighted_norm = tf.reshape(tf.matmul(collapsed_u_sq, w_symmetric), shape=u_in_shape)
+  #  gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
+  #  return gdn_mult
 
-  def gdn(self, layer_id, u_in):
-    """Devisive normalizeation nonlinearity"""
-    with tf.variable_scope(self.weight_scope) as scope:
-      w_gdn = tf.get_variable(name="w_igdn"+str(layer_id),
-        dtype=tf.float32, initializer=self.w_igdn_init_list[layer_id], trainable=False)
-      b_gdn = tf.get_variable(name="b_igdn"+str(layer_id),
-        dtype=tf.float32, initializer=self.b_igdn_init_list[layer_id], trainable=False)
-    with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      gdn_mult = self.compute_gdn_mult(layer_id, u_in, w_gdn, b_gdn)
-      u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
-    return u_out, w_gdn, b_gdn, gdn_mult
+  #def gdn(self, layer_id, u_in):
+  #  """Devisive normalizeation nonlinearity"""
+  #  with tf.variable_scope(self.weight_scope) as scope:
+  #    w_gdn = tf.get_variable(name="w_igdn"+str(layer_id),
+  #      dtype=tf.float32, initializer=self.w_igdn_init_list[layer_id], trainable=False)
+  #    b_gdn = tf.get_variable(name="b_igdn"+str(layer_id),
+  #      dtype=tf.float32, initializer=self.b_igdn_init_list[layer_id], trainable=False)
+  #  with tf.variable_scope("gdn"+str(layer_id)) as scope:
+  #    gdn_mult = self.compute_gdn_mult(layer_id, u_in, w_gdn, b_gdn)
+  #    u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
+  #  return u_out, w_gdn, b_gdn, gdn_mult
 
   def layer_maker(self, layer_id, u_in, w_shape, w_stride):
     """
@@ -106,7 +108,13 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
       conv_out = tf.add(tf.nn.conv2d_transpose(u_in, w, out_shape,
         strides = [1, w_stride, w_stride, 1], padding="SAME"), b,
         name="conv_out"+str(layer_id))
-      gdn_out, w_gdn, b_gdn, gdn_mult = self.gdn(layer_id, conv_out)
+      if layer_id == self.num_layers-1: # we don't want to use GDN on the last layer (recon)
+        gdn_out = conv_out
+        w_gdn = None
+        b_gdn = None
+        gdn_mult = None
+      else:
+        gdn_out, w_gdn, b_gdn, gdn_mult = self.gdn(layer_id, conv_out, inverse=True)
     return gdn_out, w, b, w_gdn, b_gdn, conv_out, gdn_mult
 
   def build_graph(self):
