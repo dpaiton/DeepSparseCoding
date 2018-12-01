@@ -41,9 +41,11 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     self.input_channels = params["input_channels"]
     self.output_channels = params["output_channels"]
     self.w_strides = params["strides"] # list for encoding layers
-    self.w_thresh_min = params["w_thresh_min"]
-    self.b_thresh_min = params["b_thresh_min"]
-    self.gdn_mult_min = params["gdn_mult_min"]
+    self.gdn_w_init_const = float(params["gdn_w_init_const"])
+    self.gdn_b_init_const = float(params["gdn_b_init_const"])
+    self.gdn_w_thresh_min = float(params["gdn_w_thresh_min"])
+    self.gdn_b_thresh_min = float(params["gdn_b_thresh_min"])
+    self.gdn_eps = float(params["gdn_eps"])
     self.w_shapes = [vals
       for vals in zip(self.patch_size_y, self.patch_size_x, self.output_channels, self.input_channels)]
     self.w_igdn_shapes = [[pout,pout] for pout in self.output_channels]
@@ -53,32 +55,17 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     self.x_shape = [None,]+self.input_shape
     self.num_layers = len(self.input_channels)
 
-  #def compute_gdn_mult(self, layer_id, u_in, w_gdn, b_gdn):
-  #  u_in_shape = tf.shape(u_in)
-  #  w_min = self.w_thresh_min
-  #  w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
-  #    tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
-  #  w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
-  #  b_min = self.b_thresh_min
-  #  b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
-  #    tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
-  #  collapsed_u_sq = tf.reshape(tf.square(u_in),
-  #    shape=tf.stack([u_in_shape[0]*u_in_shape[1]*u_in_shape[2], u_in_shape[3]]))
-  #  weighted_norm = tf.reshape(tf.matmul(collapsed_u_sq, w_symmetric), shape=u_in_shape)
-  #  gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
-  #  return gdn_mult
-
-  #def gdn(self, layer_id, u_in):
-  #  """Devisive normalizeation nonlinearity"""
-  #  with tf.variable_scope(self.weight_scope) as scope:
-  #    w_gdn = tf.get_variable(name="w_igdn"+str(layer_id),
-  #      dtype=tf.float32, initializer=self.w_igdn_init_list[layer_id], trainable=False)
-  #    b_gdn = tf.get_variable(name="b_igdn"+str(layer_id),
-  #      dtype=tf.float32, initializer=self.b_igdn_init_list[layer_id], trainable=False)
-  #  with tf.variable_scope("gdn"+str(layer_id)) as scope:
-  #    gdn_mult = self.compute_gdn_mult(layer_id, u_in, w_gdn, b_gdn)
-  #    u_out = tf.multiply(u_in, gdn_mult, name="gdn_output"+str(layer_id))
-  #  return u_out, w_gdn, b_gdn, gdn_mult
+  def gdn(self, layer_id, u_in, inverse):
+    """Devisive normalizeation nonlinearity"""
+    with tf.variable_scope(self.weight_scope) as scope:
+      w_gdn = tf.get_variable(name="w_igdn"+str(layer_id),
+        dtype=tf.float32, initializer=self.w_igdn_init_list[layer_id], trainable=False)
+      b_gdn = tf.get_variable(name="b_igdn"+str(layer_id),
+        dtype=tf.float32, initializer=self.b_igdn_init_list[layer_id], trainable=False)
+    with tf.variable_scope("gdn"+str(layer_id)) as scope:
+      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
+        self.gdn_b_thresh_min, self.gdn_eps, inverse=True, conv=True, name="gdn_output"+str(layer_id))
+    return u_out, w_gdn, b_gdn, gdn_mult
 
   def layer_maker(self, layer_id, u_in, w_shape, w_stride):
     """
@@ -160,11 +147,11 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
 
         with tf.name_scope("summaries") as scope:
           tf.summary.image("reconstruction",self.u_list[-1])
-          [tf.summary.histogram("u"+str(idx),u) for idx,u in enumerate(self.u_list)]
-          [tf.summary.histogram("w"+str(idx),w) for idx,w in enumerate(self.w_list)]
-          [tf.summary.histogram("w_gdn"+str(idx),w) for idx,w in enumerate(self.w_gdn_list)]
-          [tf.summary.histogram("b"+str(idx),b) for idx,b in enumerate(self.b_list)]
-          [tf.summary.histogram("b_gdn"+str(idx),u) for idx,u in enumerate(self.b_gdn_list)]
+          [tf.summary.histogram("u"+str(idx),u) for idx,u in enumerate(self.u_list) if u is not None]
+          [tf.summary.histogram("w"+str(idx),w) for idx,w in enumerate(self.w_list) if w is not None]
+          [tf.summary.histogram("w_gdn"+str(idx),w) for idx,w in enumerate(self.w_gdn_list) if w is not None]
+          [tf.summary.histogram("b"+str(idx),b) for idx,b in enumerate(self.b_list) if b is not None]
+          [tf.summary.histogram("b_gdn"+str(idx),u) for idx,u in enumerate(self.b_gdn_list) if u is not None]
           self.merged_summaries = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter(self.save_dir, self.graph)
     self.graph_built = True

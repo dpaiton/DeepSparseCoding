@@ -701,8 +701,11 @@ class Analyzer(object):
     with tf.device(self.model.device):
       with self.model.graph.as_default():
         with tf.name_scope("placeholders") as scope:
+          self.model.orig_input = tf.placeholder(tf.float32, shape=self.model.x_shape,
+            name="original_input_data")
           self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.x_shape,
             name="adversarial_target_data")
+          self.model.recon_mult = tf.placeholder(tf.float32, name="recon_mult")
         with tf.name_scope("loss") as scope:
           # Want to avg over batch, sum over the rest
           reduc_dim = list(range(1, len(self.model.a.shape)))
@@ -710,8 +713,15 @@ class Analyzer(object):
             tf.reduce_sum(tf.square(tf.subtract(self.model.adv_target,
             self.model.compute_recon(self.model.a))), axis=reduc_dim),
             name="target_recon_loss")
+          self.model.input_pert_loss = tf.reduce_mean(0.5 *
+            tf.reduce_sum(tf.square(tf.subtract(self.model.orig_input,
+            self.model.x)), axis=reduc_dim),
+            name="input_perturbed_loss")
+          self.model.carlini_loss = tf.add_n([self.model.input_pert_loss, tf.multiply(self.model.recon_mult,
+            self.model.adv_recon_loss)])
         with tf.name_scope("adversarial") as scope:
-          self.model.adv_dx = -tf.sign(tf.gradients(self.model.adv_recon_loss, self.model.x)[0])
+          self.model.fast_sign_adv_dx = -tf.sign(tf.gradients(self.model.adv_recon_loss, self.model.x)[0])
+          self.model.carlini_adv_dx = -tf.gradients(self.model.carlini_loss, self.model.x)[0]
 
   def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
@@ -736,9 +746,9 @@ class Analyzer(object):
       for step in range(num_steps):
         adversarial_images.append(new_image.copy())
         self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
-        eval_ops = [self.model.x_, self.model.adv_dx]
-        recon, adv_dx = sess.run(eval_ops, feed_dict)
-        new_image += eps * adv_dx
+        eval_ops = [self.model.x_, self.model.fast_sign_adv_dx]
+        recon, fast_sign_adv_dx = sess.run(eval_ops, feed_dict)
+        new_image += eps * fast_sign_adv_dx
         input_recon_mses.append(mse(input_image, recon))
         input_adv_mses.append(mse(input_image, new_image))
         target_recon_mses.append(mse(target_image, recon))

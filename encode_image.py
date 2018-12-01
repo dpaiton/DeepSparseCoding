@@ -11,10 +11,11 @@ from data.nat_dataset import Dataset
 ## Specify model type and data type
 model_type = "conv_gdn_autoencoder"
 model_name = "conv_gdn_autoencoder_dropout"
+model_version = "1.0"
 data_type = "nat_images"
 
 ## Import params
-model_log_file = "/home/dpaiton/Work/Projects/"+model_name+"/logfiles/"+model_name+"_v1.0.log"
+model_log_file = "/home/dpaiton/Work/Projects/"+model_name+"/logfiles/"+model_name+"_v"+model_version+".log"
 model_logger = Logger(model_log_file, overwrite=False)
 model_log_text = model_logger.load_file()
 model_params = model_logger.read_params(model_log_text)
@@ -31,8 +32,8 @@ model_params["data_type"] = data_type
 model_params["data_shape"] = [model_params["im_size_y"], model_params["im_size_x"], 1]
 model_params["gdn_w_init_const"] = 0.1
 model_params["gdn_b_init_const"] = 0.1
-model_params["gdn_w_thresh_min"] = 1e-6
-model_params["gdn_b_thresh_min"] = 1e-6
+model_params["gdn_w_thresh_min"] = 1e-3
+model_params["gdn_b_thresh_min"] = 1e-3
 model_params["gdn_eps"] = 1e-6
 
 # Specific params to encoding
@@ -62,6 +63,8 @@ with tf.Session(config=config, graph=model.graph) as sess:
   sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)
 
+  #model.load_weights(sess,
+  #  "/home/dpaiton/Work/Projects/"+model_name+"/checkpoints/"+model_name+"_v"+model.params["version"]+"_weights-100000")
   model.load_weights(sess,
     "/home/dpaiton/Work/Projects/"+model_name+"/checkpoints/"+model_name+"_v"+model.params["version"]+"_weights-892800")
 
@@ -75,9 +78,12 @@ with tf.Session(config=config, graph=model.graph) as sess:
   feed_dict[model.memristor_std_eps] = mem_std_eps
 
   latent_encodings = sess.run(model.a_sig, feed_dict)
+  recon = sess.run(model.u_list[-1], feed_dict)
+
 
 for img_id in range(len(latent_encodings)):
-  np.savez("/home/dpaiton/IEDM/image_rram_encoding-"+str(img_id)+".npz", data=latent_encodings[img_id])
+  np.savez("/home/dpaiton/IEDM/image_recon-"+str(img_id)+".npz", data=recon[img_id, ...])
+  np.savez("/home/dpaiton/IEDM/image_rram_encoding-"+str(img_id)+".npz", data=latent_encodings[img_id, ...])
 
-image_encoding  = np.load("/home/dpaiton/IEDM/image_rram_encoding-0.npz")["data"]
-import IPython; IPython.embed()
+#image_encoding  = np.load("/home/dpaiton/IEDM/image_rram_encoding-0.npz")["data"]
+#import IPython; IPython.embed()

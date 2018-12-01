@@ -1,7 +1,7 @@
 import os
 params = {
   "model_type": "sigmoid_autoencoder",
-  "model_name": "sigmoid_autoencoder",
+  "model_name": "sigmoid_autoencoder_reboot",
   "version": "0.0",
   "num_images": 150,
   "vectorize_data": True,
@@ -12,7 +12,7 @@ params = {
   "contrast_normalize": False,
   "whiten_data": True,
   "whiten_method": "FT",
-  "lpf_data": True,
+  "lpf_data": False,
   "lpf_cutoff": 0.7,
   "extract_patches": True,
   "num_patches": 1e6,
@@ -25,7 +25,11 @@ params = {
   "optimizer": "annealed_sgd",#"adam",
   "cp_int": 100000,
   "max_cp_to_keep": 1,
-  "cp_load": False,
+  "cp_load": True,
+  "cp_load_name": "sigmoid_autoencoder",
+  "cp_load_step": None, # latest checkpoint
+  "cp_load_ver": "0.0",
+  "cp_load_var": ["w_enc", "w_dec", "b_enc", "b_dec"],
   "log_int": 100,
   "log_to_file": True,
   "gen_plot_int": 100000,
@@ -38,11 +42,11 @@ params = {
 
 schedule = [
   {"weights": ["w_enc", "b_enc", "w_dec", "b_dec"],
-  "decay_mult": 0.02,
-  "sparse_mult": 4.0, # How important is the sparse loss (tradeoff parameter)
-  "target_act": 0.10, # Target firing rate for neurons
-  "weight_lr": [0.004,]*4,
-  "decay_steps": [int(3e6*0.4),]*4,
+  "decay_mult": 0.008,
+  "sparse_mult": 5.0, # How important is the sparse loss (tradeoff parameter)
+  "target_act": 0.05, # Target firing rate for neurons
+  "weight_lr": [0.002,]*4,
+  "decay_steps": [int(1e6*0.5),]*4,
   "decay_rate": [0.5,]*4,
   "staircase": [True,]*4,
-  "num_batches": int(3e6)}]
+  "num_batches": int(1e6)}]
