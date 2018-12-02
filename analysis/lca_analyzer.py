@@ -161,6 +161,7 @@ class LCA_Analyzer(Analyzer):
     ga = np.zeros([num_imgs, num_steps]+self.model.u_shape, dtype=np.float32)
     a = np.zeros([num_imgs, num_steps]+self.model.u_shape, dtype=np.float32)
     psnr = np.zeros((num_imgs, num_steps), dtype=np.float32)
+    sparse_mult = self.model.get_schedule(key="sparse_mult")
     losses = [{} for _ in range(num_imgs)]
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -183,4 +184,5 @@ class LCA_Analyzer(Analyzer):
     out_losses = dict.fromkeys(losses[0].keys())
     for key in losses[0].keys():
       out_losses[key] = np.array([losses[idx][key] for idx in range(len(losses))])
-    return {"b":b, "ga":ga, "u":u, "a":a, "psnr":psnr, "losses":out_losses, "images":images}
+    return {"b":b, "ga":ga, "u":u, "a":a, "sparse_mult": sparse_mult, "psnr":psnr,
+      "losses":out_losses, "images":images}

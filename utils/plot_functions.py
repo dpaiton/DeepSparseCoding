@@ -1046,10 +1046,10 @@ def plot_inference_traces(data, activation_threshold, img_idx=None, act_indicato
   for (axis_idx, axis) in enumerate(fig.axes): # one axis per neuron
     if axis_idx < num_neurons:
       t = np.arange(data["b"].shape[1])
-      b = data["b"][img_idx,:,axis_idx]
-      u = data["u"][img_idx,:,axis_idx]
-      ga = data["ga"][img_idx,:,axis_idx]
-      a = data["a"][img_idx,:,axis_idx]
+      b = data["b"][img_idx, :, axis_idx]
+      u = data["u"][img_idx, :, axis_idx]
+      ga = data["ga"][img_idx, :, axis_idx]
+      a = data["a"][img_idx, :, axis_idx]
       l1, = axis.plot(t, b, linewidth=0.25, color="g", label="b")
       l2, = axis.plot(t, u, linewidth=0.25, color="b", label="u")
       l3, = axis.plot(t, ga, linewidth=0.25, color="r", label="Ga")
