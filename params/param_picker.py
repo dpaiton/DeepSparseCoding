@@ -15,6 +15,7 @@ import params.conv_gdn_autoencoder_params as cga
 import params.conv_gdn_decoder_params as cgd
 import params.relu_autoencoder_params as ra
 import params.density_learner_params as density
+import params.vae_params as vae
 
 """
 Get function that returns the corresponding parameter and schedule files
@@ -52,6 +53,8 @@ def get_params(model_type):
     return density.params, density.schedule
   if model_type.lower() == "sigmoid_autoencoder":
     return sa.params, sa.schedule
+  if model_type.lower() == "vae":
+    return vae.params, vae.schedule
   if model_type.lower() == "gdn_autoencoder":
     return ga.params, ga.schedule
   if model_type.lower() == "conv_gdn_autoencoder":

@@ -16,6 +16,7 @@ from models.conv_gdn_autoencoder import Conv_GDN_Autoencoder as cga
 from models.conv_gdn_decoder import Conv_GDN_Decoder as cgd
 from models.relu_autoencoder import ReLU_Autoencoder as ra
 from models.density_learner import Density_Learner as dl
+from models.vae import VAE as vae
 
 def get_model(model_type):
   if model_type.lower() == "mlp":
@@ -52,9 +53,11 @@ def get_model(model_type):
     return ra()
   if model_type.lower() == "density_learner":
     return dl()
+  if model_type.lower() == "vae":
+    return vae()
 
 def get_model_list():
   model_list = ["mlp", "ica", "ica_pca", "rica", "gradient_sc", "entropy_sc", "lca", "lca_pca",
     "lca_pca_fb", "conv_lca", "sigmoid_autoencoder", "gdn_autoencoder", "conv_gdn_autoencoder",
-    "conv_gdn_decoder", "relu_autoencoder", "density_learner"]
+    "conv_gdn_decoder", "relu_autoencoder", "density_learner", "vae"]
   return model_list
