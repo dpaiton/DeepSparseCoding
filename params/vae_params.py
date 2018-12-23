@@ -15,26 +15,27 @@ params = {
   "extract_patches": False,
   "batch_size": 200,
   "num_neurons": 256,
-  "optimizer": "annealed_sgd",#"adam",
-  "cp_int": 100000,
+  "optimizer": "adam",
+  "cp_int": 10000,
   "max_cp_to_keep": 1,
   "cp_load": False,
   "log_int": 100,
   "log_to_file": True,
-  "gen_plot_int": 100000,
+  "gen_plot_int": 10000,
   "save_plots": True,
   "eps": 1e-6,
   "device": "/gpu:0",
   "rand_seed": 123456789,
   "out_dir": os.path.expanduser("~")+"/mountData/",
-  "data_dir": os.path.expanduser("~")+"/mountData/dataset/",
+  "data_dir": os.path.expanduser("~")+"/mountData/datasets/",
   }
 
 schedule = [
   {"weights": ["w_enc_mean", "b_enc_mean", "w_enc_std", "b_enc_std", "w_dec", "b_dec"],
   "decay_mult": 0.0,
-  "weight_lr": [0.001,]*6,
+  "kld_mult": 1/params["batch_size"],
+  "weight_lr": [0.0001,]*6,
   "decay_steps": [int(3e6*0.4),]*6,
   "decay_rate": [0.5,]*6,
   "staircase": [True,]*6,
-  "num_batches": int(3e6)}]
+  "num_batches": int(3e5)}]

@@ -705,7 +705,7 @@ def center_data(data, use_dataset_mean=False):
   """
   if use_dataset_mean or data.ndim == 1:
     # TODO: We want to subtract the dataset mean, but if you do axis=0 you create ghosting
-    data_mean = np.mean(data)#, axis=0)#, keepdims=True) 
+    data_mean = np.mean(data)#, axis=0)#, keepdims=True)
     data -= data_mean
   else:
     data, orig_shape = reshape_data(data, flatten=None)[:2] # reshapes to 4D (not flat) or 2D (flat)
@@ -1000,3 +1000,12 @@ def compute_mse(a, b):
     b [np.ndarray] of shape: (batch, datapoint_size)
   """
   return np.mean(np.sum(np.square(a-b), axis=1))
+
+def norm_weights(weights):
+    reduc_dim = tuple(range(1, len(weights.shape))) # Want to avg over batch, sum over the rest
+    weights_mean = np.mean(weights, axis=reduc_dim, keepdims=True)
+    weights_max = np.max(weights, axis=reduc_dim, keepdims=True)
+    weights_min = np.min(weights, axis=reduc_dim, keepdims=True)
+    norm_weights = (weights - weights_mean) / (weights_max - weights_min)
+    return norm_weights
+

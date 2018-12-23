@@ -848,9 +848,8 @@ def plot_weights(weights, title="", save_filename=None):
     weights: [np.ndarray] of shape [num_outputs, num_input_y, num_input_x]
     The matrices are renormalized before plotting.
   """
-  for weight_id in range(weights.shape[0]):
-    weights[weight_id,...] = weights[weight_id,...] - weights[weight_id,...].mean()
-    weights[weight_id,...] = weights[weight_id,...] / (weights[weight_id,...].max()-weights[weight_id,...].min())
+  weights = dp.norm_weights(weights)
+
   vmin = np.min(weights)
   vmax = np.max(weights)
   num_plots = weights.shape[0]
@@ -860,7 +859,7 @@ def plot_weights(weights, title="", save_filename=None):
   filter_total = 0
   for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
     if filter_total < num_plots:
-      sub_ax[plot_id].imshow(weights[filter_total, ...], vmin=vmin, vmax=vmax, cmap="Greys_r")
+      sub_ax[plot_id].imshow(np.squeeze(weights[filter_total, ...]), vmin=vmin, vmax=vmax, cmap="Greys_r")
       filter_total += 1
     clear_axis(sub_ax[plot_id])
     sub_ax[plot_id].set_aspect("equal")

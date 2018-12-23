@@ -6,6 +6,7 @@ from analysis.lca_pca_fb_analyzer import LCA_PCA_FB_Analyzer as lca_pca_fb_analy
 from analysis.conv_lca_analyzer import CONV_LCA_Analyzer as conv_lca_analyzer
 from analysis.sigmoid_autoencoder_analyzer import SA_Analyzer as sa_analyzer
 from analysis.rica_analyzer import RICA_Analyzer as rica_analyzer
+from analysis.vae_analyzer import VAE_Analyzer as vae_analyzer
 from analysis.gdn_autoencoder_analyzer import GA_Analyzer as ga_analyzer
 
 def get_analyzer(params):
@@ -27,4 +28,6 @@ def get_analyzer(params):
     return sa_analyzer(params)
   if params["model_type"].lower() == "gdn_autoencoder":
     return ga_analyzer(params)
+  if params["model_type"].lower() == "vae":
+    return vae_analyzer(params)
   assert False, ("model_type did not match allowable types in analysis/analysis_picker.")

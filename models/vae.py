@@ -46,7 +46,7 @@ class VAE(Model):
   def compute_latent_loss(self, a_mean, a_log_std_sq):
     with tf.name_scope("latent"):
       reduc_dim = list(range(1, len(a_mean.shape))) # Want to avg over batch, sum over the rest
-      latent_loss= -0.5 * tf.reduce_mean(tf.reduce_sum(1 + a_log_std_sq -
+      latent_loss= self.kld_mult * -0.5 * tf.reduce_mean(tf.reduce_sum(1 + a_log_std_sq -
         tf.square(a_mean) - tf.exp(a_log_std_sq), reduc_dim))
     return latent_loss
 
@@ -56,6 +56,9 @@ class VAE(Model):
       recon_loss = 0.5 * tf.reduce_mean(
         tf.reduce_sum(tf.square(tf.subtract(self.compute_recon(a_in), self.x)),
         axis=reduc_dim), name="recon_loss")
+
+      ##TF VAE uses reduce sum across all image dimension
+      #recon_loss = 0.5 * tf.reduce_sum(tf.square(tf.subtract(self.compute_recon(a_in), self.x)))
     return recon_loss
 
   def build_graph(self):
@@ -65,15 +68,20 @@ class VAE(Model):
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
+          self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.name_scope("weight_inits") as scope:
           w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0,
-            stddev=0.01, dtype=tf.float32, name="w_init")
+            stddev=0.001, dtype=tf.float32, name="w_init")
           b_enc_init = tf.ones([1, self.num_neurons])*0.0001
           b_dec_init = tf.ones([1, self.num_pixels])*0.0001
+
+          #w_init = tf.contrib.layers.xavier_initializer()
+          #b_enc_init = tf.zeros([1, self.num_neurons])
+          #b_dec_init = tf.zeros([1, self.num_pixels])
 
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()
@@ -81,6 +89,12 @@ class VAE(Model):
             initializer=w_init, trainable=True)
           self.w_enc_std = tf.get_variable(name="w_enc_std", dtype=tf.float32,
             initializer=w_init, trainable=True)
+
+          #self.w_enc_mean = tf.get_variable(name="w_enc_mean", dtype=tf.float32,
+          #  shape=self.w_enc_shape, initializer=w_init, trainable=True)
+          #self.w_enc_std = tf.get_variable(name="w_enc_std", dtype=tf.float32,
+          #  shape=self.w_enc_shape, initializer=w_init, trainable=True)
+
           self.b_enc_mean = tf.get_variable(name="b_enc_mean", dtype=tf.float32,
             initializer=b_enc_init, trainable=True)
           self.b_enc_std= tf.get_variable(name="b_enc_std", dtype=tf.float32,
@@ -91,11 +105,17 @@ class VAE(Model):
           self.b_dec = tf.get_variable(name="b_dec", dtype=tf.float32,
             initializer=b_dec_init, trainable=True)
 
+          #self.w_dec = tf.get_variable(name="w_dec", dtype=tf.float32,
+          #  initializer=tf.zeros(w_enc_shape), trainable=True)
+          #self.b_dec = tf.get_variable(name="b_dec", dtype=tf.float32,
+          #  initializer=b_dec_init, trainable=True)
+
         with tf.variable_scope("inference") as scope:
           self.a_mean = tf.add(tf.matmul(self.x, self.w_enc_mean), self.b_enc_mean)
           self.a_log_std_sq = tf.add(tf.matmul(self.x, self.w_enc_std), self.b_enc_std)
-          noise  = tf.random.normal(tf.shape(self.a_log_std_sq))
-          self.a = self.a_mean + tf.sqrt(tf.exp(self.a_log_std_sq)) * noise
+          noise  = tf.random_normal(tf.shape(self.a_log_std_sq))
+          self.a = tf.identity(self.a_mean + tf.sqrt(tf.exp(self.a_log_std_sq)) * noise,
+            name="activity")
 
         with tf.name_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.a),
@@ -191,6 +211,9 @@ class VAE(Model):
     w_enc_std = dp.reshape_data(w_enc_std.T, flatten=False)[0]
     w_dec = dp.reshape_data(w_dec, flatten=False)[0]
 
+    w_enc_mean = dp.norm_weights(w_enc_mean)
+    w_enc_std = dp.norm_weights(w_enc_std)
+
     fig = pf.plot_data_tiled(w_enc_mean, normalize=False,
       title="Encoding weights mean at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.disp_dir+"w_enc_mean_v"+self.version+"-"
@@ -204,12 +227,12 @@ class VAE(Model):
       save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
 
-    fig = pf.plot_activity_hist(b_enc_mean, title="Encoding Bias Mean Histogram",
-      save_filename=(self.disp_dir+"b_enc_mean_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(b_enc_std, title="Encoding Bias Std Histogram",
-      save_filename=(self.disp_dir+"b_enc_std_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
+    #fig = pf.plot_activity_hist(b_enc_mean, title="Encoding Bias Mean Histogram",
+    #  save_filename=(self.disp_dir+"b_enc_mean_hist_v"+self.version+"-"
+    #  +current_step.zfill(5)+".png"))
+    #fig = pf.plot_activity_hist(b_enc_std, title="Encoding Bias Std Histogram",
+    #  save_filename=(self.disp_dir+"b_enc_std_hist_v"+self.version+"-"
+    #  +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
       save_filename=(self.disp_dir+"act_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
