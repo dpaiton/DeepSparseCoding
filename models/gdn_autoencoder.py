@@ -82,15 +82,21 @@ class GDN_Autoencoder(Model):
     """Devisive normalizeation nonlinearity"""
     with tf.variable_scope(self.weight_scope) as scope:
       if inverse:
-        w_gdn = tf.get_variable(name="w_igdn"+str(layer_id), shape=self.w_igdn_shape,
+        w_gdn_name = "w_igdn"+str(layer_id)
+        w_gdn = tf.get_variable(name=w_gdn_name, shape=self.w_igdn_shape,
           dtype=tf.float32, initializer=self.w_igdn_init, trainable=True)
-        b_gdn = tf.get_variable(name="b_igdn"+str(layer_id), shape=self.b_igdn_shape,
+        b_gdn_name = "b_igdn"+str(layer_id)
+        b_gdn = tf.get_variable(name=b_gdn_name, shape=self.b_igdn_shape,
           dtype=tf.float32, initializer=self.b_igdn_init, trainable=True)
       else:
-        w_gdn = tf.get_variable(name="w_gdn"+str(layer_id), shape=self.w_gdn_shape,
+        w_gdn_name = "w_gdn"+str(layer_id)
+        w_gdn = tf.get_variable(name=b_gdn_name, shape=self.w_gdn_shape,
           dtype=tf.float32, initializer=self.w_gdn_init, trainable=True)
-        b_gdn = tf.get_variable(name="b_gdn"+str(layer_id), shape=self.b_gdn_shape,
+        b_gdn_name = "b_gdn"+str(layer_id)
+        b_gdn = tf.get_variable(name=b_gdn_name, shape=self.b_gdn_shape,
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
+      self.trainable_variables[w_gdn_name] = w_gdn
+      self.trainable_variables[b_gdn_name] = b_gdn
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
       u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
         self.gdn_b_thresh_min, self.gdn_eps, inverse, conv=False, name="gdn_output"+str(layer_id))
@@ -147,6 +153,10 @@ class GDN_Autoencoder(Model):
             initializer=self.b_init, trainable=True)
           self.w_list = [self.w_enc, self.w_dec]
           self.b_list = [self.b_enc, self.b_dec]
+          self.trainable_variables["w_enc"] = self.w_enc
+          self.trainable_variables["b_enc"] = self.b_enc
+          self.trainable_variables["w_dec"] = self.w_dec
+          self.trainable_variables["b_dec"] = self.b_dec
 
         with tf.variable_scope("inference") as scope:
           u_enc = tf.add(tf.matmul(self.x, self.w_enc), self.b_enc, name="u_enc")

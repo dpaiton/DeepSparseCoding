@@ -26,7 +26,7 @@ class params(Base_Params):
     #Specify number of neurons for encoder
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
-    self.num_neurons = [512, 50]
+    self.output_channels = [512, 50]
     self.optimizer = "adam"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
@@ -37,26 +37,26 @@ class params(Base_Params):
     self.save_plots = True
 
     #decoders mirror encoder layers
-    num_encoder_layers = len(self.num_neurons)
+    num_encoder_layers = len(self.output_channels)
     encoder_layer_range = list(range(num_encoder_layers))
     w_enc_list = ["w_enc_" + str(idx) for idx in encoder_layer_range]
     b_enc_list = ["b_enc_" + str(idx) for idx in encoder_layer_range]
-    
+
     #Std weights for last encoder layer
     w_enc_std = ["w_enc_" + str(num_encoder_layers-1) + "_std"]
     b_enc_std = ["b_enc_" + str(num_encoder_layers-1) + "_std"]
-    
+
     w_dec_list = ["w_dec_" + str(idx) for idx in encoder_layer_range[::-1]]
     b_dec_list = ["b_dec_" + str(idx) for idx in encoder_layer_range[::-1]]
-    
+
     weights_list = w_enc_list + w_dec_list
     bias_list = b_enc_list + b_dec_list
-    
+
     #Train list is ordered by input to output weights, then input to output bias
     train_list = weights_list + bias_list
-    
+
     num_train_weights = len(train_list)
-    
+
     self.schedule = [
       {"weights": train_list,
       "decay_mult": 0.0,

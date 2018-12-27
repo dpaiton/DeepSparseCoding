@@ -71,8 +71,7 @@ class RICA(Model):
               sch_grads_and_vars = list() # [weight_idx]
               sch_apply_grads = list() # [weight_idx]
               for w_idx, weight in enumerate(sch["weights"]):
-                with tf.variable_scope("weights", reuse=True) as scope:
-                  weight_op = [tf.get_variable(weight)]
+                weight_op = self.trainable_variables[weight]
                 sch_grads_and_vars.append([(None, weight_op[0])])
                 if w_idx == 0:
                   update_op = tf.assign_add(self.global_step, 1)
@@ -106,6 +105,7 @@ class RICA(Model):
           #self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init, trainable=True)
           w_unnormalized = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
             trainable=True)
+          self.trainable_variables["w"] = w_unnormalized
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0],
             keepdims=True), self.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")

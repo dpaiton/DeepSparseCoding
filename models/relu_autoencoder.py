@@ -103,6 +103,10 @@ class ReLU_Autoencoder(Model):
             initializer=tf.transpose(w_init), trainable=True)
           self.b_dec = tf.get_variable(name="b_dec", dtype=tf.float32,
             initializer=b_dec_init, trainable=True)
+          self.trainable_variables["w_enc"] = self.w_enc
+          self.trainable_variables["b_enc"] = self.b_enc
+          self.trainable_variables["w_dec"] = self.w_dec
+          self.trainable_variables["b_dec"] = self.b_dec
 
         with tf.variable_scope("inference") as scope:
           self.enc_output = tf.nn.relu(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),

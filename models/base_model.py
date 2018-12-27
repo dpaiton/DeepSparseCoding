@@ -162,8 +162,7 @@ class Model(object):
               elif self.optimizer == "adadelta":
                 optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
                   name="adadelta_optimizer_"+weight)
-              with tf.variable_scope("weights", reuse=True) as scope:
-                weight_op = [tf.get_variable(weight)]
+              weight_op = self.trainable_variables[weight]
               sch_grads_and_vars.append(self.compute_weight_gradients(optimizer, weight_op))
               gstep = self.global_step if w_idx == 0 else None # Only increment once
               sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
@@ -322,6 +321,7 @@ class Model(object):
   def setup_graph(self):
     """Setup graph object and add optimizers, initializer"""
     self.graph = tf.Graph()
+    self.trainable_variables = dict()
     self.build_graph()
     self.add_optimizers_to_graph()
     self.add_initializer_to_graph()

@@ -8,9 +8,6 @@ class ICA_PCA(ICA):
     """Build the TensorFlow graph object"""
     super(ICA_PCA, self).build_graph()
     with self.graph.as_default():
-      with tf.variable_scope("weights") as scope:
-        self.phi = tf.transpose(self.a)
-
       with tf.name_scope("covariance") as scope:
         self.act_corr = tf.divide(tf.matmul(tf.transpose(tf.nn.relu(self.u)),
           tf.nn.relu(self.u)), tf.to_float(tf.shape(self.x)[0]), name="a_corr_matrix")

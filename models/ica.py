@@ -53,11 +53,13 @@ class ICA(Model):
             initializer=Q.astype(np.float32), trainable=True)
           # w_analysis is W in Bell & Sejnowski 1997, which is used to compute the activations
           self.w_analysis = tf.matrix_inverse(self.w_synth, name="w_analysis")
+          self.trainable_variables["w_analysis"] = self.w_analysis
 
           # Bell & Sejnowsky 1997
           #self.w_analysis = tf.get_variable(name="w_analysis", dtype=tf.float32,
           #  initializer=Q.astype(np.float32), trainable=True)
           #self.w_synth = tf.matrix_inverse(self.w_analysis, name="w_synth")
+          self.trainable_variables["w_synth"] = self.w_synth
 
         with tf.name_scope("inference") as scope:
           self.a = tf.matmul(self.x, self.w_analysis, name="activity")

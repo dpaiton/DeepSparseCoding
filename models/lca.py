@@ -130,6 +130,7 @@ class LCA(Model):
             stddev=0.5, dtype=tf.float32), axis=phi_norm_dim, epsilon=self.eps, name="phi_init")
           self.phi = tf.get_variable(name="phi", dtype=tf.float32, initializer=phi_init,
             trainable=True)
+          self.trainable_variables["phi"] = self.phi
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi, axis=phi_norm_dim,

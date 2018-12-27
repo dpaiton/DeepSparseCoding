@@ -26,19 +26,19 @@ class VAE(Model):
     # Network Size
     self.batch_size = int(params.batch_size)
     self.num_pixels = int(np.prod(self.data_shape))
-    self.num_neurons = params.num_neurons #is list
+    self.output_channels = params.output_channels #is list
 
-    self.num_encoder_layers = len(self.num_neurons)
+    self.num_encoder_layers = len(self.output_channels)
     #Calculate encoder and decoder shapes
     prev_input_features = self.num_pixels
     self.w_enc_shape = []
     self.b_enc_shape = []
     self.b_dec_shape = []
     for l in range(self.num_encoder_layers):
-      self.w_enc_shape.append([prev_input_features, self.num_neurons[l]])
-      self.b_enc_shape.append([1, self.num_neurons[l]])
+      self.w_enc_shape.append([prev_input_features, self.output_channels[l]])
+      self.b_enc_shape.append([1, self.output_channels[l]])
       self.b_dec_shape.append([1, prev_input_features])
-      prev_input_features = self.num_neurons[l]
+      prev_input_features = self.output_channels[l]
 
     self.x_shape = [None, self.num_pixels]
 
@@ -138,12 +138,19 @@ class VAE(Model):
             self.b_dec_list.append(tf.get_variable(name="b_dec_"+str(l), dtype=tf.float32,
               initializer=b_dec_init[l], trainable=True))
 
+            self.trainable_variables["w_enc_"+str(l)] = self.w_enc_list[l]
+            self.trainable_variables["b_enc_"+str(l)] = self.b_enc_list[l]
+            self.trainable_variables["w_dec_"+str(l)] = self.w_dec_list[l]
+            self.trainable_variables["b_dec_"+str(l)] = self.b_dec_list[l]
+
           #Std weights
           #l should be last encoder layer, i.e., layer right before latent space
           self.w_enc_std = tf.get_variable(name="w_enc_"+str(l)+"_std", dtype=tf.float32,
             initializer=w_init[l], trainable=True)
           self.b_enc_std = tf.get_variable(name="b_enc_"+str(l)+"_std", dtype=tf.float32,
             initializer=b_enc_init[l], trainable=True)
+          self.trainable_variables["w_enc_"+str(l)+"_std"] = self.w_enc_std
+          self.trainable_variables["b_enc_"+str(l)+"_std"] = self.b_enc_std
 
           #Reverse decoder weights to order them in order of operations
           self.w_dec_list = self.w_dec_list[::-1]
@@ -175,7 +182,7 @@ class VAE(Model):
           #self.inject_a_flag = tf.placeholder_with_default(False,
           #  shape=(), name="inject_activation_flag")
           #self.inject_a = tf.placeholder_with_default(
-          #  tf.zeros_initializer(), shape=[None, self.num_neurons[-1]],
+          #  tf.zeros_initializer(), shape=[None, self.output_channels[-1]],
           #  name="inject_activation")
           #curr_input = tf.where(inject_a_flag, inject_a, self.a)
 
