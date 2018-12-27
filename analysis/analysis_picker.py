@@ -10,23 +10,23 @@ from analysis.vae_analyzer import VAE_Analyzer as vae_analyzer
 from analysis.gdn_autoencoder_analyzer import GA_Analyzer as ga_analyzer
 
 def get_analyzer(params):
-  if params["model_type"].lower() == "ica":
+  if params.model_type.lower() == "ica":
     return ica_analyzer(params)
-  if params["model_type"].lower() == "rica":
+  if params.model_type.lower() == "rica":
     return rica_analyzer(params)
-  if params["model_type"].lower() == "lca":
+  if params.model_type.lower() == "lca":
     return lca_analyzer(params)
-  if params["model_type"].lower() == "subspace_lca":
+  if params.wodel_type.lower() == "subspace_lca":
     return sub_lca_analyzer(params)
-  if params["model_type"].lower() == "lca_pca":
+  if params.model_type.lower() == "lca_pca":
     return lca_pca_analyzer(params)
-  if params["model_type"].lower() == "lca_pca_fb":
+  if params.model_type.lower() == "lca_pca_fb":
     return lca_pca_fb_analyzer(params)
-  if params["model_type"].lower() == "conv_lca":
+  if params.model_type.lower() == "conv_lca":
     return conv_lca_analyzer(params)
-  if params["model_type"].lower() == "sigmoid_autoencoder":
+  if params.model_type.lower() == "sigmoid_autoencoder":
     return sa_analyzer(params)
-  if params["model_type"].lower() == "gdn_autoencoder":
+  if params.model_type.lower() == "gdn_autoencoder":
     return ga_analyzer(params)
   if params["model_type"].lower() == "vae":
     return vae_analyzer(params)

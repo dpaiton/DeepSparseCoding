@@ -3,25 +3,6 @@ import params.param_picker as pp
 from models.lca import LCA
 
 class LCA_PCA(LCA):
-  def setup(self, params, schedule):
-    # TODO: this code is to allow parameter inheritance,
-    #       which can be removed once the params object is made
-    lca_params, lca_schedule = pp.get_params("lca")
-    new_params = lca_params.copy()
-    new_params.update(params)
-    super(LCA_PCA, self).setup(new_params, schedule)
-
-  def load_params(self, params):
-    """
-    Load parameters into object
-    Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
-      num_pooling_units [int] indicating the number of 2nd layer units
-    """
-    super(LCA_PCA, self).load_params(params)
-    self.num_pooling_units = int(params["num_pooling_units"])
-
   def build_graph(self):
     """Build the TensorFlow graph object"""
     with tf.device(self.device):

@@ -6,27 +6,14 @@ import utils.plot_functions as pf
 from models.lca_pca import LCA_PCA
 
 class LCA_PCA_FB(LCA_PCA):
-  def setup(self, params, schedule):
-    lca_params, lca_schedule = pp.get_params("lca")
-    new_params = lca_params.copy()
-    lca_pca_params, lca_pca_schedule = pp.get_params("lca_pca")
-    new_params.update(lca_pca_params)
-    new_params.update(params)
-    super(LCA_PCA_FB, self).setup(new_params, schedule)
-
   def load_params(self, params):
     """
     Load parameters into object
     Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
-      num_pooling_units [int] indicating the number of 2nd layer units
-      act_cov_suffix [str] suffix appended to activity covariance matrix
+     params: [obj] model parameters
     """
     super(LCA_PCA_FB, self).load_params(params)
-    self.num_pooling_units = int(params["num_pooling_units"])
-    self.act_cov_suffix = str(params["activity_covariance_suffix"])
-    self.act_cov_loc = (params["out_dir"]+self.cp_load_name+"/analysis/"+self.cp_load_ver
+    self.act_cov_loc = (params.out_dir+self.cp_load_name+"/analysis/"+self.cp_load_ver
       +"/act_cov_"+self.act_cov_suffix+".npz")
     assert os.path.exists(self.act_cov_loc), ("Can't find activity covariance file. "
       +"Maybe you didn't run the analysis? File location: "+self.act_cov_loc)

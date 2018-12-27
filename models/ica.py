@@ -13,20 +13,12 @@ class ICA(Model):
     """
     Load parameters into object
     Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
-      prior        [str] Prior for ICA - can be "laplacian" or "cauchy"
-      batch_size   [int] Number of images in a training batch
-      num_pixels   [int] Number of pixels
+     params: [obj] model parameters
     """
     super(ICA, self).load_params(params)
-    ## Meta parameters
-    self.prior = str(params["prior"])
     assert (True if self.prior.lower() in ("laplacian", "cauchy") else False), (
       "Prior must be 'laplacian' or 'cauchy'")
-    self.data_shape = params["data_shape"]
-    ## Network Size
-    self.batch_size = int(params["batch_size"])
+    ## Calculated params
     self.num_pixels = int(np.prod(self.data_shape))
     self.num_neurons = self.num_pixels
     self.x_shape = [None, self.num_pixels]

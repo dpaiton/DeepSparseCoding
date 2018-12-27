@@ -8,7 +8,7 @@ from data.tinyImages import load_tinyImages
 """
 Get function that returns the corresponding dataset
 Inputs:
-  kwargs: [dict] containing params returned from params/param_picker.py
+  params: [obj] containing params returned from params/param_picker.py
     data_type: [str] containing the name of the dataset to return
       Current allowed values are obtained from get_dataset_list()
     data_dir (cifar, field, mnist, vanhateren)
@@ -26,31 +26,31 @@ Inputs:
 Outputs:
   dataset: [dataset] object containing the dataset
 """
-def get_data(kwargs):
-  assert "data_type" in kwargs.keys(), ("kwargs must include data_type")
+def get_data(params):
+  assert "data_type" in params.__dict__.keys(), ("params must include data_type")
   # TODO: Add assert that gives meaningful error if data_type is not one of the options
-  if kwargs["data_type"].lower() == "vanhateren":
-    if "vanHateren" not in kwargs["data_dir"]:
-      kwargs["data_dir"] += "/vanHateren/"
-    dataset = load_vanHateren(kwargs)
-  if kwargs["data_type"].lower() == "mnist":
-    if "MNIST" not in kwargs["data_dir"]:
-      kwargs["data_dir"] += "/MNIST/"
-    dataset = load_MNIST(kwargs)
-  if kwargs["data_type"].lower() == "cifar10" or kwargs["data_type"].lower() == "cifar100":
-    if "CIFAR" not in kwargs["data_dir"]:
-      kwargs["data_dir"] += "/CIFAR/"
-    kwargs["num_classes"] = int(kwargs["data_type"][5:len(kwargs["data_type"])])
-    dataset = load_CIFAR(kwargs)
-  if kwargs["data_type"].lower() == "synthetic":
-    assert "epoch_size" in kwargs.keys(), ("Params must include 'epoch_size'")
-    dataset = load_synthetic(kwargs)
-  if kwargs["data_type"].lower() == "field":
-    dataset = load_field(kwargs)
-  if kwargs["data_type"].lower() == "tinyimages":
-    if "TinyImages" not in kwargs["data_dir"]:
-      kwargs["data_dir"] += "/TinyImages/"
-    dataset = load_tinyImages(kwargs)
+  if params.data_type.lower() == "vanhateren":
+    if "vanHateren" not in params.data_dir:
+      params.data_dir += "/vanHateren/"
+    dataset = load_vanHateren(params)
+  if params.data_type.lower() == "mnist":
+    if "MNIST" not in params.data_dir:
+      params.data_dir += "/MNIST/"
+    dataset = load_MNIST(params)
+  if params.data_type.lower() == "cifar10" or params.data_type.lower() == "cifar100":
+    if "CIFAR" not in params.data_dir:
+      params.data_dir += "/CIFAR/"
+    params.num_classes = int(params.data_type[5:len(params.data_type)])
+    dataset = load_CIFAR(params)
+  if params.data_type.lower() == "synthetic":
+    assert "epoch_size" in params.__dict__.keys(), ("Params must include 'epoch_size'")
+    dataset = load_synthetic(params)
+  if params.data_type.lower() == "field":
+    dataset = load_field(params)
+  if params.data_type.lower() == "tinyimages":
+    if "TinyImages" not in params.data_dir:
+      params.data_dir += "/TinyImages/"
+    dataset = load_tinyImages(params)
   return dataset
 
 def get_dataset_list():

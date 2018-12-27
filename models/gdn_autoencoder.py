@@ -23,32 +23,7 @@ class GDN_Autoencoder(Model):
     self.vector_inputs = True
 
   def load_params(self, params):
-    """
-    Load parameters into object
-    Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
-    """
     super(GDN_Autoencoder, self).load_params(params)
-    # Network Size
-    self.data_shape = params["data_shape"]
-    self.batch_size = int(params["batch_size"])
-    self.num_pixels = int(np.prod(self.data_shape))
-    self.num_neurons = int(params["num_neurons"])
-    # Entropy calculation parameters
-    self.mle_step_size = float(params["mle_step_size"])
-    self.num_mle_steps = int(params["num_mle_steps"])
-    self.num_triangles = int(params["num_triangles"])
-    self.sigmoid_beta = float(params["sigmoid_beta"])
-    # Loss parameters
-    self.ramp_min = float(params["ramp_min"])
-    self.ramp_max = float(params["ramp_max"])
-    # GDN Parameters
-    self.gdn_w_init_const = params["gdn_w_init_const"]
-    self.gdn_b_init_const = params["gdn_b_init_const"]
-    self.gdn_w_thresh_min = float(params["gdn_w_thresh_min"])
-    self.gdn_b_thresh_min = float(params["gdn_b_thresh_min"])
-    self.gdn_eps = float(params["gdn_eps"])
     # Computed parameters
     self.x_shape = [None, self.num_pixels]
     self.w_enc_shape = [self.num_pixels, self.num_neurons]

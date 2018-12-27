@@ -7,8 +7,6 @@ import utils.entropy_funcs as ef
 from models.base_model import Model
 
 class ReLU_Autoencoder(Model):
-  """
-  """
   def __init__(self):
     super(ReLU_Autoencoder, self).__init__()
     self.vector_inputs = True
@@ -22,19 +20,11 @@ class ReLU_Autoencoder(Model):
     """
     super(ReLU_Autoencoder, self).load_params(params)
     # Network Size
-    self.data_shape = params["data_shape"]
-    self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
-    self.num_neurons = int(params["num_neurons"])
     self.x_shape = [None, self.num_pixels]
     self.w_enc_shape = [self.num_pixels, self.num_neurons]
     self.b_enc_shape = [self.num_neurons]
     self.b_dec_shape = [self.num_pixels]
-    # Hyper Parameters
-    self.mle_step_size = float(params["mle_step_size"])
-    self.num_mle_steps = int(params["num_mle_steps"])
-    self.num_triangles = int(params["num_triangles"])
-    self.sigmoid_beta = float(params["sigmoid_beta"])
 
   def sigmoid(self, a_in, beta=1):
     """Hyperbolic tangent non-linearity"""

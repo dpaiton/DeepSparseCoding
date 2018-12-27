@@ -4,15 +4,15 @@ import skimage.io as io
 import utils.data_processing as dp
 
 class Dataset(object):
-  def __init__(self, file_location, params):
-    self.filenames = [string.strip() for string in open(file_location, "r").readlines()]
+  def __init__(self, params):
+    self.filenames = [string.strip() for string in open(params.data_file, "r").readlines()]
     self.num_examples = len(self.filenames)
-    self.rand_state = params["rand_state"]
-    self.shape = params["data_shape"]
-    if "lpf_data" in params.keys():
-      self.lpf_data = params["lpf_data"]
-      if "lpf_cutoff" in params.keys():
-        self.lpf_cutoff = params["lpf_cutoff"]
+    self.rand_state = params.rand_state
+    self.shape = params.data_shape
+    if hasattr(params, "lpf_data"):
+      self.lpf_data = params.lpf_data
+      if hasattr(params, "lpf_cutoff"):
+        self.lpf_cutoff = params.lpf_cutoff
       else:
         self.lpf_cutoff = 0.7
     else:

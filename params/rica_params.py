@@ -1,52 +1,54 @@
 import os
-params = {
-  "model_type": "rica",
-  "model_name": "rica",
-  "version": "0.0",
-  "num_images": 150,
-  "vectorize_data": True,
-  "norm_data": False,
-  "center_data": True,
-  "standardize_data": False,
-  "contrast_normalize": False,
-  "whiten_data": True,
-  "whiten_method": "ZCA",
-  "lpf_data": True,
-  "lpf_cutoff": 0.7,
-  "extract_patches": True,
-  "num_patches": 1e6,
-  "patch_edge_size": 16,
-  "overlapping_patches": True,
-  "randomize_patches": True,
-  "patch_variance_threshold": 0.0,
-  "batch_size": 100000,
-  "num_neurons": 768,
-  "norm_weights": False,
-  "optimizer": "lbfgsb",#"adam",#"annealed_sgd",
-  "maxiter": 15000,
-  "cp_int": 100000,
-  "max_cp_to_keep": 1,
-  "cp_load": False,
-  "cp_load_name": "rica_pretrain", # trained with sgd
-  "cp_load_step": None, # latest checkpoint
-  "cp_load_ver": "0.0",
-  "cp_load_var": ["w"],
-  "log_int": 10,
-  "log_to_file": True,
-  "gen_plot_int": 5000,
-  "save_plots": True,
-  "eps": 1e-7,
-  "device": "/gpu:0",
-  "rand_seed": 123456789,
-  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
+from params.base_params import Base_Params
 
-schedule = [
-  {"weights": ["w"],
-  "recon_mult": 0.8,
-  "sparse_mult": 1.0,
-  "weight_lr": [0.3],
-  "decay_steps": [int(1e6*0.9)],
-  "decay_rate": [0.5],
-  "staircase": [True],
-  "num_batches": 1}]
+class params(Base_Params):
+  def __init__(self):
+    """
+    Additional modifiable parameters:
+      maxiter [int] maximum number of iterations of lbfgs optimizer
+    """
+    super(params, self).__init__()
+    self.model_type = "rica"
+    self.model_name = "rica"
+    self.version = "0.0"
+    self.num_images = 150
+    self.vectorize_data = True
+    self.norm_data = False
+    self.center_data = True
+    self.standardize_data = False
+    self.contrast_normalize = False
+    self.whiten_data = True
+    self.whiten_method = "ZCA"
+    self.lpf_data = True
+    self.lpf_cutoff = 0.7
+    self.extract_patches = True
+    self.num_patches = 1e6
+    self.patch_edge_size = 16
+    self.overlapping_patches = True
+    self.randomize_patches = True
+    self.patch_variance_threshold = 0.0
+    self.num_batches = 1
+    self.batch_size = 100000
+    self.num_neurons = 768
+    self.norm_weights = False
+    self.optimizer = "lbfgsb" #"adam"#"annealed_sgd"
+    self.maxiter = 15000
+    self.cp_int = 100000
+    self.max_cp_to_keep = 1
+    self.cp_load = False
+    self.cp_load_name = "rica_pretrain" # trained with sgd
+    self.cp_load_step = None # latest checkpoint
+    self.cp_load_ver = "0.0"
+    self.cp_load_var = ["w"]
+    self.log_int = 10
+    self.log_to_file = True
+    self.gen_plot_int = 5000
+    self.save_plots = True
+    self.schedule = [
+      {"weights": ["w"],
+      "recon_mult": 0.8,
+      "sparse_mult": 1.0,
+      "weight_lr": [0.3],
+      "decay_steps": [int(self.num_batches*0.9)],
+      "decay_rate": [0.5],
+      "staircase": [True]}]

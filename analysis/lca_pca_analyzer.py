@@ -9,10 +9,6 @@ class LCA_PCA_Analyzer(LCA_Analyzer):
   def __init__(self, params):
     super(LCA_PCA_Analyzer, self).__init__(params)
 
-  def load_params(self, params):
-    super(LCA_PCA_Analyzer, self).load_params(params)
-    self.cov_num_images = params["cov_num_images"]
-
   def run_analysis(self, images, save_info=""):
     super(LCA_PCA_Analyzer, self).run_analysis(images, save_info)
     image_dataset = {"test":Dataset(dp.reshape_data(images, flatten=False)[0], lbls=None)}

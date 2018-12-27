@@ -78,7 +78,7 @@ class ReshapeDataTest(tf.test.TestCase):
                     #self.assertEqual(reshape_outputs[4], expected_out_shape[2], err_msg) # num_cols
                     #self.assertEqual(reshape_outputs[5], expected_out_shape[3], err_msg) # num_channels
                     if out_shape is None:
-                      if flatten is None: 
+                      if flatten is None:
                         if input_ndim == 1 or input_ndim == 3: #ignore num_examples
                           expected_out_shape = tuple([num_examples]+list(input_shape))
                           err_msg += ("\nexpected_out_shape="+str(expected_out_shape))

@@ -1,52 +1,98 @@
 import os
-params = {
-  "model_type": "sigmoid_autoencoder",
-  "model_name": "sigmoid_autoencoder_reboot",
-  "version": "0.0",
-  "num_images": 150,
-  "vectorize_data": True,
-  "norm_data": False,
-  "rescale_data": False,
-  "center_data": False,
-  "standardize_data": False,
-  "contrast_normalize": False,
-  "whiten_data": True,
-  "whiten_method": "FT",
-  "lpf_data": False,
-  "lpf_cutoff": 0.7,
-  "extract_patches": True,
-  "num_patches": 1e6,
-  "patch_edge_size": 16,
-  "overlapping_patches": True,
-  "randomize_patches": True,
-  "patch_variance_threshold": 0.0,
-  "batch_size": 200,
-  "num_neurons": 768,
-  "optimizer": "annealed_sgd",#"adam",
-  "cp_int": 100000,
-  "max_cp_to_keep": 1,
-  "cp_load": True,
-  "cp_load_name": "sigmoid_autoencoder",
-  "cp_load_step": None, # latest checkpoint
-  "cp_load_ver": "0.0",
-  "cp_load_var": ["w_enc", "w_dec", "b_enc", "b_dec"],
-  "log_int": 100,
-  "log_to_file": True,
-  "gen_plot_int": 100000,
-  "save_plots": True,
-  "eps": 1e-12,
-  "device": "/gpu:0",
-  "rand_seed": 123456789,
-  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
+from params.base_params import Base_Params
 
-schedule = [
-  {"weights": ["w_enc", "b_enc", "w_dec", "b_dec"],
-  "decay_mult": 0.008,
-  "sparse_mult": 5.0, # How important is the sparse loss (tradeoff parameter)
-  "target_act": 0.05, # Target firing rate for neurons
-  "weight_lr": [0.002,]*4,
-  "decay_steps": [int(1e6*0.5),]*4,
-  "decay_rate": [0.5,]*4,
-  "staircase": [True,]*4,
-  "num_batches": int(1e6)}]
+class params(Base_Params):
+  def __init__(self):
+    """
+    Additional modifiable parameters:
+      num_groups [int] number of 2nd layer units
+    """
+    super(params, self).__init__()
+    self.model_type = "sigmoid_autoencoder"
+    self.model_name = "sigmoid_autoencoder"
+    self.version = "0.0"
+    self.num_images = 150
+    self.vectorize_data = True
+    self.norm_data = False
+    self.rescale_data = False
+    self.center_data = False
+    self.standardize_data = False
+    self.contrast_normalize = False
+    self.whiten_data = True
+    self.whiten_method = "FT"
+    self.lpf_data = False
+    self.lpf_cutoff = 0.7
+    self.extract_patches = True
+    self.num_patches = 1e6
+    self.patch_edge_size = 16
+    self.overlapping_patches = True
+    self.randomize_patches = True
+    self.patch_variance_threshold = 0.0
+    self.batch_size = 200
+    self.num_neurons = 768
+    self.optimizer = "annealed_sgd"#"adam"
+    self.cp_int = 100000
+    self.max_cp_to_keep = 1
+    self.cp_load = True
+    self.cp_load_name = "sigmoid_autoencoder"
+    self.cp_load_step = None # latest checkpoint
+    self.cp_load_ver = "0.0"
+    self.cp_load_var = ["w_enc", "w_dec", "b_enc", "b_dec"]
+    self.log_int = 100
+    self.log_to_file = True
+    self.gen_plot_int = 100000
+    self.save_plots = True
+    self.num_batches = int(1e6)
+    self.schedule = [
+      {"weights": ["w_enc", "b_enc", "w_dec", "b_dec"],
+      "decay_mult": 0.008,
+      "sparse_mult": 5.0, # How important is the sparse loss (tradeoff parameter)
+      "target_act": 0.05, # Target firing rate for neurons
+      "weight_lr": [0.002,]*4,
+      "decay_steps": [int(self.num_batches*0.5),]*4,
+      "decay_rate": [0.5,]*4,
+      "staircase": [True,]*4}]
+
+  def set_data_params(data_type):
+    if data_type.lower() == "mnist":
+      self.model_name += "_mnist"
+      self.vectorize_data = True
+      self.norm_data = False
+      self.rescale_data = True
+      self.center_data = False
+      self.standardize_data = False
+      self.contrast_normalize = False
+      self.whiten_data = False
+      self.whiten_method = "FT"
+      self.lpf_data = False
+      self.lpf_cutoff = 0.7
+      self.extract_patches = False
+      self.schedule["decay_mult"] = 0.005
+      self.schedule["sparse_mult"] = 0.01
+      self.schedule["target_act"] = 0.09
+      self.schedule["weight_lr"] = [0.01,]*4
+
+    elif data_type.lower() == "vanhateren":
+        self.model_name += "_vh"
+        self.num_images = 150
+        self.vectorize_data = True
+        self.norm_data = False
+        self.rescale_data = False
+        self.center_data = False
+        self.standardize_data = False
+        self.contrast_normalize = False
+        self.whiten_data = True
+        self.whiten_method = "FT"
+        self.lpf_data = False
+        self.lpf_cutoff = 0.7
+        self.extract_patches = True
+        self.num_patches = 1e6
+        self.patch_edge_size = 16
+        self.overlapping_patches = True
+        self.randomize_patches = True
+        self.patch_variance_threshold = 0.0
+        self.num_neurons = 768
+        self.schedule["decay_mult"] = 0.008
+        self.schedule["sparse_mult"] = 5.0
+        self.schedule["target_act"] = 0.05
+        self.schedule["weight_lr"] = [0.002,]*4

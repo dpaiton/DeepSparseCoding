@@ -89,18 +89,18 @@ class MNIST(object):
 
 """
 Load MNIST data and format as a Dataset object
-inputs: kwargs [dict] containing keywords:
+inputs: params [obj] containing attributes:
   data_dir [str] directory to MNIST data
   num_val [int] (10000) number of validation images
   num_labeled [int] (50000) number of labeled images
   rand_state [obj] (np.random.RandomState()) numpy random state object
 """
-def load_MNIST(kwargs):
-  assert ("data_dir" in kwargs.keys()), ("function input must have 'data_dir' key")
-  data_dir = kwargs["data_dir"]
-  num_val = kwargs["num_val"] if "num_val" in kwargs.keys() else 10000
-  num_labeled = kwargs["num_labeled"] if "num_labeled" in kwargs.keys() else 50000
-  rand_state = kwargs["rand_state"] if "rand_state" in kwargs.keys() else np.random.RandomState()
+def load_MNIST(params):
+  assert hasattr(params, "data_dir"), ("function input must have 'data_dir' key")
+  data_dir = params.data_dir
+  num_val = params.num_val if hasattr(params, "num_val") else 10000
+  num_labeled = params.num_labeled if hasattr(params, "num_labeled") else 50000
+  rand_state = params.rand_state if hasattr(params, "rand_state") else np.random.RandomState()
   ## Training set
   train_img_filename = data_dir+"/train-images-idx3-ubyte.gz"
   train_lbl_filename = data_dir+"/train-labels-idx1-ubyte.gz"

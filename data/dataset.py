@@ -78,6 +78,8 @@ class Dataset(object):
     self.batches_completed += 1
     self.curr_epoch_idx += batch_size
     set_indices = self.epoch_order[start:self.curr_epoch_idx]
+    # The following code modifies what is returned to support None type passthrough
+    # and also index the relevant numpy arrays
     if self.labels is not None:
       if self.ignore_labels is not None:
         return (self.images[set_indices, ...],

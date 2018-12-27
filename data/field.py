@@ -15,22 +15,22 @@ class field(object):
       full_img_data = full_img_data[im_keep_idx, ...]
     return full_img_data
 
-def load_field(kwargs):
+def load_field(params):
   """
   Load Field data and format as a Dataset object
   Inputs:
-    kwargs [dict] containing keywords:
+    params [obj] containing attributes:
       data_dir [str] directory to van Hateren data
-    rand_state [obj] numpy random state object
-    num_images (optional) [int] how many images to extract. Default (None) is all images.
-    image_edge_size (optional) [int] how many pixels on an edge. Default (None) is full-size.
+      rand_state [obj] numpy random state object
+      num_images (optional) [int] how many images to extract. Default (None) is all images.
+      image_edge_size (optional) [int] how many pixels on an edge. Default (None) is full-size.
   """
-  assert ("data_dir" in kwargs.keys()), ("function input must have 'data_dir' key")
-  data_dir = kwargs["data_dir"]
-  rand_state = kwargs["rand_state"] if "rand_state" in kwargs.keys() else np.random.RandomState()
-  num_images = int(kwargs["num_images"]) if "num_images" in kwargs.keys() else None
-  image_edge_size = int(kwargs["image_edge_size"]) if "image_edge_size" in kwargs.keys() else None
-  if "whiten_data" in kwargs.keys() and kwargs["whiten_data"]:
+  assert hasattr(params, "data_dir"), ("function input must have 'data_dir' key")
+  data_dir = params.data_dir
+  rand_state = params.rand_state if hasattr(params, "rand_state") else np.random.RandomState()
+  num_images = int(params.num_images) if hasattr(params, "num_images") else None
+  image_edge_size = int(params.image_edge_size) if hasattr(params, "image_edge_size") else None
+  if hasattr(params, "whiten_data") and params.whiten_data:
     img_filename = data_dir+"/field/IMAGES.npz"
   else:
     img_filename = data_dir+"/field/IMAGES_RAW.npz"

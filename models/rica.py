@@ -16,13 +16,7 @@ class RICA(Model):
 
   def load_params(self, params):
     super(RICA, self).load_params(params)
-    if self.optimizer == "lbfgsb":
-      self.maxiter = int(params["maxiter"])
-    self.data_shape = params["data_shape"]
-    ## Network Size
-    self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
-    self.num_neurons = int(params["num_neurons"])
     self.x_shape = [None, self.num_pixels]
     self.w_shape = [self.num_pixels, self.num_neurons]
 

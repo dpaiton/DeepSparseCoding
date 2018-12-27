@@ -10,10 +10,10 @@ class LCA_PCA_FB_Analyzer(LCA_PCA_Analyzer):
 
   def evaluate_inference(self, images, num_inference_steps=None):
     if num_inference_steps is None:
-      num_inference_steps = self.model_params["num_steps"]
+      num_inference_steps = self.model_params.num_steps
     num_imgs, num_pixels = images.shape
-    num_neurons = self.model_params["num_neurons"]
-    num_pooling_units = self.model_params["num_pooling_units"]
+    num_neurons = self.model_params.num_neurons
+    num_pooling_units = self.model_params.num_pooling_units
     loss_funcs = self.model.get_loss_funcs()
     b = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)
     ga = np.zeros((num_imgs, num_inference_steps, num_neurons), dtype=np.float32)

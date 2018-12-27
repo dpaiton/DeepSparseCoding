@@ -4,23 +4,6 @@ import params.param_picker as pp
 from models.ica import ICA
 
 class ICA_PCA(ICA):
-  def setup(self, params, schedule):
-    ica_params, ica_schedule = pp.get_params("ica")
-    new_params = ica_params.copy()
-    new_params.update(params)
-    super(ICA_PCA, self).setup(new_params, schedule)
-
-  def load_params(self, params):
-    """
-    Load parameters into object
-    Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
-      num_pooling_units [int] indicating the number of 2nd layer units
-    """
-    super(ICA_PCA, self).load_params(params)
-    self.num_pooling_units = int(params["num_pooling_units"])
-
   def build_graph(self):
     """Build the TensorFlow graph object"""
     super(ICA_PCA, self).build_graph()

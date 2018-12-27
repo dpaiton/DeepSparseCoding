@@ -23,11 +23,8 @@ class Sigmoid_Autoencoder(Model):
     Modifiable Parameters:
     """
     super(Sigmoid_Autoencoder, self).load_params(params)
-    self.data_shape = params["data_shape"]
     # Network Size
-    self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
-    self.num_neurons = int(params["num_neurons"])
     self.w_enc_shape = [self.num_pixels, self.num_neurons]
     self.x_shape = [None, self.num_pixels]
 

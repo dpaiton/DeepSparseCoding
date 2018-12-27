@@ -11,11 +11,11 @@ class Model(object):
     self.vector_inputs = None
     self.params_loaded = False
 
-  def setup(self, params, schedule):
-    self.load_schedule(schedule)
+  def setup(self, params):
+    self.load_schedule(params.schedule)
     self.sched_idx = 0
     self.load_params(params)
-    self.check_params()
+    #self.check_params()
     self.make_dirs()
     self.init_logging()
     self.log_params()
@@ -38,105 +38,26 @@ class Model(object):
 
   def load_params(self, params):
     """
-    Load parameters into object
-    Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
-      model_type     [str] Type of model
-                       Can be "MLP", "karklin_lewicki"
-      model_name     [str] Name for model
-      out_dir        [str] Base directory where output will be directed
-      version        [str] Model version for output
-                             default is an empty string ""
-      optimizer      [str] Which optimization algorithm to use
-                       Can be "annealed_sgd" (default) or "adam"
-      log_int        [int] How often to send updates to stdout
-      log_to_file    [bool] If set, log to file, else log to stderr
-      gen_plot_int   [int] How often to generate plots
-      save_plots     [bool] If set, save plots to file
-      cp_int         [int] How often to checkpoint
-      max_cp_to_keep [int] How many checkpoints to keep. See max_to_keep tf arg
-      cp_load        [bool] if set, load from checkpoint
-      cp_load_name   [str] Checkpoint model name to load
-      cp_load_step   [int] Checkpoint time step to load
-      cp_load_ver    [str] Checkpoint version to load
-      cp_load_var    [list of str] which variables to load
-                       if None or empty list, the model load all weights
-      cp_set_var     [list of str] which variables to assign values to
-                       len(cp_set_var) should equal len(cp_load_var)
-      eps            [float] Small value to avoid division by zero
-      device         [str] Which device to run on
-      rand_seed      [int] Random seed
+    Calculates a few extra parameters
+    Sets parameters as member variable
     """
+    params.cp_latest_filename = "latest_checkpoint_v"+params.version
+    params.cp_load_latest_filename = "latest_checkpoint_v"+params.cp_load_ver
+    params.cp_load_dir = params.out_dir + params.cp_load_name+ "/checkpoints/"
+    if not hasattr(params, "model_out_dir"):
+      params.model_out_dir = params.out_dir + params.model_name
+    params.cp_save_dir = params.model_out_dir + "/checkpoints/"
+    params.log_dir = params.model_out_dir + "/logfiles/"
+    params.save_dir = params.model_out_dir + "/savefiles/"
+    params.disp_dir = params.model_out_dir + "/vis/"
+    for key, val in params.__dict__.items():
+        setattr(self, key, val)
     self.params = params
-    # Meta-parameters
-    self.model_name = str(params["model_name"])
-    self.model_type = str(params["model_type"])
-    if "num_labeled" in params.keys():
-      self.num_labeled = str(params["num_labeled"])
-    if "num_unlabeled" in params.keys():
-      self.num_unlabeled = str(params["num_unlabeled"])
-    self.version = str(params["version"])
-    if "optimizer" in params.keys():
-      self.optimizer = str(params["optimizer"])
-    # Output generation
-    if "log_int" in params.keys():
-      self.log_int = int(params["log_int"])
-      self.log_to_file = bool(params["log_to_file"])
-    else:
-      self.log_to_file = False
-    if "gen_plot_int" in params.keys():
-      self.gen_plot_int = int(params["gen_plot_int"])
-      self.save_plots = bool(params["save_plots"])
-    # Checkpointing
-    if "cp_int" in params.keys():
-      self.cp_int = int(params["cp_int"])
-      self.max_cp_to_keep = int(params["max_cp_to_keep"])
-      self.cp_latest_filename = "latest_checkpoint_v"+self.version
-    else:
-      self.max_cp_to_keep = 1
-    if "cp_load" in params.keys():
-      self.cp_load = bool(params["cp_load"])
-      if self.cp_load:
-        self.cp_load_name = str(params["cp_load_name"])
-        if "cp_load_step" in params and params["cp_load_step"] is not None:
-          self.cp_load_step = int(params["cp_load_step"])
-        else:
-          self.cp_load_step = None
-        self.cp_load_ver = str(params["cp_load_ver"])
-        self.cp_load_latest_filename = "latest_checkpoint_v"+self.cp_load_ver
-        if "cp_load_var" in params:
-          self.cp_load_var = [str(var) for var in params["cp_load_var"]]
-        else:
-          self.cp_load_var = []
-        if "cp_set_var" in params:
-          self.cp_set_var = [str(var) for var in params["cp_set_var"]]
-        else:
-          self.cp_set_var = []
-        self.cp_load_dir = (str(params["out_dir"]) + self.cp_load_name
-          + "/checkpoints/")
-    else:
-      self.cp_load = False
-    # Directories
-    self.out_dir = str(params["out_dir"])
-    if "model_out_dir" in params.keys():
-      self.model_out_dir = params["model_out_dir"]
-    else:
-      self.model_out_dir = self.out_dir + self.model_name
-    self.cp_save_dir = self.model_out_dir + "/checkpoints/"
-    self.log_dir = self.model_out_dir + "/logfiles/"
-    self.save_dir = self.model_out_dir + "/savefiles/"
-    self.disp_dir = self.model_out_dir + "/vis/"
-    # Other
-    self.eps = float(params["eps"])
-    self.device = str(params["device"])
-    self.rand_seed = int(params["rand_seed"])
-    self.rand_state = np.random.RandomState(self.rand_seed)
     self.params_loaded = True
 
   def check_params(self):
     """Check parameters with assertions"""
-    pass
+    raise NotImplementedError
 
   def get_param(self, param_name):
     """
@@ -188,9 +109,9 @@ class Model(object):
   def log_params(self, params=None):
     """Use logging to write model params"""
     if params is not None:
-      dump_obj = params
+      dump_obj = params.__dict__
     else:
-      dump_obj = self.params
+      dump_obj = self.params.__dict__
     self.logger.log_params(dump_obj)
 
   def log_schedule(self):
@@ -408,7 +329,7 @@ class Model(object):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    pass
+    return NotImplementedError
 
   def slice_features(self, input, indices):
     """
@@ -464,58 +385,58 @@ class Model(object):
         "You must either provide parameters or load the model params before preprocessing.")
       params = self.params
     for key in dataset.keys():
-      if "whiten_data" in params.keys() and params["whiten_data"]:
-        if "whiten_method" in params.keys():
-          if params["whiten_method"] == "FT": # other methods require patching first
+      if hasattr(params, "whiten_data") and params.whiten_data:
+        if hasattr(params, "whiten_method"):
+          if params.whiten_method == "FT": # other methods require patching first
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
-              dp.whiten_data(dataset[key].images, method=params["whiten_method"])
-      if "lpf_data" in params.keys() and params["lpf_data"]:
+              dp.whiten_data(dataset[key].images, method=params.whiten_method)
+      if hasattr(params, "lpf_data") and params.lpf_data:
         dataset[key].images, dataset[key].data_mean, dataset[key].lpf_filter = \
-          dp.lpf_data(dataset[key].images, cutoff=params["lpf_cutoff"])
-      if "contrast_normalize" in params.keys() and params["contrast_normalize"]:
-        if "gauss_patch_size" in params.keys():
+          dp.lpf_data(dataset[key].images, cutoff=params.lpf_cutoff)
+      if hasattr(params, "contrast_normalize") and params.contrast_normalize:
+        if hasattr(params, "gauss_patch_size"):
           dataset[key].images = dp.contrast_normalize(dataset[key].images,
-            params["gauss_patch_size"])
+            params.gauss_patch_size)
         else:
           dataset[key].images = dp.contrast_normalize(dataset[key].images)
-      if "standardize_data" in params.keys() and params["standardize_data"]:
+      if hasattr(params, "standardize_data") and params.standardize_data:
         dataset[key].images, dataset[key].data_mean, dataset[key].data_std = \
           dp.standardize_data(dataset[key].images)
         self.data_mean = dataset[key].data_mean
         self.data_std = dataset[key].data_std
-      if "extract_patches" in params.keys() and params["extract_patches"]:
-        assert all(key in params.keys()
+      if hasattr(params, "extract_patches") and params.extract_patches:
+        assert all(key in params.__dict__.keys()
           for key in ["num_patches", "patch_edge_size", "overlapping_patches",
           "randomize_patches"]), ("Insufficient params for patches.")
-        out_shape = (int(params["num_patches"]), int(params["patch_edge_size"]),
-          int(params["patch_edge_size"]), dataset[key].num_channels)
+        out_shape = (int(params.num_patches), int(params.patch_edge_size),
+          int(params.patch_edge_size), dataset[key].num_channels)
         dataset[key].num_examples = out_shape[0]
         dataset[key].reset_counters()
-        if "patch_variance_threshold" in params.keys():
+        if hasattr(params, "patch_variance_threshold"):
           dataset[key].images = dp.extract_patches(dataset[key].images, out_shape,
-            params["overlapping_patches"], params["randomize_patches"],
-            params["patch_variance_threshold"], dataset[key].rand_state)
+            params.overlapping_patches, params.randomize_patches,
+            params.patch_variance_threshold, dataset[key].rand_state)
         else:
           dataset[key].images = dp.extract_patches(dataset[key].images, out_shape,
-            params["overlapping_patches"], params["randomize_patches"],
+            params.overlapping_patches, params.randomize_patches,
             var_thresh=0, rand_state=dataset[key].rand_state)
         dataset[key].shape = dataset[key].images.shape
         dataset[key].num_rows = dataset[key].shape[1]
         dataset[key].num_cols = dataset[key].shape[2]
         dataset[key].num_channels = dataset[key].shape[3]
         dataset[key].num_pixels = np.prod(dataset[key].shape[1:])
-        if "whiten_data" in params.keys() and params["whiten_data"]:
-          if "whiten_method" in params.keys() and params["whiten_method"] != "FT":
+        if hasattr(params, "whiten_data") and params.whiten_data:
+          if hasattr(params, "whiten_method") and params.whiten_method != "FT":
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
-              dp.whiten_data(dataset[key].images, method=params["whiten_method"])
-      if "center_data" in params.keys() and params["center_data"]:
+              dp.whiten_data(dataset[key].images, method=params.whiten_method)
+      if hasattr(params, "center_data") and params.center_data:
         dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
           use_dataset_mean=True)
         self.data_mean = dataset[key].data_mean
-      if "norm_data" in params.keys() and params["norm_data"]:
+      if hasattr(params, "norm_data") and params.norm_data:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
         self.data_max = dataset[key].data_max
-      if "rescale_data" in params.keys() and params["rescale_data"]:
+      if hasattr(params, "rescale_data") and params.rescale_data:
         dataset[key].images, dataset[key].data_min, dataset[key].data_max = dp.rescale_data_to_one(dataset[key].images)
         self.data_max = dataset[key].data_max
         self.data_min = dataset[key].data_min

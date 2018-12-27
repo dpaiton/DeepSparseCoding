@@ -14,7 +14,6 @@ class SUBSPACE_LCA(LCA):
 
   def load_params(self, params):
     super(SUBSPACE_LCA, self).load_params(params)
-    self.num_groups = int(params["num_groups"])
     assert self.num_neurons % self.num_groups == 0, (
       "Num groups must divide evenly into num neurons.")
     self.num_neurons_per_group = int(self.num_neurons / self.num_groups)

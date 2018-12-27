@@ -19,15 +19,14 @@ class VAE(Model):
     """
     Load parameters into object
     Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
+     params: [obj] model parameters
     """
     super(VAE, self).load_params(params)
-    self.data_shape = params["data_shape"]
+    self.data_shape = params.data_shape
     # Network Size
-    self.batch_size = int(params["batch_size"])
+    self.batch_size = int(params.batch_size)
     self.num_pixels = int(np.prod(self.data_shape))
-    self.num_neurons = params["num_neurons"] #is list
+    self.num_neurons = params.num_neurons #is list
 
     self.num_encoder_layers = len(self.num_neurons)
     #Calculate encoder and decoder shapes

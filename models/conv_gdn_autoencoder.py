@@ -26,39 +26,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     Inputs:
      params: [dict] model parameters
     Modifiable Parameters:
+     downsample_images
     """
     super(GDN_Autoencoder, self).load_params(params)
-    if "num_preproc_threads" in params.keys():
-      self.num_preproc_threads = 1
-    else:
-      self.num_preproc_threads = int(params["num_preproc_threads"])
-    # Dataset parameters
-    self.data_shape = params["data_shape"]
-    self.num_pixels = int(np.prod(self.data_shape))
-    self.batch_size = int(params["batch_size"])
-    self.device = params["device"] # base_model casts this to a string
-    self.downsample_images = params["downsample_images"]
-    self.downsample_method = params["downsample_method"]
-    # Entropy calculation parameters
-    self.mle_step_size = float(params["mle_step_size"])
-    self.num_mle_steps = int(params["num_mle_steps"])
-    self.num_triangles = int(params["num_triangles"])
-    self.sigmoid_beta = float(params["sigmoid_beta"])
-    # Architecture parameters
-    self.im_size_y = params["im_size_y"]
-    self.im_size_x = params["im_size_x"]
-    self.num_colors = params["num_colors"]
-    self.patch_size_y = params["patch_size_y"] # list for encoding layers
-    self.patch_size_x = params["patch_size_x"] # list for encoding layers
-    self.input_channels = params["input_channels"] # list for encoding layers
-    self.output_channels = params["output_channels"] # list for encoding layers
-    self.w_strides = params["strides"] # list for encoding layers
-    # GDN Parameters
-    self.gdn_w_init_const = float(params["gdn_w_init_const"])
-    self.gdn_b_init_const = float(params["gdn_b_init_const"])
-    self.gdn_w_thresh_min = float(params["gdn_w_thresh_min"])
-    self.gdn_b_thresh_min = float(params["gdn_b_thresh_min"])
-    self.gdn_eps = float(params["gdn_eps"])
     # Calculated parameters
     self.x_shape = [None, self.im_size_y, self.im_size_x, self.input_channels[0]]
     self.w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
@@ -76,11 +46,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     self.output_channels += self.output_channels[::-1]
     self.num_layers = len(self.w_shapes)
     # Memristor parameters
-    self.n_mem = params["n_mem"]
+    # TODO: should be able to calculate nmem
     #self.n_mem = self.compute_num_latent([self.im_size_y, self.im_size_x, self.num_colors],
     #  self.patch_size_y, self.patch_size_x, self.w_strides, self.output_channels)
-    self.memristor_type = params["memristor_type"] # None indicates pasthrough
-    self.memristor_data_loc = params["memristor_data_loc"]
     self.memristor_noise_shape = [self.batch_size, self.n_mem]
     self.mem_v_min = -1.0
     self.mem_v_max = 1.0
@@ -328,7 +296,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       batch_step: current batch number within the schedule
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    mem_std_eps = np.random.standard_normal((self.params["batch_size"],
+    mem_std_eps = np.random.standard_normal((self.params.batch_size,
        self.n_mem)).astype(np.float32)
     feed_dict[self.memristor_std_eps] = mem_std_eps
     loss_list = [self.loss_dict[key] for key in self.loss_dict.keys()]
@@ -385,7 +353,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       input_labels: data object containing the current label batch
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    mem_std_eps = np.random.standard_normal((self.params["batch_size"],
+    mem_std_eps = np.random.standard_normal((self.params.batch_size,
        self.n_mem)).astype(np.float32)
     feed_dict[self.memristor_std_eps] = mem_std_eps
     eval_list = [self.global_step, self.a, self.u_list[int(self.num_layers/2-1)], self.w_list[0],

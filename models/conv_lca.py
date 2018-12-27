@@ -25,10 +25,6 @@ class CONV_LCA(LCA):
       patch_size_x
     """
     super(CONV_LCA, self).load_params(params)
-    self.stride_x = int(params["stride_x"])
-    self.stride_y = int(params["stride_y"])
-    self.patch_size_y = int(params["patch_size_y"])
-    self.patch_size_x = int(params["patch_size_x"])
     if len(self.data_shape) == 2:
       self.data_shape += [1]
     assert (self.data_shape[0] % self.stride_x == 0), (

@@ -8,20 +8,20 @@ import data.data_selector as ds
 import analysis.analysis_picker as ap
 import utils.data_processing as dp
 
-tsne_params = {
-  "model_type": "subspace_lca",
-  "model_name": "subspace_lca_mnist",
-  "version": "0.0",
-  "data_type": "mnist",
-  "input_scale": 0.5,
-  "batch_size": 2500,
-  "device": "/gpu:0",
-  "save_info": "analysis",
-  "eval_key": "inference/activity:0",
-  "overwrite_analysis": False}
-tsne_params["model_dir"] = (os.path.expanduser("~")+"/Work/Projects/"+tsne_params["model_name"])
+class tsne_params(object):
+  model_type = "subspace_lca"
+  model_name = "subspace_lca_mnist"
+  version = "0.0"
+  data_type = "mnist"
+  input_scale = 0.5
+  batch_size = 2500
+  device = "/gpu:0"
+  save_info = "analysis"
+  eval_key = "inference/activity:0"
+  overwrite_analysis = False
+tsne_params.model_dir = (os.path.expanduser("~")+"/Work/Projects/"+tsne_params.model_name)
 
-assert int(np.sqrt(tsne_params["batch_size"]))**2 == tsne_params["batch_size"], (
+assert int(np.sqrt(tsne_params.batch_size))**2 == tsne_params.batch_size, (
   "batch_size parameter must have an even square root")
 
 analyzer = ap.get_analyzer(tsne_params)
@@ -30,37 +30,37 @@ if not os.path.exists(analyzer.analysis_out_dir+"/embedding"):
   os.makedirs(analyzer.analysis_out_dir+"/embedding")
 
 # Load natural image data
-analyzer.model_params["patch_variance_threshold"] = 1e-5
+analyzer.model_params.patch_variance_threshold = 1e-5
 data = ds.get_data(analyzer.model_params)
 data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
 data = analyzer.model.reshape_dataset(data, analyzer.model_params)
-analyzer.model_params["data_shape"] = list(data["train"].shape[1:])
+analyzer.model_params.data_shape = list(data["train"].shape[1:])
 analyzer.model.setup(analyzer.model_params, analyzer.model_schedule)
-analyzer.model_params["input_shape"] = [data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
-raw_data_batch = data["train"].next_batch(tsne_params["batch_size"])[0] # image data
+analyzer.model_params.input_shape = [data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
+raw_data_batch = data["train"].next_batch(tsne_params.batch_size)[0] # image data
 
 # Load gabor data
-#analyzer.model_params["data_shape"] = [256]
+#analyzer.model_params.data_shape = [256]
 #analyzer.model.setup(analyzer.model_params, analyzer.model_schedule)
-#analyzer.model_params["input_shape"] = [256]
+#analyzer.model_params.input_shape = [256]
 #gabors = pickle.load(open("./random_gabor_stim.p", "rb"))
-#raw_data_batch = gabors[:tsne_params["batch_size"]].reshape(tsne_params["batch_size"], 256)
+#raw_data_batch = gabors[:tsne_params.batch_size].reshape(tsne_params.batch_size, 256)
 
 # Preprocess data
-if "whiten_data" in analyzer.model_params.keys() and analyzer.model_params["whiten_data"]:
+if hasattr(analyer.model_params, "whiten_data") and analyzer.model_params.whiten_data:
   data_batch, data_pre_wht_mean, data_wht_filter = \
-    dp.whiten_data(raw_data_batch, method=analyzer.model_params["whiten_method"])
-if "lpf_data" in analyzer.model_params.keys() and analyzer.model_params["lpf_data"]:
+    dp.whiten_data(raw_data_batch, method=analyzer.model_params.whiten_method)
+if hasattr(analyzer.model_params, "lpf_data") and analyzer.model_params.lpf_data:
   data_batch, data_pre_lpf_mean, data_lp_filter = \
-    dp.lpf_data(raw_data_batch, cutoff=analyzer.model_params["lpf_cutoff"])
+    dp.lpf_data(raw_data_batch, cutoff=analyzer.model_params.lpf_cutoff)
 raw_data_batch, orig_shape, num_examples, num_rows, num_cols = dp.reshape_data(raw_data_batch,
   flatten=False)[:5]
-#data_batch = tsne_params["input_scale"] * (data_batch / np.max(np.abs(data_batch)))
+#data_batch = tsne_params.input_scale * (data_batch / np.max(np.abs(data_batch)))
 data_batch = raw_data_batch
 assert num_rows == num_cols, ("The data samples must be square")
 
 data_shape = data_batch.shape
-imgs_per_edge = int(np.sqrt(tsne_params["batch_size"]))
+imgs_per_edge = int(np.sqrt(tsne_params.batch_size))
 sprite_edge_size = imgs_per_edge * num_rows
 
 #reformat data into a tiled image for visualization
@@ -70,17 +70,17 @@ sprite = sprite.reshape((sprite_edge_size, sprite_edge_size)+sprite.shape[4:])
 sprite = dp.rescale_data_to_one(sprite)[0]
 sprite = 255 * sprite
 sprite = sprite.astype(np.uint8)
-sprite_out_dir = analyzer.analysis_out_dir+"/embedding/sprite_"+tsne_params["save_info"]+".png"
+sprite_out_dir = analyzer.analysis_out_dir+"/embedding/sprite_"+tsne_params.save_info+".png"
 imsave(sprite_out_dir, sprite.squeeze())
 
 input_data = dp.reshape_data(data_batch, flatten=True)[0]
-#latent_representation = analyzer.evaluate_model(input_data, var_names=[tsne_params["eval_key"]])
+#latent_representation = analyzer.evaluate_model(input_data, var_names=[tsne_params.eval_key])
 latent_representation = analyzer.compute_pooled_activations(input_data)
 
 tf.reset_default_graph()
 sess = tf.InteractiveSession()
 embedding_var = tf.Variable(latent_representation, name="image_embedding") # Model embedding
-#embedding_var = tf.Variable(latent_representation[tsne_params["eval_key"]], name="image_embedding") # Model embedding
+#embedding_var = tf.Variable(latent_representation[tsne_params.eval_key], name="image_embedding") # Model embedding
 #embedding_var = tf.Variable(input_data, name="image_embedding") # Identity embedding
 tf.global_variables_initializer().run()
 

@@ -2,8 +2,6 @@ import params.mlp_params as mlp
 import params.ica_params as ica
 import params.ica_pca_params as ica_pca
 import params.rica_params as rica
-import params.gradient_sc_params as gsc
-import params.entropy_sc_params as esc
 import params.lca_params as lca
 import params.lca_pca_params as lca_pca
 import params.lca_pca_fb_params as lca_pca_fb
@@ -14,53 +12,45 @@ import params.gdn_autoencoder_params as ga
 import params.conv_gdn_autoencoder_params as cga
 import params.conv_gdn_decoder_params as cgd
 import params.relu_autoencoder_params as ra
-import params.density_learner_params as density
 import params.vae_params as vae
 
 """
 Get function that returns the corresponding parameter and schedule files
 Inputs:
   model_type: [str] containing the type of model to load.
-    Current allowed values are: mlp, lca, ica, dsc
 Outputs:
   params: [dict] containing params defined in the corresponding file
   schedule: [list] of [dict] containing the learning schedule from the same file
 """
 def get_params(model_type):
   if model_type.lower() == "mlp":
-    return mlp.params, mlp.schedule
+    return mlp.params()
   if model_type.lower() == "ica":
-    return ica.params, ica.schedule
+    return ica.params()
   if model_type.lower() == "ica_pca":
-    return ica_pca.params, ica_pca.schedule
+    return ica_pca.params()
   if model_type.lower() == "rica":
-    return rica.params, rica.schedule
-  if model_type.lower() == "gradient_sc":
-    return gsc.params, gsc.schedule
-  if model_type.lower() == "entropy_sc":
-    return esc.params, esc.schedule
+    return rica.params()
   if model_type.lower() == "lca":
-    return lca.params, lca.schedule
+    return lca.params()
   if model_type.lower() == "lca_pca":
-    return lca_pca.params, lca_pca.schedule
+    return lca_pca.params()
   if model_type.lower() == "lca_pca_fb":
-    return lca_pca_fb.params, lca_pca_fb.schedule
+    return lca_pca_fb.params()
   if model_type.lower() == "subspace_lca":
-    return subspace_lca.params, subspace_lca.schedule
+    return subspace_lca.params()
   if model_type.lower() == "conv_lca":
-    return conv_lca.params, conv_lca.schedule
-  if model_type.lower() == "density_learner":
-    return density.params, density.schedule
+    return conv_lca.params()
   if model_type.lower() == "sigmoid_autoencoder":
-    return sa.params, sa.schedule
+    return sa.params()
   if model_type.lower() == "vae":
-    return vae.params, vae.schedule
+    return vae.params()
   if model_type.lower() == "gdn_autoencoder":
-    return ga.params, ga.schedule
+    return ga.params()
   if model_type.lower() == "conv_gdn_autoencoder":
-    return cga.params, cga.schedule
+    return cga.params()
   if model_type.lower() == "conv_gdn_decoder":
-    return cgd.params, None
+    return cgd.params()
   if model_type.lower() == "relu_autoencoder":
-    return ra.params, ra.schedule
+    return ra.params()
   return False

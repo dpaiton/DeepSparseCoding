@@ -13,40 +13,17 @@ class LCA(Model):
     """
     Load parameters into object
     Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
-      rectify_a    [bool] If set, rectify layer 1 activity
-      norm_weights [bool] If set, l2 normalize weights after updates
-      batch_size   [int] Number of images in a training batch
-      num_neurons  [int] Number of LCA neurons
-      num_steps    [int] Number of inference steps
-      dt           [float] Discrete global time constant
-      tau          [float] LCA time constant
-      thresh_type  [str] "hard" or "soft" - LCA threshold function specification
+     params: [obj] model parameters
     """
     super(LCA, self).load_params(params)
-    self.data_shape = params["data_shape"] # not including batch
-    # Meta parameters
-    if "rectify_a" in params.keys():
-      self.rectify_a = bool(params["rectify_a"])
-    else:
-      self.rectify_a = False
-    self.norm_weights = bool(params["norm_weights"])
-    if "thresh_type" in params.keys():
-      self.thresh_type = str(params["thresh_type"])
-    else:
-      self.thresh_type = None
     # Network Size
-    self.batch_size = int(params["batch_size"])
+    self.batch_size = int(params.batch_size)
     self.num_pixels = int(np.prod(self.data_shape))
-    self.num_neurons = int(params["num_neurons"])
+    self.num_neurons = int(params.num_neurons)
     self.phi_shape = [self.num_pixels, self.num_neurons]
     self.u_shape = [self.num_neurons]
     self.x_shape = [None, self.num_pixels]
     # Hyper Parameters
-    self.num_steps = int(params["num_steps"])
-    self.dt = float(params["dt"])
-    self.tau = float(params["tau"])
     self.eta = self.dt / self.tau
 
   def compute_excitatory_current(self):

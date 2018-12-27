@@ -10,32 +10,33 @@ import tensorflow as tf
 class Analyzer(object):
   def __init__(self, params):
     # Load model parameters and schedule
-    self.model_log_file = (params["model_dir"]+"/logfiles/"+params["model_name"]
-      +"_v"+params["version"]+".log")
+    self.model_log_file = (params.model_dir+"/logfiles/"+params.model_name
+      +"_v"+params.version+".log")
     self.model_logger = Logger(self.model_log_file, overwrite=False)
     self.model_log_text = self.model_logger.load_file()
     self.model_params = self.model_logger.read_params(self.model_log_text)
-    self.model_params["rand_state"] = np.random.RandomState(self.model_params["rand_seed"])
-    self.rand_state = self.model_params["rand_state"]
+    self.model_params.rand_state = np.random.RandomState(self.model_params.rand_seed)
+    self.rand_state = self.model_params.rand_state
     self.model_schedule = self.model_logger.read_schedule(self.model_log_text)
     # Load or create analysis params log
-    self.analysis_out_dir = params["model_dir"]+"/analysis/"+params["version"]+"/"
+    self.analysis_out_dir = params.model_dir+"/analysis/"+params.version+"/"
     self.make_dirs() # If analysis log does not exist then we want to make the folder first
     self.analysis_log_file = self.analysis_out_dir+"/logfiles/analysis.log"
-    if "overwrite_analysis_log" in params.keys() and params["overwrite_analysis_log"]:
+    if hasattr(params, "overwrite_analysis_log") and params.overwrite_analysis_log:
       if os.path.exists(self.analysis_log_file):
         os.remove(self.analysis_log_file)
     if os.path.exists(self.analysis_log_file) and os.stat(self.analysis_log_file).st_size != 0:
-      # TODO: This code needs to be well tested - I don't think it is always behaving as expected
+      # TODO: This code needs to be tested
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=False)
       analysis_text = self.analysis_logger.load_file()
       prev_analysis_params = self.analysis_logger.read_params(analysis_text)
-      if type(prev_analysis_params) == dict: # there was only one param entry
-        prev_analysis_params.pop("save_info")
-        params.update(prev_analysis_params)
-      else: # type is list, which means where were multiple param entries in the log
-        for param_item in prev_analysis_params:
-          params.update(param_item)
+      if type(prev_analysis_params) == list: # there were multiple param entries in the log
+        for key, val in prev_analysis_params.__dict__.items():
+          setattr(params, key, val)
+      else: # there was only one param entry
+        del prev_analysis_params.save_info
+        for key, val in prev_analysis_params.__dict__.items():
+          setattr(params, key, val)
     else: # File is empty
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=True)
       self.analysis_logger.log_params(params)
@@ -47,90 +48,57 @@ class Analyzer(object):
     Load analysis parameters into object
     TODO: cp_load_step is not utilized.
     """
+    for key, val in params.__dict__.items():
+        setattr(self, key, val)
     self.analysis_params = params
-    self.model_name = params["model_name"]
-    self.version = params["version"]
-    self.cp_loc = tf.train.latest_checkpoint(params["model_dir"]+"/checkpoints/",
+    self.cp_loc = tf.train.latest_checkpoint(params.model_dir+"/checkpoints/",
       latest_filename="latest_checkpoint_v"+self.version)
-    self.model_params["model_out_dir"] = self.analysis_out_dir
-    if "device" in params.keys():
-      self.device = params["device"]
-    else:
-      self.device = self.model_params["device"]
-    if "data_dir" in params.keys():
-      self.model_params["data_dir"] = params["data_dir"]
-    if "rand_seed" in params.keys():
-      self.rand_seed = params["rand_seed"]
-      self.rand_state = np.random.RandomState(self.rand_seed)
-    if "input_scale" in params.keys():
-      self.input_scale = params["input_scale"]
-    else:
+    self.model_params.model_out_dir = self.analysis_out_dir
+    if not hasattr(params, "device"):
+      self.device = self.model_params.device
+    if hasattr(params, "data_dir"):
+      self.model_params.data_dir = params.data_dir
+    if hasattr(params, "rand_seed"):
+      self.rand_seed = params.rand_seed
+    if not hasattr(params, "input_scale"):
       self.input_scale = 1.0
     # BF Fits
-    if "do_basis_analysis" in params.keys():
-      self.do_basis_analysis = params["do_basis_analysis"]
-    else:
+    if not hasattr(params, "do_basis_analysis"):
       self.do_basis_analysis = False
-    if "ft_padding" in params.keys():
-      self.ft_padding = params["ft_padding"]
-    else:
+    if not hasattr(params, "ft_padding"):
       self.ft_padding = None
-    if "num_gauss_fits" in params.keys():
-      self.num_gauss_fits = params["num_gauss_fits"]
-    else:
+    if not hasattr(params, "num_gauss_fits"):
       self.num_gauss_fits = 20
-    if "gauss_thresh" in params.keys():
-      self.gauss_thresh = params["gauss_thresh"]
-    else:
+    if not hasattr(params, "gauss_thresh"):
       self.gauss_thresh = 0.2
     # Activity Triggered Averages
-    if "do_atas" in params.keys():
-      self.do_atas = params["do_atas"]
-    else:
+    if not hasattr(params, "do_atas"):
       self.do_atas = False
-    if "num_noise_images" in params.keys():
-      self.num_noise_images = params["num_noise_images"]
-    else:
+    if not hasattr(params, "num_noise_images"):
       self.num_noise_images = 100
     # Adversarial analysis
-    if "do_adversaries" in params.keys():
-      self.do_adversaries = params["do_adversaries"]
-      if "adversarial_eps" in params.keys():
-        self.adversarial_eps = params["adversarial_eps"]
-      else:
+    if hasattr(params, "do_adversaries"):
+      self.do_adversaries = params.do_adversaries
+      if not hasattr(params, "adversarial_eps"):
         self.adversarial_eps = 0.01
-      if "adversarial_num_steps" in params.keys():
-        self.adversarial_num_steps = params["adversarial_num_steps"]
-      else:
+      if not hasattr(params, "adversarial_num_steps"):
         self.adversarial_num_steps = 200
-      if "adversarial_input_id" in params.keys():
-        self.adversarial_input_id = params["adversarial_input_id"]
-      else:
+      if not hasattr(params, "adversarial_input_id"):
         self.adversarial_input_id = 0
-      if "adversarial_target_id" in params.keys():
-        self.adversarial_target_id = params["adversarial_target_id"]
-      else:
+      if not hasattr(params, "adversarial_target_id"):
         self.adversarial_target_id = 1
     else:
       self.do_adversaries = False
     #  Orientation Selectivity
-    if "do_orientation_analysis" in params.keys() and params["do_orientation_analysis"]:
-      self.do_orientation_analysis = params["do_orientation_analysis"]
-      if "neuron_indices" in params.keys():
-        self.ot_neurons = params["neuron_indices"]
-      else:
+    if hasattr(params, "do_orientation_analysis") and params.do_orientation_analysis:
+      self.do_orientation_analysis = params.do_orientation_analysis
+      if not hasattr(params, "neuron_indices"):
         self.ot_neurons = None
-      if "contrasts" in params.keys():
-        self.ot_contrasts = params["contrasts"]
-      else:
+      if not hasattr(params, "contrasts"):
         self.ot_contrasts = None
-      if "orientations" in params.keys():
-        self.ot_orientations = params["orientations"]
-      else:
+      if not hasattr(params, "orientations"):
         self.ot_orientations = None
-      if "phases" in params.keys():
-        self.ot_phases = params["phases"]
-      else:
+      if not hasattr(params, "phases"):
         self.ot_phases = None
     else:
       self.ot_neurons = None
@@ -149,13 +117,13 @@ class Analyzer(object):
 
   def load_model(self):
     """Load model object into analysis object"""
-    self.model = mp.get_model(self.model_params["model_type"])
+    self.model = mp.get_model(self.model_params.model_type)
 
-  def setup_model(self, params, schedule):
+  def setup_model(self, params):
     """
     Run model setup, but also add adversarial nodes to graph
     """
-    self.model.load_schedule(schedule)
+    self.model.load_schedule(params.schedule)
     self.model.sched_idx = 0
     self.model.load_params(params)
     self.model.check_params()
@@ -210,7 +178,7 @@ class Analyzer(object):
     """
     TODO: compute per batch
     """
-    noise_shape = [self.num_noise_images] + self.model_params["data_shape"]
+    noise_shape = [self.num_noise_images] + self.model_params.data_shape
     noise_images = self.rand_state.standard_normal(noise_shape)
     noise_activity = self.compute_activations(noise_images)
     noise_atas = self.compute_atas(noise_activity, noise_images)
@@ -240,14 +208,14 @@ class Analyzer(object):
     Break image into patches, compute recons, reassemble recons back into a full image
     """
     self.full_image = full_image
-    if self.model_params["whiten_data"]:
+    if self.model_params.whiten_data:
       # FT method is the only one that works on full images
       wht_img, img_mean, ft_filter = dp.whiten_data(full_image,
-        method="FT", lpf_cutoff=self.model_params["lpf_cutoff"])
+        method="FT", lpf_cutoff=self.model_params.lpf_cutoff)
     else:
       wht_img = full_image
     img_patches = dp.extract_patches(wht_img,
-      out_shape=(1, self.model_params["patch_edge_size"], self.model_params["patch_edge_size"], 1),
+      out_shape=(1, self.model_params.patch_edge_size, self.model_params.patch_edge_size, 1),
       overlapping=False, randomize=False, var_thresh=0.0)
     img_patches, orig_shape = dp.reshape_data(img_patches, flatten=True)[:2]
     model_eval = self.evaluate_model(img_patches,
@@ -257,7 +225,7 @@ class Analyzer(object):
     self.recon_frac_act = np.array(np.count_nonzero(a_vals) / float(a_vals.size))
     recon_patches = dp.reshape_data(recon_patches, flatten=False, out_shape=orig_shape)[0]
     self.full_recon = dp.patches_to_image(recon_patches, full_image.shape).astype(np.float32)
-    if self.model_params["whiten_data"]:
+    if self.model_params.whiten_data:
       self.full_recon = dp.unwhiten_data(self.full_recon, img_mean, ft_filter, method="FT")
     np.savez(self.analysis_out_dir+"savefiles/full_recon_"+save_info+".npz",
       data={"full_image":self.full_image, "full_recon":self.full_recon,
@@ -447,8 +415,8 @@ class Analyzer(object):
     phase_stims = {"test": Dataset(phase_stims[:,:,:,None], lbls=None, ignore_lbls=None,
       rand_state=self.rand_state)}
     phase_stims = self.model.preprocess_dataset(phase_stims,
-      params={"whiten_data":self.model_params["whiten_data"],
-      "whiten_method":self.model_params["whiten_method"]})
+      params={"whiten_data":self.model_params.whiten_data,
+      "whiten_method":self.model_params.whiten_method})
     phase_stims = self.model.reshape_dataset(phase_stims, self.model_params)
     phase_stims["test"].images /= np.max(np.abs(phase_stims["test"].images))
     phase_stims["test"].images *= scale
@@ -515,8 +483,8 @@ class Analyzer(object):
         base_stims = {"test": Dataset(base_stims[:,:,:,None], lbls=None, ignore_lbls=None,
           rand_state=self.rand_state)}
         base_stims = self.model.preprocess_dataset(base_stims,
-          params={"whiten_data":self.model_params["whiten_data"],
-          "whiten_method":self.model_params["whiten_method"]})
+          params={"whiten_data":self.model_params.whiten_data,
+          "whiten_method":self.model_params.whiten_method})
         base_stims = self.model.reshape_dataset(base_stims, self.model_params)
         base_stims["test"].images /= np.max(np.abs(base_stims["test"].images))
         base_stims["test"].images *= scale
@@ -534,8 +502,8 @@ class Analyzer(object):
               mask_stims = {"test": Dataset(mask_stims[:,:,:,None], lbls=None, ignore_lbls=None,
                 rand_state=self.rand_state)}
               mask_stims = self.model.preprocess_dataset(mask_stims,
-                params={"whiten_data":self.model_params["whiten_data"],
-                "whiten_method":self.model_params["whiten_method"]})
+                params={"whiten_data":self.model_params.whiten_data,
+                "whiten_method":self.model_params.whiten_method})
               mask_stims = self.model.reshape_dataset(mask_stims, self.model_params)
               mask_stims["test"].images /= np.max(np.abs(mask_stims["test"].images))
               mask_stims["test"].images *= scale
@@ -597,12 +565,12 @@ class Analyzer(object):
       for neuron_idx in neuron_indices
       for orientation in orientations
       for phase in phases], axis=0) #Array containing all stimulus that can be returned for testing
-    if "whiten_data" in self.model_params.keys() and self.model_params["whiten_data"]:
-      phase_stims, phase_mean, phase_filter = \
-        dp.whiten_data(raw_phase_stims, method=self.model_params["whiten_method"])
-    if "lpf_data" in self.model_params.keys() and self.model_params["lpf_data"]:
-      phase_stims, phase_mean, phase_filter = \
-        dp.lpf_data(raw_phase_stims, cutoff=self.model_params["lpf_cutoff"])
+    if hasattr(params, "whiten_data") and self.model_params.whiten_data:
+      phase_stims, phase_mean, phase_filter = dp.whiten_data(raw_phase_stims,
+        method=self.model_params.whiten_method)
+    if hasattr(params, "lpf_data") and self.model_params.lpf_data:
+      phase_stims, phase_mean, phase_filter = dp.lpf_data(raw_phase_stims,
+        cutoff=self.model_params.lpf_cutoff)
     phase_stims = scale * (phase_stims / np.max(np.abs(phase_stims)))
     activations = self.compute_activations(phase_stims).reshape(num_neurons, num_orientations,
       num_phases, tot_num_bfs)
@@ -626,12 +594,12 @@ class Analyzer(object):
           if contrast <= 1.0:
             raw_test_stims = np.stack([grating(neuron_idx, contrast, orientation, phase)
               for phase in phases], axis=0)
-            if "whiten_data" in self.model_params.keys() and self.model_params["whiten_data"]:
-              test_stims, test_mean, test_filter = \
-                dp.whiten_data(raw_test_stims, method=self.model_params["whiten_method"])
-            if "lpf_data" in self.model_params.keys() and self.model_params["lpf_data"]:
-              test_stims, test_mean, test_filter = \
-                dp.lpf_data(raw_test_stims, cutoff=self.model_params["lpf_cutoff"])
+            if hasattr(params, "whiten_data") and self.model_params.whiten_data:
+              test_stims, test_mean, test_filter = dp.whiten_data(raw_test_stims,
+                method=self.model_params.whiten_method)
+            if hasattr(params, "lpf_data") and self.model_params.lpf_data:
+              test_stims, test_mean, test_filter = dp.lpf_data(raw_test_stims,
+                cutoff = self.model_params.lpf_cutoff)
             test_stims = scale * (test_stims / np.max(np.abs(test_stims)))
             bf_activations = self.compute_activations(test_stims).reshape(num_phases,
               tot_num_bfs)[:, neuron_idx]
@@ -666,7 +634,7 @@ class Analyzer(object):
     Inputs:
       bf_stats [dict] returned from utils/data_processing.get_dictionary_stats()
     """
-    num_pixels = self.model_params["patch_edge_size"]**2
+    num_pixels = self.model_params.patch_edge_size**2
     neuron_angles = np.zeros((bf_stats["num_outputs"], bf_stats["num_outputs"]))
     for neuron1 in range(bf_stats["num_outputs"]):
       for neuron2 in range(bf_stats["num_outputs"]):

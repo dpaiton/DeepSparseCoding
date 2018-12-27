@@ -91,7 +91,12 @@ class Logger(object):
       text: [str] containing text to parse, can be obtained by calling load_file()
     """
     tokens = ["<params>", "</params>"]
-    return self.read_js(tokens, text)
+    param_dict = self.read_js(tokens, text)
+    param_obj = type("param_obj", (), {})() 
+    for key, val in param_dict.items():
+      setattr(param_obj, key, val)
+    return param_obj
+    
 
   def read_schedule(self, text):
     """

@@ -20,12 +20,12 @@ class synthetic(object):
       data = np.zeros((self.epoch_size, self.num_edge_pixels, self.num_edge_pixels, 1))
     return data
 
-def load_synthetic(kwargs):
-  rand_state = kwargs["rand_state"] if "rand_state" in kwargs.keys() else np.random.RandomState()
+def load_synthetic(params):
+  rand_state = params.rand_state if hasattr(params, "rand_state") else np.random.RandomState()
   synth_data = synthetic(
-    dist_type=kwargs["dist_type"],
-    num_edge_pixels=kwargs["patch_edge_size"],
-    epoch_size=kwargs["epoch_size"],
-    rand_state=kwargs["rand_state"])
+    dist_type=params.dist_type,
+    num_edge_pixels=params.patch_edge_size,
+    epoch_size=params.epoch_size,
+    rand_state=params.rand_state)
   data = Dataset(synth_data.images, lbls=None, ignore_lbls=None, rand_state=rand_state)
   return {"train": data}

@@ -85,17 +85,17 @@ class CIFAR(object):
     labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
     return labels_one_hot
 
-def load_CIFAR(kwargs):
-  assert ("data_dir" in kwargs.keys()), ("load_CIFAR function input must have 'data_dir' key")
-  #assert ("num_classes" in kwargs.keys()), ("load_CIFAR function input must have 'num_classes' key")
-  data_dir = kwargs["data_dir"]
-  num_val = kwargs["num_val"] if "num_val" in kwargs.keys() else 10000
-  num_labeled = kwargs["num_labeled"] if "num_labeled" in kwargs.keys() else 50000
-  rand_state = kwargs["rand_state"] if "rand_state" in kwargs.keys() else np.random.RandomState()
+def load_CIFAR(params):
+  assert ("data_dir" in params.__dict__.keys()), ("load_CIFAR function input must have 'data_dir' key")
+  #assert ("num_classes" in params.__dict__.keys()), ("load_CIFAR function input must have 'num_classes' key")
+  data_dir = params.data_dir
+  num_val = params.num_val if hasattr(params, "num_val") else 10000
+  num_labeled = params.num_labeled if hasattr(params, "num_labeled") else 50000
+  rand_state = params.rand_state if hasattr(params, "rand_state") else np.random.RandomState()
   data_dir = data_dir+"/cifar-10-batches-py/" # TODO: implement CIFAR100
-  #if kwargs["num_classes"] == 10:
+  #if params.num_classes == 10:
   #  data_dir = data_dir+"/cifar-10-batches-py/"
-  #elif kwargs["num_classes"] == 100:
+  #elif params.num_classes == 100:
   #  assert False, "CIFAR-100 is not supported"
   #else:
   #  assert False, (

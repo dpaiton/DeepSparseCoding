@@ -34,18 +34,6 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     Modifiable Parameters:
     """
     super(GDN_Autoencoder, self).load_params(params)
-    self.input_shape = params["input_shape"]
-    self.batch_size = int(params["batch_size"])
-    self.patch_size_y = params["patch_size_y"]
-    self.patch_size_x = params["patch_size_x"]
-    self.input_channels = params["input_channels"]
-    self.output_channels = params["output_channels"]
-    self.w_strides = params["strides"] # list for encoding layers
-    self.gdn_w_init_const = float(params["gdn_w_init_const"])
-    self.gdn_b_init_const = float(params["gdn_b_init_const"])
-    self.gdn_w_thresh_min = float(params["gdn_w_thresh_min"])
-    self.gdn_b_thresh_min = float(params["gdn_b_thresh_min"])
-    self.gdn_eps = float(params["gdn_eps"])
     self.w_shapes = [vals
       for vals in zip(self.patch_size_y, self.patch_size_x, self.output_channels, self.input_channels)]
     self.w_igdn_shapes = [[pout,pout] for pout in self.output_channels]

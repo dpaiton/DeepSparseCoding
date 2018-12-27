@@ -13,41 +13,11 @@ class MLP(Model):
     """
     Load parameters into object
     Inputs:
-     params: [dict] model parameters
-    Modifiable Parameters:
-      rectify_a      [bool] If set, rectify layer 1 activity
-      norm_a         [bool] If set, l2 normalize layer 1 activity
-      norm_weights   [bool] If set, l2 normalize weights after updates
-      batch_size     [int] Number of images in a training batch
-      num_pixels     [int] Number of pixels
-      num_hidden     [int] Number of layer 1 elements (# hidden units)
-      num_classes    [int] Number of layer 2 elements (# categories)
-      num_val        [int] Number of validation images
-      val_on_cp      [bool] If set, compute validation performance on checkpoint
+     params: [obj] model parameters
     """
     super(MLP, self).load_params(params)
     self.vector_inputs = True
-    if "rectify_a" in params.keys():
-      self.rectify_a = bool(params["rectify_a"])
-    self.data_shape = params["data_shape"]
-    self.norm_a = bool(params["norm_a"])
-    self.norm_weights = bool(params["norm_weights"])
-    # Hyper-parameters
-    self.batch_size = int(params["batch_size"])
     self.num_pixels = int(np.prod(self.data_shape))
-    self.num_hidden = int(params["num_hidden"])
-    if "num_classes" in params.keys():
-      self.num_classes = int(params["num_classes"])
-    else:
-      self.num_classes = 0
-    if "num_val" in params.keys():
-      self.num_val = int(params["num_val"])
-    else:
-      self.num_val = 0
-    if "val_on_cp" in params.keys():
-      self.val_on_cp = bool(params["val_on_cp"])
-    else:
-      self.val_on_cp = False
     self.x_shape = [None, self.num_pixels]
     self.y_shape = [None, self.num_classes]
     self.w1_shape = [self.num_pixels, self.num_hidden]

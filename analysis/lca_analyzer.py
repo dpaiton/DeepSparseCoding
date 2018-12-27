@@ -17,15 +17,10 @@ class LCA_Analyzer(Analyzer):
 
   def load_params(self, params):
     super(LCA_Analyzer, self).load_params(params)
-    if "do_inference" in params.keys():
-      self.do_inference = params["do_inference"]
-      if "num_inference_steps" in params.keys():
-        self.num_inference_steps = params["num_inference_steps"]
-      else:
+    if hasattr(params, "do_inference"):
+      if not hasattr(params, "num_inference_steps"):
         self.num_inference_steps = None
-      if "num_inference_images" in params.keys():
-        self.num_inference_images = params["num_inference_images"]
-      else:
+      if not hasattr(params, "num_inference_images"):
         self.num_inference_images = 1
     else:
       self.do_inference = False
@@ -74,9 +69,9 @@ class LCA_Analyzer(Analyzer):
     so that the frames change during inference.
     """
     if steps_per_image is None:
-      steps_per_image = self.model_params["num_steps"]
+      steps_per_image = self.model_params.num_steps
     num_imgs = images.shape[0]
-    num_neurons = self.model_params["num_neurons"]
+    num_neurons = self.model_params.num_neurons
     u = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32) # membrane potential
     a = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32) # output activity
     config = tf.ConfigProto()
