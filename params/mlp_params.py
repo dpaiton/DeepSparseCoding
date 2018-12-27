@@ -1,5 +1,6 @@
 import os
 from params.base_params import Base_Params
+# import model as mlp
 
 class params(Base_Params):
   def __init__(self):
@@ -42,8 +43,10 @@ class params(Base_Params):
     self.log_to_file = True
     self.gen_plot_int = 100
     self.save_plots = True
+    # mlp = mlp() # construct model # remove dependency of model on schedule
     self.schedule = [
       {"weights": ["w1", "w2", "bias1", "bias2"],
+      #{"weights": mlp.get_trainable_variables(),
       "weight_lr": [0.01, 0.001, 0.01, 0.001],
       "decay_steps": [int(self.num_batches*0.5)]*4,
       "decay_rate": [0.8]*4,

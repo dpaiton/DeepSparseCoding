@@ -3,6 +3,10 @@ import numpy as np
 import tensorflow as tf
 from utils.logger import Logger
 import utils.data_processing as dp
+from utils.trainable_variable_dict import TrainableVariableDict
+# remove dependency of model on schedule
+# move to when the model runs
+# be careful of logging & feed_dict - they use schedule dictionary
 
 class Model(object):
   def __init__(self):
@@ -12,6 +16,7 @@ class Model(object):
     self.params_loaded = False
 
   def setup(self, params):
+    # remove dependency of model on schedule
     self.load_schedule(params.schedule)
     self.sched_idx = 0
     self.load_params(params)
@@ -19,6 +24,7 @@ class Model(object):
     self.make_dirs()
     self.init_logging()
     self.log_params()
+    # remove dependency of model on schedule
     self.log_schedule()
     self.setup_graph()
 
@@ -321,7 +327,7 @@ class Model(object):
   def setup_graph(self):
     """Setup graph object and add optimizers, initializer"""
     self.graph = tf.Graph()
-    self.trainable_variables = dict()
+    self.trainable_variables = TrainableVariableDict()
     self.build_graph()
     self.add_optimizers_to_graph()
     self.add_initializer_to_graph()
