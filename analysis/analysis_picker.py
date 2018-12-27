@@ -16,7 +16,7 @@ def get_analyzer(params):
     return rica_analyzer(params)
   if params.model_type.lower() == "lca":
     return lca_analyzer(params)
-  if params.wodel_type.lower() == "subspace_lca":
+  if params.model_type.lower() == "subspace_lca":
     return sub_lca_analyzer(params)
   if params.model_type.lower() == "lca_pca":
     return lca_pca_analyzer(params)
@@ -28,6 +28,6 @@ def get_analyzer(params):
     return sa_analyzer(params)
   if params.model_type.lower() == "gdn_autoencoder":
     return ga_analyzer(params)
-  if params["model_type"].lower() == "vae":
+  if params.model_type.lower() == "vae":
     return vae_analyzer(params)
   assert False, ("model_type did not match allowable types in analysis/analysis_picker.")
