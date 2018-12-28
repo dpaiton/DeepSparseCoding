@@ -21,13 +21,14 @@ class ModelsTest(tf.test.TestCase):
       model = mp.get_model(model_type) # Import model
       params.data_type = data_type
       model.data_type = data_type
+      params.model_name = "models_test_" + params.model_name
       try:
-        params.set_test_params(data_type)
+        #params.set_test_params(data_type)
         dataset = ds.get_data(params) # Import data
         dataset = model.preprocess_dataset(dataset, params)
         dataset = model.reshape_dataset(dataset, params)
         params.data_shape = list(dataset["train"].shape[1:])
-        params.set_test_params(data_type)
+        #params.set_test_params(data_type)
         model.setup(params)
         print("Model "+model_type+" passed")
       except Exception as e:

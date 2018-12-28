@@ -136,7 +136,8 @@ class TrainingTest(tf.test.TestCase):
           print("Model "+model_type+" failed with dataset "+data_type+", as expected.")
         else:
           try:
-            params.set_test_params(data_type)
+            params.set_data_params(data_type)
+            params.model_name = "training_test_"+params.model_name
             dataset = ds.get_data(params) # Import data
             dataset = model.preprocess_dataset(dataset, params)
             dataset = model.reshape_dataset(dataset, params)
