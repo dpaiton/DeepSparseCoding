@@ -123,8 +123,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           dtype=tf.float32, initializer=self.w_gdn_init, trainable=True)
         b_gdn = tf.get_variable(name=b_gdn_name, shape=self.b_gdn_shapes[layer_id],
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
-      self.trainable_variables[w_gdn_name] = w_gdn
-      self.trainable_variables[b_gdn_name] = b_gdn
+      self.trainable_variables[w_gdn.name] = w_gdn
+      self.trainable_variables[b_gdn.name] = b_gdn
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
       u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
         self.gdn_b_thresh_min, self.gdn_eps, inverse, conv=True, name="gdn_output"+str(layer_id))
@@ -144,7 +144,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       w_name = "w"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
-      self.trainable_variables[w_name] = w
+      self.trainable_variables[w.name] = w
     # Encode & Decode weights are the same shape for the corresponding layer
     # we use conv_transpose to transpose the feature dimension of the weights
     # therefore, bias needs to be size w_shape[3] for encoding and w_shape[2] for decoding
@@ -153,7 +153,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       b_name = "b"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=w_shape[bias_shape_id],
         dtype=tf.float32, initializer=self.b_init, trainable=True)
-      self.trainable_variables[b_name] = b
+      self.trainable_variables[b.name] = b
     with tf.variable_scope("hidden"+str(layer_id)) as scope:
       if decode:
         height_const = 0 if u_in.get_shape()[1] % w_stride == 0 else 1

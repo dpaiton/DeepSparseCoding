@@ -35,7 +35,7 @@ for each model:
     this is inconsistent and should be changed so that it acts like all models
 """
 
-class ReshapeDataTest(tf.test.TestCase):
+class TrainingTest(tf.test.TestCase):
   def testBasic(self):
     should_fail_list = [
       ("mlp", "CIFAR10"),

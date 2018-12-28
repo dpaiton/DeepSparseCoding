@@ -105,7 +105,7 @@ class RICA(Model):
           #self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init, trainable=True)
           w_unnormalized = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
             trainable=True)
-          self.trainable_variables["w"] = w_unnormalized
+          self.trainable_variables[w_unnormalized.name] = w_unnormalized
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0],
             keepdims=True), self.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")

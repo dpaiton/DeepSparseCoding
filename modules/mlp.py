@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from utils.trainable_variable_dict import TrainableVariableDict
 
 class MLP(object):
   def __init__(self, data_tensor, label_tensor, params, name="MLP"):
@@ -38,7 +39,7 @@ class MLP(object):
 
     self.params = params
     self.name = str(name)
-    self.trainable_variables = {}
+    self.trainable_variables = TrainableVariableDict()
     self.graph = tf.Graph()
     self.build_graph()
 
@@ -66,12 +67,12 @@ class MLP(object):
       w_name = self.name+"w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
-      self.trainable_variables[w_name] = w
+      self.trainable_variables[w.name] = w
 
       b_name = self.name+"_b_"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
         initializer=self.b_init, trainable=True)
-      self.trainable_variables[b_name] = b
+      self.trainable_variables[b.name] = b
 
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       conv_out = tf.nn.relu(tf.add(tf.nn.conv1d(a_in, w, w_stride, padding="SAME"), b),
@@ -90,12 +91,12 @@ class MLP(object):
       w_name = self.name+"_w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=w_init, trainable=True)
-      self.trainable_variables[w_name] = w
+      self.trainable_variables[w.name] = w
 
       b_name = self.name+"_b_"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
         initializer=self.b_init, trainable=True)
-      self.trainable_variables[b_name] = b
+      self.trainable_variables[b.name] = b
 
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       fc_out = tf.nn.relu(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))

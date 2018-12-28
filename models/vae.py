@@ -138,10 +138,10 @@ class VAE(Model):
             self.b_dec_list.append(tf.get_variable(name="b_dec_"+str(l), dtype=tf.float32,
               initializer=b_dec_init[l], trainable=True))
 
-            self.trainable_variables["w_enc_"+str(l)] = self.w_enc_list[l]
-            self.trainable_variables["b_enc_"+str(l)] = self.b_enc_list[l]
-            self.trainable_variables["w_dec_"+str(l)] = self.w_dec_list[l]
-            self.trainable_variables["b_dec_"+str(l)] = self.b_dec_list[l]
+            self.trainable_variables[self.w_enc_list[l].name] = self.w_enc_list[l]
+            self.trainable_variables[self.b_enc_list[l].name] = self.b_enc_list[l]
+            self.trainable_variables[self.w_dec_list[l].name] = self.w_dec_list[l]
+            self.trainable_variables[self.b_dec_list[l].name] = self.b_dec_list[l]
 
           #Std weights
           #l should be last encoder layer, i.e., layer right before latent space
@@ -149,8 +149,8 @@ class VAE(Model):
             initializer=w_init[l], trainable=True)
           self.b_enc_std = tf.get_variable(name="b_enc_"+str(l)+"_std", dtype=tf.float32,
             initializer=b_enc_init[l], trainable=True)
-          self.trainable_variables["w_enc_"+str(l)+"_std"] = self.w_enc_std
-          self.trainable_variables["b_enc_"+str(l)+"_std"] = self.b_enc_std
+          self.trainable_variables[self.w_enc_std.name] = self.w_enc_std
+          self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
 
           #Reverse decoder weights to order them in order of operations
           self.w_dec_list = self.w_dec_list[::-1]

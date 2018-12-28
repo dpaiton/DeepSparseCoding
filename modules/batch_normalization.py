@@ -16,12 +16,12 @@ class  batch_normalization(object):
     bn_scale_name = name+"_batch_norm_scale_"+str(layer_idx)
     self.batch_norm_scale[layer_idx] = tf.get_variable(name=bn_scale_name,
       dtype=tf.float32, initializer=tf.constant(1.0))
-    self.trainable_variables[bn_scale_name] = self.batch_norm_scale[layer_idx]
+    self.trainable_variables[self.batch_norm_scale[layer_idx].name] = self.batch_norm_scale[layer_idx]
 
     bn_shift_name = name+"_batch_norm_shift_"+str(layer_idx)
     self.batch_norm_shift[layer_idx] = tf.get_variable(name=bn_shift_name,
       dtype=tf.float32, initializer=tf.constant(0.0))
-    self.trainable_variables[bn_shift_name] = self.batch_norm_shift[layer_idx]
+    self.trainable_variables[self.batch_norm_shift[layer_idx].name] = self.batch_norm_shift[layer_idx]
 
     self.layer_means[layer_idx] = tf.Variable(tf.zeros([num_layer_features]),
       dtype=tf.float32, trainable=False)

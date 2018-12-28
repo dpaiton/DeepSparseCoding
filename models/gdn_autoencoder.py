@@ -95,8 +95,8 @@ class GDN_Autoencoder(Model):
         b_gdn_name = "b_gdn"+str(layer_id)
         b_gdn = tf.get_variable(name=b_gdn_name, shape=self.b_gdn_shape,
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
-      self.trainable_variables[w_gdn_name] = w_gdn
-      self.trainable_variables[b_gdn_name] = b_gdn
+      self.trainable_variables[w_gdn.name] = w_gdn
+      self.trainable_variables[b_gdn.name] = b_gdn
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
       u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
         self.gdn_b_thresh_min, self.gdn_eps, inverse, conv=False, name="gdn_output"+str(layer_id))
@@ -153,10 +153,10 @@ class GDN_Autoencoder(Model):
             initializer=self.b_init, trainable=True)
           self.w_list = [self.w_enc, self.w_dec]
           self.b_list = [self.b_enc, self.b_dec]
-          self.trainable_variables["w_enc"] = self.w_enc
-          self.trainable_variables["b_enc"] = self.b_enc
-          self.trainable_variables["w_dec"] = self.w_dec
-          self.trainable_variables["b_dec"] = self.b_dec
+          self.trainable_variables[self.w_enc.name] = self.w_enc
+          self.trainable_variables[self.b_enc.name] = self.b_enc
+          self.trainable_variables[self.w_dec.name] = self.w_dec
+          self.trainable_variables[self.b_dec.name] = self.b_dec
 
         with tf.variable_scope("inference") as scope:
           u_enc = tf.add(tf.matmul(self.x, self.w_enc), self.b_enc, name="u_enc")
