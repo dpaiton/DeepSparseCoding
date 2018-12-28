@@ -24,6 +24,7 @@ data_type = args.data_type
 t0 = ti.time()
 
 ## Import params
+#params = pp.get_params(model_type)
 params = pp.get_params(model_type)
 params.set_data_params(data_type)
 

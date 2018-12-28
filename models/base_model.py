@@ -4,9 +4,6 @@ import tensorflow as tf
 from utils.logger import Logger
 import utils.data_processing as dp
 from utils.trainable_variable_dict import TrainableVariableDict
-# remove dependency of model on schedule
-# move to when the model runs
-# be careful of logging & feed_dict - they use schedule dictionary
 
 class Model(object):
   def __init__(self):
@@ -16,7 +13,6 @@ class Model(object):
     self.params_loaded = False
 
   def setup(self, params):
-    # remove dependency of model on schedule
     self.load_schedule(params.schedule)
     self.sched_idx = 0
     self.load_params(params)
@@ -24,9 +20,14 @@ class Model(object):
     self.make_dirs()
     self.init_logging()
     self.log_params()
-    # remove dependency of model on schedule
     self.log_schedule()
     self.setup_graph()
+
+  def get_trainable_variable_names(self, params):
+    params.data_shape = 2 #TODO: make this function not depend on data_shape
+    self.load_params(params)
+    self.setup_graph()
+    return list(self.trainable_variables.keys())
 
   def load_schedule(self, schedule):
     """
@@ -151,23 +152,24 @@ class Model(object):
             sch_apply_grads = list() # [weight_idx]
             sch_lrs = list() # [weight_idx]
             for w_idx, weight in enumerate(sch["weights"]):
+              weight_name = weight.split("/")[-1].split(":")[0]
               learning_rates = tf.train.exponential_decay(
                 learning_rate=sch["weight_lr"][w_idx],
                 global_step=self.global_step,
                 decay_steps=sch["decay_steps"][w_idx],
                 decay_rate=sch["decay_rate"][w_idx],
                 staircase=sch["staircase"][w_idx],
-                name="annealing_schedule_"+weight)
+                name="annealing_schedule_"+weight_name)
               sch_lrs.append(learning_rates)
               if self.optimizer == "annealed_sgd":
                 optimizer = tf.train.GradientDescentOptimizer(learning_rates,
-                  name="grad_optimizer_"+weight)
+                  name="grad_optimizer_"+weight_name)
               elif self.optimizer == "adam":
                 optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
-                  epsilon=1e-07, name="adam_optimizer_"+weight)
+                  epsilon=1e-07, name="adam_optimizer_"+weight_name)
               elif self.optimizer == "adadelta":
                 optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
-                  name="adadelta_optimizer_"+weight)
+                  name="adadelta_optimizer_"+weight_name)
               weight_op = self.trainable_variables[weight]
               sch_grads_and_vars.append(self.compute_weight_gradients(optimizer, weight_op))
               gstep = self.global_step if w_idx == 0 else None # Only increment once
@@ -183,8 +185,6 @@ class Model(object):
     Add initializer to the graph
     This must be done after optimizers have been added
     """
-    if not self.optimizers_added:
-      self.log_info("WARNING: Automatic weight optimizers were not added.")
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("initialization") as scope:
@@ -206,8 +206,6 @@ class Model(object):
 
   def construct_savers(self):
     """Add savers to graph"""
-    if not self.optimizers_added:
-      self.log_info("WARNING: Optimizers must be added to the graph before constructing savers.")
     with self.graph.as_default():
       with tf.variable_scope("weights", reuse=True) as scope:
         weights = [weight for weight in tf.global_variables()
@@ -329,7 +327,8 @@ class Model(object):
     self.graph = tf.Graph()
     self.trainable_variables = TrainableVariableDict()
     self.build_graph()
-    self.add_optimizers_to_graph()
+    if hasattr(self.params, "schedule"): # if no schedule is provided, then don't add optimizers
+      self.add_optimizers_to_graph()
     self.add_initializer_to_graph()
     self.construct_savers()
 

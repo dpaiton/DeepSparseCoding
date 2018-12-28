@@ -10,18 +10,24 @@ Test for building models
 NOTE: Should be executed from the repository's root directory
 loads every model
 """
-
 class ModelsTest(tf.test.TestCase):
   def testBasic(self):
-    model_list = mp.get_model_list()
+    data_type = "mnist"
+    model_list = ["mlp"]#mp.get_model_list()
     schedule_index = 0 # Not testing support for multiple schedules
 
     for model_type in model_list:
       params = pp.get_params(model_type) # Import params
       model = mp.get_model(model_type) # Import model
-
+      params.data_type = data_type
+      model.data_type = data_type
       try:
-        params.set_test_params(None)
+        params.set_test_params(data_type)
+        dataset = ds.get_data(params) # Import data
+        dataset = model.preprocess_dataset(dataset, params)
+        dataset = model.reshape_dataset(dataset, params)
+        params.data_shape = list(dataset["train"].shape[1:])
+        params.set_test_params(data_type)
         model.setup(params)
         print("Model "+model_type+" passed")
       except Exception as e:

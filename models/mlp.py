@@ -55,9 +55,9 @@ class MLP(Model):
             initializer=tf.zeros([1, self.num_classes], dtype=tf.float32,
             name="bias2_init"), trainable=True)
           self.trainable_variables[self.w1.name] = self.w1
-          self.trainable_variables[self.w1.name] = self.w2
+          self.trainable_variables[self.w2.name] = self.w2
           self.trainable_variables[self.bias1.name] = self.bias1
-          self.trainable_variables[self.bias1.name] = self.bias2
+          self.trainable_variables[self.bias2.name] = self.bias2
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_w1 = self.w1.assign(tf.nn.l2_normalize(self.w1,

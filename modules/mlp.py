@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
+import modules.batch_normalization as BatchNormalization
 
 class MLP(object):
   def __init__(self, data_tensor, label_tensor, params, name="MLP"):
@@ -43,33 +44,14 @@ class MLP(object):
     self.graph = tf.Graph()
     self.build_graph()
 
-  #def batch_normalization(self, layer_id, a_in, reduc_axes, name):
-  #"""
-  #Implements batch normalization
-  #Inputs:
-  #  layer_id [int] index for layer
-  #  a_in [tensor] feature map (or vector) for layer
-  #  reduc_axes [list of ints] what axes to reduce over; default is for fc layer,
-  #    [0,1,2] should be used for a conv layer
-  #"""
-  #input_mean, input_var = tf.nn.moments(a_in, axes=reduc_axes)
-  #self.layer_means[layer_id] = ((1 - self.params.norm_decay_mult) * self.layer_means[layer_id]
-  #  + self.params.norm_decay_mult * input_mean)
-  #self.layer_vars[layer_id] = ((1 - self.params.norm_decay_mult) * self.layer_vars[layer_id]
-  #  + self.params.norm_decay_mult * input_var)
-  #adj_a_in = tf.divide(tf.subtract(a_in, self.layer_means[layer_id]),
-  #  tf.sqrt(tf.add(self.layer_vars[layer_id], self.params.eps)))
-  #act_out = tf.add(tf.multiply(self.batch_norm_scale[layer_id], adj_a_in), self.batch_norm_shift[layer_id])
-  #return act_out
-
   def conv_layer_maker(self, layer_id, a_in, w_shape, w_stride, b_shape):
     with tf.variable_scope(self.weight_scope) as scope:
-      w_name = self.name+"w_"+str(layer_id)
+      w_name = "w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
       self.trainable_variables[w.name] = w
 
-      b_name = self.name+"_b_"+str(layer_id)
+      b_name = "b_"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
@@ -78,22 +60,22 @@ class MLP(object):
       conv_out = tf.nn.relu(tf.add(tf.nn.conv1d(a_in, w, w_stride, padding="SAME"), b),
         name="conv_out"+str(layer_id))
       if self.do_batch_norm[layer_id]:
-        bn = BatchNormalization(conv_out, reduc_axes=[0,1,2], name=self.name+"_"+str(layer_id))
+        bn = BatchNormalization(conv_out, self.params.norm_decay_mult, reduc_axes=[0,1,2],
+          name="BatchNorm_"+str(layer_id))
         conv_out = bn.get_activity()
         self.trainable_variables.update(bn.trainable_variables)
-        #conv_out = self.batch_normalization(layer_id, conv_out, reduc_axes=[0,1,2], name=self.name)
     return conv_out, w, b
 
   def fc_layer_maker(self, layer_id, a_in, w_shape, b_shape):
     w_init = tf.truncated_normal_initializer(stddev=1/w_shape[0], dtype=tf.float32)
 
     with tf.variable_scope(self.weight_scope) as scope:
-      w_name = self.name+"_w_"+str(layer_id)
+      w_name = "w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=w_init, trainable=True)
       self.trainable_variables[w.name] = w
 
-      b_name = self.name+"_b_"+str(layer_id)
+      b_name = "b_"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
@@ -101,7 +83,10 @@ class MLP(object):
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       fc_out = tf.nn.relu(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
       if self.do_batch_norm:
-        fc_out = self.batch_normalization(layer_id, fc_out, reduc_axes=[0], name=self.name)
+        bn = BatchNormalization(fc_out, self.params.norm_decay_mult, reduc_axes=[0],
+          name="BatchNorm_"+str(layer_id))
+        fc_out = bn.get_activity()
+        self.trainable_variables.update(bn.trainable_variables)
     return fc_out, w, b
 
   def make_layers(self):
@@ -140,27 +125,5 @@ class MLP(object):
 
       with tf.variable_scope("weights") as scope:
         self.weight_scope = tf.get_variable_scope()
-        #if np.any(self.do_batch_norm):
-        #  self.batch_norm_scale = {}
-        #  self.batch_norm_shift = {}
-        #  self.layer_means = {}
-        #  self.layer_vars = {}
-        #  for layer_idx, layer_do_batch_norm in enumerate(self.do_batch_norm):
-        #    if layer_do_batch_norm:
-        #      batch_norm_modules[layer_idx] = batch_norm()
-        #      #bn_scale_name = "batch_norm_scale"+str(layer_idx)
-        #      #self.batch_norm_scale[layer_idx] = tf.get_variable(name=bn_scale_name,
-        #      #  dtype=tf.float32, initializer=tf.constant(1.0))
-        #      #self.trainable_variables[bn_scale_name] = self.batch_norm_scale[layer_idx]
-
-        #      #bn_shift_name = "batch_norm_shift"+str(layer_idx)
-        #      #self.batch_norm_shift[layer_idx] = tf.get_variable(name=bn_shift_name,
-        #      #  dtype=tf.float32, initializer=tf.constant(0.0))
-        #      #self.trainable_variables[bn_shift_name] = self.batch_norm_shift[layer_idx]
-
-        #      #self.layer_means[layer_idx] = tf.Variable(tf.zeros([num_layer_features]),
-        #      #  dtype=tf.float32, trainable=False)
-        #      #self.layer_vars[layer_idx] = tf.Variable(0.01*tf.ones([num_layer_features]),
-        #      #  dtype=tf.float32, trainable=False)
 
       self.layer_list, self.weight_list, self.bias_list = self.make_layers()

@@ -24,33 +24,63 @@ Outputs:
 """
 def get_params(model_type):
   if model_type.lower() == "mlp":
-    return mlp.params()
+    params = mlp.params()
+    params.schedule = mlp.schedule
+    return params
   if model_type.lower() == "ica":
-    return ica.params()
+    params = ica.params()
+    params.schedule = ica.schedule
+    return params
   if model_type.lower() == "ica_pca":
-    return ica_pca.params()
+    params = ica_pca.params()
+    params.schedule = ica_pca.schedule
+    return params
   if model_type.lower() == "rica":
-    return rica.params()
+    params = rica.params()
+    params.schedule = rica.schedule
+    return params
   if model_type.lower() == "lca":
-    return lca.params()
+    params = lca.params()
+    params.schedule = lca.schedule
+    return params
   if model_type.lower() == "lca_pca":
-    return lca_pca.params()
+    params = lca_pca.params()
+    params.schedule = lca_pca.schedule
+    return params
   if model_type.lower() == "lca_pca_fb":
-    return lca_pca_fb.params()
+    params = lca_pca_fb.params()
+    params.schedule = lca_pca_fb.schedule
+    return params
   if model_type.lower() == "subspace_lca":
-    return subspace_lca.params()
+    params = subspace_lca.params()
+    params.schedule = subspace_lca.schedule
+    return params
   if model_type.lower() == "conv_lca":
-    return conv_lca.params()
+    params = conv_lca.params()
+    params.schedule = conv_lca.schedule
+    return params
   if model_type.lower() == "sigmoid_autoencoder":
-    return sa.params()
+    params = sa.params()
+    params.schedule = sa.schedule
+    return params
   if model_type.lower() == "vae":
-    return vae.params()
+    params = vae.params()
+    params.schedule = vae.schedule
+    return params
   if model_type.lower() == "gdn_autoencoder":
-    return ga.params()
+    params = ga.params()
+    params.schedule = ga.schedule
+    return params
   if model_type.lower() == "conv_gdn_autoencoder":
-    return cga.params()
+    params = cga.params()
+    params.schedule = cga.schedule
+    return params
   if model_type.lower() == "conv_gdn_decoder":
-    return cgd.params()
+    params = cgd.params()
+    params.schedule = cgd.schedule
+    return params
   if model_type.lower() == "relu_autoencoder":
-    return ra.params()
+    params = ra.params()
+    params.schedule = ra.schedule
+    return params
   return False

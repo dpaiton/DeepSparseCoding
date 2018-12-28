@@ -34,7 +34,6 @@ for each model:
   * rica model has different interface for applying gradients when the L-BFGS minimizer is used
     this is inconsistent and should be changed so that it acts like all models
 """
-
 class TrainingTest(tf.test.TestCase):
   def testBasic(self):
     should_fail_list = [
@@ -164,8 +163,8 @@ class TrainingTest(tf.test.TestCase):
               print("Model "+model_type+" passed on dataset "+data_type+".")
           except Exception as e:
             #import IPython; IPython.embed(); raise SystemExit
-            assert False, (
-              "Model "+model_type+" failed on dataset "+data_type+" with error:\n"+str(e))
+            print("Model "+model_type+" failed on dataset "+data_type)
+            raise e
 
 if __name__ == "__main__":
   tf.test.main()

@@ -90,17 +90,17 @@ class params(Base_Params):
       for idx in range(len(self.input_channels), 2*len(self.input_channels)-1)]
     self.b_igdn_list = ["b_igdn"+str(idx)
       for idx in range(len(self.input_channels), 2*len(self.input_channels)-1)]
-    
+
     self.conv_list = self.w_list + self.b_list
     self.gdn_list = self.w_gdn_list + self.b_gdn_list + self.w_igdn_list + self.b_igdn_list
     self.train_list = self.conv_list +  self.gdn_list
     self.cp_load_var = self.train_list
-    
+
     weight_lr = [3.0e-4 for _ in range(len(self.conv_list))]
     weight_lr += [1.0e-4 for _ in range(len(self.gdn_list))]
     decay_rate = [0.8 for _ in range(len(self.train_list))]
     staircase = [True for _ in range(len(self.train_list))]
-    
+
     self.schedule = [
       {"weights": self.train_list,
       "ent_mult": 0.1,
@@ -121,6 +121,9 @@ class params(Base_Params):
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 
-  def set_test_params(self, data_type):
-    self.model_name = "test_"+self.model_name
-    self.set_data_params(data_type)
+  def set_test_params(self, data_type=None):
+    super(params, self).set_test_params(data_type)
+    if data_type is not None:
+      self.set_data_params(data_type)
+
+

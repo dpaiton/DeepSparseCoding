@@ -1,6 +1,6 @@
 import os
 from params.base_params import Base_Params
-# import model as mlp
+from models.mlp import MLP as mlp
 
 class params(Base_Params):
   def __init__(self):
@@ -43,15 +43,7 @@ class params(Base_Params):
     self.log_to_file = True
     self.gen_plot_int = 100
     self.save_plots = True
-    # mlp = mlp() # construct model # remove dependency of model on schedule
-    self.schedule = [
-      {"weights": ["w1", "w2", "bias1", "bias2"],
-      #{"weights": mlp.get_trainable_variables(),
-      "weight_lr": [0.01, 0.001, 0.01, 0.001],
-      "decay_steps": [int(self.num_batches*0.5)]*4,
-      "decay_rate": [0.8]*4,
-      "staircase": [True]*4}]
-
+  
   def set_data_params(self, data_type):
     self.data_type = data_type
     if data_type.lower() == "mnist":
@@ -59,6 +51,16 @@ class params(Base_Params):
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 
-  def set_test_params(self, data_type):
-    self.model_name = "test_"+self.model_name
-    self.set_data_params(data_type)
+  def set_test_params(self, data_type=None):
+    super(params, self).set_test_params(data_type)
+    if data_type is not None:
+      self.set_data_params(data_type)
+
+trainable_vars = mlp().get_trainable_variable_names(params()) # construct model # remove dependency of model on schedule
+schedule = [
+      {"weights": trainable_vars, #["w1", "w2", "bias1", "bias2"],
+      "weight_lr": [0.01, 0.001, 0.01, 0.001],
+      "decay_steps": [int(params().num_batches*0.5)]*4,
+      "decay_rate": [0.8]*4,
+      "staircase": [True]*4}]
+
