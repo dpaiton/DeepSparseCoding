@@ -13,7 +13,7 @@ loads every model
 class ModelsTest(tf.test.TestCase):
   def testBasic(self):
     data_type = "mnist"
-    model_list = ["mlp"]#mp.get_model_list()
+    model_list = ["mlp", "vae"]#mp.get_model_list()
     schedule_index = 0 # Not testing support for multiple schedules
 
     for model_type in model_list:

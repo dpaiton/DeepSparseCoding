@@ -1,5 +1,6 @@
 import os
 from params.base_params import Base_Params
+from models.vae import VAE as vae
 
 class params(Base_Params):
   def __init__(self):
@@ -36,37 +37,6 @@ class params(Base_Params):
     self.gen_plot_int = 10000
     self.save_plots = True
 
-    #decoders mirror encoder layers
-    num_encoder_layers = len(self.output_channels)
-    encoder_layer_range = list(range(num_encoder_layers))
-    w_enc_list = ["w_enc_" + str(idx) for idx in encoder_layer_range]
-    b_enc_list = ["b_enc_" + str(idx) for idx in encoder_layer_range]
-
-    #Std weights for last encoder layer
-    w_enc_std = ["w_enc_" + str(num_encoder_layers-1) + "_std"]
-    b_enc_std = ["b_enc_" + str(num_encoder_layers-1) + "_std"]
-
-    w_dec_list = ["w_dec_" + str(idx) for idx in encoder_layer_range[::-1]]
-    b_dec_list = ["b_dec_" + str(idx) for idx in encoder_layer_range[::-1]]
-
-    weights_list = w_enc_list + w_dec_list
-    bias_list = b_enc_list + b_dec_list
-
-    #Train list is ordered by input to output weights, then input to output bias
-    train_list = weights_list + bias_list
-
-    num_train_weights = len(train_list)
-
-    self.schedule = [
-      {"weights": train_list,
-      "decay_mult": 0.0,
-      "sparse_mult": 0.0,
-      "kld_mult": 1/self.batch_size,
-      "weight_lr": [0.0001,]*num_train_weights,
-      "decay_steps": [int(3e6*0.4),]*num_train_weights,
-      "decay_rate": [0.5,]*num_train_weights,
-      "staircase": [True,]*num_train_weights}]
-
   def set_data_params(self, data_type):
     self.data_type = data_type
     if data_type.lower() == "mnist":
@@ -78,3 +48,17 @@ class params(Base_Params):
     super(params, self).set_test_params(data_type)
     if data_type is not None:
       self.set_data_params(data_type)
+
+trainable_vars = vae().get_trainable_variable_names(params())
+num_train_weights = len(trainable_vars)
+
+schedule = [
+  {"weights": trainable_vars,
+  "decay_mult": 0.0,
+  "sparse_mult": 0.0,
+  "kld_mult": 1/params().batch_size,
+  "weight_lr": [0.0001,]*num_train_weights,
+  "decay_steps": [int(3e6*0.4),]*num_train_weights,
+  "decay_rate": [0.5,]*num_train_weights,
+  "staircase": [True,]*num_train_weights}]
+
