@@ -43,18 +43,13 @@ class params(Base_Params):
     self.log_to_file = True
     self.gen_plot_int = 100
     self.save_plots = True
-  
+
   def set_data_params(self, data_type):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
     else:
       assert False, ("Data type "+data_type+" is not supported.")
-
-  def set_test_params(self, data_type=None):
-    super(params, self).set_test_params(data_type)
-    if data_type is not None:
-      self.set_data_params(data_type)
 
 trainable_vars = mlp().get_trainable_variable_names(params()) # construct model # remove dependency of model on schedule
 schedule = [
