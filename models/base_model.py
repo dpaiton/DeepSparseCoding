@@ -208,36 +208,37 @@ class Model(object):
     """Write saver definitions for full model and weights-only"""
     assert self.savers_constructed
     full_saver_def = self.full_saver.as_saver_def()
-    full_file = self.save_dir+self.model_name+"_v"+self.version+"-full.def"
+    full_file = self.params.save_dir+self.params.model_name+"_v"+self.params.version+"-full.def"
     with open(full_file, "wb") as f:
       f.write(full_saver_def.SerializeToString())
     self.logger.log_info("Full saver def saved in file %s"%full_file)
     weight_saver_def = self.weight_saver.as_saver_def()
-    weight_file = self.save_dir+self.model_name+"_v"+self.version+"-weights.def"
+    weight_file = self.params.save_dir+self.params.model_name+"_v"+ \
+      self.params.version+"-weights.def"
     with open(weight_file, "wb") as f:
       f.write(weight_saver_def.SerializeToString())
     self.logger.log_info("Weight saver def saved in file %s"%weight_file)
 
   def write_graph(self, graph_def):
     """Write graph structure to protobuf file"""
-    write_name = self.model_name+"_v"+self.version+".pb"
-    self.writer = tf.summary.FileWriter(self.save_dir, graph=self.graph)
+    write_name = self.params.model_name+"_v"+self.params.version+".pb"
+    self.writer = tf.summary.FileWriter(self.params.save_dir, graph=self.graph)
     tf.train.write_graph(graph_def,
-      logdir=self.save_dir, name=write_name, as_text=False)
-    self.logger.log_info("Graph def saved in file %s"%self.save_dir+write_name)
+      logdir=self.params.save_dir, name=write_name, as_text=False)
+    self.logger.log_info("Graph def saved in file %s"%self.params.save_dir+write_name)
 
   def write_checkpoint(self, session):
     """Write checkpoints for full model and weights-only"""
-    base_save_path = self.cp_save_dir+self.model_name+"_v"+self.version
+    base_save_path = self.params.cp_save_dir+self.params.model_name+"_v"+self.params.version
     full_save_path = self.full_saver.save(session,
       save_path=base_save_path+"_full",
       global_step=self.global_step,
-      latest_filename=self.cp_latest_filename)
+      latest_filename=self.params.cp_latest_filename)
     self.logger.log_info("Full model saved in file %s"%full_save_path)
     weight_save_path = self.weight_saver.save(session,
       save_path=base_save_path+"_weights",
       global_step=self.global_step,
-      latest_filename=self.cp_latest_filename)
+      latest_filename=self.params.cp_latest_filename)
     self.logger.log_info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
 
