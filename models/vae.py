@@ -22,10 +22,9 @@ class VAE(Model):
      params: [obj] model parameters
     """
     super(VAE, self).load_params(params)
-    self.data_shape = params.data_shape
+
     # Network Size
-    self.batch_size = int(params.batch_size)
-    self.num_pixels = int(np.prod(self.data_shape))
+    self.num_pixels = int(np.prod(params.data_shape))
     self.output_channels = params.output_channels #is list
 
     self.num_encoder_layers = len(self.output_channels)
@@ -91,7 +90,7 @@ class VAE(Model):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")

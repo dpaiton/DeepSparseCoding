@@ -17,17 +17,17 @@ class MLP(Model):
     """
     super(MLP, self).load_params(params)
     self.vector_inputs = True
-    self.num_pixels = int(np.prod(self.data_shape))
+    self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
-    self.y_shape = [None, self.num_classes]
-    self.w1_shape = [self.num_pixels, self.num_hidden]
-    self.w2_shape = [self.num_hidden, self.num_classes]
+    self.y_shape = [None, self.params.num_classes]
+    self.w1_shape = [self.num_pixels, self.params.num_hidden]
+    self.w2_shape = [self.params.num_hidden, self.params.num_classes]
 
   def build_graph(self):
     """
     Build an MLP TensorFlow Graph.
     """
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
@@ -49,10 +49,10 @@ class MLP(Model):
             initializer=tf.truncated_normal(self.w2_shape, mean=0.0,
             stddev=1.0, dtype=tf.float32, name="w2_init"), trainable=True)
           self.bias1 = tf.get_variable(name="bias1", dtype=tf.float32,
-            initializer=tf.zeros([1, self.num_hidden], dtype=tf.float32,
+            initializer=tf.zeros([1, self.params.num_hidden], dtype=tf.float32,
             name="bias1_init"), trainable=True)
           self.bias2 = tf.get_variable(name="bias2", dtype=tf.float32,
-            initializer=tf.zeros([1, self.num_classes], dtype=tf.float32,
+            initializer=tf.zeros([1, self.params.num_classes], dtype=tf.float32,
             name="bias2_init"), trainable=True)
           self.trainable_variables[self.w1.name] = self.w1
           self.trainable_variables[self.w2.name] = self.w2
@@ -61,21 +61,21 @@ class MLP(Model):
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_w1 = self.w1.assign(tf.nn.l2_normalize(self.w1,
-            dim=0, epsilon=self.eps, name="row_l2_norm"))
+            dim=0, epsilon=self.params.eps, name="row_l2_norm"))
           self.norm_weights = tf.group(self.norm_w1,
             name="l2_normalization")
 
         with tf.name_scope("hidden_variables") as scope:
-          if self.rectify_a:
+          if self.params.rectify_a:
             self.a = tf.nn.relu(tf.add(tf.matmul(self.x, self.w1),
               self.bias1), name="activity")
           else:
             self.a = tf.add(tf.matmul(self.x, self.w1), self.bias1,
               name="activity")
 
-          if self.norm_a:
+          if self.params.norm_a:
             self.c = tf.add(tf.matmul(tf.nn.l2_normalize(self.a,
-              dim=1, epsilon=self.eps, name="row_l2_norm"), self.w2,
+              dim=1, epsilon=self.params.eps, name="row_l2_norm"), self.w2,
               name="classify"), self.bias2, name="c")
           else:
             self.c = tf.add(tf.matmul(self.a, self.w2, name="classify"),
@@ -90,7 +90,7 @@ class MLP(Model):
             with tf.name_scope("cross_entropy_loss"):
               self.cross_entropy_loss = (self.label_mult
                 * -tf.reduce_sum(tf.multiply(self.y, tf.log(tf.clip_by_value(
-                self.y_, self.eps, 1.0))), axis=[1]))
+                self.y_, self.params.eps, 1.0))), axis=[1]))
               label_count = tf.reduce_sum(self.label_mult)
               f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
               f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
@@ -126,7 +126,7 @@ class MLP(Model):
     a_vals = tf.get_default_session().run(self.a, feed_dict)
     a_vals_max = np.array(a_vals.max())
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(self.batch_size * self.num_hidden))
+      / float(self.batch_size * self.params.num_hidden))
     accuracy = np.array(self.accuracy.eval(feed_dict))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,

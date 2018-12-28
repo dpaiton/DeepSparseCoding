@@ -57,8 +57,6 @@ class Model(object):
     params.log_dir = params.model_out_dir + "/logfiles/"
     params.save_dir = params.model_out_dir + "/savefiles/"
     params.disp_dir = params.model_out_dir + "/vis/"
-    for key, val in params.__dict__.items():
-        setattr(self, key, val)
     self.params = params
     self.params_loaded = True
 
@@ -77,34 +75,23 @@ class Model(object):
     else:
       return None
 
-  def set_param(self, param_name, new_value):
-    """
-    Modifies a model parameter
-    Inputs:
-      param_name: [str] parameter name, must already exist
-      new_value: [] new parameter value, must be the same type as old param value
-    """
-    assert hasattr(self, param_name)
-    assert type(getattr(self, param_name)) == type(new_value)
-    setattr(self, param_name, new_value)
-
   def make_dirs(self):
     """Make output directories"""
-    if not os.path.exists(self.model_out_dir):
-      os.makedirs(self.model_out_dir)
-    if not os.path.exists(self.log_dir):
-      os.makedirs(self.log_dir)
-    if not os.path.exists(self.cp_save_dir):
-      os.makedirs(self.cp_save_dir)
-    if not os.path.exists(self.save_dir):
-      os.makedirs(self.save_dir)
-    if not os.path.exists(self.disp_dir):
-      os.makedirs(self.disp_dir)
+    if not os.path.exists(self.params.model_out_dir):
+      os.makedirs(self.params.model_out_dir)
+    if not os.path.exists(self.params.log_dir):
+      os.makedirs(self.params.log_dir)
+    if not os.path.exists(self.params.cp_save_dir):
+      os.makedirs(self.params.cp_save_dir)
+    if not os.path.exists(self.params.save_dir):
+      os.makedirs(self.params.save_dir)
+    if not os.path.exists(self.params.disp_dir):
+      os.makedirs(self.params.disp_dir)
 
   def init_logging(self, log_filename=None):
-    if self.log_to_file:
+    if self.params.log_to_file:
       if log_filename is None:
-        log_filename = self.log_dir+self.model_name+"_v"+self.version+".log"
+        log_filename = self.params.log_dir+self.params.model_name+"_v"+self.params.version+".log"
         self.logger = Logger(log_filename, overwrite=True)
     else:
         self.logger = Logger()
@@ -141,7 +128,7 @@ class Model(object):
       - grads_and_vars holds the gradients for the weight updates
       - apply_grads is the operator to be called to perform weight updates
     """
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("optimizers") as scope:
           self.grads_and_vars = list() # [sch_idx][weight_idx]
@@ -161,13 +148,13 @@ class Model(object):
                 staircase=sch["staircase"][w_idx],
                 name="annealing_schedule_"+weight_name)
               sch_lrs.append(learning_rates)
-              if self.optimizer == "annealed_sgd":
+              if self.params.optimizer == "annealed_sgd":
                 optimizer = tf.train.GradientDescentOptimizer(learning_rates,
                   name="grad_optimizer_"+weight_name)
-              elif self.optimizer == "adam":
+              elif self.params.optimizer == "adam":
                 optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
                   epsilon=1e-07, name="adam_optimizer_"+weight_name)
-              elif self.optimizer == "adadelta":
+              elif self.params.optimizer == "adadelta":
                 optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
                   name="adadelta_optimizer_"+weight_name)
               weight_op = self.trainable_variables[weight]
@@ -185,7 +172,7 @@ class Model(object):
     Add initializer to the graph
     This must be done after optimizers have been added
     """
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("initialization") as scope:
           self.init_op = tf.group(tf.global_variables_initializer(),
@@ -194,7 +181,7 @@ class Model(object):
   def get_load_vars(self):
     """Get variables for loading"""
     all_vars = tf.global_variables()
-    if len(self.cp_load_var) > 0:
+    if len(self.params.cp_load_var) > 0:
       load_v = [var
         for var in all_vars
         for weight in self.cp_load_var
@@ -211,9 +198,9 @@ class Model(object):
         weights = [weight for weight in tf.global_variables()
           if weight.name.startswith(scope.name)]
       self.weight_saver = tf.train.Saver(var_list=weights,
-        max_to_keep=self.max_cp_to_keep)
-      self.full_saver = tf.train.Saver(max_to_keep=self.max_cp_to_keep)
-      if self.cp_load:
+        max_to_keep=self.params.max_cp_to_keep)
+      self.full_saver = tf.train.Saver(max_to_keep=self.params.max_cp_to_keep)
+      if self.params.cp_load:
         self.loader = tf.train.Saver(var_list=self.get_load_vars())
     self.savers_constructed = True
 
