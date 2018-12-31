@@ -96,23 +96,23 @@ class params(Base_Params):
     self.train_list = self.conv_list +  self.gdn_list
     self.cp_load_var = self.train_list
 
-    weight_lr = [3.0e-4 for _ in range(len(self.conv_list))]
-    weight_lr += [1.0e-4 for _ in range(len(self.gdn_list))]
-    decay_rate = [0.8 for _ in range(len(self.train_list))]
-    staircase = [True for _ in range(len(self.train_list))]
+    self.weight_lr = [3.0e-4 for _ in range(len(self.conv_list))]
+    self.weight_lr += [1.0e-4 for _ in range(len(self.gdn_list))]
+    self.decay_rate = [0.8 for _ in range(len(self.train_list))]
+    self.staircase = [True for _ in range(len(self.train_list))]
 
     self.schedule = [
-      {"weights": self.train_list,
+      {"weights": self..train_list,
       "ent_mult": 0.1,
       "ramp_slope": 1.0,
       "decay_mult": 0.002,
       "noise_var_mult": 0.0,
       "mem_error_rate": 0.02,
       "triangle_centers": np.linspace(-1.0, 1.0, self.num_triangles),
-      "weight_lr": weight_lr,
+      "weight_lr": self.weight_lr,
       "num_epochs": 10, #10 takes about 13 hours on rw1 with batch size 50
-      "decay_rate": decay_rate,
-      "staircase": staircase}]
+      "decay_rate": self.decay_rate,
+      "staircase": self.staircase}]
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -125,5 +125,4 @@ class params(Base_Params):
     super(params, self).set_test_params(data_type)
     if data_type is not None:
       self.set_data_params(data_type)
-
 

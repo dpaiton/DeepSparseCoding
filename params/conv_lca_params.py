@@ -26,7 +26,6 @@ class params(Base_Params):
     self.lpf_cutoff = 0.7
     self.extract_patches = False
     self.image_edge_size = 128
-    self.num_batches = int(1e5)
     self.batch_size = 25
     self.stride_y = 8
     self.stride_x = 8
@@ -49,9 +48,10 @@ class params(Base_Params):
     self.save_plots = True
 
     self.schedule = [
-      {"weights": ["phi"],
+      {"num_batches": int(1e5)
+      "weights": ["phi"],
       "sparse_mult": 0.4,
       "weight_lr": [0.001],
-      "decay_steps": [int(self.num_batches*0.8)],
+      "decay_steps": [int(1e5*0.8)],
       "decay_rate": [0.8],
       "staircase": [True]}]

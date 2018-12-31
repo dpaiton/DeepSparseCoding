@@ -38,7 +38,6 @@ class params(Base_Params):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
-    self.num_batches = int(1e6)
     self.batch_size = 100
     self.num_neurons = 768
     self.mle_step_size = 0.01
@@ -64,20 +63,20 @@ class params(Base_Params):
     self.log_to_file = True
     self.gen_plot_int = 10000
     self.save_plots = True
+    self.num_pixels = self.patch_edge_size**2
 
     self.schedule = [
-      {"weights": ["w_enc", "b_enc", "w_dec", "b_dec", "w_gdn0", "b_gdn0", "w_igdn1", "b_igdn1"],
+      {"num_batches": int(1e6),
+      "weights": ["w_enc", "b_enc", "w_dec", "b_dec", "w_gdn0", "b_gdn0", "w_igdn1", "b_igdn1"],
       "ent_mult": 0.1,
       "ramp_slope": 1.0,
       "decay_mult": 0.03,
       "noise_var_mult": 0.08,
-      "triangle_centers": np.linspace(-1.0, 1.0, self.num_triangles),
+      "triangle_centers": np.linspace(-1.0, 1.0, params().num_triangles),
       "weight_lr": [9e-5]*4+[7e-6]*4,
-      "decay_steps": [int(self.num_batches*0.4),]*8,
+      "decay_steps": [int(1e6*0.4),]*8,
       "decay_rate": [0.8,]*8,
       "staircase": [True,]*8}]
-
-    self.num_pixels = self.patch_edge_size**2
 
   def set_data_params(self, data_type):
     self.data_type = data_type
