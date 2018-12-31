@@ -21,16 +21,17 @@ class params(Base_Params):
     self.model_name = "mlp"
     self.version = "0.0"
     self.optimizer = "annealed_sgd"
-    self.vectorize_data = True
+    self.vectorize_data = False
     self.rectify_a = True
     self.norm_a = False
     self.norm_weights = True
-    self.num_batches = 4000
     self.batch_size = 100
     self.num_classes = 10
-    self.num_hidden = 400
+    self.layer_types = ["conv", "fc"]
+    self.output_channels = [400, 10]
     self.num_val = 10000
     self.num_labeled = 50000
+    self.do_batch_norm = True
     self.cp_int = 100
     self.max_cp_to_keep = 1
     self.val_on_cp = True
@@ -43,6 +44,15 @@ class params(Base_Params):
     self.log_to_file = True
     self.gen_plot_int = 100
     self.save_plots = True
+    # If a scalar is provided then this value is broadcast to all trainable variables
+    self.schedule = [
+      {"num_batches": 4000,
+      "batch_norm_decay_mult": 0.4,
+      #"weights": ["w1", "w2", "bias1", "bias2"],
+      "weight_lr": 0.01,
+      "decay_steps": int(4000*0.5),
+      "decay_rate": 0.8,
+      "staircase": True}]
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -51,11 +61,7 @@ class params(Base_Params):
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 
-trainable_vars = mlp().get_trainable_variable_names(params()) # construct model # remove dependency of model on schedule
-schedule = [
-      {"weights": trainable_vars, #["w1", "w2", "bias1", "bias2"],
-      "weight_lr": [0.01, 0.001, 0.01, 0.001],
-      "decay_steps": [int(params().num_batches*0.5)]*4,
-      "decay_rate": [0.8]*4,
-      "staircase": [True]*4}]
-
+  def set_test_params(self, data_type=None):
+    super(params, self).set_test_params(data_type)
+    if data_type is not None:
+      self.set_data_params(data_type)
