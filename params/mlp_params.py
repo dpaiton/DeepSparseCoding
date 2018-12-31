@@ -44,11 +44,12 @@ class params(Base_Params):
     self.log_to_file = True
     self.gen_plot_int = 100
     self.save_plots = True
+
     # If a scalar is provided then this value is broadcast to all trainable variables
     self.schedule = [
       {"num_batches": 4000,
       "batch_norm_decay_mult": 0.4,
-      #"weights": ["w1", "w2", "bias1", "bias2"],
+      "weights": None, #["w1", "w2", "bias1", "bias2"],
       "weight_lr": 0.01,
       "decay_steps": int(4000*0.5),
       "decay_rate": 0.8,

@@ -24,7 +24,7 @@ class Model(object):
     self.setup_graph()
 
   def get_trainable_variable_names(self, params):
-    params.data_shape = 2 #TODO: make this function not depend on data_shape
+    assert hasattr(params, "data_shape"), ("Params must include data shape.")
     self.load_params(params)
     self.setup_graph()
     return list(self.trainable_variables.keys())
@@ -35,12 +35,22 @@ class Model(object):
     Inputs:
      schedule: [list of dict] learning schedule
     """
-    if schedule is not None:
-        for sched in schedule:
-          assert len(sched["weights"]) == len(sched["weight_lr"])
-          assert len(sched["weights"]) == len(sched["decay_steps"])
-          assert len(sched["weights"]) == len(sched["decay_rate"])
-          assert len(sched["weights"]) == len(sched["staircase"])
+    for sched in schedule:
+      if sched["weights"] is not None: # schedule specificies specific variables for trainable vars
+        assert len(sched["weights"]) == len(sched["weight_lr"])
+        assert len(sched["weights"]) == len(sched["decay_steps"])
+        assert len(sched["weights"]) == len(sched["decay_rate"])
+        assert len(sched["weights"]) == len(sched["staircase"])
+      else: # scalar is used
+        assert type(sched["weight_lr"]) == float
+        assert type(sched["decay_steps"]) == int
+        assert type(sched["decay_int"]) == float
+        assert type(sched["staircase"]) == bool
+        sched["weights"] = self.get_trainable_variable_names()
+        sched["weight_lr"] = [sched["weight_lr"],]*len(sched["weights"])
+        sched["decay_steps"] = [sched["decay_steps"],]*len(sched["weights"])
+        sched["decay_int"] = [sched["decay_int"],]*len(sched["weights"])
+        sched["staircase"] = [sched["staircase"],]*len(sched["weights"])
     self.sched = schedule
 
   def load_params(self, params):

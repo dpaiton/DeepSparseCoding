@@ -22,7 +22,6 @@ class params(Base_Params):
     self.lpf_data = False
     self.lpf_cutoff = 0.7
     self.extract_patches = False
-    self.num_batches = int(3e5)
     self.batch_size = 200
     #Specify number of neurons for encoder
     #Last element in list is the size of the latent space
@@ -37,23 +36,20 @@ class params(Base_Params):
     self.gen_plot_int = 10000
     self.save_plots = True
 
+    self.schedule = [
+      {"num_batches": int(3e5),
+      "weights": None,
+      "decay_mult": 0.0,
+      "sparse_mult": 0.0,
+      "kld_mult": 1/self..batch_size,
+      "weight_lr": 0.0001,
+      "decay_steps": int(3e5*0.4),
+      "decay_rate": 0.5,
+      "staircase": True,}]
+
   def set_data_params(self, data_type):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
     else:
       assert False, ("Data type "+data_type+" is not supported.")
-
-trainable_vars = vae().get_trainable_variable_names(params())
-num_train_weights = len(trainable_vars)
-
-schedule = [
-  {"weights": trainable_vars,
-  "decay_mult": 0.0,
-  "sparse_mult": 0.0,
-  "kld_mult": 1/params().batch_size,
-  "weight_lr": [0.0001,]*num_train_weights,
-  "decay_steps": [int(3e6*0.4),]*num_train_weights,
-  "decay_rate": [0.5,]*num_train_weights,
-  "staircase": [True,]*num_train_weights}]
-
