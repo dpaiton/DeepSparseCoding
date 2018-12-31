@@ -48,7 +48,7 @@ class params(Base_Params):
     self.save_plots = True
 
     self.schedule = [
-      {"num_batches": int(1e5)
+      {"num_batches": int(1e5),
       "weights": ["phi"],
       "sparse_mult": 0.4,
       "weight_lr": [0.001],
