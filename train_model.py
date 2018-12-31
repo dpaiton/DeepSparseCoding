@@ -72,7 +72,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
   for sch_idx, sch in enumerate(params.schedule):
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
-    for b_step in np.arange(params.num_batches):
+    for b_step in np.arange(sch["num_batches"]):
       data_batch = data["train"].next_batch(params.batch_size)
       input_data = data_batch[0]
       input_labels = data_batch[1]
