@@ -102,7 +102,7 @@ class params(Base_Params):
     self.staircase = [True for _ in range(len(self.train_list))]
 
     self.schedule = [
-      {"weights": self..train_list,
+      {"weights": self.train_list,
       "ent_mult": 0.1,
       "ramp_slope": 1.0,
       "decay_mult": 0.002,
