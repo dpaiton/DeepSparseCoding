@@ -6,7 +6,7 @@ import data.data_selector as ds
 import utils.data_processing as dp
 
 """
-Test for training models
+Test for running models
 NOTE: Should be executed from the repository's root directory
 loads every model
 loads every dataset
@@ -29,12 +29,10 @@ for each model:
     #  else:
     #    assert False, "model with dataset failed"
 ## TODO:
-  * if model/dataset combo doesn't work, then test model loading alone
-  * test all models for each dataset, load datasets ahead of time? weird because of parameter ordering
   * rica model has different interface for applying gradients when the L-BFGS minimizer is used
     this is inconsistent and should be changed so that it acts like all models
 """
-class TrainingTest(tf.test.TestCase):
+class RunTest(tf.test.TestCase):
   def testBasic(self):
     should_fail_list = [
       ("mlp", "CIFAR10"),
@@ -137,7 +135,7 @@ class TrainingTest(tf.test.TestCase):
         else:
           try:
             params.set_data_params(data_type)
-            params.model_name = "training_test_"+params.model_name
+            params.model_name = "test_run_"+params.model_name
             dataset = ds.get_data(params) # Import data
             dataset = model.preprocess_dataset(dataset, params)
             dataset = model.reshape_dataset(dataset, params)

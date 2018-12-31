@@ -10,7 +10,7 @@ Test for building models
 NOTE: Should be executed from the repository's root directory
 loads every model
 """
-class ModelsTest(tf.test.TestCase):
+class BuildTest(tf.test.TestCase):
   def testBasic(self):
     data_type = "mnist"
     model_list = ["mlp", "vae", "lca"]#mp.get_model_list()
@@ -22,7 +22,7 @@ class ModelsTest(tf.test.TestCase):
       model = mp.get_model(model_type) # Import model
       params.data_type = data_type
       model.data_type = data_type
-      params.model_name = "models_test_" + params.model_name
+      params.model_name = "test_built_" + params.model_name
       try:
         dataset = ds.get_data(params) # Import data
         dataset = model.preprocess_dataset(dataset, params)

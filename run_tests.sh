@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ "$1" = "--train" ]; then
+if [ "$1" = "--run" ]; then
   NUM_TEST="6"
 else
   NUM_TEST="5"
@@ -14,8 +14,8 @@ CUDA_VISIBLE_DEVICES=0 python3 tests/utils/patches_test.py
 echo "----TEST 4 of $NUM_TEST"
 CUDA_VISIBLE_DEVICES=0 python3 tests/utils/contrast_normalize_test.py
 echo "----TEST 5 of $NUM_TEST"
-CUDA_VISIBLE_DEVICES=0 python3 tests/models/models_test.py
-if [ "$1" == "--train" ]; then
+CUDA_VISIBLE_DEVICES=0 python3 tests/models/build_test.py
+if [ "$1" == "--run" ]; then
   echo "----TEST 6 of $NUM_TEST"
-  CUDA_VISIBLE_DEVICES=0 python3 tests/training/training_test.py
+  CUDA_VISIBLE_DEVICES=0 python3 tests/models/run_test.py
 fi
