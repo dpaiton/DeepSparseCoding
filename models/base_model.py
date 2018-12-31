@@ -44,12 +44,13 @@ class Model(object):
         sched["decay_steps"] = [sched["decay_steps"],]*len(sched["weights"])
         sched["decay_rate"] = [sched["decay_rate"],]*len(sched["weights"])
         sched["staircase"] = [sched["staircase"],]*len(sched["weights"])
-    self.sched = schedule
 
   def get_trainable_variable_names(self, params):
     assert hasattr(params, "data_shape"), ("Params must include data shape.")
     self.load_params(params)
-    self.setup_graph()
+    self.graph = tf.Graph()
+    self.trainable_variables = TrainableVariableDict()
+    self.build_graph()
     return list(self.trainable_variables.keys())
 
   def load_params(self, params):
@@ -119,7 +120,7 @@ class Model(object):
 
   def log_schedule(self):
     """Use logging to write current schedule, as specified by self.sched_idx"""
-    self.logger.log_schedule(self.sched)
+    self.logger.log_schedule(self.params.schedule)
 
   def log_info(self, string):
     """Log input string"""
@@ -143,7 +144,7 @@ class Model(object):
           self.grads_and_vars = list() # [sch_idx][weight_idx]
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
-          for schedule_idx, sch in enumerate(self.sched):
+          for schedule_idx, sch in enumerate(self.params.schedule):
             sch_grads_and_vars = list() # [weight_idx]
             sch_apply_grads = list() # [weight_idx]
             sch_lrs = list() # [weight_idx]
@@ -276,10 +277,10 @@ class Model(object):
       key: [str] key in dictionary
     """
     if key is not None:
-      assert key in self.sched[self.sched_idx].keys(), (
+      assert key in self.params.schedule[self.sched_idx].keys(), (
         key+" was not found in the schedule.")
-      return self.sched[self.sched_idx][key]
-    return self.sched[self.sched_idx]
+      return self.params.schedule[self.sched_idx][key]
+    return self.params.schedule[self.sched_idx]
 
   def set_schedule(self, key, val):
     """
@@ -289,10 +290,10 @@ class Model(object):
       val: value be set in schedlue,
         if there is already a val for key, new val must be of same type
     """
-    if key in self.sched[self.sched_idx].keys():
-      assert type(val) == type(self.sched[self.sched_idx][key]), (
-        "val must have type "+str(type(self.sched[self.sched_idx][key])))
-    self.sched[self.sched_idx][key] = val
+    if key in self.params.schedule[self.sched_idx].keys():
+      assert type(val) == type(self.params.schedule[self.sched_idx][key]), (
+        "val must have type "+str(type(self.params.schedule[self.sched_idx][key])))
+    self.params.schedule[self.sched_idx][key] = val
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None):
     """
@@ -324,8 +325,7 @@ class Model(object):
     self.graph = tf.Graph()
     self.trainable_variables = TrainableVariableDict()
     self.build_graph()
-    if hasattr(self.params, "schedule"): # if no schedule is provided, then don't add optimizers
-      self.add_optimizers_to_graph()
+    self.add_optimizers_to_graph()
     self.add_initializer_to_graph()
     self.construct_savers()
 
