@@ -44,12 +44,12 @@ class Model(object):
       else: # scalar is used
         assert type(sched["weight_lr"]) == float
         assert type(sched["decay_steps"]) == int
-        assert type(sched["decay_int"]) == float
+        assert type(sched["decay_rate"]) == float
         assert type(sched["staircase"]) == bool
         sched["weights"] = self.get_trainable_variable_names()
         sched["weight_lr"] = [sched["weight_lr"],]*len(sched["weights"])
         sched["decay_steps"] = [sched["decay_steps"],]*len(sched["weights"])
-        sched["decay_int"] = [sched["decay_int"],]*len(sched["weights"])
+        sched["decay_rate"] = [sched["decay_rate"],]*len(sched["weights"])
         sched["staircase"] = [sched["staircase"],]*len(sched["weights"])
     self.sched = schedule
 
