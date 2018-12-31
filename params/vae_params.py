@@ -41,7 +41,7 @@ class params(Base_Params):
       "weights": None,
       "decay_mult": 0.0,
       "sparse_mult": 0.0,
-      "kld_mult": 1/self..batch_size,
+      "kld_mult": 1/self.batch_size,
       "weight_lr": 0.0001,
       "decay_steps": int(3e5*0.4),
       "decay_rate": 0.5,
