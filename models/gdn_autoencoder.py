@@ -25,15 +25,15 @@ class GDN_Autoencoder(Model):
   def load_params(self, params):
     super(GDN_Autoencoder, self).load_params(params)
     # Computed parameters
-    self.x_shape = [None, self.num_pixels]
-    self.w_enc_shape = [self.num_pixels, self.num_neurons]
-    self.w_dec_shape = [self.num_neurons, self.num_pixels]
-    self.b_enc_shape = [self.num_neurons]
-    self.b_dec_shape = [self.num_pixels]
-    self.w_gdn_shape = [self.num_neurons, self.num_neurons]
-    self.b_gdn_shape = [1, self.num_neurons]
-    self.w_igdn_shape = [self.num_pixels, self.num_pixels]
-    self.b_igdn_shape = [1, self.num_pixels]
+    self.x_shape = [None, self.params.num_pixels]
+    self.w_enc_shape = [self.params.num_pixels, self.params.num_neurons]
+    self.w_dec_shape = [self.params.num_neurons, self.params.num_pixels]
+    self.b_enc_shape = [self.params.num_neurons]
+    self.b_dec_shape = [self.params.num_pixels]
+    self.w_gdn_shape = [self.params.num_neurons, self.params.num_neurons]
+    self.b_gdn_shape = [1, self.params.num_neurons]
+    self.w_igdn_shape = [self.params.num_pixels, self.params.num_pixels]
+    self.b_igdn_shape = [1, self.params.num_pixels]
 
   def sigmoid(self, a_in, beta=1, name=None):
     """Hyperbolic tangent non-linearity"""
@@ -42,7 +42,7 @@ class GDN_Autoencoder(Model):
     return a_out
 
   def compute_entropies(self, a_in):
-    a_sig = self.sigmoid(a_in, self.sigmoid_beta)
+    a_sig = self.sigmoid(a_in, self.params.sigmoid_beta)
     a_probs = ef.prob_est(a_sig, self.mle_thetas, self.triangle_centers)
     a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
     return a_entropies
@@ -67,8 +67,8 @@ class GDN_Autoencoder(Model):
   def compute_ramp_loss(self, a_in):
     reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch
     ramp_loss = tf.reduce_mean(tf.reduce_sum(self.ramp_slope
-      * (tf.nn.relu(a_in - self.ramp_max)
-      + tf.nn.relu(self.ramp_min - a_in)), axis=reduc_dim))
+      * (tf.nn.relu(a_in - self.params.ramp_max)
+      + tf.nn.relu(self.params.ramp_min - a_in)), axis=reduc_dim))
     return ramp_loss
 
   def compute_recon_loss(self, recon):
@@ -98,8 +98,8 @@ class GDN_Autoencoder(Model):
       self.trainable_variables[w_gdn.name] = w_gdn
       self.trainable_variables[b_gdn.name] = b_gdn
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
-        self.gdn_b_thresh_min, self.gdn_eps, inverse, conv=False, name="gdn_output"+str(layer_id))
+      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.params.gdn_w_thresh_min,
+        self.params.gdn_b_thresh_min, self.params.gdn_eps, inverse, conv=False, name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
   def build_graph(self):
@@ -108,7 +108,7 @@ class GDN_Autoencoder(Model):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
-          self.triangle_centers = tf.placeholder(tf.float32, shape=[self.num_triangles],
+          self.triangle_centers = tf.placeholder(tf.float32, shape=[self.params.num_triangles],
             name="triangle_centers")
           self.ent_mult = tf.placeholder(tf.float32, shape=(), name="ent_mult")
           self.ramp_slope = tf.placeholder(tf.float32, shape=(), name="ramp_slope")
@@ -119,8 +119,8 @@ class GDN_Autoencoder(Model):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("probability_estimate") as scope:
-          self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_neurons,
-            self.num_triangles)
+          self.mle_thetas, self.theta_init = ef.construct_thetas(self.params.num_neurons,
+            self.params.num_triangles)
 
         with tf.name_scope("weight_inits") as scope:
           self.w_init = tf.initializers.random_normal(mean=0.0, stddev=0.1,
@@ -134,10 +134,10 @@ class GDN_Autoencoder(Model):
           #  seed=self.rand_seed, dtype=tf.float32)
           #self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
           #  seed=self.rand_seed, dtype=tf.float32)
-          self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
-            off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
+          self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.params.gdn_w_init_const,
+            off_diagonal_gain=self.params.gdn_eps, dtype=tf.float32)
           self.w_igdn_init = self.w_gdn_init
-          b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
+          b_init_const = np.sqrt(self.params.gdn_b_init_const + self.params.gdn_eps**2)
           self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
           self.b_igdn_init = self.b_gdn_init
 
@@ -168,12 +168,12 @@ class GDN_Autoencoder(Model):
           uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(u_out)),
             minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
           a_noise = tf.add(uniform_noise, u_out, name="activity")
-          self.a = self.sigmoid(u_out, self.sigmoid_beta, name="activity")
+          self.a = self.sigmoid(u_out, self.params.sigmoid_beta, name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
           ll = ef.log_likelihood(self.a, self.mle_thetas, self.triangle_centers)
-          self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
-            for _ in range(self.num_mle_steps)]
+          self.mle_update = [ef.mle(ll, self.mle_thetas, self.params.mle_step_size)
+            for _ in range(self.params.num_mle_steps)]
 
         with tf.name_scope("output") as scope:
           u_dec = tf.add(tf.matmul(a_noise, self.w_dec), self.b_dec, name="u_dec")
@@ -218,13 +218,13 @@ class GDN_Autoencoder(Model):
               decay_rate=sch["decay_rate"][w_idx],
               staircase=sch["staircase"][w_idx],
               name="annealing_schedule_"+weight)
-            if self.optimizer == "annealed_sgd":
+            if self.params.optimizer == "annealed_sgd":
               optimizer = tf.train.GradientDescentOptimizer(learning_rates,
                 name="grad_optimizer_"+weight)
-            elif self.optimizer == "adam":
+            elif self.params.optimizer == "adam":
               optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
                 epsilon=1e-07, name="adam_optimizer_"+weight)
-            elif self.optimizer == "adadelta":
+            elif self.params.optimizer == "adadelta":
               optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
                 name="adadelta_optimizer_"+weight)
             with tf.variable_scope(self.weight_scope, reuse=True) as scope:
@@ -308,65 +308,68 @@ class GDN_Autoencoder(Model):
     w_enc = np.squeeze(dp.reshape_data(w_enc.T, flatten=False)[0]) # neurons x pixels
     w_dec = np.squeeze(dp.reshape_data(w_dec, flatten=False)[0]) # neurons x pixels
     fig = pf.plot_weight_image(w_gdn, title="GDN Weights", figsize=(10,10),
-      save_filename=self.disp_dir+"w_gdn_v"+self.version+"-"+current_step.zfill(5)+".png")
+      save_filename=self.disp_dir+"w_gdn_v"+self.params.version+"-"+current_step.zfill(5)+".png")
     fig = pf.plot_weight_image(w_igdn, title="Inverse GDN Weights", figsize=(10,10),
-      save_filename=self.disp_dir+"w_igdn_v"+self.version+"-"+current_step.zfill(5)+".png")
+      save_filename=self.disp_dir+"w_igdn_v"+self.params.version+"-"+current_step.zfill(5)+".png")
     fig = pf.plot_activity_hist(b_gdn, title="GDN Bias Histogram",
-      save_filename=(self.disp_dir+"b_gdn_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"b_gdn_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_igdn, title="IGDN Bias Histogram",
-      save_filename=(self.disp_dir+"b_igdn_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"b_igdn_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_weights(w_enc, title="Encoding weights at step "+current_step,
-      save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"w_enc_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
     #fig = pf.plot_data_tiled(w_enc, normalize=False,
     #  title="Encoding weights at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"
+    #  save_filename=(self.disp_dir+"w_enc_v"+self.params.version+"-"
     #  +current_step.zfill(5)+".png"))
     fig = pf.plot_weights(w_dec, title="Decoding weights at step "+current_step,
-      save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"w_dec_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
     #fig = pf.plot_data_tiled(w_dec, normalize=False,
     #  title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
+    #  save_filename=(self.disp_dir+"w_dec_v"+self.params.version+"-"
     #  +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram",
-      save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"b_enc_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_dec, title="Decoding Bias Histogram",
-      save_filename=(self.disp_dir+"b_dec_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"b_dec_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(gdn_mult, title="GDN Multiplier Histogram",
-      save_filename=(self.disp_dir+"gdn_mult_v"+self.version+"-"
+      save_filename=(self.disp_dir+"gdn_mult_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     entropy_sort_indices = np.argsort(entropies)[::-1] # ascending
     for fig_id, neuron_id in enumerate(entropy_sort_indices[:3]):
       fig = pf.plot_activity_hist(activity[:, neuron_id],
         title=("Actvity Histogram (pre-noise) for Neuron "+str(neuron_id)+"\nwith entropy = "
         +str(np.round(entropies[neuron_id]))),
-        save_filename=(self.disp_dir+"indv_act_hist_v"+self.version+"-"
+        save_filename=(self.disp_dir+"indv_act_hist_v"+self.params.version+"-"
         +current_step.zfill(5)+"_"+str(fig_id).zfill(3)+".png"))
     fig = pf.plot_activity_hist(activity, title="Activity Histogram (pre-noise)",
-      save_filename=(self.disp_dir+"act_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"act_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_enc_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"w_enc_norm_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_dec_norm, num_xticks=5,
       title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_dec_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
-    if eval_out[0]*10 % self.cp_int == 0:
+      save_filename=(self.disp_dir+"w_dec_norm_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
+    if eval_out[0]*10 % self.params.cp_int == 0:
       fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-        save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
+        save_filename=(self.disp_dir+"img_hist_"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
       input_data = dp.reshape_data(input_data, flatten=False)[0]
       fig = pf.plot_data_tiled(input_data, normalize=False,
         title="Images at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"images_"+self.version+"-"
+        save_filename=(self.disp_dir+"images_"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
       recon = dp.reshape_data(recon, flatten=False)[0]
       fig = pf.plot_data_tiled(recon, normalize=False,
         title="Recons at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
+        save_filename=(self.disp_dir+"recons_v"+self.params.version+"-"
+        +current_step.zfill(5)+".png"))
       #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       #  grad = weight_grad_var[0][0].eval(feed_dict)
       #  shape = grad.shape
@@ -374,4 +377,5 @@ class GDN_Autoencoder(Model):
       #  grad = dp.reshape_data(grad.T, flatten=False)[0]
       #  fig = pf.plot_data_tiled(grad, normalize=True,
       #    title="Gradient for"+name+" at step "+current_step, vmin=None, vmax=None,
-      #    save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      #    save_filename=(self.disp_dir+"d"+name+"_v"+self.params.version+"-"
+      #    +current_step.zfill(5)+".png"))

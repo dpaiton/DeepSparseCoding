@@ -27,21 +27,21 @@ class CONV_LCA(LCA):
     super(CONV_LCA, self).load_params(params)
     if len(self.data_shape) == 2:
       self.data_shape += [1]
-    assert (self.data_shape[0] % self.stride_x == 0), (
+    assert (self.data_shape[0] % self.params.stride_x == 0), (
       "Stride x must divide evenly into input shape")
-    assert (self.data_shape[1] % self.stride_y == 0), (
+    assert (self.data_shape[1] % self.params.stride_y == 0), (
       "Stride y must divide evenly into input shape")
-    self.u_x = int(self.data_shape[0]/self.stride_x)
-    self.u_y = int(self.data_shape[1]/self.stride_y)
-    self.num_pixels = int(self.patch_size_y * self.patch_size_x * self.data_shape[2])
-    self.phi_shape = [self.patch_size_y, self.patch_size_x,
-      int(self.data_shape[2]), int(self.num_neurons)]
-    self.u_shape = [self.u_y, self.u_x, int(self.num_neurons)]
+    self.u_x = int(self.data_shape[0]/self.params.stride_x)
+    self.u_y = int(self.data_shape[1]/self.params.stride_y)
+    self.num_pixels = int(self.params.patch_size_y * self.params.patch_size_x * self.data_shape[2])
+    self.phi_shape = [self.params.patch_size_y, self.params.patch_size_x,
+      int(self.data_shape[2]), int(self.params.num_neurons)]
+    self.u_shape = [self.u_y, self.u_x, int(self.params.num_neurons)]
     self.x_shape = [None,] + self.data_shape
 
   def compute_recon(self, a_in):
     x_ = tf.nn.conv2d_transpose(a_in, self.phi, tf.shape(self.x),
-      [1, self.stride_y, self.stride_x, 1], padding="SAME", name="reconstruction")
+      [1, self.params.stride_y, self.params.stride_x, 1], padding="SAME", name="reconstruction")
     return x_
 
   def step_inference(self, u_in, a_in, step):
@@ -50,8 +50,8 @@ class CONV_LCA(LCA):
       #recon_grad = tf.gradients(self.compute_recon_loss(a_in), a_in)[0]
       #du = tf.subtract(tf.add(-recon_grad, a_in), u_in, name="du")
       recon_error = self.x - self.compute_recon(a_in)
-      error_injection = tf.nn.conv2d(recon_error, self.phi, [1, self.stride_y, self.stride_x, 1],
-        padding="SAME", use_cudnn_on_gpu=True, name="forward_injection")
+      error_injection = tf.nn.conv2d(recon_error, self.phi, [1, self.params.stride_y,
+        self.params.stride_x, 1], padding="SAME", use_cudnn_on_gpu=True, name="forward_injection")
       du = tf.subtract(tf.add(error_injection, a_in), u_in, name="du")
       u_out = tf.add(u_in, tf.multiply(self.eta, du))
     return u_out
@@ -59,7 +59,7 @@ class CONV_LCA(LCA):
   def infer_coefficients(self):
    u_list = [self.u_zeros]
    a_list = [self.threshold_units(u_list[0])]
-   for step in range(self.num_steps-1):
+   for step in range(self.params.num_steps-1):
      u = self.step_inference(u_list[step], a_list[step], step+1)
      u_list.append(u)
      a_list.append(self.threshold_units(u))
@@ -86,17 +86,17 @@ class CONV_LCA(LCA):
     input_data = dp.rescale_data_to_one(input_data)[0]
     pf.plot_data_tiled(input_data[0,...], normalize=False,
       title="Images at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-      save_filename=(self.disp_dir+"images_"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"images_"+self.params.version+"-"+current_step.zfill(5)+".png"))
     pf.plot_data_tiled(recon[0,...], normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"recons_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
     pf.plot_data_tiled(weights, normalize=False, title="Dictionary at step "+current_step,
       vmin=np.min(weights), vmax=np.max(weights), cmap=cmap,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"phi_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
         title="Gradient for phi at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"-"+current_step.zfill(5)+".png"))
+        save_filename=(self.disp_dir+"dphi_v"+self.params.version+"-"+current_step.zfill(5)+".png"))

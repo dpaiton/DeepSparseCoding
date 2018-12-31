@@ -35,13 +35,14 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     """
     super(GDN_Autoencoder, self).load_params(params)
     self.w_shapes = [vals
-      for vals in zip(self.patch_size_y, self.patch_size_x, self.output_channels, self.input_channels)]
-    self.w_igdn_shapes = [[pout,pout] for pout in self.output_channels]
-    self.b_shapes = [[pout,] for pout in self.output_channels]
-    self.b_igdn_shapes = [[pout,] for pout in self.output_channels]
-    self.n_mem = np.prod(self.input_shape)
-    self.x_shape = [None,]+self.input_shape
-    self.num_layers = len(self.input_channels)
+      for vals in zip(self.params.patch_size_y, self.params.patch_size_x, self.params.output_channels,
+      self.params.input_channels)]
+    self.w_igdn_shapes = [[pout,pout] for pout in self.params.output_channels]
+    self.b_shapes = [[pout,] for pout in self.params.output_channels]
+    self.b_igdn_shapes = [[pout,] for pout in self.params.output_channels]
+    self.n_mem = np.prod(self.params.input_shape)
+    self.x_shape = [None,]+self.params.input_shape
+    self.num_layers = len(self.params.input_channels)
 
   def gdn(self, layer_id, u_in, inverse):
     """Devisive normalizeation nonlinearity"""
@@ -55,8 +56,9 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
       self.trainable_variables[w_gdn.name] = w_gdn
       self.trainable_variables[b_gdn.name] = b_gdn
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
-        self.gdn_b_thresh_min, self.gdn_eps, inverse=True, conv=True, name="gdn_output"+str(layer_id))
+      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.params.gdn_w_thresh_min,
+        self.params.gdn_b_thresh_min, self.params.gdn_eps, inverse=True, conv=True,
+        name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
   def layer_maker(self, layer_id, u_in, w_shape, w_stride):
@@ -84,7 +86,7 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
       out_height = (u_in.get_shape()[1] * w_stride) - height_const
       width_const = 0 if u_in.get_shape()[2] % w_stride == 0 else 1
       out_width = (u_in.get_shape()[2] * w_stride) - width_const
-      out_shape = tf.stack([self.batch_size, # Batch
+      out_shape = tf.stack([self.params.batch_size, # Batch
         out_height, # Height
         out_width, # Width
         tf.constant(w_shape[2], dtype=tf.int32)]) # Channels

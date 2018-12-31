@@ -25,35 +25,33 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     Load parameters into object
     Inputs:
      params: [dict] model parameters
-    Modifiable Parameters:
-     downsample_images
     """
     super(GDN_Autoencoder, self).load_params(params)
     # Calculated parameters
-    self.x_shape = [None, self.im_size_y, self.im_size_x, self.input_channels[0]]
-    self.w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
-      self.input_channels, self.output_channels)]
+    self.x_shape = [None, self.params.im_size_y, self.params.im_size_x,
+      self.params.input_channels[0]]
+    self.w_shapes = [vals for vals in zip(self.params.patch_size_y, self.params.patch_size_x,
+      self.params.input_channels, self.params.output_channels)]
     self.w_shapes += self.w_shapes[::-1] # decoder mirrors the encoder
-    self.w_strides += self.w_strides[::-1] # decoder mirrors the encoder
-    self.b_shapes = [vals for vals in self.output_channels]
+    self.params.w_strides += self.params.w_strides[::-1] # decoder mirrors the encoder
+    self.b_shapes = [vals for vals in self.params.output_channels]
     # Decoding calculation uses conv2d_transpose so input_channels (w_shapes[2]) is actually
     # the number of output channels in the decoding direction
-    self.w_gdn_shapes = [[val, val] for val in self.output_channels]
-    self.w_gdn_shapes += [[val,val] for val in self.input_channels[::-1]]
-    self.b_gdn_shapes = [[val] for val in self.output_channels]
-    self.b_gdn_shapes += [[val] for val in self.input_channels[::-1]]
-    self.input_channels += self.input_channels[::-1]
-    self.output_channels += self.output_channels[::-1]
+    self.w_gdn_shapes = [[val, val] for val in self.params.output_channels]
+    self.w_gdn_shapes += [[val,val] for val in self.params.input_channels[::-1]]
+    self.b_gdn_shapes = [[val] for val in self.params.output_channels]
+    self.b_gdn_shapes += [[val] for val in self.params.input_channels[::-1]]
+    self.params.input_channels += self.params.input_channels[::-1]
+    self.params.output_channels += self.params.output_channels[::-1]
     self.num_layers = len(self.w_shapes)
     # Memristor parameters
     # TODO: should be able to calculate nmem
-    #self.n_mem = self.compute_num_latent([self.im_size_y, self.im_size_x, self.num_colors],
-    #  self.patch_size_y, self.patch_size_x, self.w_strides, self.output_channels)
-    self.memristor_noise_shape = [self.batch_size, self.n_mem]
-    self.mem_v_min = -1.0
-    self.mem_v_max = 1.0
-    self.ramp_min = self.mem_v_min
-    self.ramp_max = self.mem_v_max
+    #self.params.n_mem = self.compute_num_latent([self.params.im_size_y, self.params.im_size_x,
+    #  self.params.num_colors], self.params.patch_size_y, self.params.patch_size_x,
+    #  self.params.w_strides, self.params.output_channels)
+    self.memristor_noise_shape = [self.params.batch_size, self.params.n_mem]
+    self.ramp_min = self.params.mem_v_min
+    self.ramp_max = self.params.mem_v_max
 
   def compute_num_latent(self, in_shape, patchY_list, patchX_list, strides, output_chans):
     inY, inX, inC = in_shape
@@ -87,10 +85,10 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     u_in_shape = tf.shape(u_in)
     (vs_data, mus_data, sigs_data,
       orig_VMIN, orig_VMAX, orig_RMIN,
-      orig_RMAX) = get_channel_data(self.memristor_data_loc, self.n_mem, num_ext=5,
-      norm_min=self.mem_v_min, norm_max=self.mem_v_max)
-    v_clip = tf.clip_by_value(u_in, clip_value_min=self.mem_v_min,
-      clip_value_max=self.mem_v_max)
+      orig_RMAX) = get_channel_data(self.params.memristor_data_loc, self.params.n_mem, num_ext=5,
+      norm_min=self.params.mem_v_min, norm_max=self.params.mem_v_max)
+    v_clip = tf.clip_by_value(u_in, clip_value_min=self.params.mem_v_min,
+      clip_value_max=self.params.mem_v_max)
     r = mem_utils.memristor_output(v_clip, memristor_std_eps, vs_data, mus_data, sigs_data,
       interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'), error_rate = self.mem_error_rate)
     u_out = tf.reshape(r, shape=u_in_shape, name="mem_r")
@@ -99,9 +97,9 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
   def compute_entropies(self, a_in):
     with tf.name_scope("unsupervised"):
       #TODO: Verify n_mem = prod(shape(a_in)[1:])
-      num_units = self.n_mem#tf.reduce_prod(tf.shape(a_in)[1:])
-      a_resh = tf.reshape(a_in, [self.batch_size, num_units])
-      a_sig = self.sigmoid(a_resh, self.sigmoid_beta)
+      num_units = self.params.n_mem#tf.reduce_prod(tf.shape(a_in)[1:])
+      a_resh = tf.reshape(a_in, [self.params.batch_size, num_units])
+      a_sig = self.sigmoid(a_resh, self.params.sigmoid_beta)
       a_probs = ef.prob_est(a_sig, self.mle_thetas, self.triangle_centers)
       a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
     return a_entropies
@@ -126,8 +124,8 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       self.trainable_variables[w_gdn.name] = w_gdn
       self.trainable_variables[b_gdn.name] = b_gdn
     with tf.variable_scope("gdn"+str(layer_id)) as scope:
-      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.gdn_w_thresh_min,
-        self.gdn_b_thresh_min, self.gdn_eps, inverse, conv=True, name="gdn_output"+str(layer_id))
+      u_out, gdn_mult = gdn(u_in, w_gdn, b_gdn, self.params.gdn_w_thresh_min,
+        self.params.gdn_b_thresh_min, self.params.gdn_eps, inverse, conv=True, name="gdn_output"+str(layer_id))
     return u_out, w_gdn, b_gdn, gdn_mult
 
   def layer_maker(self, layer_id, u_in, w_shape, w_stride, decode):
@@ -185,7 +183,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
-          self.triangle_centers = tf.placeholder(tf.float32, shape=[self.num_triangles],
+          self.triangle_centers = tf.placeholder(tf.float32, shape=[self.params.num_triangles],
             name="triangle_centers")
           self.ent_mult = tf.placeholder(tf.float32, shape=(), name="ent_mult")
           self.ramp_slope = tf.placeholder(tf.float32, shape=(), name="ramp_slope")
@@ -201,7 +199,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("probability_estimate") as scope:
-          self.mle_thetas, self.theta_init = ef.construct_thetas(self.n_mem, self.num_triangles)
+          self.mle_thetas, self.theta_init = ef.construct_thetas(self.params.n_mem, self.params.num_triangles)
 
         with tf.name_scope("weight_inits") as scope:
           self.w_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False,
@@ -215,10 +213,10 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           #  dtype=tf.float32)
           #self.b_igdn_init = tf.initializers.random_uniform(minval=1e-5, maxval=1.0,
           #  dtype=tf.float32)
-          self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
-            off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
+          self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.params.gdn_w_init_const,
+            off_diagonal_gain=self.params.gdn_eps, dtype=tf.float32)
           self.w_igdn_init = self.w_gdn_init
-          b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
+          b_init_const = np.sqrt(self.params.gdn_b_init_const + self.params.gdn_eps**2)
           self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
           self.b_igdn_init = self.b_gdn_init
 
@@ -235,17 +233,17 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
         for layer_id in range(self.num_layers):
           gdn_inverse = False if layer_id < self.num_layers/2 else True
           u_out, w, b, w_gdn, b_gdn, conv_out, gdn_mult = self.layer_maker(layer_id,
-            self.u_list[layer_id], self.w_shapes[layer_id], self.w_strides[layer_id], gdn_inverse)
+            self.u_list[layer_id], self.w_shapes[layer_id], self.params.w_strides[layer_id], gdn_inverse)
           if layer_id == self.num_layers/2-1:
             #TODO: Verify n_mem = prod(shape(u_out)[1:])
-            self.num_latent = self.n_mem#tf.reduce_prod(tf.shape(u_out)[1:], name="num_latent" )
+            self.num_latent = self.params.n_mem#tf.reduce_prod(tf.shape(u_out)[1:], name="num_latent" )
             noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(u_out),
               tf.reduce_min(u_out))) # 1/2 of 10% of range of gdn output
             uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(u_out)),
               minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
             u_out = tf.add(uniform_noise, u_out, name="noisy_activity")
-            self.a_sig = self.sigmoid(u_out, self.sigmoid_beta)
-            u_out = self.memristorize(self.a_sig, self.memristor_std_eps, self.memristor_type)
+            self.a_sig = self.sigmoid(u_out, self.params.sigmoid_beta)
+            u_out = self.memristorize(self.a_sig, self.memristor_std_eps, self.params.memristor_type)
           self.u_list.append(u_out)
           self.conv_list.append(conv_out)
           self.w_list.append(w)
@@ -261,10 +259,10 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
           self.a = tf.identity(self.u_list[int(self.num_layers/2-1)], name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
-          a_sig_resh = tf.reshape(self.a_sig, [self.batch_size, self.num_latent])
+          a_sig_resh = tf.reshape(self.a_sig, [self.params.batch_size, self.num_latent])
           ll = ef.log_likelihood(a_sig_resh, self.mle_thetas, self.triangle_centers)
-          self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
-            for _ in range(self.num_mle_steps)]
+          self.mle_update = [ef.mle(ll, self.mle_thetas, self.params.mle_step_size)
+            for _ in range(self.params.num_mle_steps)]
 
         with tf.name_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.u_list[-1]),
@@ -307,7 +305,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
     mem_std_eps = np.random.standard_normal((self.params.batch_size,
-       self.n_mem)).astype(np.float32)
+       self.params.n_mem)).astype(np.float32)
     feed_dict[self.memristor_std_eps] = mem_std_eps
     loss_list = [self.loss_dict[key] for key in self.loss_dict.keys()]
     eval_list = [self.global_step]+loss_list+[self.total_loss, self.a, self.u_list[-1],
@@ -364,7 +362,7 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
     mem_std_eps = np.random.standard_normal((self.params.batch_size,
-       self.n_mem)).astype(np.float32)
+       self.params.n_mem)).astype(np.float32)
     feed_dict[self.memristor_std_eps] = mem_std_eps
     eval_list = [self.global_step, self.a, self.u_list[int(self.num_layers/2-1)], self.w_list[0],
       self.w_list[-1], self.u_list[-1]]
@@ -402,55 +400,55 @@ class Conv_GDN_Autoencoder(GDN_Autoencoder):
     w_enc = dp.reshape_data(w_enc, flatten=True)[0]
     fig = pf.plot_data_tiled(w_enc, normalize=False,
       title="Encoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_enc_v"+self.version+"-"
+      save_filename=(self.disp_dir+"w_enc_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     w_dec = np.transpose(w_dec, axes=(2,0,1,3))
     w_dec = dp.reshape_data(w_dec, flatten=True)[0]
     fig = pf.plot_data_tiled(w_dec, normalize=False,
       title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
+      save_filename=(self.disp_dir+"w_dec_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_enc_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"w_enc_norm_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_dec_norm, num_xticks=5,
       title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_dec_norm_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"w_dec_norm_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
     for idx, w_gdn in enumerate(w_gdn_eval_list):
       fig = pf.plot_weight_image(w_gdn, title="GDN "+str(idx)+" Weights", figsize=(10,10),
-        save_filename=(self.disp_dir+"w_gdn_"+str(idx)+"_v"+self.version+"-"
+        save_filename=(self.disp_dir+"w_gdn_"+str(idx)+"_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
     for idx, b_gdn in enumerate(b_gdn_eval_list):
       fig = pf.plot_activity_hist(b_gdn, title="GDN "+str(idx)+" Bias Histogram",
-        save_filename=(self.disp_dir+"b_gdn_"+str(idx)+"_hist_v"+self.version+"-"
+        save_filename=(self.disp_dir+"b_gdn_"+str(idx)+"_hist_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
     for idx, bias in enumerate(b_eval_list):
       fig = pf.plot_activity_hist(bias, title="Bias "+str(idx)+" Histogram",
-        save_filename=(self.disp_dir+"b_"+str(idx)+"_hist_v"+self.version+"-"
+        save_filename=(self.disp_dir+"b_"+str(idx)+"_hist_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
     for idx, gdn_mult_eval in enumerate(gdn_mult_eval_list):
       gdn_mult_resh = gdn_mult_eval.reshape(np.prod(gdn_mult_eval.shape))
       fig = pf.plot_activity_hist(gdn_mult_resh, title="GDN Multiplier Histogram",
-        save_filename=(self.disp_dir+"gdn_mult_v"+self.version+"-"
+        save_filename=(self.disp_dir+"gdn_mult_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
     pre_mem_activity = dp.reshape_data(pre_mem_activity, flatten=True)[0]
     fig = pf.plot_activity_hist(pre_mem_activity, title="Activity Histogram (pre-mem)",
-      save_filename=(self.disp_dir+"act_pre_mem_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"act_pre_mem_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     post_mem_activity = dp.reshape_data(post_mem_activity, flatten=True)[0]
     fig = pf.plot_activity_hist(post_mem_activity, title="Activity Histogram (post-mem)",
-      save_filename=(self.disp_dir+"act_post_mem_hist_v"+self.version+"-"
+      save_filename=(self.disp_dir+"act_post_mem_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     #input_data, input_orig_shape = dp.reshape_data(input_data, flatten=True)[:2]
     #fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-    #  save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
+    #  save_filename=(self.disp_dir+"img_hist_"+self.params.version+"-"
     #  +current_step.zfill(5)+".png"))
     #input_data = dp.reshape_data(input_data, flatten=False, out_shape=input_orig_shape)[0]
     #fig = pf.plot_data_tiled(input_data, normalize=False,
     #  title="Images at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"images_"+self.version+"-"
+    #  save_filename=(self.disp_dir+"images_"+self.params.version+"-"
     #  +current_step.zfill(5)+".png"))
     recon = dp.reshape_data(recon, flatten=False)[0]
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.disp_dir+"recons_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
