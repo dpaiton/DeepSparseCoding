@@ -65,8 +65,3 @@ class params(Base_Params):
       self.model_name += "_mnist"
     else:
       assert False, ("Data type "+data_type+" is not supported.")
-
-  def set_test_params(self, data_type=None):
-    super(params, self).set_test_params(data_type)
-    if data_type is not None:
-      self.set_data_params(data_type)

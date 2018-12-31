@@ -129,13 +129,3 @@ class params(Base_Params):
 
     else:
       assert False, ("Data type "+data_type+" is not supported.")
-
-  def set_test_params(self, data_type=None):
-    super(params, self).set_test_params(data_type)
-    if data_type is not None:
-      self.set_data_params(data_type)
-    self.num_neurons = 100
-    self.num_images = 1
-    self.patch_edge_size = 6
-    self.num_patches = 5
-    self.batch_size = 3
