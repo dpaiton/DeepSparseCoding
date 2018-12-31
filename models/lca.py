@@ -17,13 +17,13 @@ class LCA(Model):
     super(LCA, self).load_params(params)
     # Network Size
     self.batch_size = int(params.batch_size)
-    self.num_pixels = int(np.prod(self.data_shape))
+    self.num_pixels = int(np.prod(self.params.data_shape))
     self.num_neurons = int(params.num_neurons)
     self.phi_shape = [self.num_pixels, self.num_neurons]
     self.u_shape = [self.num_neurons]
     self.x_shape = [None, self.num_pixels]
     # Hyper Parameters
-    self.eta = self.dt / self.tau
+    self.eta = self.params.dt / self.params.tau
 
   def compute_excitatory_current(self):
     return tf.matmul(self.x, self.phi, name="driving_input")
@@ -33,8 +33,8 @@ class LCA(Model):
      - tf.constant(np.identity(self.phi_shape[1], dtype=np.float32), name="identity_matrix"))
 
   def threshold_units(self, u_in):
-    if self.thresh_type == "soft":
-      if self.rectify_a:
+    if self.params.thresh_type == "soft":
+      if self.params.rectify_a:
         a_out = tf.where(tf.greater(u_in, self.sparse_mult),
           tf.subtract(u_in, self.sparse_mult), self.u_zeros)
       else:
@@ -43,8 +43,8 @@ class LCA(Model):
           tf.where(tf.less_equal(u_in, -self.sparse_mult),
           tf.add(u_in, self.sparse_mult),
           self.u_zeros))
-    elif self.thresh_type == "hard":
-      if self.rectify_a:
+    elif self.params.thresh_type == "hard":
+      if self.params.rectify_a:
         a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in, self.u_zeros)
       else:
         a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
@@ -65,7 +65,7 @@ class LCA(Model):
    lca_g = self.compute_inhibitory_connectivity()
    u_list = [self.u_zeros]
    a_list = [self.threshold_units(u_list[0])]
-   for step in range(self.num_steps-1):
+   for step in range(self.params.num_steps-1):
      u = self.step_inference(u_list[step], a_list[step], lca_b, lca_g, step)[0]
      u_list.append(u)
      a_list.append(self.threshold_units(u_list[step+1]))
@@ -106,7 +106,7 @@ class LCA(Model):
   def build_graph(self):
     super(LCA, self).build_graph()
     """Build the TensorFlow graph object"""
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
@@ -126,14 +126,14 @@ class LCA(Model):
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()
           phi_init = tf.nn.l2_normalize(tf.truncated_normal(self.phi_shape, mean=0.0,
-            stddev=0.5, dtype=tf.float32), axis=phi_norm_dim, epsilon=self.eps, name="phi_init")
+            stddev=0.5, dtype=tf.float32), axis=phi_norm_dim, epsilon=self.params.eps, name="phi_init")
           self.phi = tf.get_variable(name="phi", dtype=tf.float32, initializer=phi_init,
             trainable=True)
           self.trainable_variables[self.phi.name] = self.phi
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_phi = self.phi.assign(tf.nn.l2_normalize(self.phi, axis=phi_norm_dim,
-            epsilon=self.eps, name="row_l2_norm"))
+            epsilon=self.params.eps, name="row_l2_norm"))
           self.norm_weights = tf.group(self.norm_phi, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
@@ -229,23 +229,23 @@ class LCA(Model):
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.disp_dir+"img_hist_"+self.version+"-"
+      save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Images at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"images_"+self.version+"-"
+      save_filename=(self.params.disp_dir+"images_"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
-      save_filename=(self.disp_dir+"act_hist_"+self.version+"-"
+      save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"phi_v"+self.version+"-"
+      save_filename=(self.params.disp_dir+"phi_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"recons_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
@@ -253,4 +253,4 @@ class LCA(Model):
       grad = dp.reshape_data(grad.T, flatten=False)[0]
       fig = pf.plot_data_tiled(grad, normalize=True,
         title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"dphi_v"+self.version+"_"+current_step.zfill(5)+".png"))
+        save_filename=(self.params.disp_dir+"dphi_v"+self.params.version+"_"+current_step.zfill(5)+".png"))

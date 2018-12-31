@@ -35,7 +35,6 @@ class params(Base_Params):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
-    self.num_batches = int(1e5)
     self.batch_size = 100
     self.num_neurons = 768
     self.num_steps = 50
@@ -51,16 +50,17 @@ class params(Base_Params):
     self.cp_load_name = "pretrain"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
-    self.cp_load_var = ["phi"]
+    #self.cp_load_var = ["phi"]
     self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 10000
     self.save_plots = True
     self.schedule = [
-      {"weights": ["phi"],
+      {"weights": ["weights/phi:0"],
+      "num_batches": int(1e5),
       "sparse_mult": 0.1,
       "weight_lr": [0.01],
-      "decay_steps": [int(self.num_batches*0.5)],
+      "decay_steps": [int(1e5*0.5)],
       "decay_rate": [0.8],
       "staircase": [True]}]
 
