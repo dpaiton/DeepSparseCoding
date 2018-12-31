@@ -6,38 +6,36 @@ class  batch_normalization(object):
   Implements batch normalization
   Inputs:
     a_in [tensor] feature map (or vector) for layer
-    norm_decay_mult [int]
+    norm_decay_mult [tf.placeholder] decay multiplier
     reduc_axes [list of ints] what axes to reduce over; default is for fc layer,
       [0,1,2] should be used for a conv layer
   """
-  def __init__(self, a_in, norm_decay_mult, reduc_axes, name="BatchNorm"):
+  def __init__(self, a_in, norm_decay_mult, eps, reduc_axes, name="BatchNorm"):
     self.trainable_variables = TrainableVariableDict()
 
     with tf.name_scope(name) as scope:
       bn_scale_name = name+"_batch_norm_scale"
-      self.batch_norm_scale[layer_idx] = tf.get_variable(name=bn_scale_name,
+      batch_norm_scale = tf.get_variable(name=bn_scale_name,
         dtype=tf.float32, initializer=tf.constant(1.0))
-      self.trainable_variables[self.batch_norm_scale[layer_idx].name] = self.batch_norm_scale[layer_idx]
+      self.trainable_variables[batch_norm_scale.name] = batch_norm_scale
 
       bn_shift_name = name+"_batch_norm_shift"
-      self.batch_norm_shift[layer_idx] = tf.get_variable(name=bn_shift_name,
+      batch_norm_shift = tf.get_variable(name=bn_shift_name,
         dtype=tf.float32, initializer=tf.constant(0.0))
-      self.trainable_variables[self.batch_norm_shift[layer_idx].name] = self.batch_norm_shift[layer_idx]
+      self.trainable_variables[batch_norm_shift.name] = batch_norm_shift
 
-      self.layer_means[layer_idx] = tf.Variable(tf.zeros([num_layer_features]),
+      num_layer_features = a_in.get_shape()[-1]
+      layer_means = tf.Variable(tf.zeros([num_layer_features]),
         dtype=tf.float32, trainable=False)
-      self.layer_vars[layer_idx] = tf.Variable(0.01*tf.ones([num_layer_features]),
+      layer_vars = tf.Variable(0.01*tf.ones([num_layer_features]),
         dtype=tf.float32, trainable=False)
 
       input_mean, input_var = tf.nn.moments(a_in, axes=reduc_axes)
-      self.layer_means[layer_id] = ((1 - norm_decay_mult) * self.layer_means[layer_id]
-        + norm_decay_mult * input_mean)
-      self.layer_vars[layer_id] = ((1 - norm_decay_mult) * self.layer_vars[layer_id]
-        + norm_decay_mult * input_var)
-      adj_a_in = tf.divide(tf.subtract(a_in, self.layer_means[layer_id]),
-        tf.sqrt(tf.add(self.layer_vars[layer_id], self.params.eps)))
-      self.act_out = tf.add(tf.multiply(self.batch_norm_scale[layer_id], adj_a_in),
-        self.batch_norm_shift[layer_id])
+      layer_means = ((1 - norm_decay_mult) * layer_means + norm_decay_mult * input_mean)
+      layer_vars = ((1 - norm_decay_mult) * layer_vars + norm_decay_mult * input_var)
+      adj_a_in = tf.divide(tf.subtract(a_in, layer_means), tf.sqrt(tf.add(layer_vars, eps)))
+
+      self.act_out = tf.add(tf.multiply(batch_norm_scale, adj_a_in), batch_norm_shift)
 
   def get_output(self):
     return self.act_out

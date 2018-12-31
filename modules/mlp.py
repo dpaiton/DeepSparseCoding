@@ -4,18 +4,22 @@ from utils.trainable_variable_dict import TrainableVariableDict
 import modules.batch_normalization as BatchNormalization
 
 class MLP(object):
-  def __init__(self, data_tensor, label_tensor, params, name="MLP"):
+  def __init__(self, data_tensor, label_tensor, norm_decay_mult, output_channels,
+    layer_types, eps, name="MLP"):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
       data_tensor
       label_tensor
-      params
-        output_channels
-        layer_types
+      norm_decay_mult
+      output_channels
+      layer_types
+      eps
       name
     Outputs:
       dictionary
+    TODO: relu is hard coded, but should be a parameter that is passed to an activation module
+      that has a bunch of activations
     """
     data_ndim = len(data_tensor.get_shape().as_list())
     assert (data_ndim == 2 or ndim == 4), (
@@ -26,11 +30,12 @@ class MLP(object):
 
     self.data_tensor = data_tensor
     if data_ndim == 2:
-      self.batch_size, self.num_pixels = data_ndim.get_shape()
-      assert np.all(params.layer_types == "fc"), ("Data tensor must have ndim==4 for conv layers")
+      self.batch_size, self.num_pixels = data_tensor.get_shape()
+      assert layer_types[0] == "fc", ("Data tensor must have ndim==2 for fc layers")
     elif data_ndim == 4:
-      self.batch_size, self.y_size, self.x_size, self.num_features = data_ndim.get_shape()
+      self.batch_size, self.y_size, self.x_size, self.num_features = data_tensor.get_shape()
       self.num_pixels = self.y_size * self.x_size * self.num_features
+      assert layer_types[0] == "conv", ("Data tensor must have ndim==4 for conv layers")
     else:
       assert False, ("Shouldn't get here")
 
@@ -38,10 +43,14 @@ class MLP(object):
     label_batch, self.num_classes = label_tensor.get_shape()
     assert label_batch == self.batch_size, ("Data and Label tensors must have the same batch size")
 
-    self.params = params
+    self.num_fc_layers = layer_types.count("fc")
+    self.num_conv_layers = layer_types.count("conv")
+    self.norm_decay_mult = norm_decay_mult
+    self.output_channels = output_channels
+    self.layer_types = layer_types
+    self.eps = eps
     self.name = str(name)
     self.trainable_variables = TrainableVariableDict()
-    self.graph = tf.Graph()
     self.build_graph()
 
   def conv_layer_maker(self, layer_id, a_in, w_shape, w_stride, b_shape):
@@ -59,8 +68,8 @@ class MLP(object):
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       conv_out = tf.nn.relu(tf.add(tf.nn.conv1d(a_in, w, w_stride, padding="SAME"), b),
         name="conv_out"+str(layer_id))
-      if self.do_batch_norm[layer_id]:
-        bn = BatchNormalization(conv_out, self.params.norm_decay_mult, reduc_axes=[0,1,2],
+      if self.norm_decay_mult is not None:
+        bn = BatchNormalization(conv_out, self.norm_decay_mult, reduc_axes=[0,1,2],
           name="BatchNorm_"+str(layer_id))
         conv_out = bn.get_activity()
         self.trainable_variables.update(bn.trainable_variables)
@@ -82,8 +91,8 @@ class MLP(object):
 
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       fc_out = tf.nn.relu(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
-      if self.do_batch_norm:
-        bn = BatchNormalization(fc_out, self.params.norm_decay_mult, reduc_axes=[0],
+      if self.norm_decay_mult is not None:
+        bn = BatchNormalization(fc_out, self.norm_decay_mult, reduc_axes=[0],
           name="BatchNorm_"+str(layer_id))
         fc_out = bn.get_activity()
         self.trainable_variables.update(bn.trainable_variables)
@@ -127,3 +136,24 @@ class MLP(object):
         self.weight_scope = tf.get_variable_scope()
 
       self.layer_list, self.weight_list, self.bias_list = self.make_layers()
+
+      with tf.name_scope("output") as scope:
+        with tf.name_scope("label_estimate"):
+          self.y_ = tf.nn.softmax(self.layer_list[-1])
+
+      with tf.name_scope("loss") as scope:
+        with tf.name_scope("supervised"):
+          with tf.name_scope("cross_entropy_loss"):
+            self.cross_entropy_loss = (self.label_mult
+              * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
+              self.y_, self.eps, 1.0))), axis=[1]))
+            label_count = tf.reduce_sum(self.label_mult)
+            f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
+            f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
+            pred_fn_pairs = {
+              tf.equal(label_count, tf.constant(0.0)): f1,
+              tf.greater(label_count, tf.constant(0.0)): f2}
+            self.mean_cross_entropy_loss = tf.case(pred_fn_pairs,
+              default=f2, exclusive=True, name="mean_cross_entropy_loss")
+          self.supervised_loss = self.mean_cross_entropy_loss
+        self.total_loss = self.supervised_loss
