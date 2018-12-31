@@ -3,7 +3,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.base_model import Model
-from modules.mlp import MLP as mlp_module
+from modules.mlp import MLPModule
 
 class MLP(Model):
   def __init__(self):
@@ -17,16 +17,14 @@ class MLP(Model):
     """
     super(MLP, self).load_params(params)
     self.num_pixels = int(np.prod(self.params.data_shape))
-    #self.x_shape = [None, self.num_pixels]
     self.x_shape = [None,] + self.params.data_shape
     self.y_shape = [None, self.params.num_classes]
-    #self.w1_shape = [self.num_pixels, self.params.num_hidden]
-    #self.w2_shape = [self.params.num_hidden, self.params.num_classes]
 
   def build_graph(self):
     """
     Build an MLP TensorFlow Graph.
     """
+    self.graph = tf.Graph()
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
@@ -42,12 +40,15 @@ class MLP(Model):
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
-        self.mlp_module = mlp_module(self.x, self.y, self.batch_norm_decay_mult,
-          self.params.output_channels, self.params.layer_types, self.params.eps, name="mlp")
-        self.logits = self.mlp_module.layer_list[-1]
-        self.y_ = self.mlp_module.y_
-        self.total_loss = self.mlp_module.total_loss
-        self.trainable_variables.update(mlp_module.trainable_variables)
+        self.mlp = MLPModule(self.x, self.y, self.batch_norm_decay_mult,
+          self.params.layer_types, self.params.output_channels, self.params.strides_y,
+          self.params.strides_x, self.params.patch_size_y, self.params.patch_size_x,
+          self.params.eps, name="mlp")
+        self.logits = self.mlp.layer_list[-1]
+        self.y_ = self.mlp.y_
+        self.total_loss = self.mlp.total_loss
+        #import pdb; pdb.set_trace()
+        self.trainable_variables.update(self.mlp.trainable_variables)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("prediction_bools"):
@@ -56,7 +57,6 @@ class MLP(Model):
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
-    self.graph_built = True
 
   #def build_graph(self):
   #  """
@@ -144,7 +144,6 @@ class MLP(Model):
   #        with tf.name_scope("accuracy"):
   #          self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
   #            tf.float32), name="avg_accuracy")
-  #  self.graph_built = True
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """

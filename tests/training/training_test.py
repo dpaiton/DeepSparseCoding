@@ -153,7 +153,7 @@ class TrainingTest(tf.test.TestCase):
               sess.graph.finalize() # Graph is read-only after this statement
               model.write_graph(sess.graph_def)
               model.sched_idx = 0
-              data, labels, ignore_labels  = dataset["train"].next_batch(model.batch_size)
+              data, labels, ignore_labels  = dataset["train"].next_batch(model.params.batch_size)
               feed_dict = model.get_feed_dict(data, labels)
               for w_idx in range(len(model.get_schedule("weights"))):
                 sess.run(model.apply_grads[schedule_index][w_idx], feed_dict)

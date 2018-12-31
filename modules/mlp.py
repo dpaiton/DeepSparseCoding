@@ -1,11 +1,11 @@
 import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
-import modules.batch_normalization as BatchNormalization
+from modules.batch_normalization import BatchNormalizationModule
 
-class MLP(object):
-  def __init__(self, data_tensor, label_tensor, norm_decay_mult, output_channels,
-    layer_types, eps, name="MLP"):
+class MLPModule(object):
+  def __init__(self, data_tensor, label_tensor, norm_decay_mult, layer_types, output_channels,
+    patch_size_y, patch_size_x, strides_y, strides_x, eps, name="MLP"):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
@@ -33,8 +33,8 @@ class MLP(object):
       self.batch_size, self.num_pixels = data_tensor.get_shape()
       assert layer_types[0] == "fc", ("Data tensor must have ndim==2 for fc layers")
     elif data_ndim == 4:
-      self.batch_size, self.y_size, self.x_size, self.num_features = data_tensor.get_shape()
-      self.num_pixels = self.y_size * self.x_size * self.num_features
+      self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_tensor.get_shape()
+      self.num_pixels = self.y_size * self.x_size * self.num_data_channels
       assert layer_types[0] == "conv", ("Data tensor must have ndim==4 for conv layers")
     else:
       assert False, ("Shouldn't get here")
@@ -42,17 +42,31 @@ class MLP(object):
     self.label_tensor = label_tensor
     label_batch, self.num_classes = label_tensor.get_shape()
 
-    self.num_fc_layers = layer_types.count("fc")
-    self.num_conv_layers = layer_types.count("conv")
+    # load params
     self.norm_decay_mult = norm_decay_mult
-    self.output_channels = output_channels
     self.layer_types = layer_types
+    # assert no FC after Conv in layer types
+    self.output_channels = output_channels
+    self.patch_size_y = patch_size_y
+    self.patch_size_x = patch_size_x
+    self.strides_y = strides_y
+    self.strides_x = strides_x
     self.eps = eps
     self.name = str(name)
+
+    # computed params
+    self.num_fc_layers = layer_types.count("fc")
+    self.num_conv_layers = layer_types.count("conv")
+    self.num_layers = self.num_fc_layers + self.num_conv_layers
+    conv_input_channels = [self.num_data_channels] + self.output_channels[:-1]
+    self.conv_w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
+      conv_input_channels, self.output_channels)]
+    self.fc_output_channels = self.output_channels[self.num_conv_layers:]
+
     self.trainable_variables = TrainableVariableDict()
     self.build_graph()
 
-  def conv_layer_maker(self, layer_id, a_in, w_shape, w_stride, b_shape):
+  def conv_layer_maker(self, layer_id, a_in, w_shape, stride_y, stride_x, b_shape):
     with tf.variable_scope(self.weight_scope) as scope:
       w_name = "w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
@@ -65,12 +79,12 @@ class MLP(object):
       self.trainable_variables[b.name] = b
 
     with tf.variable_scope("layer"+str(layer_id)) as scope:
-      conv_out = tf.nn.relu(tf.add(tf.nn.conv1d(a_in, w, w_stride, padding="SAME"), b),
-        name="conv_out"+str(layer_id))
+      conv_out = tf.nn.relu(tf.add(tf.nn.conv2d(a_in, w, [1, stride_y, stride_x, 1],
+        padding="SAME"), b), name="conv_out"+str(layer_id))
       if self.norm_decay_mult is not None:
-        bn = BatchNormalization(conv_out, self.norm_decay_mult, reduc_axes=[0,1,2],
+        bn = BatchNormalizationModule(conv_out, self.norm_decay_mult, self.eps, reduc_axes=[0,1,2],
           name="BatchNorm_"+str(layer_id))
-        conv_out = bn.get_activity()
+        conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
     return conv_out, w, b
 
@@ -91,9 +105,9 @@ class MLP(object):
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       fc_out = tf.nn.relu(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
       if self.norm_decay_mult is not None:
-        bn = BatchNormalization(fc_out, self.norm_decay_mult, reduc_axes=[0],
+        bn = BatchNormalizationModule(fc_out, self.norm_decay_mult, self.eps, reduc_axes=[0],
           name="BatchNorm_"+str(layer_id))
-        fc_out = bn.get_activity()
+        fc_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
     return fc_out, w, b
 
@@ -103,8 +117,8 @@ class MLP(object):
     b_list = []
     for layer_id in range(self.num_conv_layers):
       a_out, w, b = self.conv_layer_maker(layer_id, act_list[layer_id],
-        self.conv_w_shapes[layer_id], self.strides[layer_id],
-        self.b_shapes[layer_id])
+        self.conv_w_shapes[layer_id], self.strides_y[layer_id], self.strides_x[layer_id],
+        self.output_channels[layer_id])
       act_list.append(a_out)
       w_list.append(w)
       b_list.append(b)
@@ -112,7 +126,7 @@ class MLP(object):
       layer_id = fc_layer_id + self.num_conv_layers
       a_resh = tf.contrib.layers.flatten(act_list[layer_id])
       w_shape = [a_resh.get_shape()[1].value, self.fc_output_channels[fc_layer_id]]
-      a_out, w, b = self.fc_layer_maker(layer_id, a_resh, w_shape, self.b_shapes[layer_id])
+      a_out, w, b = self.fc_layer_maker(layer_id, a_resh, w_shape, self.output_channels[layer_id])
       act_list.append(a_out)
       w_list.append(w)
       b_list.append(b)

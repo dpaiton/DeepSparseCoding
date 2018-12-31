@@ -104,8 +104,8 @@ class LCA(Model):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
   def build_graph(self):
-    super(LCA, self).build_graph()
     """Build the TensorFlow graph object"""
+    self.graph = tf.Graph()
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
@@ -159,7 +159,6 @@ class LCA(Model):
             # TODO: pSNRdB could possibly be infinity, need to check for that and set it to a cap
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
-    self.graph_built = True
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """

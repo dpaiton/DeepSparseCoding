@@ -19,13 +19,6 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
     super(Conv_GDN_Decoder, self).__init__()
     self.vector_inputs = False
 
-  def setup_graph(self):
-    self.graph = tf.Graph()
-    self.build_graph()
-    self.optimizers_added = True
-    self.add_initializer_to_graph()
-    self.construct_savers()
-
   def load_params(self, params):
     """
     Load parameters into object
@@ -104,6 +97,7 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
+    self.graph = tf.Graph()
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
@@ -153,3 +147,6 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
           self.merged_summaries = tf.summary.merge_all()
         self.train_writer = tf.summary.FileWriter(self.save_dir, self.graph)
     self.graph_built = True
+
+  def add_optimizers_to_graph(self):
+    self.optimizers_added = True

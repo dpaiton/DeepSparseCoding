@@ -5,7 +5,7 @@ import utils.data_processing as dp
 import utils.entropy_funcs as ef
 from models.base_model import Model
 from modules.vae import VAE as vae_module
-import pdb
+
 class VAE(Model):
   def __init__(self):
     """
@@ -30,6 +30,7 @@ class VAE(Model):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
+    self.graph = tf.Graph()
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
@@ -56,9 +57,6 @@ class VAE(Model):
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
-
-
-    self.graph_built = True
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """

@@ -72,7 +72,7 @@ class params(Base_Params):
       "ramp_slope": 1.0,
       "decay_mult": 0.03,
       "noise_var_mult": 0.08,
-      "triangle_centers": np.linspace(-1.0, 1.0, params().num_triangles),
+      "triangle_centers": np.linspace(-1.0, 1.0, self.num_triangles),
       "weight_lr": [9e-5]*4+[7e-6]*4,
       "decay_steps": [int(1e6*0.4),]*8,
       "decay_rate": [0.8,]*8,

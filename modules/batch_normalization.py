@@ -1,7 +1,7 @@
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 
-class  batch_normalization(object):
+class BatchNormalizationModule(object):
   """
   Implements batch normalization
   Inputs:

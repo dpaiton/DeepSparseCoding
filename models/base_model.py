@@ -10,17 +10,21 @@ class Model(object):
     self.optimizers_added = False
     self.savers_constructed = False
     self.params_loaded = False
+    self.trainable_variables = TrainableVariableDict()
 
   def setup(self, params):
     self.load_params(params)
-    self.load_schedule(params.schedule)
-    self.sched_idx = 0
-    #self.check_params()
     self.make_dirs()
     self.init_logging()
     self.log_params()
+    self.build_graph()
+    self.load_schedule(params.schedule)
+    self.sched_idx = 0
+    #self.check_params()
     self.log_schedule()
-    self.setup_graph()
+    self.add_optimizers_to_graph()
+    self.add_initializer_to_graph()
+    self.construct_savers()
 
   def load_schedule(self, schedule):
     """
@@ -39,18 +43,13 @@ class Model(object):
         assert type(sched["decay_steps"]) == int
         assert type(sched["decay_rate"]) == float
         assert type(sched["staircase"]) == bool
-        sched["weights"] = self.get_trainable_variable_names(self.params)
+        sched["weights"] = self.get_trainable_variable_names()
         sched["weight_lr"] = [sched["weight_lr"],]*len(sched["weights"])
         sched["decay_steps"] = [sched["decay_steps"],]*len(sched["weights"])
         sched["decay_rate"] = [sched["decay_rate"],]*len(sched["weights"])
         sched["staircase"] = [sched["staircase"],]*len(sched["weights"])
 
-  def get_trainable_variable_names(self, params):
-    assert hasattr(params, "data_shape"), ("Params must include data shape.")
-    self.load_params(params)
-    self.graph = tf.Graph()
-    self.trainable_variables = TrainableVariableDict()
-    self.build_graph()
+  def get_trainable_variable_names(self):
     return list(self.trainable_variables.keys())
 
   def load_params(self, params):
@@ -319,15 +318,6 @@ class Model(object):
     if dict_args is not None:
       feed_dict.update(dict_args)
     return feed_dict
-
-  def setup_graph(self):
-    """Setup graph object and add optimizers, initializer"""
-    self.graph = tf.Graph()
-    self.trainable_variables = TrainableVariableDict()
-    self.build_graph()
-    self.add_optimizers_to_graph()
-    self.add_initializer_to_graph()
-    self.construct_savers()
 
   def build_graph(self):
     """Build the TensorFlow graph object"""

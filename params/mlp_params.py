@@ -29,6 +29,10 @@ class params(Base_Params):
     self.num_classes = 10
     self.layer_types = ["conv", "fc"]
     self.output_channels = [400, 10]
+    self.strides_y = [1, None]
+    self.strides_x = [1, None]
+    self.patch_size_y = [8, None]
+    self.patch_size_x = [8, None]
     self.num_val = 10000
     self.num_labeled = 50000
     self.do_batch_norm = True

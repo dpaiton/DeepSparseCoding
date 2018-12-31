@@ -1,7 +1,7 @@
 class TrainableVariableDict(dict):
   def __setitem__(self, k, v):
     if k in self.keys():
-      raise ValueError("Key is already present")
+      raise ValueError("Key "+str(k)+" is already present")
     else:
       return super(TrainableVariableDict, self).__setitem__(k, v)
 
