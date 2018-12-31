@@ -22,7 +22,7 @@ class BuildTest(tf.test.TestCase):
       model = mp.get_model(model_type) # Import model
       params.data_type = data_type
       model.data_type = data_type
-      params.model_name = "test_built_" + params.model_name
+      params.model_name = "test_build_" + params.model_name
       try:
         dataset = ds.get_data(params) # Import data
         dataset = model.preprocess_dataset(dataset, params)
