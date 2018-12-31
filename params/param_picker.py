@@ -25,62 +25,47 @@ Outputs:
 def get_params(model_type):
   if model_type.lower() == "mlp":
     params = mlp.params()
-    params.schedule = mlp.schedule
     return params
   if model_type.lower() == "ica":
     params = ica.params()
-    params.schedule = ica.schedule
     return params
   if model_type.lower() == "ica_pca":
     params = ica_pca.params()
-    params.schedule = ica_pca.schedule
     return params
   if model_type.lower() == "rica":
     params = rica.params()
-    params.schedule = rica.schedule
     return params
   if model_type.lower() == "lca":
     params = lca.params()
-    params.schedule = lca.schedule
     return params
   if model_type.lower() == "lca_pca":
     params = lca_pca.params()
-    params.schedule = lca_pca.schedule
     return params
   if model_type.lower() == "lca_pca_fb":
     params = lca_pca_fb.params()
-    params.schedule = lca_pca_fb.schedule
     return params
   if model_type.lower() == "subspace_lca":
     params = subspace_lca.params()
-    params.schedule = subspace_lca.schedule
     return params
   if model_type.lower() == "conv_lca":
     params = conv_lca.params()
-    params.schedule = conv_lca.schedule
     return params
   if model_type.lower() == "sigmoid_autoencoder":
     params = sa.params()
-    params.schedule = sa.schedule
     return params
   if model_type.lower() == "vae":
     params = vae.params()
-    params.schedule = vae.schedule
     return params
   if model_type.lower() == "gdn_autoencoder":
     params = ga.params()
-    params.schedule = ga.schedule
     return params
   if model_type.lower() == "conv_gdn_autoencoder":
     params = cga.params()
-    params.schedule = cga.schedule
     return params
   if model_type.lower() == "conv_gdn_decoder":
     params = cgd.params()
-    params.schedule = cgd.schedule
     return params
   if model_type.lower() == "relu_autoencoder":
     params = ra.params()
-    params.schedule = ra.schedule
     return params
   return False
