@@ -14,7 +14,6 @@ class VAE(Model):
     arXiv preprint arXiv:1312.6114 (2013).
     """
     super(VAE, self).__init__()
-    self.vector_inputs = True
 
   def load_params(self, params):
     """

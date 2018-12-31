@@ -7,7 +7,6 @@ from models.base_model import Model
 class LCA(Model):
   def __init__(self):
     super(LCA, self).__init__()
-    self.vector_inputs = True
 
   def load_params(self, params):
     """

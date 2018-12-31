@@ -16,7 +16,6 @@ class MLP(Model):
      params: [obj] model parameters
     """
     super(MLP, self).load_params(params)
-    self.vector_inputs = params.vectorize_data
     self.num_pixels = int(np.prod(self.params.data_shape))
     #self.x_shape = [None, self.num_pixels]
     self.x_shape = [None,] + self.params.data_shape

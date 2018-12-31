@@ -22,7 +22,7 @@ class MLP(object):
       that has a bunch of activations
     """
     data_ndim = len(data_tensor.get_shape().as_list())
-    assert (data_ndim == 2 or ndim == 4), (
+    assert (data_ndim == 2 or data_ndim == 4), (
       "Model requires data_tensor to have shape [batch, num_features] or [batch, y, x, features]")
     label_ndim = len(label_tensor.get_shape().as_list())
     assert label_ndim == 2, (
@@ -41,7 +41,6 @@ class MLP(object):
 
     self.label_tensor = label_tensor
     label_batch, self.num_classes = label_tensor.get_shape()
-    assert label_batch == self.batch_size, ("Data and Label tensors must have the same batch size")
 
     self.num_fc_layers = layer_types.count("fc")
     self.num_conv_layers = layer_types.count("conv")

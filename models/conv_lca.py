@@ -11,7 +11,6 @@ class CONV_LCA(LCA):
   """
   def __init__(self):
     super(CONV_LCA, self).__init__()
-    self.vector_inputs = False
 
   def load_params(self, params):
     """

@@ -9,25 +9,18 @@ class Model(object):
   def __init__(self):
     self.optimizers_added = False
     self.savers_constructed = False
-    self.vector_inputs = None
     self.params_loaded = False
 
   def setup(self, params):
+    self.load_params(params)
     self.load_schedule(params.schedule)
     self.sched_idx = 0
-    self.load_params(params)
     #self.check_params()
     self.make_dirs()
     self.init_logging()
     self.log_params()
     self.log_schedule()
     self.setup_graph()
-
-  def get_trainable_variable_names(self, params):
-    assert hasattr(params, "data_shape"), ("Params must include data shape.")
-    self.load_params(params)
-    self.setup_graph()
-    return list(self.trainable_variables.keys())
 
   def load_schedule(self, schedule):
     """
@@ -46,12 +39,18 @@ class Model(object):
         assert type(sched["decay_steps"]) == int
         assert type(sched["decay_rate"]) == float
         assert type(sched["staircase"]) == bool
-        sched["weights"] = self.get_trainable_variable_names()
+        sched["weights"] = self.get_trainable_variable_names(self.params)
         sched["weight_lr"] = [sched["weight_lr"],]*len(sched["weights"])
         sched["decay_steps"] = [sched["decay_steps"],]*len(sched["weights"])
         sched["decay_rate"] = [sched["decay_rate"],]*len(sched["weights"])
         sched["staircase"] = [sched["staircase"],]*len(sched["weights"])
     self.sched = schedule
+
+  def get_trainable_variable_names(self, params):
+    assert hasattr(params, "data_shape"), ("Params must include data shape.")
+    self.load_params(params)
+    self.setup_graph()
+    return list(self.trainable_variables.keys())
 
   def load_params(self, params):
     """
@@ -357,10 +356,10 @@ class Model(object):
     Inputs:
       dataset [dict] returned from data/data_picker
     """
-    assert self.vector_inputs is not None, (
-      "Model object must set vector_inputs member variable in __init__() method.")
+    assert hasattr(params, "vectorize_data"), (
+      "Model params must set vectorize_data.")
     for key in dataset.keys():
-      dataset[key].images = dp.reshape_data(dataset[key].images, self.vector_inputs)[0]
+      dataset[key].images = dp.reshape_data(dataset[key].images, params.vectorize_data)[0]
       dataset[key].shape = dataset[key].images.shape
     return dataset
 
