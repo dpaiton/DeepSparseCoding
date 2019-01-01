@@ -34,7 +34,7 @@ for each model:
 """
 class RunTest(tf.test.TestCase):
   def testBasic(self):
-    model_list = ["mlp", "vae", "lca"]#mp.get_model_list()
+    model_list = ["mlp", "vae", "lca", "lca_conv"]#mp.get_model_list()
     data_type = "synthetic"
     schedule_index = 0 # Not testing support for multiple schedules
 

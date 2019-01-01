@@ -21,15 +21,9 @@ class LCAModule(object):
     Outputs:
       dictionary
     """
-    data_ndim = len(data_tensor.get_shape().as_list())
-    assert data_ndim == 2, (
-      "Module requires datal_tensor to have shape [batch, num_pixels]")
 
     self.data_tensor = data_tensor
-    if data_ndim == 2:
-      self.batch_size, self.num_pixels = self.data_tensor.get_shape()
-    else:
-      assert False, ("Shouldn't get here")
+    self.check_data()
 
     self.name = str(name)
     self.num_neurons = num_neurons
@@ -40,11 +34,25 @@ class LCAModule(object):
     self.num_steps = num_steps
     self.eps = eps
 
-    self.w_shape = [int(self.num_pixels), self.num_neurons]
-    self.u_shape = [self.num_neurons]
+    self.calc_shapes()
 
     self.trainable_variables = TrainableVariableDict()
     self.build_graph()
+
+  def calc_shapes(self):
+    self.w_shape = [int(self.num_pixels), self.num_neurons]
+    self.u_shape = [self.num_neurons]
+
+  def check_data(self):
+    data_ndim = len(self.data_tensor.get_shape().as_list())
+    assert data_ndim == 2, (
+      "Module requires datal_tensor to have shape [batch, num_pixels]")
+
+    if data_ndim == 2:
+      self.batch_size, self.num_pixels = self.data_tensor.get_shape()
+    else:
+      assert False, ("Shouldn't get here")
+
 
   def compute_excitatory_current(self):
     return tf.matmul(self.data_tensor, self.w, name="driving_input")

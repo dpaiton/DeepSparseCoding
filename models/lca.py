@@ -25,6 +25,12 @@ class LCA(Model):
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
+  def build_module(self):
+    module = LCAModule(self.x, self.params.num_neurons, self.sparse_mult,
+      self.eta, self.params.thresh_type, self.params.rectify_a,
+      self.params.num_steps, self.params.eps, name="lca")
+    return module
+
   def build_graph(self):
     """Build the TensorFlow graph object"""
     self.graph = tf.Graph()
@@ -37,14 +43,12 @@ class LCA(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        self.lca = LCAModule(self.x, self.params.num_neurons, self.sparse_mult,
-          self.eta, self.params.thresh_type, self.params.rectify_a,
-          self.params.num_steps, self.params.eps, name="lca")
-        self.trainable_variables.update(self.lca.trainable_variables)
+        self.module = self.build_module()
+        self.trainable_variables.update(self.module.trainable_variables)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.lca.reconstruction)),
+            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),
               axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
             # TODO: pSNRdB could possibly be infinity, need to check for that and set it to a cap
@@ -52,10 +56,10 @@ class LCA(Model):
               name="recon_quality")
 
   def get_encodings(self):
-    return self.lca.a
+    return self.module.a
 
   def get_total_loss(self):
-    return self.lca.total_loss
+    return self.module.total_loss
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
@@ -67,8 +71,8 @@ class LCA(Model):
     """
     update_dict = super(LCA, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
-      self.get_total_loss(), self.a, self.x_, self.pSNRdB]
+    eval_list = [self.global_step, self.module.loss_dict["recon_loss"], self.module.loss_dict["sparse_loss"],
+      self.get_total_loss(), self.get_encodings(), self.module.reconstruction, self.pSNRdB]
     grad_name_list = []
     learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
@@ -117,7 +121,7 @@ class LCA(Model):
     """
     super(LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.phi, self.x_, self.a]
+    eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encoding()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     weights, recon, activity = eval_out[1:]
@@ -155,5 +159,5 @@ class LCA(Model):
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       grad = dp.reshape_data(grad.T, flatten=False)[0]
       fig = pf.plot_data_tiled(grad, normalize=True,
-        title="Gradient for phi at step "+current_step, vmin=None, vmax=None,
+        title="Gradient for w at step "+current_step, vmin=None, vmax=None,
         save_filename=(self.params.disp_dir+"dphi_v"+self.params.version+"_"+current_step.zfill(5)+".png"))
