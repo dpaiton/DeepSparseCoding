@@ -56,7 +56,7 @@ class params(Base_Params):
     self.gen_plot_int = 10000
     self.save_plots = True
     self.schedule = [
-      {"weights": ["weights/phi:0"],
+      {"weights": ["weights/w:0"],
       "num_batches": int(1e5),
       "sparse_mult": 0.1,
       "weight_lr": [0.01],

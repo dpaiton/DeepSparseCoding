@@ -127,7 +127,7 @@ class Model(object):
 
   def compute_weight_gradients(self, optimizer, weight_op=None):
     """Returns the gradients for a weight variable using a given optimizer"""
-    return optimizer.compute_gradients(self.total_loss, var_list=weight_op)
+    return optimizer.compute_gradients(self.get_total_loss(), var_list=weight_op)
 
   def add_optimizers_to_graph(self):
     """
@@ -465,3 +465,12 @@ class Model(object):
       input_labels: data object containing the current label batch
     """
     pass
+
+  #Functions that expose specific variables to outer classes
+  #Defaults to raising not implemented error
+  def get_total_loss(self):
+    raise NotImplementedError
+
+  def get_encodings(self):
+    raise NotImplementedError
+

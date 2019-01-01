@@ -44,9 +44,7 @@ class MLP(Model):
           self.params.layer_types, self.params.output_channels, self.params.strides_y,
           self.params.strides_x, self.params.patch_size_y, self.params.patch_size_x,
           self.params.eps, name="mlp")
-        self.logits = self.mlp.layer_list[-1]
         self.y_ = self.mlp.y_
-        self.total_loss = self.mlp.total_loss
         #import pdb; pdb.set_trace()
         self.trainable_variables.update(self.mlp.trainable_variables)
 
@@ -57,6 +55,12 @@ class MLP(Model):
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
+
+  def get_encodings(self):
+    return self.mlp.layer_list[-1]
+
+  def get_total_loss(self):
+    return self.mlp.total_loss
 
   #def build_graph(self):
   #  """
@@ -156,8 +160,8 @@ class MLP(Model):
     update_dict = super(MLP, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval())
-    total_loss = np.array(self.total_loss.eval(feed_dict))
-    logits_vals = tf.get_default_session().run(self.logits, feed_dict)
+    total_loss = np.array(self.get_total_loss().eval(feed_dict))
+    logits_vals = tf.get_default_session().run(self.get_encodings(), feed_dict)
     logits_vals_max = np.array(logits_vals.max())
     logits_frac_act = np.array(np.count_nonzero(logits_vals) / float(logits_vals.size))
     accuracy = np.array(self.accuracy.eval(feed_dict))

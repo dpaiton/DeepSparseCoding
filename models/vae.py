@@ -46,10 +46,6 @@ class VAE(Model):
           self.vae = vae_module(self.x, self.params.output_channels, self.sparse_mult,
               self.decay_mult, self.kld_mult, name="VAE")
 
-          #Store losses here as member variables for analyzers
-          self.loss_dict = self.vae.loss_dict
-          self.total_loss = self.vae.total_loss
-
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.vae.reconstruction)),
@@ -71,7 +67,7 @@ class VAE(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.vae.loss_dict["recon_loss"],
       self.vae.loss_dict["latent_loss"], self.vae.loss_dict["weight_decay_loss"],
-      self.vae.total_loss, self.vae.a, self.vae.reconstruction, self.learning_rates]
+      self.get_total_loss(), self.get_encodings(), self.vae.reconstruction, self.learning_rates]
     grad_name_list = []
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
@@ -111,6 +107,12 @@ class VAE(Model):
     update_dict.update(stat_dict)
     return update_dict
 
+  def get_encodings(self):
+    return self.vae.a
+
+  def get_total_loss(self):
+    return self.vae.total_loss
+
   def generate_plots(self, input_data, input_labels=None):
     """
     Plot weights, reconstruction, and gradients
@@ -123,7 +125,7 @@ class VAE(Model):
 
     eval_list = [self.global_step, self.vae.w_enc_list, self.vae.w_dec_list, self.vae.w_enc_std,
       self.vae.b_enc_list, self.vae.b_enc_std, self.vae.b_dec_list,
-      self.vae.encoder_activations, self.vae.decoder_activations, self.vae.a]
+      self.vae.encoder_activations, self.vae.decoder_activations, self.get_encodings()]
 
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
@@ -185,7 +187,7 @@ class VAE(Model):
         save_filename=(self.params.disp_dir+"img_hist" + filename_suffix))
       input_data = dp.reshape_data(input_data, flatten=False)[0]
       fig = pf.plot_data_tiled(input_data, normalize=False,
-        title="Images at step "+current_step, vmin=r_min, vmax=r_max,
+        title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
         save_filename=(self.params.disp_dir+"images"+filename_suffix))
       recon = dp.reshape_data(recon, flatten=False)[0]
       fig = pf.plot_data_tiled(recon, normalize=False,
