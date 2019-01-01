@@ -69,7 +69,9 @@ with tf.Session(config=config, graph=model.graph) as sess:
     model.load_weights(sess, cp_load_file)
 
   avg_time = 0
+  tot_num_batches = 0
   for sch_idx, sch in enumerate(params.schedule):
+    tot_num_batches += sch["num_batches"]
     model.sched_idx = sch_idx
     model.log_info("Beginning schedule "+str(sch_idx))
     for b_step in np.arange(sch["num_batches"]):
@@ -139,12 +141,12 @@ with tf.Session(config=config, graph=model.graph) as sess:
               model.log_info("<stats>"+js_str+"</stats>")
 
   save_dir = model.write_checkpoint(sess)
-  avg_time /= params.num_batches
+  avg_time /= tot_num_batches
   model.log_info("Avg time per image: "+str(avg_time)+" seconds")
   t1=ti.time()
   tot_time=float(t1-t0)
   out_str = (
-    "Training on "+str(sch_idx*params.num_batches*params.batch_size)
+    "Training on "+str(sch_idx*tot_num_batches*params.batch_size)
     +" Images is Complete. Total time was "+str(tot_time)+" seconds.\n")
   model.log_info(out_str)
   print("Training Complete\n")

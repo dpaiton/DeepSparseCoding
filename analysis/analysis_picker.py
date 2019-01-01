@@ -1,3 +1,4 @@
+from analysis.mlp_analyzer import MLP_Analyzer as mlp_analyzer
 from analysis.ica_analyzer import ICA_Analyzer as ica_analyzer
 from analysis.lca_analyzer import LCA_Analyzer as lca_analyzer
 from analysis.subspace_lca_analyzer import SUBSPACE_LCA_Analyzer as sub_lca_analyzer
@@ -10,6 +11,8 @@ from analysis.vae_analyzer import VAE_Analyzer as vae_analyzer
 from analysis.gdn_autoencoder_analyzer import GA_Analyzer as ga_analyzer
 
 def get_analyzer(params):
+  if params.model_type.lower() == "mlp":
+    return mlp_analyzer(params)
   if params.model_type.lower() == "ica":
     return ica_analyzer(params)
   if params.model_type.lower() == "rica":

@@ -27,6 +27,7 @@ class params(Base_Params):
     self.norm_weights = True
     self.batch_size = 100
     self.layer_types = ["conv", "fc"]
+    self.output_channels = [300, 10]
     self.strides_y = [1, None]
     self.strides_x = [1, None]
     self.patch_size_y = [8, None]
@@ -42,18 +43,18 @@ class params(Base_Params):
     self.cp_load_step = None
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["w1"]
-    self.log_int = 10
+    self.log_int = 50
     self.log_to_file = True
-    self.gen_plot_int = 100
+    self.gen_plot_int = 1000
     self.save_plots = True
 
     # If a scalar is provided then this value is broadcast to all trainable variables
     self.schedule = [
-      {"num_batches": 4000,
+      {"num_batches": 1e4,
       "batch_norm_decay_mult": 0.4,
       "weights": None, #["w1", "w2", "bias1", "bias2"],
       "weight_lr": 0.01,
-      "decay_steps": int(4000*0.5),
+      "decay_steps": int(1e4*0.5),
       "decay_rate": 0.8,
       "staircase": True}]
 

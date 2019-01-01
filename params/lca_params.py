@@ -53,14 +53,14 @@ class params(Base_Params):
     #self.cp_load_var = ["phi"]
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = 10000
+    self.gen_plot_int = 1000
     self.save_plots = True
     self.schedule = [
       {"weights": ["weights/w:0"],
-      "num_batches": int(1e5),
+      "num_batches": int(1e4),
       "sparse_mult": 0.1,
       "weight_lr": [0.01],
-      "decay_steps": [int(1e5*0.5)],
+      "decay_steps": [int(1e4*0.5)],
       "decay_rate": [0.8],
       "staircase": [True]}]
 

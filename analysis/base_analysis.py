@@ -8,6 +8,27 @@ from data.dataset import Dataset
 import tensorflow as tf
 
 class Analyzer(object):
+  """
+  Clobbering:
+    if user wants to clobber:
+      remove old log file if it exists
+      create new log file object
+      log analysis params
+      set params member variable to input params
+    else:
+      if the file exists and is not empty
+        load previous text
+        extract previous params
+          (if there are multiple entries, extract the last one)
+        merge new params into previous params (new overwrites previous)
+        create log file object with append set (overwrite=False)
+        set params member variable to merged params
+      else:
+        create new log file object
+        set params member variable to input params
+      log merged analysis params
+  TODO: Test this
+  """
   def __init__(self, params):
     # Load model parameters and schedule
     self.model_log_file = (params.model_dir+"/logfiles/"+params.model_name
@@ -15,32 +36,30 @@ class Analyzer(object):
     self.model_logger = Logger(self.model_log_file, overwrite=False)
     self.model_log_text = self.model_logger.load_file()
     self.model_params = self.model_logger.read_params(self.model_log_text)
-    self.model_params.rand_state = np.random.RandomState(self.model_params.rand_seed)
-    self.rand_state = self.model_params.rand_state
     self.model_schedule = self.model_logger.read_schedule(self.model_log_text)
     # Load or create analysis params log
     self.analysis_out_dir = params.model_dir+"/analysis/"+params.version+"/"
     self.make_dirs() # If analysis log does not exist then we want to make the folder first
     self.analysis_log_file = self.analysis_out_dir+"/logfiles/analysis.log"
-    if hasattr(params, "overwrite_analysis_log") and params.overwrite_analysis_log:
+    if params.overwrite_analysis_log:
       if os.path.exists(self.analysis_log_file):
         os.remove(self.analysis_log_file)
-    if os.path.exists(self.analysis_log_file) and os.stat(self.analysis_log_file).st_size != 0:
-      # TODO: This code needs to be tested
-      self.analysis_logger = Logger(self.analysis_log_file, overwrite=False)
-      analysis_text = self.analysis_logger.load_file()
-      prev_analysis_params = self.analysis_logger.read_params(analysis_text)
-      if type(prev_analysis_params) == list: # there were multiple param entries in the log
-        for key, val in prev_analysis_params.__dict__.items():
-          setattr(params, key, val)
-      else: # there was only one param entry
-        del prev_analysis_params.save_info
-        for key, val in prev_analysis_params.__dict__.items():
-          setattr(params, key, val)
-    else: # File is empty
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=True)
-      self.analysis_logger.log_params(params)
-    self.load_params(params)
+      self.params = params
+    else:
+      if os.path.exists(self.analysis_log_file) and os.stat(self.analysis_log_file).st_size != 0:
+        self.analysis_logger = Logger(self.analysis_log_file, overwrite=False)
+        analysis_text = self.analysis_logger.load_file()
+        prev_analysis_params = self.analysis_logger.read_params(analysis_text)
+        if type(prev_analysis_params) == list: # there were multiple param entries in the log
+          prev_analysis_params = prev_analysis_params[-1] # grab last params written
+        prev_analysis_params.update(params)
+        self.params = prev_analysis_params
+      else:
+        self.analysis_logger = Logger(self.analysis_log_file, overwrite=True)
+        self.params = params
+    self.load_params(self.params)
+    self.analysis_logger.log_params(self.params.__dict__)
     self.load_model() # Adds "self.model" member variable that is another model class
 
   def load_params(self, params):
@@ -48,63 +67,63 @@ class Analyzer(object):
     Load analysis parameters into object
     TODO: cp_load_step is not utilized.
     """
-    for key, val in params.__dict__.items():
-        setattr(self, key, val)
-    self.analysis_params = params
-    self.cp_loc = tf.train.latest_checkpoint(params.model_dir+"/checkpoints/",
-      latest_filename="latest_checkpoint_v"+self.version)
+    self.params = params
+    self.params.cp_loc = tf.train.latest_checkpoint(self.params.model_dir+"/checkpoints/",
+      latest_filename="latest_checkpoint_v"+self.params.version)
     self.model_params.model_out_dir = self.analysis_out_dir
-    if not hasattr(params, "device"):
-      self.device = self.model_params.device
-    if hasattr(params, "data_dir"):
-      self.model_params.data_dir = params.data_dir
-    if hasattr(params, "rand_seed"):
-      self.rand_seed = params.rand_seed
-    if not hasattr(params, "input_scale"):
-      self.input_scale = 1.0
+    self.check_params()
+    self.rand_state = np.random.RandomState(params.rand_seed)
+
+  def check_params(self):
+    if not hasattr(self.params, "device"):
+      self.params.device = self.model_params.device
+    if hasattr(self.params, "data_dir"):
+      self.model_params.data_dir = self.params.data_dir
+    if not hasattr(self.params, "rand_seed"):
+      self.params.rand_seed = self.model_params.rand_seed
+    if not hasattr(self.params, "input_scale"):
+      self.params.input_scale = 1.0
     # BF Fits
-    if not hasattr(params, "do_basis_analysis"):
-      self.do_basis_analysis = False
-    if not hasattr(params, "ft_padding"):
-      self.ft_padding = None
-    if not hasattr(params, "num_gauss_fits"):
-      self.num_gauss_fits = 20
-    if not hasattr(params, "gauss_thresh"):
-      self.gauss_thresh = 0.2
+    if not hasattr(self.params, "do_basis_analysis"):
+      self.params.do_basis_analysis = False
+    if not hasattr(self.params, "ft_padding"):
+      self.params.ft_padding = None
+    if not hasattr(self.params, "num_gauss_fits"):
+      self.params.num_gauss_fits = 20
+    if not hasattr(self.params, "gauss_thresh"):
+      self.params.gauss_thresh = 0.2
     # Activity Triggered Averages
-    if not hasattr(params, "do_atas"):
-      self.do_atas = False
-    if not hasattr(params, "num_noise_images"):
-      self.num_noise_images = 100
+    if not hasattr(self.params, "do_atas"):
+      self.params.do_atas = False
+    if not hasattr(self.params, "num_noise_images"):
+      self.params.num_noise_images = 100
     # Adversarial analysis
-    if hasattr(params, "do_adversaries"):
-      self.do_adversaries = params.do_adversaries
-      if not hasattr(params, "adversarial_eps"):
-        self.adversarial_eps = 0.01
-      if not hasattr(params, "adversarial_num_steps"):
-        self.adversarial_num_steps = 200
-      if not hasattr(params, "adversarial_input_id"):
-        self.adversarial_input_id = 0
-      if not hasattr(params, "adversarial_target_id"):
-        self.adversarial_target_id = 1
+    if hasattr(self.params, "do_adversaries"):
+      if not hasattr(self.params, "adversarial_eps"):
+        self.params.adversarial_eps = 0.01
+      if not hasattr(self.params, "adversarial_num_steps"):
+        self.params.adversarial_num_steps = 200
+      if not hasattr(self.params, "adversarial_input_id"):
+        self.params.adversarial_input_id = 0
+      if not hasattr(self.params, "adversarial_target_id"):
+        self.params.adversarial_target_id = 1
     else:
-      self.do_adversaries = False
+      self.params.do_adversaries = False
     #  Orientation Selectivity
-    if hasattr(params, "do_orientation_analysis") and params.do_orientation_analysis:
-      self.do_orientation_analysis = params.do_orientation_analysis
-      if not hasattr(params, "neuron_indices"):
-        self.ot_neurons = None
-      if not hasattr(params, "contrasts"):
-        self.ot_contrasts = None
-      if not hasattr(params, "orientations"):
-        self.ot_orientations = None
-      if not hasattr(params, "phases"):
-        self.ot_phases = None
+    if hasattr(self.params, "do_orientation_analysis") and self.params.do_orientation_analysis:
+      if not hasattr(self.params, "neuron_indices"):
+        self.params.ot_neurons = None
+      if not hasattr(self.params, "contrasts"):
+        self.params.ot_contrasts = None
+      if not hasattr(self.params, "orientations"):
+        self.params.ot_orientations = None
+      if not hasattr(self.params, "phases"):
+        self.params.ot_phases = None
     else:
-      self.ot_neurons = None
-      self.ot_contrasts = None
-      self.ot_orientations = None
-      self.ot_phases = None
+      self.params.ot_neurons = None
+      self.params.ot_contrasts = None
+      self.params.ot_orientations = None
+      self.params.ot_phases = None
 
   def make_dirs(self):
     """Make output directories"""
@@ -160,8 +179,8 @@ class Analyzer(object):
     return evals
 
   def basis_analysis(self, weights, save_info):
-    bf_stats = dp.get_dictionary_stats(weights, padding=self.ft_padding,
-      num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
+    bf_stats = dp.get_dictionary_stats(weights, padding=self.params.ft_padding,
+      num_gauss_fits=self.params.num_gauss_fits, gauss_thresh=self.params.gauss_thresh)
     np.savez(self.analysis_out_dir+"savefiles/basis_"+save_info+".npz", data={"bf_stats":bf_stats})
     self.analysis_logger.log_info("Dictionary analysis is complete.")
     return bf_stats
@@ -178,28 +197,30 @@ class Analyzer(object):
     """
     TODO: compute per batch
     """
-    noise_shape = [self.num_noise_images] + self.model_params.data_shape
+    noise_shape = [self.params.num_noise_images] + self.model_params.data_shape
     noise_images = self.rand_state.standard_normal(noise_shape)
     noise_activity = self.compute_activations(noise_images)
     noise_atas = self.compute_atas(noise_activity, noise_images)
     noise_atcs = self.compute_atcs(noise_activity, noise_images, noise_atas)
     np.savez(self.analysis_out_dir+"savefiles/noise_responses_"+save_info+".npz",
-      data={"num_noise_images":self.num_noise_images, "noise_activity":noise_activity,
+      data={"num_noise_images":self.params.num_noise_images, "noise_activity":noise_activity,
       "noise_atas":noise_atas, "noise_atcs":noise_atcs})
     self.analysis_logger.log_info("Noise analysis is complete.")
     return (noise_activity, noise_atas, noise_atcs)
 
   def grating_analysis(self, weight_stats, save_info):
-    ot_grating_responses = self.orientation_tuning(weight_stats, self.ot_contrasts,
-      self.ot_orientations, self.ot_phases, self.ot_neurons, scale=self.input_scale)
+    ot_grating_responses = self.orientation_tuning(weight_stats, self.params.ot_contrasts,
+      self.params.ot_orientations, self.params.ot_phases, self.params.ot_neurons,
+      scale=self.params.input_scale)
     np.savez(self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz", data=ot_grating_responses)
     ot_mean_activations = ot_grating_responses["mean_responses"]
-    base_orientations = [self.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
+    base_orientations = [self.params.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
       for bf_idx in range(len(ot_grating_responses["neuron_indices"]))]
     co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
-      self.ot_contrasts, self.ot_phases, base_orientations, self.ot_orientations, self.ot_neurons,
-      scale=self.input_scale)
-    np.savez(self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz", data=co_grating_responses)
+      self.params.ot_contrasts, self.params.ot_phases, base_orientations,
+      self.params.ot_orientations, self.params.ot_neurons, scale=self.params.input_scale)
+    np.savez(self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz",
+      data=co_grating_responses)
     self.analysis_logger.log_info("Grating  analysis is complete.")
     return (ot_grating_responses, co_grating_responses)
 
@@ -265,7 +286,7 @@ class Analyzer(object):
       self.noise_activity = noise_analysis["noise_activity"]
       self.noise_atas = noise_analysis["noise_atas"]
       self.noise_atcs = noise_analysis["noise_atcs"]
-      self.num_noise_images = self.noise_activity.shape[0]
+      self.params.num_noise_images = self.noise_activity.shape[0]
     # Orientation analysis
     tuning_file_locs = [self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz",
       self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz"]
@@ -287,10 +308,10 @@ class Analyzer(object):
       self.adversarial_target_image = data["target_image"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_recons = data["adversarial_recons"]
-      self.adversarial_eps = data["eps"]
-      self.adversarial_num_steps = data["num_steps"]
-      self.adversarial_input_id = data["input_id"]
-      self.adversarial_target_id = data["target_id"]
+      self.params.adversarial_eps = data["eps"]
+      self.params.adversarial_num_steps = data["num_steps"]
+      self.params.adversarial_input_id = data["input_id"]
+      self.params.adversarial_target_id = data["target_id"]
       self.adversarial_input_target_mses = data["input_target_mse"]
       self.adversarial_input_recon_mses = data["input_recon_mses"]
       self.adversarial_input_adv_mses = data["input_adv_mses"]
@@ -666,7 +687,7 @@ class Analyzer(object):
     """
     Append opes to the graph for adversarial analysis
     """
-    with tf.device(self.model.device):
+    with tf.device(self.params.device):
       with self.model.graph.as_default():
         with tf.name_scope("placeholders") as scope:
           self.model.orig_input = tf.placeholder(tf.float32, shape=self.model.x_shape,
@@ -705,7 +726,6 @@ class Analyzer(object):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
-      ## Setup session
       feed_dict = self.model.get_feed_dict(input_image)
       feed_dict[self.model.adv_target] = target_image
       sess.run(self.model.init_op, feed_dict)

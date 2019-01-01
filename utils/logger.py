@@ -5,7 +5,7 @@ import json as js
 import os
 
 class Logger(object):
-  def __init__(self, filename=None, overwrite=False):
+  def __init__(self, filename=None, overwrite=True):
     if filename is None:
       self.log_to_file = False
     else:

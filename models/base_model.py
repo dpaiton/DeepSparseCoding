@@ -101,9 +101,9 @@ class Model(object):
     if self.params.log_to_file:
       if log_filename is None:
         log_filename = self.params.log_dir+self.params.model_name+"_v"+self.params.version+".log"
-        self.logger = Logger(log_filename, overwrite=True)
+        self.logger = Logger(filename=log_filename, overwrite=True)
     else:
-        self.logger = Logger()
+        self.logger = Logger(filename=None)
 
   def js_dumpstring(self, obj):
     """Dump json string with special NumpyEncoder"""
