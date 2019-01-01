@@ -28,14 +28,14 @@ class params(lca_params):
     self.cp_load_step = int(1e6) # None gives latest checkpoint
     self.cp_load_name = "lca_pca_512_vh_ft_white"
     self.cp_load_ver = "0.0"
-    self.cp_load_var = ["phi"]
+    #self.cp_load_var = ["phi"]
     self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 5000
     self.save_plots = True
 
     self.schedule = [
-      {"weights": ["phi"],
+      {"weights": ["weights/w:0"],
       "sparse_mult": 1.0,
       "weight_lr": [0.01],
       "decay_steps": [int(self.num_batches*0.5)],

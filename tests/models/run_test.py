@@ -8,33 +8,15 @@ import utils.data_processing as dp
 """
 Test for running models
 NOTE: Should be executed from the repository's root directory
-loads every model
-loads every dataset
+loads every model and runs on synthetic data
 
-for each model:
-  modify model params to be simple
-  for each dataset:
-    if should_fail:
-      print warning
-    else:
-      do stuff
-    #try:
-    #  do preprocessing
-    #  get batch
-    #  do one weight update step
-    #catch exception:
-    #  if should_fail:
-    #    print "warning: model with dataset failed" + str(exception)
-    #    raise NotImplementedError
-    #  else:
-    #    assert False, "model with dataset failed"
 ## TODO:
   * rica model has different interface for applying gradients when the L-BFGS minimizer is used
     this is inconsistent and should be changed so that it acts like all models
 """
 class RunTest(tf.test.TestCase):
   def testBasic(self):
-    model_list = ["mlp", "vae", "lca", "lca_conv"]#mp.get_model_list()
+    model_list = ["mlp", "vae", "lca", "lca_conv", "lca_pca"]#mp.get_model_list()
     data_type = "synthetic"
     schedule_index = 0 # Not testing support for multiple schedules
 
