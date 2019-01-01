@@ -18,9 +18,6 @@ class LCA(Model):
     super(LCA, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.params.data_shape))
-
-    #self.phi_shape = [self.num_pixels, self.num_neurons]
-    #self.u_shape = [self.num_neurons]
     self.x_shape = [None, self.num_pixels]
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
@@ -121,7 +118,7 @@ class LCA(Model):
     """
     super(LCA, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encoding()]
+    eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encodings()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     weights, recon, activity = eval_out[1:]

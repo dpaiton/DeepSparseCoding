@@ -34,6 +34,12 @@ class Model(object):
     """
     for sched in schedule:
       if sched["weights"] is not None: # schedule specificies specific variables for trainable vars
+        assert type(sched["weights"]) == list
+        assert type(sched["weight_lr"]) == list
+        assert type(sched["decay_steps"]) == list
+        assert type(sched["decay_rate"]) == list
+        assert type(sched["staircase"]) == list
+        assert type(sched["num_batches"]) == int
         assert len(sched["weights"]) == len(sched["weight_lr"])
         assert len(sched["weights"]) == len(sched["decay_steps"])
         assert len(sched["weights"]) == len(sched["decay_rate"])

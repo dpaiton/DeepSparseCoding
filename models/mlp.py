@@ -45,7 +45,6 @@ class MLP(Model):
           self.params.strides_x, self.params.patch_size_y, self.params.patch_size_x,
           self.params.eps, name="mlp")
         self.y_ = self.mlp.y_
-        #import pdb; pdb.set_trace()
         self.trainable_variables.update(self.mlp.trainable_variables)
 
         with tf.name_scope("performance_metrics") as scope:
@@ -61,93 +60,6 @@ class MLP(Model):
 
   def get_total_loss(self):
     return self.mlp.total_loss
-
-  #def build_graph(self):
-  #  """
-  #  Build an MLP TensorFlow Graph.
-  #  """
-  #  with tf.device(self.params.device):
-  #    with self.graph.as_default():
-  #      with tf.name_scope("auto_placeholders") as scope:
-  #        self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
-  #        self.y = tf.placeholder(tf.float32, shape=self.y_shape, name="input_labels")
-
-  #      with tf.name_scope("constants") as scope:
-  #        ## For semi-supervised learning, loss is 0 if there is no label
-  #        self.label_mult = tf.reduce_sum(self.y, axis=[1])
-
-  #      with tf.name_scope("step_counter") as scope:
-  #        self.global_step = tf.Variable(0, trainable=False,
-  #          name="global_step")
-
-  #      with tf.variable_scope("weights") as scope:
-  #        self.w1 = tf.get_variable(name="w1", dtype=tf.float32,
-  #          initializer=tf.truncated_normal(self.w1_shape, mean=0.0,
-  #          stddev=1.0, dtype=tf.float32, name="w1_init"), trainable=True)
-  #        self.w2 = tf.get_variable(name="w2", dtype=tf.float32,
-  #          initializer=tf.truncated_normal(self.w2_shape, mean=0.0,
-  #          stddev=1.0, dtype=tf.float32, name="w2_init"), trainable=True)
-  #        self.bias1 = tf.get_variable(name="bias1", dtype=tf.float32,
-  #          initializer=tf.zeros([1, self.params.num_hidden], dtype=tf.float32,
-  #          name="bias1_init"), trainable=True)
-  #        self.bias2 = tf.get_variable(name="bias2", dtype=tf.float32,
-  #          initializer=tf.zeros([1, self.params.num_classes], dtype=tf.float32,
-  #          name="bias2_init"), trainable=True)
-  #        self.trainable_variables[self.w1.name] = self.w1
-  #        self.trainable_variables[self.w2.name] = self.w2
-  #        self.trainable_variables[self.bias1.name] = self.bias1
-  #        self.trainable_variables[self.bias2.name] = self.bias2
-
-  #      with tf.name_scope("norm_weights") as scope:
-  #        self.norm_w1 = self.w1.assign(tf.nn.l2_normalize(self.w1,
-  #          dim=0, epsilon=self.params.eps, name="row_l2_norm"))
-  #        self.norm_weights = tf.group(self.norm_w1,
-  #          name="l2_normalization")
-
-  #      with tf.name_scope("hidden_variables") as scope:
-  #        if self.params.rectify_a:
-  #          self.a = tf.nn.relu(tf.add(tf.matmul(self.x, self.w1),
-  #            self.bias1), name="activity")
-  #        else:
-  #          self.a = tf.add(tf.matmul(self.x, self.w1), self.bias1,
-  #            name="activity")
-
-  #        if self.params.norm_a:
-  #          self.c = tf.add(tf.matmul(tf.nn.l2_normalize(self.a,
-  #            dim=1, epsilon=self.params.eps, name="row_l2_norm"), self.w2,
-  #            name="classify"), self.bias2, name="c")
-  #        else:
-  #          self.c = tf.add(tf.matmul(self.a, self.w2, name="classify"),
-  #            self.bias2, name="c")
-
-  #      with tf.name_scope("output") as scope:
-  #        with tf.name_scope("label_estimate"):
-  #          self.y_ = tf.nn.softmax(self.c)
-
-  #      with tf.name_scope("loss") as scope:
-  #        with tf.name_scope("supervised"):
-  #          with tf.name_scope("cross_entropy_loss"):
-  #            self.cross_entropy_loss = (self.label_mult
-  #              * -tf.reduce_sum(tf.multiply(self.y, tf.log(tf.clip_by_value(
-  #              self.y_, self.params.eps, 1.0))), axis=[1]))
-  #            label_count = tf.reduce_sum(self.label_mult)
-  #            f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
-  #            f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
-  #            pred_fn_pairs = {
-  #              tf.equal(label_count, tf.constant(0.0)): f1,
-  #              tf.greater(label_count, tf.constant(0.0)): f2}
-  #            self.mean_cross_entropy_loss = tf.case(pred_fn_pairs,
-  #              default=f2, exclusive=True, name="mean_cross_entropy_loss")
-  #          self.supervised_loss = self.mean_cross_entropy_loss
-  #        self.total_loss = self.supervised_loss
-
-  #      with tf.name_scope("performance_metrics") as scope:
-  #        with tf.name_scope("prediction_bools"):
-  #          self.correct_prediction = tf.equal(tf.argmax(self.y_, axis=1),
-  #            tf.argmax(self.y, axis=1), name="individual_accuracy")
-  #        with tf.name_scope("accuracy"):
-  #          self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
-  #            tf.float32), name="avg_accuracy")
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
