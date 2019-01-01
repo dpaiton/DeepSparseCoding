@@ -83,6 +83,26 @@ class params(Base_Params):
         self.schedule[schedule_idx]["sparse_mult"] = 0.21
         self.schedule[schedule_idx]["weight_lr"] = [0.1]
 
+    elif data_type.lower() == "synthetic":
+      self.model_name += "_synthetic"
+      self.epoch_size = 1000
+      self.dist_type = "gaussian"
+      self.num_edge_pixels = 8
+      self.vectorize_data = True
+      self.norm_data = False
+      self.rescale_data = True
+      self.center_data = False
+      self.standardize_data = False
+      self.contrast_normalize = False
+      self.whiten_data = False
+      self.lpf_data = False # only for ZCA
+      self.lpf_cutoff = 0.7
+      self.extract_patches = False
+      self.num_neurons = 768
+      for schedule_idx in range(len(self.schedule)):
+        self.schedule[schedule_idx]["sparse_mult"] = 0.21
+        self.schedule[schedule_idx]["weight_lr"] = [0.1]
+
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
       self.num_images = 150

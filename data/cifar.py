@@ -14,7 +14,7 @@ class CIFAR(object):
     self.num_classes = np.max(d_train_val_labels)+1
     self.test_images, d_test_labels = self.load_test_data(data_dir)
     self.test_images = self.test_images.astype(np.float32)/255.0
-    self.test_labels = self.dense_to_one_hot(d_test_labels)
+    self.test_labels = dp.dense_to_one_hot(d_test_labels, self.num_classes)
     ## Grab a random sample of images for the validation set
     tot_images = train_val_images.shape[0]
     if tot_images < num_val:
@@ -27,7 +27,7 @@ class CIFAR(object):
     else:
       val_indices = None
       train_indices = np.arange(tot_images, dtype=np.int32)
-    train_val_labels = self.dense_to_one_hot(d_train_val_labels)
+    train_val_labels = dp.dense_to_one_hot(d_train_val_labels, self.num_classes)
     self.train_labels = train_val_labels[train_indices]
     self.val_labels = train_val_labels[val_indices]
     self.num_train_images = len(train_indices)
@@ -76,14 +76,6 @@ class CIFAR(object):
     with open(filename, 'rb') as f:
       cifar = pickle.load(f, encoding="bytes")
     return (cifar[b"data"], np.array(cifar[b"labels"]))
-
-  def dense_to_one_hot(self, labels_dense):
-    """Convert vector of dense labels to a matrix of one-hot labels"""
-    num_labels = labels_dense.shape[0]
-    index_offset = np.arange(num_labels, dtype=np.int32) * self.num_classes
-    labels_one_hot = np.zeros((num_labels, self.num_classes))
-    labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
-    return labels_one_hot
 
 def load_CIFAR(params):
   assert ("data_dir" in params.__dict__.keys()), ("load_CIFAR function input must have 'data_dir' key")

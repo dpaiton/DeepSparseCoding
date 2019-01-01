@@ -26,9 +26,7 @@ class params(Base_Params):
     self.norm_a = False
     self.norm_weights = True
     self.batch_size = 100
-    self.num_classes = 10
     self.layer_types = ["conv", "fc"]
-    self.output_channels = [400, 10]
     self.strides_y = [1, None]
     self.strides_x = [1, None]
     self.patch_size_y = [8, None]
@@ -63,5 +61,14 @@ class params(Base_Params):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.num_classes = 10
+      self.output_channels = [400, 10]
+    elif data_type.lower() == "synthetic":
+      self.model_name += "_synthetic"
+      self.epoch_size = 1000
+      self.dist_type = "gaussian"
+      self.num_edge_pixels = 8
+      self.num_classes = 2
+      self.output_channels = [400, 2]
     else:
       assert False, ("Data type "+data_type+" is not supported.")

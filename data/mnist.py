@@ -1,6 +1,7 @@
 import numpy as np
 import gzip
 from data.dataset import Dataset
+import utils.data_processing as dp
 
 class MNIST(object):
   def __init__(self,
@@ -16,7 +17,7 @@ class MNIST(object):
     self.num_classes = 10 # 10 MNIST classes
     self.images = self.extract_images(img_dir)
     self.labels = self.extract_labels(lbl_dir)
-    self.labels = self.dense_to_one_hot(self.labels)
+    self.labels = dp.dense_to_one_hot(self.labels, self.num_classes)
     assert self.images.shape[0] == self.labels.shape[0], (
       "Error: %g images and %g labels"%(self.images.shape[0], self.labels.shape[0]))
     ## Grab a random sample of images for the validation set
@@ -46,13 +47,6 @@ class MNIST(object):
       self.ignore_indices = np.array(ignore_idx_list, dtype=np.int32)
     else:
       self.ignore_indices = None
-
-  def dense_to_one_hot(self, labels_dense):
-    num_labels = labels_dense.shape[0]
-    index_offset = np.arange(num_labels, dtype=np.int32) * self.num_classes
-    labels_one_hot = np.zeros((num_labels, self.num_classes))
-    labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
-    return labels_one_hot
 
   def read_4B(self, bytestream):
     dt = np.dtype(np.uint32).newbyteorder("B") #big-endian byte order-MSB first

@@ -51,5 +51,10 @@ class params(Base_Params):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+    elif data_type.lower() == "synthetic":
+      self.model_name += "_synthetic"
+      self.epoch_size = 1000
+      self.dist_type = "gaussian"
+      self.num_edge_pixels = 8
     else:
       assert False, ("Data type "+data_type+" is not supported.")
