@@ -4,11 +4,11 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_funcs as ef
 from models.base_model import Model
-from modules.lca import LCAModule
+from modules.lca_module import LcaModule
 
-class LCA(Model):
+class LcaModel(Model):
   def __init__(self):
-    super(LCA, self).__init__()
+    super(LcaModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -16,7 +16,7 @@ class LCA(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(LCA, self).load_params(params)
+    super(LcaModel, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
@@ -24,7 +24,7 @@ class LCA(Model):
     self.eta = self.params.dt / self.params.tau
 
   def build_module(self):
-    module = LCAModule(self.x, self.params.num_neurons, self.sparse_mult,
+    module = LcaModule(self.x, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
       self.params.num_steps, self.params.eps, name="lca")
     return module
@@ -67,7 +67,7 @@ class LCA(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(LCA, self).generate_update_dict(input_data, input_labels, batch_step)
+    update_dict = super(LcaModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.loss_dict["recon_loss"],
       self.module.loss_dict["sparse_loss"], self.get_total_loss(), self.get_encodings(),
@@ -120,7 +120,7 @@ class LCA(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(LCA, self).generate_plots(input_data, input_labels)
+    super(LcaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encodings()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)

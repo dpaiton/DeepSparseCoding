@@ -3,16 +3,16 @@ import os
 import tensorflow as tf
 import params.param_picker as pp
 import utils.plot_functions as pf
-from models.lca_pca import LCA_PCA
+from models.lca_pca_model import LcaPcaModel
 
-class LCA_PCA_FB(LCA_PCA):
+class LcaPcaFbModel(LcaPcaModel):
   def load_params(self, params):
     """
     Load parameters into object
     Inputs:
      params: [obj] model parameters
     """
-    super(LCA_PCA_FB, self).load_params(params)
+    super(LcaPcaFbModel, self).load_params(params)
     self.act_cov_loc = (params.out_dir+self.cp_load_name+"/analysis/"+self.cp_load_ver
       +"/act_cov_"+self.act_cov_suffix+".npz")
     assert os.path.exists(self.act_cov_loc), ("Can't find activity covariance file. "
@@ -117,4 +117,4 @@ class LCA_PCA_FB(LCA_PCA):
     with self.graph.as_default():
       with tf.name_scope("auto_placeholders") as scope:
         self.fb_mult = tf.placeholder(tf.float32, shape=(), name="fb_mult")
-    super(LCA_PCA_FB, self).build_graph()
+    super(LcaPcaFbModel, self).build_graph()

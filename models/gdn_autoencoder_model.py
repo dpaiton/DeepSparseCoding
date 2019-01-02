@@ -8,7 +8,7 @@ from layers.non_linearities import gdn
 from ops.init_ops import GDNGammaInitializer
 from models.base_model import Model
 
-class GDN_Autoencoder(Model):
+class GdnAutoencoderModel(Model):
   """
   Implementation of autoencoder described in Balle, Laparra, Simoncelli (2017)
   End-to-End Optimized Image Compression
@@ -19,11 +19,11 @@ class GDN_Autoencoder(Model):
   #  add a small amount of uniform noise to input, to simulate pixel quantization
   """
   def __init__(self):
-    super(GDN_Autoencoder, self).__init__()
+    super(GdnAutoencoderModel, self).__init__()
     self.vector_inputs = True
 
   def load_params(self, params):
-    super(GDN_Autoencoder, self).load_params(params)
+    super(GdnAutoencoderModel, self).load_params(params)
     # Computed parameters
     self.x_shape = [None, self.params.num_pixels]
     self.w_enc_shape = [self.params.num_pixels, self.params.num_neurons]
@@ -245,7 +245,7 @@ class GDN_Autoencoder(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(GDN_Autoencoder, self).generate_update_dict(input_data, input_labels,
+    update_dict = super(GdnAutoencoderModel, self).generate_update_dict(input_data, input_labels,
       batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["entropy_loss"],
@@ -295,7 +295,7 @@ class GDN_Autoencoder(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(GDN_Autoencoder, self).generate_plots(input_data, input_labels)
+    super(GdnAutoencoderModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_enc, self.b_enc, self.b_dec, self.w_dec,
       self.w_gdn, self.w_igdn, self.b_gdn, self.b_igdn, self.x_, self.a,

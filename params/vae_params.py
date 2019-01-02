@@ -1,6 +1,5 @@
 import os
 from params.base_params import BaseParams
-from models.vae import VAE as vae
 
 class params(BaseParams):
   def __init__(self):

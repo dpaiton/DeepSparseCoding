@@ -3,11 +3,11 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.base_model import Model
-from modules.mlp import MLPModule
+from modules.mlp_module import MlpModule
 
-class MLP(Model):
+class MlpModel(Model):
   def __init__(self):
-    super(MLP, self).__init__()
+    super(MlpModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -15,7 +15,7 @@ class MLP(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(MLP, self).load_params(params)
+    super(MlpModel, self).load_params(params)
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None,] + self.params.data_shape
     self.y_shape = [None, self.params.num_classes]
@@ -39,12 +39,12 @@ class MLP(Model):
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
-        self.mlp = MLPModule(self.x, self.y, self.batch_norm_decay_mult,
+        self.mlp = MlpModule(self.x, self.y, self.batch_norm_decay_mult,
           self.params.layer_types, self.params.output_channels, self.params.strides_y,
           self.params.strides_x, self.params.patch_size_y, self.params.patch_size_x,
           self.params.eps, name="mlp")
-        self.y_ = self.mlp.y_
         self.trainable_variables.update(self.mlp.trainable_variables)
+        self.y_ = self.mlp.y_
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("prediction_bools"):
@@ -68,7 +68,7 @@ class MLP(Model):
       input_labels: load_MNIST data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(MLP, self).generate_update_dict(input_data, input_labels, batch_step)
+    update_dict = super(MlpModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval())
     total_loss = np.array(self.get_total_loss().eval(feed_dict))
@@ -92,7 +92,7 @@ class MLP(Model):
     Plot weights, reconstruction, and gradients
     Inputs: input_data and input_labels used for the session
     """
-    super(MLP, self).generate_plots(input_data, input_labels)
+    super(MlpModel, self).generate_plots(input_data, input_labels)
     #TODO
     #feed_dict = self.get_feed_dict(input_data, input_labels)
     #current_step = str(self.global_step.eval())

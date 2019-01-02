@@ -4,9 +4,9 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.base_model import Model
 
-class ICA(Model):
+class IcaModel(Model):
   def __init__(self):
-    super(ICA, self).__init__()
+    super(IcaModel, self).__init__()
     self.vector_inputs = True
 
   def load_params(self, params):
@@ -15,7 +15,7 @@ class ICA(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(ICA, self).load_params(params)
+    super(IcaModel, self).load_params(params)
     assert (True if self.prior.lower() in ("laplacian", "cauchy") else False), (
       "Prior must be 'laplacian' or 'cauchy'")
     ## Calculated params
@@ -81,7 +81,7 @@ class ICA(Model):
       This child function does not use optimizer input
       weight_op must be a list with a single matrix ("self.w_synth") in it
     """
-    assert len(weight_op) == 1, ("ICA should only have one weight matrix")
+    assert len(weight_op) == 1, ("IcaModel should only have one weight matrix")
     weight_name = weight_op[0].name.split('/')[1].split(':')[0]# last one is np.split
 
     # VS 265 solution
@@ -111,7 +111,7 @@ class ICA(Model):
       to write an np function that converts numpy types to their corresponding
       python types.
     """
-    update_dict = super(ICA, self).print_update(input_data, input_labels, batch_step)
+    update_dict = super(IcaModel, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list  = [self.global_step, self.a, self.z, self.x_]
     grad_name_list = []
@@ -166,7 +166,7 @@ class ICA(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(ICA, self).generate_plots(input_data, input_labels)
+    super(IcaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_analysis,  self.a, self.z]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)

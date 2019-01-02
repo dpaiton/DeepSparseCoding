@@ -4,16 +4,16 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_funcs as ef
 from models.base_model import Model
-from modules.vae import VAE as vae_module
+from modules.vae_module import VaeModule
 
-class VAE(Model):
+class VaeModel(Model):
   def __init__(self):
     """
     Variational Autoencoder using Mixture of Gaussians
     Kingma, Diederik P., and Max Welling. "Auto-encoding variational bayes."
     arXiv preprint arXiv:1312.6114 (2013).
     """
-    super(VAE, self).__init__()
+    super(VaeModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -21,7 +21,7 @@ class VAE(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(VAE, self).load_params(params)
+    super(VaeModel, self).load_params(params)
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
 
@@ -42,8 +42,9 @@ class VAE(Model):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.name_scope("model") as scope:
-          self.vae = vae_module(self.x, self.params.output_channels, self.sparse_mult,
-              self.decay_mult, self.kld_mult, name="VAE")
+          self.vae = VaeModule(self.x, self.params.output_channels, self.sparse_mult,
+            self.decay_mult, self.kld_mult, name="VAE")
+          self.trainable_variables.update(self.vae.trainable_variables)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -61,7 +62,7 @@ class VAE(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(VAE, self).generate_update_dict(input_data,
+    update_dict = super(VaeModel, self).generate_update_dict(input_data,
       input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.vae.loss_dict["recon_loss"],
@@ -119,7 +120,7 @@ class VAE(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(VAE, self).generate_plots(input_data, input_labels)
+    super(VaeModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
 
     eval_list = [self.global_step, self.vae.w_enc_list, self.vae.w_dec_list, self.vae.w_enc_std,

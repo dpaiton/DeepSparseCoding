@@ -1,14 +1,18 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
-import utils.entropy_funcs as ef
 from models.base_model import Model
 
-class ReLU_Autoencoder(Model):
+class SigmoidAutoencoderModel(Model):
+  """
+  Implementation of sparse autoencoder described in Andrew Ng's 2011 Stanford CS294A lecture notes
+  Sigmoidal activation function
+  Untied encoding & decoding weights
+  Linear reconstructions - input images do not have 0-1 range
+  """
   def __init__(self):
-    super(ReLU_Autoencoder, self).__init__()
+    super(SigmoidAutoencoderModel, self).__init__()
     self.vector_inputs = True
 
   def load_params(self, params):
@@ -18,53 +22,46 @@ class ReLU_Autoencoder(Model):
      params: [dict] model parameters
     Modifiable Parameters:
     """
-    super(ReLU_Autoencoder, self).load_params(params)
+    super(SigmoidAutoencoderModel, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.data_shape))
-    self.x_shape = [None, self.num_pixels]
     self.w_enc_shape = [self.num_pixels, self.num_neurons]
-    self.b_enc_shape = [self.num_neurons]
-    self.b_dec_shape = [self.num_pixels]
+    self.x_shape = [None, self.num_pixels]
 
-  def sigmoid(self, a_in, beta=1):
-    """Hyperbolic tangent non-linearity"""
-    a_out = tf.subtract(tf.multiply(2.0, tf.divide(1.0,
-      tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0)
-    return a_out
+  def activation(self, a_in, name=""):
+    return tf.sigmoid(a_in, name=name)
 
-  def compute_entropies(self, a_in):
-    with tf.name_scope("unsupervised"):
-      a_sig = self.sigmoid(a_in, self.sigmoid_beta)
-      a_probs = ef.prob_est(a_sig, self.mle_thetas, self.triangle_centers)
-      a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
-    return a_entropies
+  def compute_recon(self, a_in):
+    return tf.add(tf.matmul(a_in, self.w_dec), self.b_dec, name="reconstruction")
 
   def compute_weight_decay_loss(self):
     with tf.name_scope("unsupervised"):
-      decay_loss = tf.multiply(0.5*self.decay_mult,
-        tf.add_n([tf.nn.l2_loss(self.w_enc), tf.nn.l2_loss(self.w_dec)]), name="weight_decay_loss")
+      #w_enc_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(tf.square(self.w_enc),
+      #axis=[0]), 1.0)))
+      #w_dec_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(tf.square(self.w_dec),
+      #axis=[1]), 1.0)))
+      w_enc_decay = tf.reduce_sum(tf.square(self.w_enc))
+      w_dec_decay = tf.reduce_sum(tf.square(self.w_dec))
+      decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n([w_enc_decay, w_dec_decay]))
     return decay_loss
-
-  def compute_entropy_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
-      a_entropies = self.compute_entropies(a_in)
-      entropy_loss = tf.multiply(self.ent_mult, tf.reduce_sum(a_entropies), name="entropy_loss")
-    return entropy_loss
 
   def compute_recon_loss(self, a_in):
     with tf.name_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
-      x_ = self.compute_recon(a_in)
-      recon_loss = tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(tf.subtract(self.x, x_)),
+      recon_loss = tf.reduce_mean(0.5 *
+        tf.reduce_sum(tf.square(tf.subtract(self.x, self.compute_recon(a_in))),
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
-  def compute_recon(self, a_in):
-    recon = tf.add(tf.matmul(a_in, self.w_dec), self.b_dec)
-    return recon
-
-  def get_loss_funcs(self):
-    return {"recon_loss":self.compute_recon_loss, "entropy_loss":self.compute_entropy_loss}
+  def compute_sparse_loss(self, a_in):
+    with tf.name_scope("unsupervised"):
+      avg_act = tf.reduce_mean(a_in, axis=[0], name="batch_avg_activity")
+      p_dist = self.target_act * tf.subtract(tf.log(self.target_act), tf.log(avg_act), name="kl_p")
+      q_dist = (1-self.target_act) * tf.subtract(tf.log(1-self.target_act), tf.log(1-avg_act),
+        name="kl_q")
+      kl_divergence = tf.reduce_sum(tf.add(p_dist, q_dist), name="kld")
+      sparse_loss = tf.multiply(self.sparse_mult, kl_divergence, name="sparse_loss")
+    return sparse_loss
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
@@ -72,61 +69,40 @@ class ReLU_Autoencoder(Model):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
-          self.triangle_centers = tf.placeholder(tf.float32, shape=[self.num_triangles],
-            name="triangle_centers")
-          self.ent_mult = tf.placeholder(tf.float32, shape=(), name="ent_mult")
+          self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
-          self.noise_var_mult = tf.placeholder(tf.float32, shape=(), name="noise_var_mult")
+          self.target_act = tf.placeholder(tf.float32, shape=(), name="target_act")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        with tf.variable_scope("probability_estimate") as scope:
-          self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_neurons,
-            self.num_triangles)
-
         with tf.name_scope("weight_inits") as scope:
-          w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0, stddev=0.5,
-            dtype=tf.float32, name="w_init")
-          b_enc_init = tf.truncated_normal(self.b_enc_shape, mean=0.0, stddev=0.1,
-            dtype=tf.float32, name="b_enc_init")
-          b_dec_init = tf.truncated_normal(self.b_dec_shape, mean=0.0, stddev=0.1,
-            dtype=tf.float32, name="b_dec_init")
+          w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0,
+            stddev=0.2, dtype=tf.float32, name="w_init")
+          b_enc_init = tf.ones([1, self.num_neurons])*0.0001
+          b_dec_init = tf.ones([1, self.num_pixels])*0.0001
 
         with tf.variable_scope("weights") as scope:
-          self.weight_scope = tf.get_variable_scope()
           self.w_enc = tf.get_variable(name="w_enc", dtype=tf.float32,
             initializer=w_init, trainable=True)
-          self.b_enc = tf.get_variable(name="b_enc", dtype=tf.float32,
-            initializer=b_enc_init, trainable=True)
           self.w_dec = tf.get_variable(name="w_dec", dtype=tf.float32,
             initializer=tf.transpose(w_init), trainable=True)
+          self.b_enc = tf.get_variable(name="b_enc", dtype=tf.float32,
+            initializer=b_enc_init, trainable=True)
           self.b_dec = tf.get_variable(name="b_dec", dtype=tf.float32,
             initializer=b_dec_init, trainable=True)
           self.trainable_variables[self.w_enc.name] = self.w_enc
           self.trainable_variables[self.b_enc.name] = self.b_enc
-          self.trainable_variables[self.w_enc.name] = self.w_dec
-          self.trainable_variables[self.b_enc.name] = self.b_dec
+          self.trainable_variables[self.w_dec.name] = self.w_dec
+          self.trainable_variables[self.b_dec.name] = self.b_dec
 
         with tf.variable_scope("inference") as scope:
-          self.enc_output = tf.nn.relu(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
-            name="relu_output")
-          self.enc_entropies = self.compute_entropies(self.enc_output)
-          noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.enc_output),
-            tf.reduce_min(self.enc_output))) # 1/2 of 10% of range of relu output
-          uniform_noise = tf.random_uniform(shape=tf.stack(tf.shape(self.enc_output)),
-            minval=tf.subtract(0.0, noise_var), maxval=tf.add(0.0, noise_var))
-          self.a = tf.add(uniform_noise, self.enc_output, name="activity")
-
-        with tf.variable_scope("probability_estimate") as scope:
-          self.a_sig = self.sigmoid(self.a, self.sigmoid_beta)
-          ll = ef.log_likelihood(self.a_sig, self.mle_thetas, self.triangle_centers)
-          self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
-            for _ in range(self.num_mle_steps)]
+         self.a = self.activation(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
+           name="activity")
 
         with tf.name_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.a),
-            "entropy_loss":self.compute_entropy_loss(self.a),
+            "sparse_loss":self.compute_sparse_loss(self.a),
             "weight_decay_loss":self.compute_weight_decay_loss()}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
@@ -144,24 +120,24 @@ class ReLU_Autoencoder(Model):
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
-    Generates a dictionary to be logged in the print_update function
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
+    update_dict = super(SigmoidAutoencoderModel, self).generate_update_dict(input_data,
+      input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["entropy_loss"],
-      self.total_loss, self.a, self.x_]
-    init_eval_length = len(eval_list)
+    eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
+      self.loss_dict["weight_decay_loss"], self.total_loss, self.a, self.x_, self.learning_rates]
     grad_name_list = []
-    learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
-      grad_name_list.append(weight_grad_var[0][1].name.split('/')[1].split(':')[0])#2nd is np.split
-      learning_rate_dict[grad_name_list[w_idx]] = self.get_schedule("weight_lr")[w_idx]
+      grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
+      grad_name_list.append(grad_name)
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    current_step, recon_loss, entropy_loss, total_loss, a_vals, recon = out_vals[:init_eval_length]
+    current_step, recon_loss, sparse_loss, decay_loss, total_loss, a_vals, recon = out_vals[0:7]
     input_mean = np.mean(input_data)
     input_max = np.max(input_data)
     input_min = np.min(input_data)
@@ -170,24 +146,29 @@ class ReLU_Autoencoder(Model):
     recon_min = np.min(recon)
     a_vals_max = np.array(a_vals.max())
     a_vals_min = np.array(a_vals.min())
+    a_vals_mean = np.mean(a_vals)
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
       "recon_loss":recon_loss,
-      "entropy_loss":entropy_loss,
+      "sparse_loss":sparse_loss,
       "total_loss":total_loss,
-      "a_max":a_vals_max,
-      "a_min":a_vals_min,
       "a_fraction_active":a_frac_act,
+      "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
-    grads = out_vals[init_eval_length:]
-    for grad, name in zip(grads, grad_name_list):
-      stat_dict[name+"_max_grad"] = learning_rate_dict[name]*np.array(grad.max())
-      stat_dict[name+"_min_grad"] = learning_rate_dict[name]*np.array(grad.min())
-    return stat_dict
+    lrs = out_vals[7]
+    grads = out_vals[8:]
+    for w_idx, (grad, name) in enumerate(zip(grads, grad_name_list)):
+      grad_max = lrs[0][w_idx]*np.array(grad.max())
+      grad_min = lrs[0][w_idx]*np.array(grad.min())
+      grad_mean = lrs[0][w_idx]*np.mean(np.array(grad))
+      stat_dict[name+"_lr"] = lrs[0][w_idx]
+      stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
+    update_dict.update(stat_dict)
+    return update_dict
 
   def generate_plots(self, input_data, input_labels=None):
     """
@@ -195,17 +176,15 @@ class ReLU_Autoencoder(Model):
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
-    TODO: Format entropy output title better
     """
-    super(ReLU_Autoencoder, self).generate_plots(input_data, input_labels)
+    super(SigmoidAutoencoderModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.w_enc, self.b_enc, self.w_dec, self.b_dec,
-      self.x_, self.enc_output, self.enc_entropies]
+    eval_list = [self.global_step, self.w_enc, self.b_enc, self.w_dec, self.x_,  self.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
-    w_enc, b_enc, w_dec, b_dec, recon, activity, entropies = eval_out[1:]
-    w_enc_norm = np.linalg.norm(w_enc, axis=1, keepdims=False)
-    w_dec_norm = np.linalg.norm(w_dec, axis=0, keepdims=False)
+    w_enc, b_enc, w_dec, recon, activity = eval_out[1:]
+    w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
+    w_dec_norm = np.linalg.norm(w_dec, axis=1, keepdims=False)
     w_enc = dp.reshape_data(w_enc.T, flatten=False)[0]
     w_dec = dp.reshape_data(w_dec, flatten=False)[0]
     fig = pf.plot_data_tiled(w_enc, normalize=False,
@@ -217,19 +196,8 @@ class ReLU_Autoencoder(Model):
       save_filename=(self.disp_dir+"w_dec_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram",
-      save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    fig = pf.plot_activity_hist(b_dec, title="Decoding Bias Histogram",
-      save_filename=(self.disp_dir+"b_dec_hist_v"+self.version+"-"
-      +current_step.zfill(5)+".png"))
-    entropy_sort_indices = np.argsort(entropies)[::-1] # ascending
-    for fig_id, neuron_id in enumerate(entropy_sort_indices[0:2]):
-      fig = pf.plot_activity_hist(activity[:, neuron_id],
-        title=("Actvity Histogram (pre-noise) for Neuron "+str(neuron_id)+"\nwith entropy = "
-        +str(np.round(entropies[neuron_id]))),
-        save_filename=(self.disp_dir+"indv_act_hist_v"+self.version+"-"
-        +current_step.zfill(5)+"_"+str(fig_id).zfill(3)+".png"))
-    fig = pf.plot_activity_hist(activity, title="Activity Histogram (pre-noise)",
+      save_filename=(self.disp_dir+"b_enc_hist_v"+self.version+"-"+current_step.zfill(5)+".png"))
+    fig = pf.plot_activity_hist(activity, title="Activity Histogram",
       save_filename=(self.disp_dir+"act_hist_v"+self.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,

@@ -2,16 +2,16 @@ import numpy as np
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
-from models.lca import LCA
-from modules.lca_conv import LCAConvModule
+from models.lca_model import LcaModel
+from modules.lca_conv_module import LcaConvModule
 
-class LCA_CONV(LCA):
+class LcaConvModel(LcaModel):
   """
   Convolutional LCA model
   Inference is defined within the graph
   """
   def __init__(self):
-    super(LCA_CONV, self).__init__()
+    super(LcaConvModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -24,7 +24,7 @@ class LCA_CONV(LCA):
       patch_size_y
       patch_size_x
     """
-    super(LCA_CONV, self).load_params(params)
+    super(LcaConvModel, self).load_params(params)
     if len(self.params.data_shape) == 2:
       self.params.data_shape += [1]
 
@@ -33,7 +33,7 @@ class LCA_CONV(LCA):
     self.x_shape = [None,] + self.params.data_shape
 
   def build_module(self):
-    module = LCAConvModule(self.x, self.params.num_neurons, self.sparse_mult,
+    module = LcaConvModule(self.x, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
       self.params.num_steps, self.params.patch_size_y, self.params.patch_size_x,
       self.params.stride_y, self.params.stride_x, self.params.eps, name="lca_conv")

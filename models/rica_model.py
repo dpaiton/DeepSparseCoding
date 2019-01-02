@@ -4,18 +4,18 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.base_model import Model
 
-class RICA(Model):
+class RicaModel(Model):
   """
   Implementation of Quoc Le et al. Reconstruction ICA described in:
   QV Le, A Karpenko, J Ngiam, AY Ng (2011)
   ICA with Reconstruction Cost for Efficient Overcomplete Feature Learning
   """
   def __init__(self):
-    super(RICA, self).__init__()
+    super(RicaModel, self).__init__()
     self.vector_inputs = True
 
   def load_params(self, params):
-    super(RICA, self).load_params(params)
+    super(RicaModel, self).load_params(params)
     self.num_pixels = int(np.prod(self.data_shape))
     self.x_shape = [None, self.num_pixels]
     self.w_shape = [self.num_pixels, self.num_neurons]
@@ -82,7 +82,7 @@ class RICA(Model):
               self.apply_grads.append(sch_apply_grads)
       self.optimizers_added = True
     else:
-      super(RICA, self).add_optimizers_to_graph()
+      super(RicaModel, self).add_optimizers_to_graph()
 
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
@@ -146,7 +146,7 @@ class RICA(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(RICA, self).generate_update_dict(input_data, input_labels, batch_step)
+    update_dict = super(RicaModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
       self.total_loss, self.a, self.x_]
@@ -196,7 +196,7 @@ class RICA(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(RICA, self).generate_plots(input_data, input_labels)
+    super(RicaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w, self.x_,  self.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)

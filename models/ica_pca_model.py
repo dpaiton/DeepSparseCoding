@@ -1,12 +1,12 @@
 import numpy as np
 import tensorflow as tf
 import params.param_picker as pp
-from models.ica import ICA
+from models.ica_model import IcaModel
 
-class ICA_PCA(ICA):
+class IcaPcaModel(IcaModel):
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    super(ICA_PCA, self).build_graph()
+    super(IcaPcaModel, self).build_graph()
     with self.graph.as_default():
       with tf.name_scope("covariance") as scope:
         self.act_corr = tf.divide(tf.matmul(tf.transpose(tf.nn.relu(self.u)),

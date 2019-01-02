@@ -8,15 +8,15 @@ import utils.get_data as get_data
 import utils.mem_utils as mem_utils
 from layers.non_linearities import gdn
 from ops.init_ops import GDNGammaInitializer
-from models.gdn_autoencoder import GDN_Autoencoder
+from models.gdn_autoencoder_model import GdnAutoencoderModel
 
-class Conv_GDN_Decoder(GDN_Autoencoder):
+class ConvGdnDecoderModel(GdnAutoencoderModel):
   """
   Decoder for the conv_gdn_autoencoder model
   loads decoding weights from npz files, can decode latent values to images
   """
   def __init__(self):
-    super(Conv_GDN_Decoder, self).__init__()
+    super(ConvGdnDecoderModel, self).__init__()
     self.vector_inputs = False
 
   def load_params(self, params):
@@ -26,7 +26,7 @@ class Conv_GDN_Decoder(GDN_Autoencoder):
      params: [dict] model parameters
     Modifiable Parameters:
     """
-    super(GDN_Autoencoder, self).load_params(params)
+    super(GdnAutoencoderModel, self).load_params(params)
     self.w_shapes = [vals
       for vals in zip(self.params.patch_size_y, self.params.patch_size_x, self.params.output_channels,
       self.params.input_channels)]

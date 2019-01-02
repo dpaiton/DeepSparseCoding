@@ -1,10 +1,10 @@
 import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
-from modules.lca import LCAModule
+from modules.lca_module import LcaModule
 import pdb
 
-class LCAConvModule(LCAModule):
+class LcaConvModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,
     rectify_a, num_steps, patch_size_y, patch_size_x,
     stride_y, stride_x, eps, name="LCA_Conv"):
@@ -15,7 +15,7 @@ class LCAConvModule(LCAModule):
     self.stride_y = stride_y
     self.stride_x = stride_x
 
-    super(LCAConvModule, self).__init__(data_tensor, num_neurons, sparse_mult, step_size,
+    super(LcaConvModule, self).__init__(data_tensor, num_neurons, sparse_mult, step_size,
         thresh_type, rectify_a, num_steps, eps, name)
 
   def calc_shapes(self):

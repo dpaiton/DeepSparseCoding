@@ -1,19 +1,19 @@
 import params.param_picker as pp
-from models.mlp import MLP as mlp
-from models.ica import ICA as ica
-from models.ica_pca import ICA_PCA as ica_pca
-from models.rica import RICA as rica
-from models.lca import LCA as lca
-from models.lca_pca import LCA_PCA as lca_pca
-from models.lca_pca_fb import LCA_PCA_FB as lca_pca_fb
-from models.lca_subspace import LCA_SUBSPACE as lca_subspace
-from models.lca_conv import LCA_CONV as lca_conv
-from models.sigmoid_autoencoder import Sigmoid_Autoencoder as sa
-from models.gdn_autoencoder import GDN_Autoencoder as ga
-from models.conv_gdn_autoencoder import Conv_GDN_Autoencoder as cga
-from models.conv_gdn_decoder import Conv_GDN_Decoder as cgd
-from models.relu_autoencoder import ReLU_Autoencoder as ra
-from models.vae import VAE as vae
+from models.mlp_model import MlpModel as mlp
+from models.ica_model import IcaModel as ica
+from models.ica_pca_model import IcaPcaModel as ica_pca
+from models.rica_model import RicaModel as rica
+from models.lca_model import LcaModel as lca
+from models.lca_pca_model import LcaPcaModel as lca_pca
+from models.lca_pca_fb_model import LcaPcaFbModel as lca_pca_fb
+from models.lca_subspace_model import LcaSubspaceModel as lca_subspace
+from models.lca_conv_model import LcaConvModel as lca_conv
+from models.sigmoid_autoencoder_model import SigmoidAutoencoderModel as sa
+from models.gdn_autoencoder_model import GdnAutoencoderModel as ga
+from models.conv_gdn_autoencoder_model import ConvGdnAutoencoderModel as cga
+from models.conv_gdn_decoder_model import ConvGdnDecoderModel as cgd
+from models.relu_autoencoder_model import ReluAutoencoderModel as ra
+from models.vae_model import VaeModel as vae
 
 def get_model(model_type):
   if model_type.lower() == "mlp":

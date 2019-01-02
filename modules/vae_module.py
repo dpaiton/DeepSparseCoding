@@ -3,7 +3,7 @@ import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 import pdb
 
-class VAE(object):
+class VaeModule(object):
   def __init__(self, data_tensor, output_channels,
       sparse_mult, decay_mult, kld_mult, name="VAE"):
     """

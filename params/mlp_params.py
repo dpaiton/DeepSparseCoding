@@ -1,6 +1,5 @@
 import os
 from params.base_params import BaseParams
-from models.mlp import MLP as mlp
 
 class params(BaseParams):
   def __init__(self):

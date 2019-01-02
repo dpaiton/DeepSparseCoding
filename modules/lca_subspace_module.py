@@ -1,10 +1,10 @@
 import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
-from modules.lca import LCAModule
+from modules.lca_module import LcaModule
 import pdb
 
-class LCASubspaceModule(LCAModule):
+class LcaSubspaceModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size,
     num_steps, num_groups, group_orth_mult, eps, name="LCA_Subspace"):
 
@@ -27,7 +27,7 @@ class LCASubspaceModule(LCAModule):
       for neuron_id in group_member_indices:
         self.group_assignments[neuron_id] = group_index
 
-    super(LCASubspaceModule, self).__init__(data_tensor, num_neurons, sparse_mult, step_size,
+    super(LcaSubspaceModule, self).__init__(data_tensor, num_neurons, sparse_mult, step_size,
         None, None, num_steps, eps, name)
 
     with tf.variable_scope(self.inference_scope):

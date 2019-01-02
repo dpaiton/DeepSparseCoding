@@ -1,9 +1,9 @@
 import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
-from modules.batch_normalization import BatchNormalizationModule
+from modules.batch_normalization_module import BatchNormalizationModule
 
-class MLPModule(object):
+class MlpModule(object):
   def __init__(self, data_tensor, label_tensor, norm_decay_mult, layer_types, output_channels,
     patch_size_y, patch_size_x, strides_y, strides_x, eps, name="MLP"):
     """

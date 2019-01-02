@@ -2,15 +2,15 @@ import numpy as np
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
-from models.lca import LCA
-from modules.lca_subspace import LCASubspaceModule
+from models.lca_model import LcaModel
+from modules.lca_subspace_module import LcaSubspaceModule
 
-class LCA_SUBSPACE(LCA):
+class LcaSubspaceModel(LcaModel):
   """
   LCA model with group sparsity constraints
   """
   def __init__(self):
-    super(LCA_SUBSPACE, self).__init__()
+    super(LcaSubspaceModel, self).__init__()
     self.vector_inputs = True
 
   def build_graph(self):
@@ -20,10 +20,10 @@ class LCA_SUBSPACE(LCA):
         with tf.name_scope("auto_placeholders") as scope:
           self.group_orth_mult = tf.placeholder(tf.float32, shape=(), name="group_orth_mult")
 
-    super(LCA_SUBSPACE, self).build_graph()
+    super(LcaSubspaceModel, self).build_graph()
 
   def build_module(self):
-    module = LCASubspaceModule(self.x, self.params.num_neurons, self.sparse_mult,
+    module = LcaSubspaceModule(self.x, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.num_steps, self.params.num_groups, self.group_orth_mult,
       self.params.eps, name="lca_subspace")
     return module
@@ -35,7 +35,7 @@ class LCA_SUBSPACE(LCA):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(LCA_SUBSPACE, self).generate_plots(input_data, input_labels)
+    super(LcaSubspaceModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.w]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)

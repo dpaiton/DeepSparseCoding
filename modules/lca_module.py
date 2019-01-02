@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 
-class LCAModule(object):
+class LcaModule(object):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,
       rectify_a, num_steps, eps, name="LCA"):
     """

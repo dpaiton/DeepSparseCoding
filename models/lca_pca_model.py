@@ -1,11 +1,11 @@
 import tensorflow as tf
 import params.param_picker as pp
-from models.lca import LCA
+from models.lca_model import LcaModel
 
-class LCA_PCA(LCA):
+class LcaPcaModel(LcaModel):
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    super(LCA_PCA, self).build_graph()
+    super(LcaPcaModel, self).build_graph()
 
     with tf.device(self.params.device):
       with self.graph.as_default():
