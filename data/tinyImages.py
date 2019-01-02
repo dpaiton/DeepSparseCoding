@@ -19,7 +19,7 @@ class tinyImages(object):
     file_location = image_dir+"tiny_images.bin"
     with open(file_location, "rb") as data_file:
       images = []
-      for img_index in range(start_index, (num_batches*batch_size)-start_index, batch_size):
+      for img_index in range(start_index, int((num_batches*batch_size)-start_index), batch_size):
         offset = img_index * self.num_pixels
         data_file.seek(offset)
         data = np.fromstring(data_file.read(self.num_pixels*batch_size), dtype='uint8') # TODO: Switch to np.frombuffer()

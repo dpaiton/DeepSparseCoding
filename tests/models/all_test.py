@@ -60,7 +60,6 @@ class RunAll(tf.test.TestCase):
       ("rica", "synthetic"),
       ("lca", "CIFAR10"),
       ("lca", "tinyImages"),
-      ("lca", "synthetic"),
       ("lca_pca", "vanHateren"),
       ("lca_pca", "field"),
       ("lca_pca", "MNIST"),
@@ -73,12 +72,10 @@ class RunAll(tf.test.TestCase):
       ("lca_pca_fb", "CIFAR10"),
       ("lca_pca_fb", "tinyImages"),
       ("lca_pca_fb", "synthetic"),
-      ("conv_lca", "vanHateren"),
-      ("conv_lca", "field"),
-      ("conv_lca", "MNIST"),
-      ("conv_lca", "CIFAR10"),
-      ("conv_lca", "tinyImages"),
-      ("conv_lca", "synthetic"),
+      ("lca_conv", "tinyImages"),
+      ("lca_subspace", "CIFAR10"),
+      ("lca_subspace", "tinyImages"),
+      ("lca_subspace", "synthetic"),
       ("sigmoid_autoencoder", "vanHateren"),
       ("sigmoid_autoencoder", "field"),
       ("sigmoid_autoencoder", "MNIST"),
@@ -134,7 +131,7 @@ class RunAll(tf.test.TestCase):
           print("Model "+model_type+" failed with dataset "+data_type+", as expected.")
         else:
           try:
-            params.set_data_params(data_type)
+            params.set_test_params(data_type)
             params.model_name = "test_all_"+params.model_name
             dataset = ds.get_data(params) # Import data
             dataset = model.preprocess_dataset(dataset, params)

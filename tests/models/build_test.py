@@ -19,7 +19,7 @@ class BuildTest(tf.test.TestCase):
 
     for model_type in model_list:
       params = pp.get_params(model_type) # Import params
-      params.set_data_params(data_type)
+      params.set_test_params(data_type)
       model = mp.get_model(model_type) # Import model
       params.data_type = data_type
       model.data_type = data_type

@@ -11,8 +11,8 @@ class params(Base_Params):
       patch_size_x  [int] the number of columns in the patch
     """
     super(params, self).__init__()
-    self.model_type = "conv_lca"
-    self.model_name = "conv_lca"
+    self.model_type = "lca_conv"
+    self.model_name = "lca_conv"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = False
@@ -28,6 +28,10 @@ class params(Base_Params):
     self.image_edge_size = 128
     self.batch_size = 25
     self.num_neurons = 128 # pixel-overcompleteness is num_neurons/(stride_y * stride_x)
+    self.stride_y = 8
+    self.stride_x = 8
+    self.patch_size_y = 16 # weight receptive field
+    self.patch_size_x = 16
     self.num_steps = 60
     self.dt = 0.001
     self.tau = 0.03
@@ -67,15 +71,75 @@ class params(Base_Params):
       self.lpf_cutoff = 0.7
       self.extract_patches = False
       self.num_neurons = 768
-
       self.stride_y = 2
       self.stride_x = 2
       self.patch_size_y = 8 # weight receptive field
       self.patch_size_x = 8
-
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["sparse_mult"] = 0.21
         self.schedule[schedule_idx]["weight_lr"] = [0.1]
+
+    elif data_type.lower() == "tinyImages":
+      self.model_name += "_tinyImages"
+      self.num_images = 150
+      self.vectorize_data = False
+      self.norm_data = False
+      self.rescale_data = False
+      self.center_data = True
+      self.standardize_data = False
+      self.contrast_normalize = False
+      self.whiten_data = True
+      self.whiten_method = "FT"
+      self.lpf_data = False # FT whitening already does LPF
+      self.lpf_cutoff = 0.7
+      self.extract_patches = False
+      self.image_edge_size = 28
+      self.stride_y = 8
+      self.stride_x = 8
+      self.patch_size_y = 16 # weight receptive field
+      self.patch_size_x = 16
+      self.num_neurons = 128
+      self.num_steps = 60
+      self.dt = 0.001
+      self.tau = 0.03
+      self.rectify_a = True
+      self.thresh_type = "soft"
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.8
+        self.schedule[sched_idx]["weight_lr"] = [0.001]
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+
+    elif data_type.lower() == "vanhateren":
+      self.model_name += "_vh"
+      self.num_images = 150
+      self.vectorize_data = False
+      self.norm_data = False
+      self.rescale_data = False
+      self.center_data = True
+      self.standardize_data = False
+      self.contrast_normalize = False
+      self.whiten_data = True
+      self.whiten_method = "FT"
+      self.lpf_data = False # FT whitening already does LPF
+      self.lpf_cutoff = 0.7
+      self.extract_patches = False
+      self.image_edge_size = 128
+      self.stride_y = 8
+      self.stride_x = 8
+      self.patch_size_y = 16 # weight receptive field
+      self.patch_size_x = 16
+      self.num_neurons = 128
+      self.num_steps = 60
+      self.dt = 0.001
+      self.tau = 0.03
+      self.rectify_a = True
+      self.thresh_type = "soft"
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.8
+        self.schedule[sched_idx]["weight_lr"] = [0.001]
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -100,3 +164,17 @@ class params(Base_Params):
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["sparse_mult"] = 0.21
         self.schedule[schedule_idx]["weight_lr"] = [0.1]
+
+  def set_test_params(self, data_type):
+    self.set_data_params(data_type)
+    self.epoch_size = 50
+    self.batch_size = 10
+    self.num_edge_pixels = 8
+    for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["num_batches"] = 2
+      self.schedule[sched_idx]["weight_lr"] = [1e-4]
+    self.num_neurons = 100
+    self.stride_y = 1
+    self.stride_x = 1
+    self.patch_size_y = 2
+    self.patch_size_x = 2

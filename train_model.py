@@ -85,13 +85,17 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       batch_t0 = ti.time()
 
+      ## Generate initial logs & plots
+      if (current_step <= 1 and params.log_int > 0):
+        model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
+      if (current_step <= 1 and params.gen_plot_int > 0):
+        model.generate_plots(input_data=input_data, input_labels=input_labels)
+
       ## Update model weights
       sess_run_list = []
       for w_idx in range(len(model.get_schedule("weights"))):
         sess_run_list.append(model.apply_grads[sch_idx][w_idx])
       sess.run(sess_run_list, feed_dict)
-      #for w_idx in range(len(model.get_schedule("weights"))):
-      #  sess.run(model.apply_grads[sch_idx][w_idx], feed_dict)
 
       if model_type == "rica" and hasattr(model, "minimizer"):
         model.minimizer.minimize(session=sess, feed_dict=feed_dict)
@@ -106,14 +110,10 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Generate logs
       current_step = sess.run(model.global_step)
-      if (current_step <= 1 and params.log_int > 0):
-        model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
       if (current_step % params.log_int == 0 and params.log_int > 0):
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
 
-      ## Plot weights & gradients
-      if (current_step <= 1 and params.gen_plot_int > 0):
-        model.generate_plots(input_data=input_data, input_labels=input_labels)
+      ## Generate plots
       if (current_step % params.gen_plot_int == 0 and params.gen_plot_int > 0):
         model.generate_plots(input_data=input_data, input_labels=input_labels)
 

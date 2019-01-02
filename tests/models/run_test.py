@@ -28,7 +28,7 @@ class RunTest(tf.test.TestCase):
       model.data_type = data_type
 
       try:
-        params.set_data_params(data_type)
+        params.set_test_params(data_type)
         params.model_name = "test_run_"+params.model_name
         dataset = ds.get_data(params) # Import data
         dataset = model.preprocess_dataset(dataset, params)

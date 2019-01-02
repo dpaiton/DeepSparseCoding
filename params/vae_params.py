@@ -55,6 +55,16 @@ class params(Base_Params):
       self.model_name += "_synthetic"
       self.epoch_size = 1000
       self.dist_type = "gaussian"
-      self.num_edge_pixels = 8
+      self.num_edge_pixels = 16
     else:
       assert False, ("Data type "+data_type+" is not supported.")
+
+  def set_test_params(self, data_type):
+    self.set_data_params(data_type)
+    self.epoch_size = 50
+    self.batch_size = 10
+    self.num_edge_pixels = 8
+    for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["num_batches"] = 2
+      self.schedule[sched_idx]["weight_lr"] = 1e-4
+    self.output_channels = [20, 10]
