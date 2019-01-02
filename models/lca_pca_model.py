@@ -25,7 +25,7 @@ class LcaPcaModel(LcaModel):
       with self.graph.as_default():
         with tf.name_scope("covariance") as scope:
           act_centered = self.get_encodings() - tf.reduce_mean(self.get_encodings(),
-            axis=[1], keep_dims=True)
+            axis=[1], keepdims=True)
           self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
             tf.to_float(tf.shape(self.x)[0]), name="a_cov_matrix")
 

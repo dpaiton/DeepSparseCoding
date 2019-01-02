@@ -10,13 +10,13 @@ from layers.non_linearities import gdn
 from ops.init_ops import GDNGammaInitializer
 from models.gdn_autoencoder_model import GdnAutoencoderModel
 
-class ConvGdnAutoencoderModel(GdnAutoencoderModel):
+class GdnConvAutoencoderModel(GdnAutoencoderModel):
   """
   Implementation of autoencoder described in Balle, Laparra, Simoncelli (2017)
   End-to-End Optimized Image Compression
   """
   def __init__(self):
-    super(ConvGdnAutoencoderModel, self).__init__()
+    super(GdnConvAutoencoderModel, self).__init__()
     self.vector_inputs = False
     self.exclude_feed_strings = ["memristor_std_eps"]
 

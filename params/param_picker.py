@@ -9,8 +9,8 @@ import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
 import params.sigmoid_autoencoder_params as sa
 import params.gdn_autoencoder_params as ga
-import params.conv_gdn_autoencoder_params as cga
-import params.conv_gdn_decoder_params as cgd
+import params.gdn_conv_autoencoder_params as cga
+import params.gdn_conv_decoder_params as cgd
 import params.relu_autoencoder_params as ra
 import params.vae_params as vae
 
@@ -59,10 +59,10 @@ def get_params(model_type):
   if model_type.lower() == "gdn_autoencoder":
     params = ga.params()
     return params
-  if model_type.lower() == "conv_gdn_autoencoder":
+  if model_type.lower() == "gdn_conv_autoencoder":
     params = cga.params()
     return params
-  if model_type.lower() == "conv_gdn_decoder":
+  if model_type.lower() == "gdn_conv_decoder":
     params = cgd.params()
     return params
   if model_type.lower() == "relu_autoencoder":

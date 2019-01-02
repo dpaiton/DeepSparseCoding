@@ -10,13 +10,13 @@ from layers.non_linearities import gdn
 from ops.init_ops import GDNGammaInitializer
 from models.gdn_autoencoder_model import GdnAutoencoderModel
 
-class ConvGdnDecoderModel(GdnAutoencoderModel):
+class GdnConvDecoderModel(GdnAutoencoderModel):
   """
   Decoder for the conv_gdn_autoencoder model
   loads decoding weights from npz files, can decode latent values to images
   """
   def __init__(self):
-    super(ConvGdnDecoderModel, self).__init__()
+    super(GdnConvDecoderModel, self).__init__()
     self.vector_inputs = False
 
   def load_params(self, params):
