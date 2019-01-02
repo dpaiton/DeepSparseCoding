@@ -11,6 +11,7 @@ class Model(object):
     self.savers_constructed = False
     self.params_loaded = False
     self.trainable_variables = TrainableVariableDict()
+    self.graph = tf.Graph()
 
   def setup(self, params):
     self.load_params(params)

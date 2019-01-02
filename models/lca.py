@@ -31,7 +31,6 @@ class LCA(Model):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    self.graph = tf.Graph()
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:

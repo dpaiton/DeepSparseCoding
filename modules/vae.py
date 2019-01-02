@@ -33,7 +33,6 @@ class VAE(object):
     self.kld_mult = kld_mult
 
     self.trainable_variables = TrainableVariableDict()
-    self.graph = tf.Graph()
     self.num_encoder_layers = len(self.output_channels)
 
     self.w_enc_shape = []

@@ -29,8 +29,6 @@ class params(Base_Params):
     self.num_steps = 60
     self.dt = 0.001
     self.tau = 0.03
-    self.thresh_type = "soft"
-    self.rectify_a = True
     self.norm_weights = True
     self.optimizer = "annealed_sgd"
     self.cp_int = 10000
@@ -61,14 +59,15 @@ class params(Base_Params):
       self.vectorize_data = True
       self.norm_data = False
       self.rescale_data = True
-      self.center_data = False
+      self.center_data = True
       self.standardize_data = False
       self.contrast_normalize = False
       self.whiten_data = False
       self.lpf_data = False # only for ZCA
       self.lpf_cutoff = 0.7
       self.extract_patches = False
-      self.num_neurons = 768
+      self.batch_size = 100
+      self.num_neurons = 512
       self.num_groups = 128
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.45

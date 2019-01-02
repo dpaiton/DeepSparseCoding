@@ -24,7 +24,6 @@ class MLP(Model):
     """
     Build an MLP TensorFlow Graph.
     """
-    self.graph = tf.Graph()
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
