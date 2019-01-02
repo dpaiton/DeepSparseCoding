@@ -45,10 +45,6 @@ class LCAConvModule(LCAModule):
 
   def step_inference(self, u_in, a_in, step):
     with tf.name_scope("update_u"+str(step)) as scope:
-      # Can use reconstruction loss gradient for conv sparse coding
-      #recon_grad = tf.gradients(self.compute_recon_loss(a_in), a_in)[0]
-      #du = tf.subtract(tf.add(-recon_grad, a_in), u_in, name="du")
-
       recon_error = self.data_tensor - self.compute_recon(a_in)
       error_injection = tf.nn.conv2d(recon_error, self.w, [1, self.stride_y,
         self.stride_x, 1], padding="SAME", use_cudnn_on_gpu=True, name="forward_injection")

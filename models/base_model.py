@@ -15,13 +15,13 @@ class Model(object):
 
   def setup(self, params):
     self.load_params(params)
+    #self.check_params()
     self.make_dirs()
     self.init_logging()
     self.log_params()
     self.build_graph()
     self.load_schedule(params.schedule)
     self.sched_idx = 0
-    #self.check_params()
     self.log_schedule()
     self.add_optimizers_to_graph()
     self.add_initializer_to_graph()

@@ -93,7 +93,7 @@ class params(Base_Params):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
         self.schedule[sched_idx]["weight_lr"] = [0.01]
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["num_batches"] = int(2e5)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     elif data_type.lower() == "field":
@@ -107,7 +107,7 @@ class params(Base_Params):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
         self.schedule[sched_idx]["weight_lr"] = [0.01]
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["num_batches"] = int(2e5)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     elif data_type.lower() == "synthetic":
