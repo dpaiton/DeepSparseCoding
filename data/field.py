@@ -31,6 +31,7 @@ def load_field(params):
   num_images = int(params.num_images) if hasattr(params, "num_images") else None
   image_edge_size = int(params.image_edge_size) if hasattr(params, "image_edge_size") else None
   if hasattr(params, "whiten_data") and params.whiten_data:
+    print("Data: Loading pre-whitened Field dataset.")
     img_filename = data_dir+"/field/IMAGES.npz"
   else:
     img_filename = data_dir+"/field/IMAGES_RAW.npz"

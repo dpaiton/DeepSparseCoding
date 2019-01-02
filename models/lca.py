@@ -43,6 +43,9 @@ class LCA(Model):
         self.module = self.build_module()
         self.trainable_variables.update(self.module.trainable_variables)
 
+        with tf.name_scope("norm_weights") as scope:
+          self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
+
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),

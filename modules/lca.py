@@ -38,19 +38,14 @@ class LCAModule(object):
     self.trainable_variables = TrainableVariableDict()
     self.build_graph()
 
+  def check_data(self):
+    data_ndim = len(self.data_tensor.get_shape().as_list())
+    assert data_ndim == 2, ("Module requires datal_tensor to have shape [batch, num_pixels]")
+    self.batch_size, self.num_pixels = self.data_tensor.get_shape()
+
   def calc_shapes(self):
     self.w_shape = [int(self.num_pixels), self.num_neurons]
     self.u_shape = [self.num_neurons]
-
-  def check_data(self):
-    data_ndim = len(self.data_tensor.get_shape().as_list())
-    assert data_ndim == 2, (
-      "Module requires datal_tensor to have shape [batch, num_pixels]")
-
-    if data_ndim == 2:
-      self.batch_size, self.num_pixels = self.data_tensor.get_shape()
-    else:
-      assert False, ("Shouldn't get here")
 
   def compute_excitatory_current(self):
     return tf.matmul(self.data_tensor, self.w, name="driving_input")
@@ -105,7 +100,7 @@ class LCAModule(object):
     with tf.name_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.reduce_mean(0.5 *
-        tf.reduce_sum(tf.square(tf.subtract(self.data_tensor, self.reconstruction)),
+        tf.reduce_sum(tf.square(tf.subtract(self.data_tensor, self.compute_recon(a_in))),
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
@@ -138,7 +133,6 @@ class LCAModule(object):
         dtype=tf.float32, name="u_noise")
 
     w_norm_dim = list(range(len(self.w_shape)-1)) # normalize across input dim(s)
-
     with tf.variable_scope("weights") as scope:
       self.weight_scope = tf.get_variable_scope()
       w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0,
@@ -150,7 +144,6 @@ class LCAModule(object):
     with tf.name_scope("norm_weights") as scope:
       self.norm_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=w_norm_dim,
         epsilon=self.eps, name="row_l2_norm"))
-      self.norm_weights = tf.group(self.norm_w, name="l2_normalization")
 
     with tf.variable_scope("inference") as scope:
       self.inference_scope = tf.get_variable_scope()

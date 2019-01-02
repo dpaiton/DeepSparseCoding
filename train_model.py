@@ -31,6 +31,8 @@ params.set_data_params(data_type)
 
 ## Import data
 data = ds.get_data(params)
+if data_type.lower() == "field":
+  params.whiten_data = False
 
 ## Import model
 model = mp.get_model(model_type)

@@ -51,7 +51,7 @@ class params(Base_Params):
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     #self.cp_load_var = ["phi"]
-    self.log_int = 10
+    self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 1000
     self.save_plots = True
@@ -69,16 +69,11 @@ class params(Base_Params):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.vectorize_data = True
-      self.norm_data = False
       self.rescale_data = True
-      self.center_data = False
-      self.standardize_data = False
-      self.contrast_normalize = False
       self.whiten_data = False
-      self.lpf_data = False # only for ZCA
-      self.lpf_cutoff = 0.7
       self.extract_patches = False
       self.num_neurons = 768
+      self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
         self.schedule[sched_idx]["weight_lr"] = [0.1]
@@ -89,26 +84,30 @@ class params(Base_Params):
       self.model_name += "_vh"
       self.num_images = 150
       self.vectorize_data = True
-      self.norm_data = False
       self.rescale_data = False
-      self.center_data = False
-      self.standardize_data = False
-      self.contrast_normalize = False
       self.whiten_data = True
       self.whiten_method = "FT"
-      self.lpf_data = False # FT whitening already does LPF
-      self.lpf_cutoff = 0.7
       self.extract_patches = True
-      self.num_patches = 1e6
-      self.patch_edge_size = 16
-      self.overlapping_patches = True
-      self.randomize_patches = True
-      self.patch_variance_threshold = 0.0
       self.num_neurons = 768
+      self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
-        self.schedule[sched_idx]["weight_lr"] = [0.001]
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["weight_lr"] = [0.01]
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+
+    elif data_type.lower() == "field":
+      self.model_name += "_field"
+      self.vectorize_data = True
+      self.rescale_data = False
+      self.whiten_data = True
+      self.extract_patches = True
+      self.num_neurons = 768
+      self.thresh_type = "soft"
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.8
+        self.schedule[sched_idx]["weight_lr"] = [0.01]
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     elif data_type.lower() == "synthetic":
@@ -117,14 +116,8 @@ class params(Base_Params):
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
       self.vectorize_data = True
-      self.norm_data = False
       self.rescale_data = True
-      self.center_data = False
-      self.standardize_data = False
-      self.contrast_normalize = False
       self.whiten_data = False
-      self.lpf_data = False # only for ZCA
-      self.lpf_cutoff = 0.7
       self.extract_patches = False
       self.num_neurons = 768
       for sched_idx in range(len(self.schedule)):
@@ -133,27 +126,6 @@ class params(Base_Params):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
-    elif data_type.lower() == "field":
-      self.model_name += "_field"
-      self.vectorize_data = True
-      self.norm_data = False
-      self.rescale_data = False
-      self.center_data = False
-      self.standardize_data = False
-      self.contrast_normalize = False
-      self.whiten_data = True
-      self.extract_patches = True
-      self.num_patches = 1e6
-      self.patch_edge_size = 16
-      self.overlapping_patches = True
-      self.randomize_patches = True
-      self.patch_variance_threshold = 0.0
-      self.num_neurons = 768
-      for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.1
-        self.schedule[sched_idx]["weight_lr"] = [0.01]
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
-        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     else:
       assert False, ("Data type "+data_type+" is not supported.")

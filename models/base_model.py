@@ -389,7 +389,7 @@ class Model(object):
           if params.whiten_method == "FT": # other methods require patching first
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
               dp.whiten_data(dataset[key].images, method=params.whiten_method)
-            print("Preprocessing: Whitened "+key+" data")
+            print("Preprocessing: FT Whitened "+key+" data")
       if hasattr(params, "lpf_data") and params.lpf_data:
         dataset[key].images, dataset[key].data_mean, dataset[key].lpf_filter = \
           dp.lpf_data(dataset[key].images, cutoff=params.lpf_cutoff)
