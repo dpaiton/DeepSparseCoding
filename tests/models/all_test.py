@@ -162,8 +162,8 @@ class RunAll(tf.test.TestCase):
               print("Model "+model_type+" passed on dataset "+data_type+".")
           except Exception as e:
             #import IPython; IPython.embed(); raise SystemExit
-            print("Model "+model_type+" failed on dataset "+data_type)
-            raise e
+            raise Exception("Model "+model_type+" with dataset "+data_type+
+              " on AllTest failed:\n") from e
 
 if __name__ == "__main__":
   tf.test.main()

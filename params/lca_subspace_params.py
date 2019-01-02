@@ -4,8 +4,8 @@ from params.base_params import Base_Params
 class params(Base_Params):
   def __init__(self):
     super(params, self).__init__()
-    self.model_type = "subspace_lca"
-    self.model_name = "subspace_lca"
+    self.model_type = "lca_subspace"
+    self.model_name = "lca_subspace"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -23,13 +23,14 @@ class params(Base_Params):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
-    self.num_batches = int(1e5)
     self.batch_size = 80
     self.num_neurons = 768
     self.num_groups = 192
     self.num_steps = 60
     self.dt = 0.001
     self.tau = 0.03
+    self.thresh_type = "soft"
+    self.rectify_a = True
     self.norm_weights = True
     self.optimizer = "annealed_sgd"
     self.cp_int = 10000
@@ -44,15 +45,17 @@ class params(Base_Params):
     self.gen_plot_int = 5000
     self.save_plots = True
     self.schedule = [
-      {"weights": ["phi"],
+      {"weights": ["weights/w:0"],
+      "num_batches": int(1e5),
       "sparse_mult": 5.0,
       "group_orth_mult": 0.1,
       "weight_lr": [0.02],
-      "decay_steps": [int(self.num_batches*0.8)],
+      "decay_steps": [int(1e5*0.8)],
       "decay_rate": [0.7],
       "staircase": [True]}]
 
-  def set_data_params(data_type):
+  def set_data_params(self, data_type):
+    self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.vectorize_data = True
@@ -67,9 +70,10 @@ class params(Base_Params):
       self.extract_patches = False
       self.num_neurons = 768
       self.num_groups = 128
-      self.schedule["sparse_mult"] = 0.45
-      self.schedule["group_orth_mult"] = 0.04
-      self.schedule["weight_lr"] = 0.08
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.45
+        self.schedule[sched_idx]["group_orth_mult"] = 0.04
+        self.schedule[sched_idx]["weight_lr"] = [0.08]
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
@@ -92,9 +96,32 @@ class params(Base_Params):
       self.patch_variance_threshold = 0.0
       self.num_neurons = 768
       self.num_groups = 192
-      self.schedule["sparse_mult"] = 5.0
-      self.schedule["group_orth_mult"] = 0.1
-      self.schedule["weight_lr"] = 0.02
+      for sched_idx in range(len(self.schedule)):
+        self.schedule["sparse_mult"] = 5.0
+        self.schedule["group_orth_mult"] = 0.1
+        self.schedule["weight_lr"] = [0.02]
+
+    elif data_type.lower() == "synthetic":
+      self.model_name += "_synthetic"
+      self.epoch_size = 1000
+      self.dist_type = "gaussian"
+      self.num_edge_pixels = 8
+      self.vectorize_data = True
+      self.norm_data = False
+      self.rescale_data = True
+      self.center_data = False
+      self.standardize_data = False
+      self.contrast_normalize = False
+      self.whiten_data = False
+      self.lpf_data = False # only for ZCA
+      self.lpf_cutoff = 0.7
+      self.extract_patches = False
+      self.num_neurons = 128
+      self.num_groups = 32
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.45
+        self.schedule[sched_idx]["group_orth_mult"] = 0.04
+        self.schedule[sched_idx]["weight_lr"] = [0.08]
 
     else:
       assert False, ("Data type "+data_type+" is not supported.")

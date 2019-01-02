@@ -6,7 +6,7 @@ from models.rica import RICA as rica
 from models.lca import LCA as lca
 from models.lca_pca import LCA_PCA as lca_pca
 from models.lca_pca_fb import LCA_PCA_FB as lca_pca_fb
-from models.subspace_lca import SUBSPACE_LCA as subspace_lca
+from models.lca_subspace import LCA_SUBSPACE as lca_subspace
 from models.lca_conv import LCA_CONV as lca_conv
 from models.sigmoid_autoencoder import Sigmoid_Autoencoder as sa
 from models.gdn_autoencoder import GDN_Autoencoder as ga
@@ -30,8 +30,8 @@ def get_model(model_type):
     return lca_pca()
   if model_type.lower() == "lca_pca_fb":
     return lca_pca_fb()
-  if model_type.lower() == "subspace_lca":
-    return subspace_lca()
+  if model_type.lower() == "lca_subspace":
+    return lca_subspace()
   if model_type.lower() == "lca_conv":
     return lca_conv()
   if model_type.lower() == "sigmoid_autoencoder":

@@ -4,27 +4,27 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.lca import LCA
 
-class SUBSPACE_LCA(LCA):
+class LCA_SUBSPACE(LCA):
   """
   LCA model with group sparsity constraints
   """
   def __init__(self):
-    super(SUBSPACE_LCA, self).__init__()
+    super(LCA_SUBSPACE, self).__init__()
     self.vector_inputs = True
 
   def load_params(self, params):
-    super(SUBSPACE_LCA, self).load_params(params)
-    assert self.num_neurons % self.num_groups == 0, (
+    super(LCA_SUBSPACE, self).load_params(params)
+    assert self.params.num_neurons % self.params.num_groups == 0, (
       "Num groups must divide evenly into num neurons.")
-    self.num_neurons_per_group = int(self.num_neurons / self.num_groups)
+    self.num_neurons_per_group = int(self.params.num_neurons / self.params.num_groups)
     # group_ids is a list of len == self.num_groups, where each element in the list is a list of
     #    neuron indices assigned to that group
-    neuron_ids = np.arange(self.num_neurons, dtype=np.int32)
+    neuron_ids = np.arange(self.params.num_neurons, dtype=np.int32)
     self.group_ids = [neuron_ids[start:start+self.num_neurons_per_group]
-      for start in np.arange(0, self.num_neurons, self.num_neurons_per_group, dtype=np.int32)]
+      for start in np.arange(0, self.params.num_neurons, self.num_neurons_per_group, dtype=np.int32)]
     # group_assignemnts is an array of shape [self.num_neurons] that conatins a group assignment
     #    for each neuron index
-    self.group_assignments = np.zeros(self.num_neurons, dtype=np.int32)
+    self.group_assignments = np.zeros(self.params.num_neurons, dtype=np.int32)
     for group_index, group_member_indices in enumerate(self.group_ids):
       for neuron_id in group_member_indices:
         self.group_assignments[neuron_id] = group_index
@@ -45,7 +45,7 @@ class SUBSPACE_LCA(LCA):
     a_in shape is [num_batch, num_neurons]
     sigmas shape is [num_batch, num_groups]
     """
-    new_shape = tf.stack([tf.shape(self.x)[0]]+[self.num_groups, self.num_neurons_per_group])
+    new_shape = tf.stack([tf.shape(self.x)[0]]+[self.params.num_groups, self.num_neurons_per_group])
     a_resh = tf.reshape(a_in, shape=new_shape)
     sigmas = tf.sqrt(tf.reduce_sum(tf.square(a_resh), axis=2, keep_dims=True), name=name)
     return sigmas
@@ -85,12 +85,12 @@ class SUBSPACE_LCA(LCA):
         # assemble matrix of W = [num_pixels, num_neurons_in_group]
         # compute E =  ( W^T * W ) - I
         # loss = mean(loss_mult * E)
-      group_weights = tf.reshape(self.phi,
-        shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group], name="group_weights")
+      group_weights = tf.reshape(self.module.w,
+        shape=[self.num_pixels, self.parmas.num_groups, self.num_neurons_per_group], name="group_weights")
       w_orth_list = [
         tf.reduce_sum(tf.abs(tf.subtract(tf.matmul(tf.transpose(group_weights[:,group_idx,:]),
         group_weights[:,group_idx,:]), tf.eye(num_rows=self.num_neurons_per_group))))
-        for group_idx in range(self.num_groups)]
+        for group_idx in range(self.params.num_groups)]
       group_orthogonalization_loss = tf.multiply(self.group_orth_mult, tf.add_n(w_orth_list),
         name="group_orth_loss")
     return group_orthogonalization_loss
@@ -100,21 +100,22 @@ class SUBSPACE_LCA(LCA):
       "orthogonalization_loss":self.compute_group_orthogonalization_loss}
 
   def build_graph(self):
+    super(LCA_SUBSPACE, self).build_graph()
     """Build the TensorFlow graph object"""
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.group_orth_mult = tf.placeholder(tf.float32, shape=(), name="group_orth_mult")
-    super(SUBSPACE_LCA, self).build_graph()
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope(self.inference_scope):
-          self.group_activity = tf.identity(self.group_amplitudes(self.u), name="group_activity")
-          self.group_angles = tf.identity(self.group_directions(self.u,
+        with tf.variable_scope(self.module.inference_scope):
+          self.group_activity = tf.identity(self.group_amplitudes(self.module.u),
+            name="group_activity")
+          self.group_angles = tf.identity(self.group_directions(self.module.u,
             self.reshape_groups_per_neuron(self.group_activity)), name="group_directions")
-        with tf.variable_scope(self.weight_scope):
-          self.group_weights = tf.reshape(self.phi,
-            shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group],
+        with tf.variable_scope(self.module.weight_scope):
+          self.group_weights = tf.reshape(self.module.w,
+            shape=[self.num_pixels, self.params.num_groups, self.num_neurons_per_group],
             name="group_weights")
 
   def generate_plots(self, input_data, input_labels=None):
@@ -124,13 +125,14 @@ class SUBSPACE_LCA(LCA):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(SUBSPACE_LCA, self).generate_plots(input_data, input_labels)
+    super(LCA_SUBSPACE, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.phi]
+    eval_list = [self.global_step, self.module.w]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
-    weights = np.reshape(eval_out[1].T, [self.num_neurons, int(np.sqrt(self.num_pixels)),
+    weights = np.reshape(eval_out[1].T, [self.params.num_neurons, int(np.sqrt(self.num_pixels)),
       int(np.sqrt(self.num_pixels))])
     fig = pf.plot_group_weights(np.squeeze(weights), self.group_ids,
       title="Dictionary at step "+current_step, figsize=(18,18),
-      save_filename=(self.disp_dir+"group_phi_v"+self.version+"-"+current_step.zfill(6)+".png"))
+      save_filename=(self.params.disp_dir+"group_phi_v"+self.params.version+"-"+
+        current_step.zfill(6)+".png"))

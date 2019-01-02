@@ -13,7 +13,8 @@ loads every model
 class BuildTest(tf.test.TestCase):
   def testBasic(self):
     data_type = "mnist"
-    model_list = ["mlp", "vae", "lca", "lca_conv", "lca_pca"]#mp.get_model_list()
+    model_list = ["mlp", "vae", "lca", "lca_conv",
+      "lca_pca", "lca_subspace"]#mp.get_model_list()
     schedule_index = 0 # Not testing support for multiple schedules
 
     for model_type in model_list:
@@ -32,8 +33,7 @@ class BuildTest(tf.test.TestCase):
         print("Model "+model_type+" passed")
       except Exception as e:
         #import IPython; IPython.embed(); raise SystemExit
-        print("Model "+model_type+" failed with following error:\n")
-        raise e
+        raise Exception("Model "+model_type+" on BuildTest failed:\n") from e
 
 if __name__ == "__main__":
   tf.test.main()

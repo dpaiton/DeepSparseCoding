@@ -16,7 +16,8 @@ loads every model and runs on synthetic data
 """
 class RunTest(tf.test.TestCase):
   def testBasic(self):
-    model_list = ["mlp", "vae", "lca", "lca_conv", "lca_pca"]#mp.get_model_list()
+    model_list = ["mlp", "vae", "lca", "lca_conv",
+      "lca_pca", "lca_subspace"]#mp.get_model_list()
     data_type = "synthetic"
     schedule_index = 0 # Not testing support for multiple schedules
 
@@ -55,8 +56,7 @@ class RunTest(tf.test.TestCase):
           print("Model "+model_type+" passed on dataset "+data_type+".")
       except Exception as e:
         #import IPython; IPython.embed(); raise SystemExit
-        print("Model "+model_type+" failed on dataset "+data_type)
-        raise e
+        raise Exception("Model "+model_type+" on RunTest failed:\n") from e
 
 if __name__ == "__main__":
   tf.test.main()

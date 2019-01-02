@@ -5,7 +5,7 @@ import params.rica_params as rica
 import params.lca_params as lca
 import params.lca_pca_params as lca_pca
 import params.lca_pca_fb_params as lca_pca_fb
-import params.subspace_lca_params as subspace_lca
+import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
 import params.sigmoid_autoencoder_params as sa
 import params.gdn_autoencoder_params as ga
@@ -44,8 +44,8 @@ def get_params(model_type):
   if model_type.lower() == "lca_pca_fb":
     params = lca_pca_fb.params()
     return params
-  if model_type.lower() == "subspace_lca":
-    params = subspace_lca.params()
+  if model_type.lower() == "lca_subspace":
+    params = lca_subspace.params()
     return params
   if model_type.lower() == "lca_conv":
     params = lca_conv.params()
