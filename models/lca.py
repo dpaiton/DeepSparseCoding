@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
+import utils.entropy_funcs as ef
 from models.base_model import Model
 from modules.lca import LCAModule
 
@@ -48,9 +49,8 @@ class LCA(Model):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),
               axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
-            # TODO: pSNRdB could possibly be infinity, need to check for that and set it to a cap
-            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
-              name="recon_quality")
+            self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
+              MSE)), name="recon_quality")
 
   def get_encodings(self):
     return self.module.a
@@ -68,13 +68,14 @@ class LCA(Model):
     """
     update_dict = super(LCA, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.module.loss_dict["recon_loss"], self.module.loss_dict["sparse_loss"],
-      self.get_total_loss(), self.get_encodings(), self.module.reconstruction, self.pSNRdB]
+    eval_list = [self.global_step, self.module.loss_dict["recon_loss"],
+      self.module.loss_dict["sparse_loss"], self.get_total_loss(), self.get_encodings(),
+      self.module.reconstruction, self.pSNRdB]
     grad_name_list = []
     learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
-      eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
-      grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
+      eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name(1)]
+      grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] # 2nd is np.split
       grad_name_list.append(grad_name)
       learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
@@ -96,6 +97,7 @@ class LCA(Model):
       "recon_loss":recon_loss,
       "sparse_loss":sparse_loss,
       "total_loss":total_loss,
+      "pSNRdB": np.mean(pSNRdB),
       "a_fraction_active":a_frac_act,
       "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
@@ -106,6 +108,7 @@ class LCA(Model):
       grad_min = learning_rate_dict[name]*np.array(grad.min())
       grad_mean = learning_rate_dict[name]*np.mean(np.array(grad))
       stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
+      stat_dict[name+"_learning_rate"] = learning_rate_dict[name]
     update_dict.update(stat_dict) #stat_dict overwrites for same keys
     return update_dict
 

@@ -9,6 +9,8 @@ import params.param_picker as pp
 import models.model_picker as mp
 import data.data_selector as ds
 
+#from tensorflow.python import debug as tf_debug
+
 parser = argparse.ArgumentParser()
 
 model_list = mp.get_model_list()
@@ -24,7 +26,6 @@ data_type = args.data_type
 t0 = ti.time()
 
 ## Import params
-#params = pp.get_params(model_type)
 params = pp.get_params(model_type)
 params.set_data_params(data_type)
 

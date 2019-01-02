@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
-import pdb
 
 class LCAModule(object):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,
@@ -52,7 +51,6 @@ class LCAModule(object):
       self.batch_size, self.num_pixels = self.data_tensor.get_shape()
     else:
       assert False, ("Shouldn't get here")
-
 
   def compute_excitatory_current(self):
     return tf.matmul(self.data_tensor, self.w, name="driving_input")
@@ -168,4 +166,3 @@ class LCAModule(object):
       self.loss_dict = dict(zip(
         [key for key in loss_funcs.keys()], [func(self.a) for func in loss_funcs.values()]))
       self.total_loss = self.compute_total_loss(self.a, loss_funcs)
-

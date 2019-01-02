@@ -51,7 +51,7 @@ class params(Base_Params):
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     #self.cp_load_var = ["phi"]
-    self.log_int = 100
+    self.log_int = 10
     self.log_to_file = True
     self.gen_plot_int = 1000
     self.save_plots = True
@@ -107,7 +107,7 @@ class params(Base_Params):
       self.num_neurons = 768
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
-        self.schedule[sched_idx]["weight_lr"] = [0.01]
+        self.schedule[sched_idx]["weight_lr"] = [0.001]
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
