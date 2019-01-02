@@ -47,12 +47,11 @@ class LCA(Model):
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
 
         with tf.name_scope("performance_metrics") as scope:
-          with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),
-              axis=[1, 0], name="mean_squared_error")
-            pixel_var = tf.nn.moments(self.x, axes=[1])[1]
-            self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
-              MSE)), name="recon_quality")
+          MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),
+            axis=[1, 0], name="mean_squared_error")
+          pixel_var = tf.nn.moments(self.x, axes=[1])[1]
+          self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
+            MSE)), name="recon_quality")
 
   def get_encodings(self):
     return self.module.a
