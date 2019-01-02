@@ -3,7 +3,7 @@ import tensorflow as tf
 from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
 
-class ICA_Analyzer(Analyzer):
+class IcaAnalyzer(Analyzer):
   def __init__(self, params):
     Analyzer.__init__(self, params)
     self.var_names = [
@@ -12,7 +12,7 @@ class ICA_Analyzer(Analyzer):
       "inference/activity:0"]
 
   def run_analysis(self, images, save_info=""):
-    super(ICA_Analyzer, self).run_analysis(images, save_info)
+    super(IcaAnalyzer, self).run_analysis(images, save_info)
     self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.do_basis_analysis:
       self.bf_stats = self.basis_analysis(self.evals["weights/w_analysis:0"], save_info)

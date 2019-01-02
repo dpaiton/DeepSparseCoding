@@ -4,7 +4,7 @@ import tensorflow as tf
 from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
 
-class RICA_Analyzer(Analyzer):
+class RicaAnalyzer(Analyzer):
   def __init__(self, params):
     Analyzer.__init__(self, params)
     self.var_names = [
@@ -13,7 +13,7 @@ class RICA_Analyzer(Analyzer):
       "output/reconstruction:0"]
 
   def run_analysis(self, images, save_info=""):
-    super(RICA_Analyzer, self).run_analysis(images, save_info)
+    super(RicaAnalyzer, self).run_analysis(images, save_info)
     self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.do_basis_analysis:
       self.bf_stats = self.basis_analysis(self.evals["weights/w:0"], save_info)

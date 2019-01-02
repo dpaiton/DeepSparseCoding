@@ -65,7 +65,7 @@ class Analyzer(object):
   def load_params(self, params):
     """
     Load analysis parameters into object
-    TODO: cp_load_step is not utilized.
+    TODO: cp_load_step is not utilized - it should be an alternative to tf.train.latest_checkpoint
     """
     self.params = params
     self.params.cp_loc = tf.train.latest_checkpoint(self.params.model_dir+"/checkpoints/",
@@ -142,23 +142,22 @@ class Analyzer(object):
     """
     Run model setup, but also add adversarial nodes to graph
     """
-    self.model.load_schedule(params.schedule)
-    self.model.sched_idx = 0
     self.model.load_params(params)
-    self.model.check_params()
+    #self.model.check_params()
     self.model.make_dirs()
     self.model.init_logging()
     self.model.log_params()
-    self.model.log_schedule()
-    self.model.graph = tf.Graph()
     self.model.build_graph()
+    self.model.load_schedule(params.schedule)
+    self.model.sched_idx = 0
+    self.model.log_schedule()
     self.add_pre_init_ops_to_graph()
     self.model.add_optimizers_to_graph()
     self.model.add_initializer_to_graph()
     self.model.construct_savers()
 
   def add_pre_init_ops_to_graph(self):
-    if self.do_adversaries:
+    if self.params.do_adversaries:
       self.add_adversarial_ops_to_graph()
 
   def get_log_stats(self):

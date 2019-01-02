@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-class Base_Params(object):
+class BaseParams(object):
   """
   Modifiable parameters:
     model_type     [str] Type of model

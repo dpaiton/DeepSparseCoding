@@ -5,59 +5,59 @@ from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
 import utils.plot_functions as pf
 
-class LCA_Analyzer(Analyzer):
+class LcaAnalyzer(Analyzer):
   def __init__(self, params):
-    super(LCA_Analyzer, self).__init__(params)
+    super(LcaAnalyzer, self).__init__(params)
     self.var_names = [
-      "weights/phi:0",
-      "inference/u:0",
+      "weights/w:0",
       "inference/activity:0",
       "output/reconstruction:0",
-      "performance_metrics/reconstruction_quality/recon_quality:0"]
+      "performance_metrics/recon_quality:0"]
 
-  def load_params(self, params):
-    super(LCA_Analyzer, self).load_params(params)
+  def check_params(self):
+    super(LcaAnalyzer, self).check_params()
     if hasattr(params, "do_inference"):
       if not hasattr(params, "num_inference_steps"):
-        self.num_inference_steps = None
+        self.params.num_inference_steps = None
       if not hasattr(params, "num_inference_images"):
-        self.num_inference_images = 1
+        self.params.num_inference_images = 1
     else:
-      self.do_inference = False
-      self.num_inference_images = None
-      self.num_inference_steps = None
+      self.params.do_inference = False
+      self.params.num_inference_images = None
+      self.params.num_inference_steps = None
 
   def run_analysis(self, images, save_info=""):
-    super(LCA_Analyzer, self).run_analysis(images, save_info)
+    super(LcaAnalyzer, self).run_analysis(images, save_info)
     self.evals = self.eval_analysis(images, self.var_names, save_info)
-    if self.do_basis_analysis:
-      self.bf_stats = self.basis_analysis(self.evals["weights/phi:0"], save_info)
-    if self.do_atas:
+    if self.params.do_basis_analysis:
+      self.bf_stats = self.basis_analysis(self.evals["weights/w:0"], save_info)
+    if self.params.do_atas:
       self.atas, self.atcs = self.ata_analysis(images, self.evals["inference/activity:0"],
         save_info)
       self.noise_activity, self.noise_atas, self.noise_atcs = self.run_noise_analysis(save_info)
-    if self.do_inference:
+    if self.params.do_inference:
       self.inference_stats = self.inference_analysis(images, save_info,
-        self.num_inference_images, self.num_inference_steps)
-    if self.do_adversaries:
+        self.params.num_inference_images, self.params.num_inference_steps)
+    if self.params.do_adversaries:
       self.adversarial_images, self.adversarial_recons, mses = self.adversary_analysis(images,
         input_id=self.adversarial_input_id, target_id=self.adversarial_target_id,
-        eps=self.adversarial_eps, num_steps=self.adversarial_num_steps, save_info=save_info)
+        eps=self.params.adversarial_eps, num_steps=self.params.adversarial_num_steps,
+        save_info=save_info)
       self.adversarial_input_target_mses = mses["input_target_mse"]
       self.adversarial_input_recon_mses = mses["input_recon_mses"]
       self.adversarial_input_adv_mses = mses["input_adv_mses"]
       self.adversarial_target_recon_mses = mses["target_recon_mses"]
       self.adversarial_target_adv_mses = mses["target_adv_mses"]
       self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
-    if (self.ot_contrasts is not None
-      and self.ot_orientations is not None
-      and self.ot_phases is not None
-      and self.do_basis_analysis):
+    if (self.params.ot_contrasts is not None
+      and self.params.ot_orientations is not None
+      and self.params.ot_phases is not None
+      and self.params.do_basis_analysis):
       self.ot_grating_responses, self.co_grating_responses = self.grating_analysis(self.bf_stats,
         save_info)
 
   def load_analysis(self, save_info=""):
-    super(LCA_Analyzer, self).load_analysis(save_info)
+    super(LcaAnalyzer, self).load_analysis(save_info)
     # Inference analysis
     inference_file_loc = self.analysis_out_dir+"savefiles/inference_"+save_info+".npz"
     if os.path.exists(inference_file_loc):
@@ -110,7 +110,7 @@ class LCA_Analyzer(Analyzer):
     return inference_stats
 
   def add_pre_init_ops_to_graph(self):
-    super(LCA_Analyzer, self).add_pre_init_ops_to_graph()
+    super(LcaAnalyzer, self).add_pre_init_ops_to_graph()
     if self.do_inference:
       self.add_inference_ops_to_graph(self.num_inference_images, self.num_inference_steps)
 

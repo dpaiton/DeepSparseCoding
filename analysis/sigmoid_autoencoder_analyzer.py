@@ -4,7 +4,7 @@ import tensorflow as tf
 from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
 
-class SA_Analyzer(Analyzer):
+class SaAnalyzer(Analyzer):
   def __init__(self, params):
     Analyzer.__init__(self, params)
     self.var_names = [
@@ -12,7 +12,7 @@ class SA_Analyzer(Analyzer):
       "inference/activity:0"]
 
   def add_pre_init_ops_to_graph(self):
-    super(SA_Analyzer, self).add_pre_init_ops_to_graph()
+    super(SaAnalyzer, self).add_pre_init_ops_to_graph()
     self.add_a_deriv_ops_to_graph()
 
   def add_a_deriv_ops_to_graph(self):
@@ -21,7 +21,7 @@ class SA_Analyzer(Analyzer):
         self.model.ax_grad = tf.gradients(tf.slice(self.model.a, [0, 0], [-1, 1]), self.model.x)[0]
 
   def run_analysis(self, images, save_info=""):
-    super(SA_Analyzer, self).run_analysis(images, save_info)
+    super(SaAnalyzer, self).run_analysis(images, save_info)
     self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.do_basis_analysis:
       self.bf_stats = self.basis_analysis(self.evals["weights/w_enc:0"], save_info)

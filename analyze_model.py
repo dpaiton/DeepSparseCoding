@@ -7,24 +7,25 @@ import analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
-    self.model_type = "mlp"
-    self.model_name = "mlp_mnist"
+    self.model_type = "lca"
+    self.model_name = "lca_mnist"
     self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
     self.num_patches = 1e4 # How many input patches to create - only used if model calls for patching
     self.overwrite_analysis_log = True # If false, append to log file
-    self.do_basis_analysis = True # Dictionary fitting
+    self.do_basis_analysis = False # Dictionary fitting
     self.do_inference = True # LCA Inference analysis
-    self.do_atas = False # Activity triggered averages
+    self.do_atas = True # Activity triggered averages
     self.do_adversaries = True # Adversarial image analysis
     self.do_full_recon = False # Patchwise image recon
-    self.do_orientation_analysis = False # Orientation and Cross-Orientation analysis
+    self.do_orientation_analysis = True # Orientation and Cross-Orientation analysis
+    self.image_edge_size = 128 # Edge size of full (square) image (for full_recon)
     self.ft_padding = 32 # Fourier analysis padding for weight fitting
     self.num_inference_images = 5 # How many random images to average over for inference statistics
-    self.num_inference_steps = None # How many inference steps to perform
-    self.inference_img_indices = None # Which dataset images to use for inference
-    self.cov_num_images = int(1e5) # Number of images used to compute cov matrix (LCA_PCA)
+    self.num_inference_steps = None # How many inference steps to perform (None uses model params)
+    self.inference_img_indices = None # Which dataset images to use for inference (None uses random)
+    self.cov_num_images = int(1e5) # Number of images used to compute cov matrix (for LCA_PCA)
     self.num_noise_images = 300 # How many noise images to compute noise ATAs
     self.adversarial_num_steps = 1000 # Number of adversarial image updates
     self.adversarial_eps = 0.005 # Step size for adversarial attacks
@@ -49,15 +50,15 @@ data = analyzer.model.reshape_dataset(data, analyzer.model_params)
 
 analyzer.model_params.data_shape = list(data["train"].shape[1:])
 #analyzer.model_schedule[0]["sparse_mult"]  = 0.4
-analyzer.setup_model(analyzer.model_params, analyzer.model_schedule)
-analyzer.model_params.input_shape = [
-  data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
+analyzer.setup_model(analyzer.model_params)
+#analyzer.model_params.input_shape = [
+#  data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
 
-#import IPython; IPython.embed(); raise SystemExit
 analyzer.run_analysis(data["train"].images, save_info=analysis_params.save_info)
 
 if analysis_params.do_full_recon:
-  img_params = {"data_type": analysis_params.data_type, "num_images": 2, "extract_patches": False,
-    "image_edge_size": 256, "data_dir": os.path.expanduser("~")+"/Work/Datasets/", "random_seed": 5}
+  img_params = {"data_type": analysis_params.data_type, "num_images": 2,
+    "extract_patches": False, "image_edge_size": analyzer.image_edge_size,
+    "data_dir": os.path.expanduser("~")+"/Work/Datasets/", "random_seed": 5}
   full_img = dp.reshape_data(ds.get_data(img_params)["train"].images[0], flatten=False)[0]
   analyzer.run_patch_recon_analysis(full_img, save_info=analysis_params.save_info)

@@ -1,7 +1,7 @@
 import os
-from params.base_params import Base_Params
+from params.base_params import BaseParams
 
-class params(Base_Params):
+class params(BaseParams):
   def __init__(self):
     super(params, self).__init__()
     self.model_type = "lca_subspace"

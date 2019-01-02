@@ -3,14 +3,14 @@ import numpy as np
 import tensorflow as tf
 from data.dataset import Dataset
 import utils.data_processing as dp
-from analysis.lca_analyzer import LCA_Analyzer
+from analysis.lca_analyzer import LcaAnalyzer
 
-class LCA_PCA_Analyzer(LCA_Analyzer):
+class LcaPcaAnalyzer(LcaAnalyzer):
   def __init__(self, params):
-    super(LCA_PCA_Analyzer, self).__init__(params)
+    super(LcaPcaAnalyzer, self).__init__(params)
 
   def run_analysis(self, images, save_info=""):
-    super(LCA_PCA_Analyzer, self).run_analysis(images, save_info)
+    super(LcaPcaAnalyzer, self).run_analysis(images, save_info)
     image_dataset = {"test":Dataset(dp.reshape_data(images, flatten=False)[0], lbls=None)}
     image_dataset = self.model.reshape_dataset(image_dataset, self.model_params)
     cov = self.cov_analysis(image_dataset["test"], save_info)
@@ -22,7 +22,7 @@ class LCA_PCA_Analyzer(LCA_Analyzer):
     self.analysis_logger.log_info("2nd layer activity  analysis is complete.")
 
   def load_analysis(self, save_info=""):
-    super(LCA_PCA_Analyzer, self).load_analysis(save_info)
+    super(LcaPcaAnalyzer, self).load_analysis(save_info)
     # pca filters
     pca_file_loc = self.analysis_out_dir+"pca_"+save_info+".npz"
     pca_analysis = np.load(pca_file_loc)["data"].item()

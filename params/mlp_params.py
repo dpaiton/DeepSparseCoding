@@ -1,8 +1,8 @@
 import os
-from params.base_params import Base_Params
+from params.base_params import BaseParams
 from models.mlp import MLP as mlp
 
-class params(Base_Params):
+class params(BaseParams):
   def __init__(self):
     """
     Additional modifiable parameters:

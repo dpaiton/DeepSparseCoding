@@ -3,9 +3,9 @@ import tensorflow as tf
 from analysis.base_analysis import Analyzer
 import utils.data_processing as dp
 
-class GA_Analyzer(Analyzer):
+class GaAnalyzer(Analyzer):
   def __init__(self, params):
-    super(GA_Analyzer, self).__init__(params)
+    super(GaAnalyzer, self).__init__(params)
     self.var_names = [
       "weights/w_enc:0",
       "weights/w_dec:0",
@@ -18,7 +18,7 @@ class GA_Analyzer(Analyzer):
       "inference/activity:0"]
 
   def run_analysis(self, images, save_info=""):
-    super(GA_Analyzer, self).run_analysis(images, save_info)
+    super(GaAnalyzer, self).run_analysis(images, save_info)
     self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.do_basis_analysis:
       self.bf_stats = self.basis_analysis(self.evals["weights/w_enc:0"], save_info)

@@ -1,8 +1,8 @@
 import os
-from params.base_params import Base_Params
+from params.base_params import BaseParams
 from models.vae import VAE as vae
 
-class params(Base_Params):
+class params(BaseParams):
   def __init__(self):
     """
     Additional modifiable parameters:
