@@ -71,6 +71,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
   avg_time = 0
   tot_num_batches = 0
+  init = True
   for sch_idx, sch in enumerate(params.schedule):
     tot_num_batches += sch["num_batches"]
     model.sched_idx = sch_idx
@@ -86,10 +87,10 @@ with tf.Session(config=config, graph=model.graph) as sess:
       batch_t0 = ti.time()
 
       ## Generate initial logs & plots
-      if (current_step <= 1 and params.log_int > 0):
+      if init:
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
-      if (current_step <= 1 and params.gen_plot_int > 0):
         model.generate_plots(input_data=input_data, input_labels=input_labels)
+        init = False
 
       ## Update model weights
       sess_run_list = []
