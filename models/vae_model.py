@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
-import utils.entropy_funcs as ef
+import utils.entropy_functions as ef
 from models.base_model import Model
 from modules.vae_module import VaeModule
 

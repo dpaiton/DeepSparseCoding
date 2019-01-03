@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
-import utils.entropy_funcs as ef
+import utils.entropy_functions as ef
 import utils.get_data as get_data
 import utils.mem_utils as mem_utils
 from layers.non_linearities import gdn

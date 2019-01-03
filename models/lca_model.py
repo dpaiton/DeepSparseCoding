@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
-import utils.entropy_funcs as ef
+import utils.entropy_functions as ef
 from models.base_model import Model
 from modules.lca_module import LcaModule
 
@@ -48,7 +48,7 @@ class LcaModel(Model):
 
         with tf.name_scope("performance_metrics") as scope:
           MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),
-            axis=[1, 0], name="mean_squared_error")
+            name="mean_squared_error")
           pixel_var = tf.nn.moments(self.x, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
             MSE)), name="recon_quality")
