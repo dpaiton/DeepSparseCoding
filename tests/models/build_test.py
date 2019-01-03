@@ -14,7 +14,7 @@ class BuildTest(tf.test.TestCase):
   def testBasic(self):
     data_type = "mnist"
     model_list = ["mlp", "vae", "lca", "lca_conv",
-      "lca_pca", "lca_subspace"]#mp.get_model_list()
+      "lca_pca", "lca_subspace", "fista"]#mp.get_model_list()
     schedule_index = 0 # Not testing support for multiple schedules
 
     for model_type in model_list:

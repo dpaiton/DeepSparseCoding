@@ -7,6 +7,7 @@ import params.lca_pca_params as lca_pca
 import params.lca_pca_fb_params as lca_pca_fb
 import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
+import params.fista_params as fista
 import params.sigmoid_autoencoder_params as sa
 import params.gdn_autoencoder_params as ga
 import params.gdn_conv_autoencoder_params as cga
@@ -49,6 +50,9 @@ def get_params(model_type):
     return params
   if model_type.lower() == "lca_conv":
     params = lca_conv.params()
+    return params
+  if model_type.lower() == "fista":
+    params = fista.params()
     return params
   if model_type.lower() == "sigmoid_autoencoder":
     params = sa.params()

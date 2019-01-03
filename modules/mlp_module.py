@@ -6,7 +6,7 @@ from modules.batch_normalization_module import BatchNormalizationModule
 class MlpModule(object):
   def __init__(self, data_tensor, label_tensor, do_batch_norm, norm_decay_mult,
     layer_types, output_channels, patch_size_y, patch_size_x, strides_y, strides_x,
-    eps, name="MLP"):
+    eps, loss_type="softmax_cross_entropy", name="MLP"):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
@@ -40,6 +40,10 @@ class MlpModule(object):
       assert layer_types[0] == "conv", ("Data tensor must have ndim==4 for conv layers")
     else:
       assert False, ("Shouldn't get here")
+
+    self.loss_type = loss_type
+    assert self.loss_type == "softmax_cross_entropy" or self.loss_type == "l2",\
+      ("Acceptable loss functions are \"softmax_cross_entropy\" or \"l2\"")
 
     self.label_tensor = label_tensor
     label_batch, self.num_classes = label_tensor.get_shape()
@@ -78,9 +82,11 @@ class MlpModule(object):
     assert len(do_batch_norm) == self.num_layers, \
       ("do_batch_norm must be a list of size " + str(self.num_layers))
 
-    conv_input_channels = [self.num_data_channels] + self.output_channels[:-1]
-    self.conv_w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
-      conv_input_channels, self.output_channels)]
+    if(data_ndim == 4): #If at least one convolutional layers
+      conv_input_channels = [self.num_data_channels] + self.output_channels[:-1]
+      self.conv_w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
+        conv_input_channels, self.output_channels)]
+
     self.fc_output_channels = self.output_channels[self.num_conv_layers:]
 
     self.trainable_variables = TrainableVariableDict()
@@ -176,17 +182,24 @@ class MlpModule(object):
 
       with tf.name_scope("loss") as scope:
         with tf.name_scope("supervised"):
-          with tf.name_scope("cross_entropy_loss"):
-            self.cross_entropy_loss = (self.label_mult
-              * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
-              self.y_, self.eps, 1.0))), axis=[1]))
-            label_count = tf.reduce_sum(self.label_mult)
-            f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
-            f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
-            pred_fn_pairs = {
-              tf.equal(label_count, tf.constant(0.0)): f1,
-              tf.greater(label_count, tf.constant(0.0)): f2}
-            self.mean_cross_entropy_loss = tf.case(pred_fn_pairs,
-              default=f2, exclusive=True, name="mean_cross_entropy_loss")
-          self.supervised_loss = self.mean_cross_entropy_loss
+          with tf.name_scope(self.loss_type):
+            if(self.loss_type == "softmax_cross_entropy"):
+              self.cross_entropy_loss = (self.label_mult
+                * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
+                self.y_, self.eps, 1.0))), axis=[1]))
+              label_count = tf.reduce_sum(self.label_mult)
+              f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
+              f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
+              pred_fn_pairs = {
+                tf.equal(label_count, tf.constant(0.0)): f1,
+                tf.greater(label_count, tf.constant(0.0)): f2}
+              self.loss = tf.case(pred_fn_pairs,
+                default=f2, exclusive=True, name="mean_cross_entropy_loss")
+            elif(self.loss_type == "l2"):
+              # Want to avg over batch, sum over the rest
+              reduc_dim = list(range(1, len(self.label_tensor.shape)))
+              self.loss = tf.reduce_mean(
+                tf.reduce_sum(tf.square(self.label_tensor - self.layer_list[-1]),
+                axis=reduc_dim))
+          self.supervised_loss = self.loss
         self.total_loss = self.supervised_loss
