@@ -63,7 +63,7 @@ class params(BaseParams):
     #self.cp_load_var = ["phi"]
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = 1000
+    self.gen_plot_int = 10000
     self.save_plots = True
     self.schedule = [
       #Training LCA
@@ -82,7 +82,7 @@ class params(BaseParams):
       "train_lca": False,
       "batch_norm_decay_mult": 0.4,
       "num_batches": int(1e4),
-      "sparse_mult": 0.1,
+      "sparse_mult": 0.01,
       "weight_lr": 0.01,#[0.01],
       "decay_steps": int(1e4*0.5),#[int(1e4*0.5)],
       "decay_rate": 0.8,#[0.8],

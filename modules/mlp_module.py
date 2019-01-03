@@ -198,8 +198,11 @@ class MlpModule(object):
             elif(self.loss_type == "l2"):
               # Want to avg over batch, sum over the rest
               reduc_dim = list(range(1, len(self.label_tensor.shape)))
+              #Label_tensor sometimes can depend on trainable variables
+              #Stop that here
+              labels = tf.stop_gradient(self.label_tensor)
               self.loss = tf.reduce_mean(
-                tf.reduce_sum(tf.square(self.label_tensor - self.layer_list[-1]),
+                tf.reduce_sum(tf.square(labels - self.layer_list[-1]),
                 axis=reduc_dim))
           self.supervised_loss = self.loss
         self.total_loss = self.supervised_loss
