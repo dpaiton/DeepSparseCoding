@@ -3,20 +3,20 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
-import utils.entropy_funcs as ef
+import utils.entropy_functions as ef
 import utils.get_data as get_data
 import utils.mem_utils as mem_utils
 from layers.non_linearities import gdn
 from ops.init_ops import GDNGammaInitializer
 from models.gdn_autoencoder_model import GdnAutoencoderModel
 
-class ConvGdnAutoencoderModel(GdnAutoencoderModel):
+class GdnConvAutoencoderModel(GdnAutoencoderModel):
   """
   Implementation of autoencoder described in Balle, Laparra, Simoncelli (2017)
   End-to-End Optimized Image Compression
   """
   def __init__(self):
-    super(ConvGdnAutoencoderModel, self).__init__()
+    super(GdnConvAutoencoderModel, self).__init__()
     self.vector_inputs = False
     self.exclude_feed_strings = ["memristor_std_eps"]
 
