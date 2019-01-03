@@ -20,6 +20,15 @@ class Logger(object):
     """Dump json string with special NumpyEncoder"""
     return js.dumps(obj, sort_keys=True, indent=2, cls=NumpyEncoder)
 
+  def log_trainable_variables(self, name_list):
+    """
+    Use logging to write names of trainable variables in model
+    Inputs:
+      name_list: list containing variable names
+    """
+    js_str = self.js_dumpstring(name_list)
+    self.log_info("<train_vars>"+js_str+"</train_vars>")
+
   def log_params(self, params):
     """
     Use logging to write model params
@@ -82,6 +91,18 @@ class Logger(object):
       js_matches = js.loads(matches[0])
     return js_matches
 
+  def read_trainable_variables(self, text):
+    """
+    Read params from text file and return as a dictionary
+    Outpus:
+      params: converted python object
+    Inputs:
+      text: [str] containing text to parse, can be obtained by calling load_file()
+    """
+    tokens = ["<train_vars>", "</train_vars>"]
+    trainable_var_names = self.read_js(tokens, text)
+    return trainable_var_names
+
   def read_params(self, text):
     """
     Read params from text file and return as a dictionary
@@ -92,11 +113,11 @@ class Logger(object):
     """
     tokens = ["<params>", "</params>"]
     param_dict = self.read_js(tokens, text)
-    param_obj = type("param_obj", (), {})() 
+    param_obj = type("param_obj", (), {})()
     for key, val in param_dict.items():
       setattr(param_obj, key, val)
     return param_obj
-    
+
 
   def read_schedule(self, text):
     """
