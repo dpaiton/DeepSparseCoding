@@ -33,7 +33,7 @@ class params(BaseParams):
     self.patch_size_x = [8, None]
     self.num_val = 10000
     self.num_labeled = 50000
-    self.do_batch_norm = True
+    self.do_batch_norm = [True, False]
     self.cp_int = 100
     self.max_cp_to_keep = 1
     self.val_on_cp = True

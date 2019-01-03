@@ -29,19 +29,17 @@ class MlpModel(Model):
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.y = tf.placeholder(tf.float32, shape=self.y_shape, name="input_labels")
-          if self.params.do_batch_norm:
-            self.batch_norm_decay_mult = tf.placeholder(tf.float32, shape=(),
-              name="batch_norm_decay_mult")
-          else:
-            self.batch_norm_decay_mult = None
+          self.batch_norm_decay_mult = tf.placeholder(tf.float32, shape=(),
+            name="batch_norm_decay_mult")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
-        self.mlp = MlpModule(self.x, self.y, self.batch_norm_decay_mult,
-          self.params.layer_types, self.params.output_channels, self.params.strides_y,
-          self.params.strides_x, self.params.patch_size_y, self.params.patch_size_x,
+        self.mlp = MlpModule(self.x, self.y, self.params.do_batch_norm,
+          self.batch_norm_decay_mult, self.params.layer_types, self.params.output_channels,
+          self.params.strides_y, self.params.strides_x,
+          self.params.patch_size_y, self.params.patch_size_x,
           self.params.eps, name="mlp")
         self.trainable_variables.update(self.mlp.trainable_variables)
         self.y_ = self.mlp.y_

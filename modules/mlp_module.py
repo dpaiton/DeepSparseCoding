@@ -4,13 +4,15 @@ from utils.trainable_variable_dict import TrainableVariableDict
 from modules.batch_normalization_module import BatchNormalizationModule
 
 class MlpModule(object):
-  def __init__(self, data_tensor, label_tensor, norm_decay_mult, layer_types, output_channels,
-    patch_size_y, patch_size_x, strides_y, strides_x, eps, name="MLP"):
+  def __init__(self, data_tensor, label_tensor, do_batch_norm, norm_decay_mult,
+    layer_types, output_channels, patch_size_y, patch_size_x, strides_y, strides_x,
+    eps, name="MLP"):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
       data_tensor
       label_tensor
+      do_batch_norm is a list of booleans
       norm_decay_mult
       output_channels
       layer_types
@@ -43,6 +45,7 @@ class MlpModule(object):
     label_batch, self.num_classes = label_tensor.get_shape()
 
     # load params
+    self.do_batch_norm = do_batch_norm
     self.norm_decay_mult = norm_decay_mult
     self.layer_types = layer_types
     # assert no FC after Conv in layer types
@@ -58,6 +61,23 @@ class MlpModule(object):
     self.num_fc_layers = layer_types.count("fc")
     self.num_conv_layers = layer_types.count("conv")
     self.num_layers = self.num_fc_layers + self.num_conv_layers
+
+    #Check that layer definition parameters are of the same length
+    assert len(layer_types) == self.num_layers, \
+      ("All layer_types must be conv or fc")
+    assert len(output_channels) == self.num_layers, \
+      ("output_channels must be a list of size " + str(self.num_layers))
+    assert len(patch_size_y) == self.num_layers, \
+      ("patch_size_y must be a list of size " + str(self.num_layers))
+    assert len(patch_size_x) == self.num_layers, \
+      ("patch_size_x must be a list of size " + str(self.num_layers))
+    assert len(strides_y) == self.num_layers, \
+      ("strides_y must be a list of size " + str(self.num_layers))
+    assert len(strides_x) == self.num_layers, \
+      ("strides_x must be a list of size " + str(self.num_layers))
+    assert len(do_batch_norm) == self.num_layers, \
+      ("do_batch_norm must be a list of size " + str(self.num_layers))
+
     conv_input_channels = [self.num_data_channels] + self.output_channels[:-1]
     self.conv_w_shapes = [vals for vals in zip(self.patch_size_y, self.patch_size_x,
       conv_input_channels, self.output_channels)]
@@ -81,7 +101,7 @@ class MlpModule(object):
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       conv_out = tf.nn.relu(tf.add(tf.nn.conv2d(a_in, w, [1, stride_y, stride_x, 1],
         padding="SAME"), b), name="conv_out"+str(layer_id))
-      if self.norm_decay_mult is not None:
+      if self.do_batch_norm[layer_id]:
         bn = BatchNormalizationModule(conv_out, self.norm_decay_mult, self.eps, reduc_axes=[0,1,2],
           name="BatchNorm_"+str(layer_id))
         conv_out = bn.get_output()
@@ -104,7 +124,7 @@ class MlpModule(object):
 
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       fc_out = tf.nn.relu(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
-      if self.norm_decay_mult is not None:
+      if self.do_batch_norm[layer_id]:
         bn = BatchNormalizationModule(fc_out, self.norm_decay_mult, self.eps, reduc_axes=[0],
           name="BatchNorm_"+str(layer_id))
         fc_out = bn.get_output()
