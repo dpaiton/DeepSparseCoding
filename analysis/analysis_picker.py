@@ -3,7 +3,6 @@ from analysis.ica_analyzer import IcaAnalyzer as ica_analyzer
 from analysis.lca_analyzer import LcaAnalyzer as lca_analyzer
 from analysis.lca_subspace_analyzer import LcaSubspaceAnalyzer as sub_lca_analyzer
 from analysis.lca_pca_analyzer import LcaPcaAnalyzer as lca_pca_analyzer
-from analysis.lca_pca_fb_analyzer import LcaPcaFbAnalyzer as lca_pca_fb_analyzer
 from analysis.lca_conv_analyzer import LcaConvAnalyzer as conv_lca_analyzer
 from analysis.sigmoid_autoencoder_analyzer import SaAnalyzer as sa_analyzer
 from analysis.rica_analyzer import RicaAnalyzer as rica_analyzer
@@ -23,8 +22,6 @@ def get_analyzer(model_type):
     return sub_lca_analyzer()
   if model_type.lower() == "lca_pca":
     return lca_pca_analyzer()
-  if model_type.lower() == "lca_pca_fb":
-    return lca_pca_fb_analyzer()
   if model_type.lower() == "lca_conv":
     return conv_lca_analyzer()
   if model_type.lower() == "sigmoid_autoencoder":
