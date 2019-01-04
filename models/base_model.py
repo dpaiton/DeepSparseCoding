@@ -20,11 +20,13 @@ class Model(object):
     self.init_logging()
     self.log_params()
     self.build_graph()
+    self.log_trainable_variables()
     self.load_schedule(params.schedule)
     self.sched_idx = 0
     self.log_schedule()
     self.add_optimizers_to_graph()
     self.add_initializer_to_graph()
+
     self.construct_savers()
 
   def load_schedule(self, schedule):
@@ -124,6 +126,11 @@ class Model(object):
       dump_obj = self.params.__dict__
     self.logger.log_params(dump_obj)
 
+  def log_trainable_variables(self):
+    """Use logging to write model params"""
+    var_names = list(self.trainable_variables.keys())
+    self.logger.log_trainable_variables(var_names)
+
   def log_schedule(self):
     """Use logging to write current schedule, as specified by self.sched_idx"""
     self.logger.log_schedule(self.params.schedule)
@@ -197,26 +204,26 @@ class Model(object):
   def get_load_vars(self):
     """Get variables for loading"""
     all_vars = tf.global_variables()
-    if len(self.params.cp_load_var) > 0:
-      load_v = [var
-        for var in all_vars
-        for weight in self.cp_load_var
-        if weight in var.name]
-      assert len(load_v) > 0, ("Weights specified by cp_load_var not found.")
-    else:
+    if self.params.cp_load_var is None:
       load_v = all_vars
+    else:
+      load_v = []
+      for weight in self.params.cp_load_var:
+        found=False
+        for var in all_vars:
+          if var.name == weight:
+            load_v.append(var)
+            found=True
+            break
+        if not found:
+          assert False, ("Weight specified in cp_load_var "+str(weight)+" not found")
     return load_v
 
   def construct_savers(self):
     """Add savers to graph"""
     with self.graph.as_default():
-      with tf.variable_scope("weights", reuse=True) as scope:
-        weights = [weight for weight in tf.global_variables()
-          if weight.name.startswith(scope.name)]
-      self.weight_saver = tf.train.Saver(var_list=weights,
-        max_to_keep=self.params.max_cp_to_keep)
       self.full_saver = tf.train.Saver(max_to_keep=self.params.max_cp_to_keep)
-      if self.params.cp_load:
+      if(self.params.cp_load):
         self.loader = tf.train.Saver(var_list=self.get_load_vars())
     self.savers_constructed = True
 
@@ -224,16 +231,10 @@ class Model(object):
     """Write saver definitions for full model and weights-only"""
     assert self.savers_constructed
     full_saver_def = self.full_saver.as_saver_def()
-    full_file = self.params.save_dir+self.params.model_name+"_v"+self.params.version+"-full.def"
+    full_file = self.params.save_dir+self.params.model_name+"_v"+self.params.version+".def"
     with open(full_file, "wb") as f:
       f.write(full_saver_def.SerializeToString())
     self.logger.log_info("Full saver def saved in file %s"%full_file)
-    weight_saver_def = self.weight_saver.as_saver_def()
-    weight_file = self.params.save_dir+self.params.model_name+"_v"+ \
-      self.params.version+"-weights.def"
-    with open(weight_file, "wb") as f:
-      f.write(weight_saver_def.SerializeToString())
-    self.logger.log_info("Weight saver def saved in file %s"%weight_file)
 
   def write_graph(self, graph_def):
     """Write graph structure to protobuf file"""
@@ -247,34 +248,21 @@ class Model(object):
     """Write checkpoints for full model and weights-only"""
     base_save_path = self.params.cp_save_dir+self.params.model_name+"_v"+self.params.version
     full_save_path = self.full_saver.save(session,
-      save_path=base_save_path+"_full",
+      save_path=base_save_path,
       global_step=self.global_step,
       latest_filename=self.params.cp_latest_filename)
     self.logger.log_info("Full model saved in file %s"%full_save_path)
-    weight_save_path = self.weight_saver.save(session,
-      save_path=base_save_path+"_weights",
-      global_step=self.global_step,
-      latest_filename=self.params.cp_latest_filename)
-    self.logger.log_info("Weights model saved in file %s"%weight_save_path)
     return base_save_path
 
-  def load_full_model(self, session, model_dir):
+  def load_model(self, session, model_dir):
     """
     Load checkpoint model into session.
     Inputs:
       session: tf.Session() that you want to load into
       model_dir: String specifying the path to the checkpoint
     """
-    self.full_saver.restore(session, model_dir)
-
-  def load_weights(self, session, model_dir):
-    """
-    Load checkpoint weights into session.
-    Inputs:
-      session: tf.Session() that you want to load into
-      model_dir: String specifying the path to the checkpoint
-    """
-    self.weight_saver.restore(session, model_dir)
+    assert self.params.cp_load, ("cp_load must be set to true for loading model")
+    self.loader.restore(session, model_dir)
 
   def get_schedule(self, key=None):
     """

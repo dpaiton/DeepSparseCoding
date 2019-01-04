@@ -41,7 +41,7 @@ class params(BaseParams):
     self.cp_load_name = "pretrain"
     self.cp_load_step = None
     self.cp_load_ver = "0.0"
-    self.cp_load_var = ["w1"]
+    self.cp_load_var = ["w1"] #None means load everything
     self.log_int = 50
     self.log_to_file = True
     self.gen_plot_int = 1000
@@ -76,7 +76,7 @@ class params(BaseParams):
   def set_test_params(self, data_type):
     self.set_data_params(data_type)
     self.epoch_size = 50
-    self.batch_size = 10
+    self.batch_size = 50
     self.num_edge_pixels = 8
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2

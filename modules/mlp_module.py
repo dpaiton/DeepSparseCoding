@@ -93,7 +93,7 @@ class MlpModule(object):
     self.build_graph()
 
   def conv_layer_maker(self, layer_id, a_in, w_shape, stride_y, stride_x, b_shape):
-    with tf.variable_scope(self.weight_scope) as scope:
+    with tf.variable_scope("layer"+str(layer_id)) as scope:
       w_name = "w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
@@ -104,7 +104,6 @@ class MlpModule(object):
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
 
-    with tf.variable_scope("layer"+str(layer_id)) as scope:
       conv_out = tf.nn.relu(tf.add(tf.nn.conv2d(a_in, w, [1, stride_y, stride_x, 1],
         padding="SAME"), b), name="conv_out"+str(layer_id))
       if self.do_batch_norm[layer_id]:
@@ -117,7 +116,7 @@ class MlpModule(object):
   def fc_layer_maker(self, layer_id, a_in, w_shape, b_shape):
     w_init = tf.truncated_normal_initializer(stddev=1/w_shape[0], dtype=tf.float32)
 
-    with tf.variable_scope(self.weight_scope) as scope:
+    with tf.variable_scope("layer"+str(layer_id)) as scope:
       w_name = "w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=w_init, trainable=True)
@@ -128,7 +127,6 @@ class MlpModule(object):
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
 
-    with tf.variable_scope("layer"+str(layer_id)) as scope:
       fc_out = tf.nn.relu(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
       if self.do_batch_norm[layer_id]:
         bn = BatchNormalizationModule(fc_out, self.norm_decay_mult, self.eps, reduc_axes=[0],
@@ -170,9 +168,6 @@ class MlpModule(object):
       with tf.name_scope("weight_inits") as scope:
         self.w_init = tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32)
         self.b_init = tf.initializers.zeros(dtype=tf.float32)
-
-      with tf.variable_scope("weights") as scope:
-        self.weight_scope = tf.get_variable_scope()
 
       self.layer_list, self.weight_list, self.bias_list = self.make_layers()
 

@@ -4,6 +4,7 @@ from tests.utils.contrast_normalize_test import ContrastNormalizeDataTest
 from tests.utils.patches_test import PatchesTest
 from tests.utils.reshape_data_test import ReshapeDataTest
 from tests.utils.standardize_data_test import StandardizeDataTest
+from tests.utils.checkpoint_test import CheckpointTest
 import tensorflow as tf
 
 import sys

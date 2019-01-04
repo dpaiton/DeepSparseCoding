@@ -64,12 +64,12 @@ with tf.Session(config=config, graph=model.graph) as sess:
   model.write_graph(sess.graph_def)
 
   if params.cp_load:
-    if model.cp_load_step is None:
-      cp_load_file = tf.train.latest_checkpoint(model.cp_load_dir, model.cp_load_latest_filename)
+    if params.cp_load_step is None:
+      cp_load_file = tf.train.latest_checkpoint(params.cp_load_dir, params.cp_load_latest_filename)
     else:
-      cp_load_file = (model.cp_load_dir+model.cp_load_name+"_v"+model.cp_load_ver
-        +"_weights-"+str(model.cp_load_step))
-    model.load_weights(sess, cp_load_file)
+      cp_load_file = (params.cp_load_dir+params.cp_load_name+"_v"+params.cp_load_ver
+        +"-"+str(params.cp_load_step))
+    model.load_model(sess, cp_load_file)
 
   avg_time = 0
   tot_num_batches = 0
@@ -124,20 +124,18 @@ with tf.Session(config=config, graph=model.graph) as sess:
       if (current_step % params.cp_int == 0
         and params.cp_int > 0):
         save_dir = model.write_checkpoint(sess)
-        if hasattr(model, "val_on_cp"):
-          if model.val_on_cp: #Compute validation accuracy
+
+        if hasattr(params, "val_on_cp"):
+          if params.val_on_cp: #Compute validation accuracy
             val_images = data["val"].images
             val_labels = data["val"].labels
             with tf.Session(graph=model.graph) as tmp_sess:
               val_feed_dict = model.get_feed_dict(val_images, val_labels)
               tmp_sess.run(model.init_op, val_feed_dict)
-              model.weight_saver.restore(tmp_sess,
-                save_dir+"_weights-"+str(current_step))
-              if hasattr(model, "full_inference"):
-                sess.run([model.full_inference], val_feed_dict)
-              if hasattr(model, "step_inference"):
-                for step in range(params.num_steps):
-                  sess.run([model.step_inference], val_feed_dict)
+
+              model.full_saver.restore(tmp_sess,
+                save_dir+"-"+str(current_step))
+
               val_accuracy = (
                 np.array(tmp_sess.run(model.accuracy, val_feed_dict)).tolist())
               stat_dict = {"validation_accuracy":val_accuracy}
