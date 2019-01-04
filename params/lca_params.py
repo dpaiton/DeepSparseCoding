@@ -44,16 +44,16 @@ class params(BaseParams):
     self.norm_weights = True
     self.thresh_type = "soft"
     self.optimizer = "annealed_sgd"
-    self.cp_int = 10000
+    self.cp_int = int(1e3)
     self.max_cp_to_keep = 1
     self.cp_load = False
     self.cp_load_name = "pretrain"
-    self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
+    self.cp_load_step = None # latest checkpoint
     #self.cp_load_var = ["phi"]
-    self.log_int = 100
+    self.log_int = int(1e2)
     self.log_to_file = True
-    self.gen_plot_int = 1000
+    self.gen_plot_int = int(1e3)
     self.save_plots = True
     self.schedule = [
       {"weights": ["weights/w:0"],

@@ -7,8 +7,9 @@ import utils.data_processing as dp
 
 """
 Test for running models
-NOTE: Should be executed from the repository's root directory
 loads every model and runs on synthetic data
+
+NOTE: Should be executed from the repository's root directory
 
 ## TODO:
   * rica model has different interface for applying gradients when the L-BFGS minimizer is used

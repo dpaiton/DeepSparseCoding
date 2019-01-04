@@ -1,5 +1,5 @@
-from analysis.base_analysis import Analyzer
+from analysis.base_analyzer import Analyzer
 
 class MlpAnalyzer(Analyzer):
-  def __init__(self, params):
-    super(MlpAnalyzer, self).__init__(params)
+  def __init__(self):
+    super(MlpAnalyzer, self).__init__()

@@ -18,7 +18,7 @@ data_type = "nat_images"
 model_log_file = "/home/dpaiton/Work/Projects/"+model_name+"/logfiles/"+model_name+"_v"+model_version+".log"
 model_logger = Logger(model_log_file, overwrite=False)
 model_log_text = model_logger.load_file()
-model_params = model_logger.read_params(model_log_text)
+model_params = model_logger.read_params(model_log_text)[-1]
 num_logged_input_channels = len(model_params.input_channels)
 model_params.input_channels = model_params.input_channels[:num_logged_input_channels//2]
 num_logged_output_channels = len(model_params.output_channels)

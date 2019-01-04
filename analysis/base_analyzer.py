@@ -27,103 +27,42 @@ class Analyzer(object):
         create new log file object
         set params member variable to input params
       log merged analysis params
-  TODO: Test this
   """
-  def __init__(self, params):
+  def setup(self, input_params):
     # Load model parameters and schedule
-    self.model_log_file = (params.model_dir+"/logfiles/"+params.model_name
-      +"_v"+params.version+".log")
+    self.model_log_file = (input_params.model_dir+"/logfiles/"+input_params.model_name
+      +"_v"+input_params.version+".log")
     self.model_logger = Logger(self.model_log_file, overwrite=False)
     self.model_log_text = self.model_logger.load_file()
-    self.model_params = self.model_logger.read_params(self.model_log_text)
+    self.model_params = self.model_logger.read_params(self.model_log_text)[-1]
     self.model_schedule = self.model_logger.read_schedule(self.model_log_text)
     # Load or create analysis params log
-    self.analysis_out_dir = params.model_dir+"/analysis/"+params.version+"/"
+    self.analysis_out_dir = input_params.model_dir+"/analysis/"+input_params.version+"/"
     self.make_dirs() # If analysis log does not exist then we want to make the folder first
     self.analysis_log_file = self.analysis_out_dir+"/logfiles/analysis.log"
-    if params.overwrite_analysis_log:
+    if input_params.overwrite_analysis_log:
       if os.path.exists(self.analysis_log_file):
         os.remove(self.analysis_log_file)
       self.analysis_logger = Logger(self.analysis_log_file, overwrite=True)
-      self.params = params
+      self.analysis_params = input_params
     else:
       if os.path.exists(self.analysis_log_file) and os.stat(self.analysis_log_file).st_size != 0:
         self.analysis_logger = Logger(self.analysis_log_file, overwrite=False)
         analysis_text = self.analysis_logger.load_file()
-        prev_analysis_params = self.analysis_logger.read_params(analysis_text)
-        if type(prev_analysis_params) == list: # there were multiple param entries in the log
-          prev_analysis_params = prev_analysis_params[-1] # grab last params written
-        prev_analysis_params.update(params)
-        self.params = prev_analysis_params
+        prev_analysis_params = self.analysis_logger.read_params(analysis_text)[-1]
+        for attr_key in input_params.__dict__.keys(): # overwrite the previous params with new params
+          setattr(prev_analysis_params, attr_key, getattr(input_params, attr_key))
+        self.analysis_params = prev_analysis_params
       else:
         self.analysis_logger = Logger(self.analysis_log_file, overwrite=True)
-        self.params = params
-    self.load_params(self.params)
-    self.analysis_logger.log_params(self.params.__dict__)
-    self.load_model() # Adds "self.model" member variable that is another model class
-
-  def load_params(self, params):
-    """
-    Load analysis parameters into object
-    TODO: cp_load_step is not utilized - it should be an alternative to tf.train.latest_checkpoint
-    """
-    self.params = params
-    self.params.cp_loc = tf.train.latest_checkpoint(self.params.model_dir+"/checkpoints/",
-      latest_filename="latest_checkpoint_v"+self.params.version)
+        self.analysis_params = input_params
+    self.analysis_params.cp_loc = tf.train.latest_checkpoint(self.model_params.cp_save_dir,
+      latest_filename="latest_checkpoint_v"+self.analysis_params.version)
     self.model_params.model_out_dir = self.analysis_out_dir
     self.check_params()
-    self.rand_state = np.random.RandomState(params.rand_seed)
-
-  def check_params(self):
-    if not hasattr(self.params, "device"):
-      self.params.device = self.model_params.device
-    if hasattr(self.params, "data_dir"):
-      self.model_params.data_dir = self.params.data_dir
-    if not hasattr(self.params, "rand_seed"):
-      self.params.rand_seed = self.model_params.rand_seed
-    if not hasattr(self.params, "input_scale"):
-      self.params.input_scale = 1.0
-    # BF Fits
-    if not hasattr(self.params, "do_basis_analysis"):
-      self.params.do_basis_analysis = False
-    if not hasattr(self.params, "ft_padding"):
-      self.params.ft_padding = None
-    if not hasattr(self.params, "num_gauss_fits"):
-      self.params.num_gauss_fits = 20
-    if not hasattr(self.params, "gauss_thresh"):
-      self.params.gauss_thresh = 0.2
-    # Activity Triggered Averages
-    if not hasattr(self.params, "do_atas"):
-      self.params.do_atas = False
-    if not hasattr(self.params, "num_noise_images"):
-      self.params.num_noise_images = 100
-    # Adversarial analysis
-    if hasattr(self.params, "do_adversaries"):
-      if not hasattr(self.params, "adversarial_eps"):
-        self.params.adversarial_eps = 0.01
-      if not hasattr(self.params, "adversarial_num_steps"):
-        self.params.adversarial_num_steps = 200
-      if not hasattr(self.params, "adversarial_input_id"):
-        self.params.adversarial_input_id = 0
-      if not hasattr(self.params, "adversarial_target_id"):
-        self.params.adversarial_target_id = 1
-    else:
-      self.params.do_adversaries = False
-    #  Orientation Selectivity
-    if hasattr(self.params, "do_orientation_analysis") and self.params.do_orientation_analysis:
-      if not hasattr(self.params, "neuron_indices"):
-        self.params.ot_neurons = None
-      if not hasattr(self.params, "contrasts"):
-        self.params.ot_contrasts = None
-      if not hasattr(self.params, "orientations"):
-        self.params.ot_orientations = None
-      if not hasattr(self.params, "phases"):
-        self.params.ot_phases = None
-    else:
-      self.params.ot_neurons = None
-      self.params.ot_contrasts = None
-      self.params.ot_orientations = None
-      self.params.ot_phases = None
+    self.rand_state = np.random.RandomState(self.analysis_params.rand_seed)
+    self.analysis_logger.log_params(self.analysis_params.__dict__)
+    self.load_model() # Adds "self.model" member variable that is another model class
 
   def make_dirs(self):
     """Make output directories"""
@@ -133,6 +72,60 @@ class Analyzer(object):
       os.makedirs(self.analysis_out_dir+"/savefiles")
     if not os.path.exists(self.analysis_out_dir+"/logfiles"):
       os.makedirs(self.analysis_out_dir+"/logfiles")
+
+  def check_params(self):
+    if not hasattr(self.analysis_params, "device"):
+      self.analysis_params.device = self.model_params.device
+    if hasattr(self.analysis_params, "data_dir"):
+      self.model_params.data_dir = self.analysis_params.data_dir
+    if not hasattr(self.analysis_params, "rand_seed"):
+      self.analysis_params.rand_seed = self.model_params.rand_seed
+    if not hasattr(self.analysis_params, "input_scale"):
+      self.analysis_params.input_scale = 1.0
+    # Evaluate model variables on images
+    if not hasattr(self.analysis_params, "do_evals"):
+      self.analysis_params.do_evals = False
+    # Training run analysis 
+    if not hasattr(self.analysis_params, "do_run_analysis"):
+      self.analysis_params.do_run_analysis = False
+    # BF fits
+    if not hasattr(self.analysis_params, "do_basis_analysis"):
+      self.analysis_params.do_basis_analysis = False
+    if not hasattr(self.analysis_params, "ft_padding"):
+      self.analysis_params.ft_padding = None
+    if not hasattr(self.analysis_params, "num_gauss_fits"):
+      self.analysis_params.num_gauss_fits = 20
+    if not hasattr(self.analysis_params, "gauss_thresh"):
+      self.analysis_params.gauss_thresh = 0.2
+    # Activity Triggered Averages
+    if not hasattr(self.analysis_params, "do_atas"):
+      self.analysis_params.do_atas = False
+    if not hasattr(self.analysis_params, "num_ata_images"):
+      self.analysis_params.num_ata_images = 100
+    if not hasattr(self.analysis_params, "num_noise_images"):
+      self.analysis_params.num_noise_images = 100
+    # Adversarial analysis
+    if hasattr(self.analysis_params, "do_adversaries"):
+      if not hasattr(self.analysis_params, "adversarial_eps"):
+        self.analysis_params.adversarial_eps = 0.01
+      if not hasattr(self.analysis_params, "adversarial_num_steps"):
+        self.analysis_params.adversarial_num_steps = 200
+      if not hasattr(self.analysis_params, "adversarial_input_id"):
+        self.analysis_params.adversarial_input_id = 0
+      if not hasattr(self.analysis_params, "adversarial_target_id"):
+        self.analysis_params.adversarial_target_id = 1
+    else:
+      self.analysis_params.do_adversaries = False
+    #  Orientation Selectivity
+    if hasattr(self.analysis_params, "do_orientation_analysis"):
+      # if we are doing orientation selectivity then we need to check for basis stats
+      if not self.analysis_params.do_basis_analysis: # it is possible the user did this previously
+        try:
+          self.load_basis_stats(save_info)
+        except FileNotFoundError as e:
+          assert False, ("Basis analysis must be done in order to do orientation analysis.\n"+e)
+    else: 
+      self.analysis_params.do_orientation_analysis = False
 
   def load_model(self):
     """Load model object into analysis object"""
@@ -157,100 +150,8 @@ class Analyzer(object):
     self.model.construct_savers()
 
   def add_pre_init_ops_to_graph(self):
-    if self.params.do_adversaries:
+    if self.analysis_params.do_adversaries:
       self.add_adversarial_ops_to_graph()
-
-  def get_log_stats(self):
-    """Wrapper function for parsing the log statistics"""
-    return self.model_logger.read_stats(self.model_log_text)
-
-  def stats_analysis(self, save_info):
-    """Run stats extracted from the logfile"""
-    run_stats = self.get_log_stats()
-    np.savez(self.analysis_out_dir+"savefiles/run_stats_"+save_info+".npz", data={"run_stats":run_stats})
-    self.analysis_logger.log_info("Run stats analysis is complete.")
-    return run_stats
-
-  def eval_analysis(self, images, var_names, save_info):
-    evals = self.evaluate_model(images, var_names)
-    np.savez(self.analysis_out_dir+"savefiles/evals_"+save_info+".npz", data={"evals":evals})
-    self.analysis_logger.log_info("Image analysis is complete.")
-    return evals
-
-  def basis_analysis(self, weights, save_info):
-    bf_stats = dp.get_dictionary_stats(weights, padding=self.params.ft_padding,
-      num_gauss_fits=self.params.num_gauss_fits, gauss_thresh=self.params.gauss_thresh)
-    np.savez(self.analysis_out_dir+"savefiles/basis_"+save_info+".npz", data={"bf_stats":bf_stats})
-    self.analysis_logger.log_info("Dictionary analysis is complete.")
-    return bf_stats
-
-  def ata_analysis(self, images, activity, save_info):
-    atas = self.compute_atas(activity, images)
-    atcs = self.compute_atcs(activity, images, atas)
-    np.savez(self.analysis_out_dir+"savefiles/resopnse_"+save_info+".npz",
-      data={"atas":atas, "atcs":atcs})
-    self.analysis_logger.log_info("Activity triggered analysis is complete.")
-    return (atas, atcs)
-
-  def run_noise_analysis(self, save_info, batch_size=100):
-    """
-    TODO: compute per batch
-    """
-    noise_shape = [self.params.num_noise_images] + self.model_params.data_shape
-    noise_images = self.rand_state.standard_normal(noise_shape)
-    noise_activity = self.compute_activations(noise_images)
-    noise_atas = self.compute_atas(noise_activity, noise_images)
-    noise_atcs = self.compute_atcs(noise_activity, noise_images, noise_atas)
-    np.savez(self.analysis_out_dir+"savefiles/noise_responses_"+save_info+".npz",
-      data={"num_noise_images":self.params.num_noise_images, "noise_activity":noise_activity,
-      "noise_atas":noise_atas, "noise_atcs":noise_atcs})
-    self.analysis_logger.log_info("Noise analysis is complete.")
-    return (noise_activity, noise_atas, noise_atcs)
-
-  def grating_analysis(self, weight_stats, save_info):
-    ot_grating_responses = self.orientation_tuning(weight_stats, self.params.ot_contrasts,
-      self.params.ot_orientations, self.params.ot_phases, self.params.ot_neurons,
-      scale=self.params.input_scale)
-    np.savez(self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz", data=ot_grating_responses)
-    ot_mean_activations = ot_grating_responses["mean_responses"]
-    base_orientations = [self.params.ot_orientations[np.argmax(ot_mean_activations[bf_idx,-1,:])]
-      for bf_idx in range(len(ot_grating_responses["neuron_indices"]))]
-    co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
-      self.params.ot_contrasts, self.params.ot_phases, base_orientations,
-      self.params.ot_orientations, self.params.ot_neurons, scale=self.params.input_scale)
-    np.savez(self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz",
-      data=co_grating_responses)
-    self.analysis_logger.log_info("Grating  analysis is complete.")
-    return (ot_grating_responses, co_grating_responses)
-
-  def run_patch_recon_analysis(self, full_image, save_info):
-    """
-    Break image into patches, compute recons, reassemble recons back into a full image
-    """
-    self.full_image = full_image
-    if self.model_params.whiten_data:
-      # FT method is the only one that works on full images
-      wht_img, img_mean, ft_filter = dp.whiten_data(full_image,
-        method="FT", lpf_cutoff=self.model_params.lpf_cutoff)
-    else:
-      wht_img = full_image
-    img_patches = dp.extract_patches(wht_img,
-      out_shape=(1, self.model_params.patch_edge_size, self.model_params.patch_edge_size, 1),
-      overlapping=False, randomize=False, var_thresh=0.0)
-    img_patches, orig_shape = dp.reshape_data(img_patches, flatten=True)[:2]
-    model_eval = self.evaluate_model(img_patches,
-      ["inference/activity:0", "output/reconstruction:0"])
-    recon_patches = model_eval["output/reconstruction:0"]
-    a_vals = model_eval["inference/activity:0"]
-    self.recon_frac_act = np.array(np.count_nonzero(a_vals) / float(a_vals.size))
-    recon_patches = dp.reshape_data(recon_patches, flatten=False, out_shape=orig_shape)[0]
-    self.full_recon = dp.patches_to_image(recon_patches, full_image.shape).astype(np.float32)
-    if self.model_params.whiten_data:
-      self.full_recon = dp.unwhiten_data(self.full_recon, img_mean, ft_filter, method="FT")
-    np.savez(self.analysis_out_dir+"savefiles/full_recon_"+save_info+".npz",
-      data={"full_image":self.full_image, "full_recon":self.full_recon,
-      "recon_frac_act":self.recon_frac_act})
-    self.analysis_logger.log_info("Patch recon analysis is complete.")
 
   def run_analysis(self, images, save_info=""):
     """
@@ -258,7 +159,8 @@ class Analyzer(object):
     Log statistics should be consistent across models, but in general it is expected that
     this method will be overwritten for specific models
     """
-    self.run_stats = self.stats_analysis(save_info)
+    if self.analysis_params.do_run_analysis:
+      self.run_stats = self.stats_analysis(save_info)
 
   def load_analysis(self, save_info=""):
     # Run statistics
@@ -270,22 +172,26 @@ class Analyzer(object):
     if os.path.exists(eval_file_loc):
       self.evals = np.load(eval_file_loc)["data"].item()["evals"]
     # Basis function fits
-    bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
-    if os.path.exists(bf_file_loc):
-      self.bf_stats = np.load(bf_file_loc)["data"].item()["bf_stats"]
+    try:
+      self.load_basis_stats(save_info)
+    except FileNotFoundError:
+      self.analysis_logger.log_info("WARNING: Basis stats file not found")
     # Activity triggered analysis
-    act_file_loc = self.analysis_out_dir+"savefiles/response_"+save_info+".npz"
-    if os.path.exists(act_file_loc):
-      act_analysis = np.load(act_file_loc)["data"].item()
-      self.atas = act_analysis["atas"]
-      self.atcs = act_analysis["atcs"]
-    noise_file_loc = self.analysis_out_dir+"savefiles/noise_responses_"+save_info+".npz"
-    if os.path.exists(noise_file_loc):
-      noise_analysis = np.load(noise_file_loc)["data"].item()
+    ata_file_loc = self.analysis_out_dir+"savefiles/atas_"+save_info+".npz"
+    if os.path.exists(ata_file_loc):
+      ata_analysis = np.load(ata_file_loc)["data"].item()
+      self.atas = ata_analysis["atas"]
+      self.atcs = ata_analysis["atcs"]
+    ata_noise_file_loc = self.analysis_out_dir+"savefiles/atas_noise_"+save_info+".npz"
+    if os.path.exists(ata_noise_file_loc):
+      ata_noise_analysis = np.load(ata_noise_file_loc)["data"].item()
+      self.noise_atas = ata_noise_analysis["noise_atas"]
+      self.noise_atcs = ata_noise_analysis["noise_atcs"]
+    act_noise_file_loc = self.analysis_out_dir+"savefiles/noise_response_"+save_info+".npz"
+    if os.path.exists(act_noise_file_loc):
+      noise_analysis = np.load(act_noise_file_loc)["data"].item()
       self.noise_activity = noise_analysis["noise_activity"]
-      self.noise_atas = noise_analysis["noise_atas"]
-      self.noise_atcs = noise_analysis["noise_atcs"]
-      self.params.num_noise_images = self.noise_activity.shape[0]
+      self.analysis_params.num_noise_images = self.noise_activity.shape[0]
     # Orientation analysis
     tuning_file_locs = [self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz",
       self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz"]
@@ -307,16 +213,37 @@ class Analyzer(object):
       self.adversarial_target_image = data["target_image"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_recons = data["adversarial_recons"]
-      self.params.adversarial_eps = data["eps"]
-      self.params.adversarial_num_steps = data["num_steps"]
-      self.params.adversarial_input_id = data["input_id"]
-      self.params.adversarial_target_id = data["target_id"]
+      self.analysis_params.adversarial_eps = data["eps"]
+      self.analysis_params.adversarial_num_steps = data["num_steps"]
+      self.analysis_params.adversarial_input_id = data["input_id"]
+      self.analysis_params.adversarial_target_id = data["target_id"]
       self.adversarial_input_target_mses = data["input_target_mse"]
       self.adversarial_input_recon_mses = data["input_recon_mses"]
       self.adversarial_input_adv_mses = data["input_adv_mses"]
       self.adversarial_target_recon_mses = data["target_recon_mses"]
       self.adversarial_target_adv_mses = data["target_adv_mses"]
       self.adversarial_adv_recon_mses = data["adv_recon_mses"]
+
+  def load_basis_stats(self, save_info):
+    bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
+    self.bf_stats = np.load(bf_file_loc)["data"].item()["bf_stats"]
+
+  def stats_analysis(self, save_info):
+    """Run stats extracted from the logfile"""
+    run_stats = self.get_log_stats()
+    np.savez(self.analysis_out_dir+"savefiles/run_stats_"+save_info+".npz", data={"run_stats":run_stats})
+    self.analysis_logger.log_info("Run stats analysis is complete.")
+    return run_stats
+
+  def get_log_stats(self):
+    """Wrapper function for parsing the log statistics"""
+    return self.model_logger.read_stats(self.model_log_text)
+
+  def eval_analysis(self, images, var_names, save_info):
+    evals = self.evaluate_model(images, var_names)
+    np.savez(self.analysis_out_dir+"savefiles/evals_"+save_info+".npz", data={"evals":evals})
+    self.analysis_logger.log_info("Image analysis is complete.")
+    return evals
 
   def evaluate_model(self, images, var_names):
     """
@@ -332,19 +259,60 @@ class Analyzer(object):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, feed_dict)
-      self.model.load_weights(sess, self.cp_loc)
+      self.model.load_model(sess, self.analysis_params.cp_loc)
       tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
       eval_list = sess.run(tensors, feed_dict)
     evals = dict(zip(var_names, eval_list))
     return evals
 
+  def basis_analysis(self, weights, save_info):
+    bf_stats = dp.get_dictionary_stats(weights, padding=self.analysis_params.ft_padding,
+      num_gauss_fits=self.analysis_params.num_gauss_fits,
+      gauss_thresh=self.analysis_params.gauss_thresh)
+    np.savez(self.analysis_out_dir+"savefiles/basis_"+save_info+".npz", data={"bf_stats":bf_stats})
+    self.analysis_logger.log_info("Dictionary analysis is complete.")
+    return bf_stats
+
+  def ata_analysis(self, images, activity, save_info):
+    atas = self.compute_atas(activity, images)
+    atcs = self.compute_atcs(activity, images, atas)
+    np.savez(self.analysis_out_dir+"savefiles/atas_"+save_info+".npz",
+      data={"atas":atas, "atcs":atcs})
+    self.analysis_logger.log_info("Activity triggered analysis is complete.")
+    return (atas, atcs)
+
+  def run_noise_analysis(self, save_info, batch_size=100):
+    """
+    Computes activations and  activity triggered averages & covariances on Gaussian noise images
+    """
+    noise_activity = []
+    noise_image_list = []
+    num_images_processed = 0
+    while num_images_processed < self.analysis_params.num_noise_images:
+      if batch_size + num_images_processed <= self.analysis_params.num_noise_images:
+        noise_shape = [batch_size] + self.model_params.data_shape
+        num_images_processed += batch_size
+      else:
+        noise_shape = [self.analysis_params.num_noise_images - num_images_processed] \
+          + self.model_params.data_shape
+        num_images_processed = self.analysis_params.num_noise_images
+      noise_images = self.rand_state.standard_normal(noise_shape)
+      noise_image_list.append(noise_images)
+      noise_activity.append(self.compute_activations(noise_images))
+    noise_images = np.concatenate(noise_image_list, axis=0)
+    noise_activity = np.concatenate(noise_activity, axis=0)
+    noise_atas, noise_atcs = self.ata_analysis(noise_images, noise_activity, "noise_"+save_info)
+    np.savez(self.analysis_out_dir+"savefiles/noise_responses_"+save_info+".npz",
+      data={"num_noise_images":self.analysis_params.num_noise_images,
+      "noise_activity":noise_activity})
+    self.analysis_logger.log_info("Noise analysis is complete.")
+    return (noise_activity, noise_atas, noise_atcs)
+
   def compute_activations(self, images):
     """
     Computes the output code for a set of images.
-    It is assumed that the model has a member variable "model.a" that is evaluated
-    Alternatively, one can overwrite this method for individual models
     Outputs:
-      evaluated model.a on the input images
+      evaluated model.get_encodings() on the input images
     Inputs:
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
     """
@@ -353,11 +321,11 @@ class Analyzer(object):
     with tf.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(images)
       sess.run(self.model.init_op, feed_dict)
-      self.model.load_weights(sess, self.cp_loc)
-      activations = sess.run(self.model.a, feed_dict)
+      self.model.load_model(sess, self.analysis_params.cp_loc)
+      activations = sess.run(self.model.get_encodings(), feed_dict)
     return activations
 
-  def compute_atas(self, activities, images):
+  def compute_atas(self, activities, images, batch_size=100):
     """
     Returns activity triggered averages
     Outputs:
@@ -366,7 +334,34 @@ class Analyzer(object):
       activities [np.ndarray] of shape (num_imgs, num_neurons)
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
     """
-    atas = images.T.dot(activities) / images.shape[0]
+    num_images, num_pixels =  images.shape
+    num_act_images, num_neurons = activities.shape
+    assert num_act_images == num_images, (
+      "activities.shape[0] = %g and images.shape[0] = %g must be equal"%(
+      num_act_images, num_images))
+    if num_images > batch_size: # enforce batching to limit memory usage
+      atas = np.zeros([num_pixels, num_neurons])
+      num_images_processed = 0
+      while num_images_processed < num_images:
+        num_batches = 0
+        if batch_size + num_images_processed <= num_images:
+          img_slice = images[num_images_processed:num_images_processed+batch_size, ...]
+          act_slice = activities[num_images_processed:num_images_processed+batch_size, ...]
+          atas = atas + img_slice.T.dot(act_slice) / batch_size
+          num_batches += 1
+          num_images_processed += batch_size
+        if num_batches > 0:
+          atas = atas / num_batches #average out the completed batches, if any
+        if num_images_processed <= num_images: # If there are still images left
+          num_remaining = num_images - num_images_processed
+          img_slice = images[num_images_processed:num_images, ...]
+          act_slice = activities[num_images_processed:num_images, ...]
+          batch_multiplier = (num_batches * batch_size) / num_images
+          atas = ((batch_multiplier * atas)
+            + ((1 - batch_multiplier) * (img_slice.T.dot(act_slice) / num_remaining)))
+          num_images_processed += num_remaining
+    else:
+      atas = images.T.dot(activities) / num_images
     return atas
 
   def compute_atcs(self, activities, images, atas=None):
@@ -394,6 +389,25 @@ class Analyzer(object):
       atcs[neuron_id] = sum([cov*act for cov,act in covs_acts]) / num_batch
     atcs = np.stack(atcs, axis=0)
     return atcs
+
+  def grating_analysis(self, weight_stats, save_info):
+    ot_grating_responses = self.orientation_tuning(weight_stats, self.analysis_params.contrasts,
+      self.analysis_params.orientations, self.analysis_params.phases,
+      self.analysis_params.neuron_indices, scale=self.analysis_params.input_scale)
+    np.savez(self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz",
+      data=ot_grating_responses)
+    ot_mean_activations = ot_grating_responses["mean_responses"]
+    base_orientations = [
+      self.analysis_params.orientations[np.argmax(ot_mean_activations[bf_idx, -1, :])]
+      for bf_idx in range(len(ot_grating_responses["neuron_indices"]))]
+    co_grating_responses = self.cross_orientation_suppression(self.bf_stats,
+      self.analysis_params.contrasts, self.analysis_params.phases, base_orientations,
+      self.analysis_params.orientations, self.analysis_params.neuron_indices,
+      scale=self.analysis_params.input_scale)
+    np.savez(self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz",
+      data=co_grating_responses)
+    self.analysis_logger.log_info("Grating  analysis is complete.")
+    return (ot_grating_responses, co_grating_responses)
 
   def orientation_tuning(self, bf_stats, contrasts=[0.5], orientations=[np.pi],
     phases=[np.pi], neuron_indices=None, diameter=-1, scale=1.0):
@@ -585,10 +599,10 @@ class Analyzer(object):
       for neuron_idx in neuron_indices
       for orientation in orientations
       for phase in phases], axis=0) #Array containing all stimulus that can be returned for testing
-    if hasattr(params, "whiten_data") and self.model_params.whiten_data:
+    if hasattr(self.model_params, "whiten_data") and self.model_params.whiten_data:
       phase_stims, phase_mean, phase_filter = dp.whiten_data(raw_phase_stims,
         method=self.model_params.whiten_method)
-    if hasattr(params, "lpf_data") and self.model_params.lpf_data:
+    if hasattr(self.model_params, "lpf_data") and self.model_params.lpf_data:
       phase_stims, phase_mean, phase_filter = dp.lpf_data(raw_phase_stims,
         cutoff=self.model_params.lpf_cutoff)
     phase_stims = scale * (phase_stims / np.max(np.abs(phase_stims)))
@@ -614,10 +628,10 @@ class Analyzer(object):
           if contrast <= 1.0:
             raw_test_stims = np.stack([grating(neuron_idx, contrast, orientation, phase)
               for phase in phases], axis=0)
-            if hasattr(params, "whiten_data") and self.model_params.whiten_data:
+            if hasattr(self.model_params, "whiten_data") and self.model_params.whiten_data:
               test_stims, test_mean, test_filter = dp.whiten_data(raw_test_stims,
                 method=self.model_params.whiten_method)
-            if hasattr(params, "lpf_data") and self.model_params.lpf_data:
+            if hasattr(self.model_params, "lpf_data") and self.model_params.lpf_data:
               test_stims, test_mean, test_filter = dp.lpf_data(raw_test_stims,
                 cutoff = self.model_params.lpf_cutoff)
             test_stims = scale * (test_stims / np.max(np.abs(test_stims)))
@@ -645,6 +659,35 @@ class Analyzer(object):
       iso_response_parameters.append(bf_iso_response_parameters)
     return {"orientations":orientations, "phases":phases, "neuron_indices":neuron_indices,
       "iso_response_parameters":iso_response_parameters}
+
+  def run_patch_recon_analysis(self, full_image, save_info):
+    """
+    Break image into patches, compute recons, reassemble recons back into a full image
+    """
+    self.full_image = full_image
+    if self.model_params.whiten_data:
+      # FT method is the only one that works on full images
+      wht_img, img_mean, ft_filter = dp.whiten_data(full_image,
+        method="FT", lpf_cutoff=self.model_params.lpf_cutoff)
+    else:
+      wht_img = full_image
+    img_patches = dp.extract_patches(wht_img,
+      out_shape=(1, self.model_params.patch_edge_size, self.model_params.patch_edge_size, 1),
+      overlapping=False, randomize=False, var_thresh=0.0)
+    img_patches, orig_shape = dp.reshape_data(img_patches, flatten=True)[:2]
+    model_eval = self.evaluate_model(img_patches,
+      ["inference/activity:0", "output/reconstruction:0"])
+    recon_patches = model_eval["output/reconstruction:0"]
+    a_vals = model_eval["inference/activity:0"]
+    self.recon_frac_act = np.array(np.count_nonzero(a_vals) / float(a_vals.size))
+    recon_patches = dp.reshape_data(recon_patches, flatten=False, out_shape=orig_shape)[0]
+    self.full_recon = dp.patches_to_image(recon_patches, full_image.shape).astype(np.float32)
+    if self.model_params.whiten_data:
+      self.full_recon = dp.unwhiten_data(self.full_recon, img_mean, ft_filter, method="FT")
+    np.savez(self.analysis_out_dir+"savefiles/full_recon_"+save_info+".npz",
+      data={"full_image":self.full_image, "full_recon":self.full_recon,
+      "recon_frac_act":self.recon_frac_act})
+    self.analysis_logger.log_info("Patch recon analysis is complete.")
 
   def neuron_angles(self, bf_stats):
     """
@@ -686,7 +729,7 @@ class Analyzer(object):
     """
     Append opes to the graph for adversarial analysis
     """
-    with tf.device(self.params.device):
+    with tf.device(self.analysis_params.device):
       with self.model.graph.as_default():
         with tf.name_scope("placeholders") as scope:
           self.model.orig_input = tf.placeholder(tf.float32, shape=self.model.x_shape,
@@ -696,10 +739,10 @@ class Analyzer(object):
           self.model.recon_mult = tf.placeholder(tf.float32, name="recon_mult")
         with tf.name_scope("loss") as scope:
           # Want to avg over batch, sum over the rest
-          reduc_dim = list(range(1, len(self.model.a.shape)))
+          reduc_dim = list(range(1, len(self.model.get_encodings().shape)))
           self.model.adv_recon_loss = tf.reduce_mean(0.5 *
             tf.reduce_sum(tf.square(tf.subtract(self.model.adv_target,
-            self.model.compute_recon(self.model.a))), axis=reduc_dim),
+            self.model.compute_recon(self.model.get_encodings()))), axis=reduc_dim),
             name="target_recon_loss")
           self.model.input_pert_loss = tf.reduce_mean(0.5 *
             tf.reduce_sum(tf.square(tf.subtract(self.model.orig_input,
@@ -728,12 +771,13 @@ class Analyzer(object):
       feed_dict = self.model.get_feed_dict(input_image)
       feed_dict[self.model.adv_target] = target_image
       sess.run(self.model.init_op, feed_dict)
-      self.model.load_weights(sess, self.cp_loc)
+      self.model.load_model(sess, self.analysis_params.cp_loc)
       new_image = input_image.copy()
       for step in range(num_steps):
         adversarial_images.append(new_image.copy())
         self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
-        eval_ops = [self.model.x_, self.model.fast_sign_adv_dx]
+        eval_ops = [self.model.compute_recon(self.model.get_encodings()),
+          self.model.fast_sign_adv_dx]
         recon, fast_sign_adv_dx = sess.run(eval_ops, feed_dict)
         new_image += eps * fast_sign_adv_dx
         input_recon_mses.append(mse(input_image, recon))

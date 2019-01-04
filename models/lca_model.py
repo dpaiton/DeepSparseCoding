@@ -53,6 +53,9 @@ class LcaModel(Model):
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
             MSE)), name="recon_quality")
 
+  def compute_recon(self, a_in):
+    return self.module.compute_recon(a_in)
+
   def get_encodings(self):
     return self.module.a
 
