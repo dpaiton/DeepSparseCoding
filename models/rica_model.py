@@ -16,9 +16,9 @@ class RicaModel(Model):
 
   def load_params(self, params):
     super(RicaModel, self).load_params(params)
-    self.num_pixels = int(np.prod(self.data_shape))
+    self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
-    self.w_shape = [self.num_pixels, self.num_neurons]
+    self.w_shape = [self.num_pixels, self.params.num_neurons]
 
   def compute_recon(self, a_in):
     return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")
@@ -70,6 +70,7 @@ class RicaModel(Model):
             for schedule_idx, sch in enumerate(self.sched):
               sch_grads_and_vars = list() # [weight_idx]
               sch_apply_grads = list() # [weight_idx]
+              weight_ops = [self.trainable_variables[weight] for weight in sch["weights"]]
               for w_idx, weight in enumerate(sch["weights"]):
                 weight_op = self.trainable_variables[weight]
                 sch_grads_and_vars.append([(None, weight_op[0])])
@@ -121,7 +122,7 @@ class RicaModel(Model):
           self.a = tf.matmul(self.x, self.w, name="activity")
 
         with tf.name_scope("output") as scope:
-          self.x_ = self.compute_recon(self.a)
+          self.reconstruction = self.compute_recon(self.a)
 
         with tf.name_scope("loss") as scope:
           loss_funcs = self.get_loss_funcs()
@@ -131,12 +132,18 @@ class RicaModel(Model):
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.x_)), axis=[1, 0],
+            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
+
+  def get_encodings(self):
+    return self.a
+
+  def get_total_loss(self):
+    return self.total_loss
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
@@ -149,7 +156,7 @@ class RicaModel(Model):
     update_dict = super(RicaModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
-      self.total_loss, self.a, self.x_]
+      self.total_loss, self.a, self.reconstruction]
     if self.optimizer != "lbfgsb":
       eval_list.append(self.learning_rates)
       grad_name_list = []
@@ -198,7 +205,7 @@ class RicaModel(Model):
     """
     super(RicaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.w, self.x_,  self.a]
+    eval_list = [self.global_step, self.w, self.reconstruction,  self.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     weights, recon, activity = eval_out[1:]

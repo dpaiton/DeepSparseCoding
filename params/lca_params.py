@@ -126,7 +126,6 @@ class params(BaseParams):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
-
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 

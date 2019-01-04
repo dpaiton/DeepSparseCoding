@@ -24,8 +24,8 @@ class SigmoidAutoencoderModel(Model):
     """
     super(SigmoidAutoencoderModel, self).load_params(params)
     # Network Size
-    self.num_pixels = int(np.prod(self.data_shape))
-    self.w_enc_shape = [self.num_pixels, self.num_neurons]
+    self.num_pixels = int(np.prod(self.params.data_shape))
+    self.w_enc_shape = [self.num_pixels, self.params.num_neurons]
     self.x_shape = [None, self.num_pixels]
 
   def activation(self, a_in, name=""):
@@ -36,10 +36,6 @@ class SigmoidAutoencoderModel(Model):
 
   def compute_weight_decay_loss(self):
     with tf.name_scope("unsupervised"):
-      #w_enc_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(tf.square(self.w_enc),
-      #axis=[0]), 1.0)))
-      #w_dec_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(tf.square(self.w_dec),
-      #axis=[1]), 1.0)))
       w_enc_decay = tf.reduce_sum(tf.square(self.w_enc))
       w_dec_decay = tf.reduce_sum(tf.square(self.w_dec))
       decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n([w_enc_decay, w_dec_decay]))
@@ -65,7 +61,7 @@ class SigmoidAutoencoderModel(Model):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
@@ -79,7 +75,7 @@ class SigmoidAutoencoderModel(Model):
         with tf.name_scope("weight_inits") as scope:
           w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0,
             stddev=0.2, dtype=tf.float32, name="w_init")
-          b_enc_init = tf.ones([1, self.num_neurons])*0.0001
+          b_enc_init = tf.ones([1, self.params.num_neurons])*0.0001
           b_dec_init = tf.ones([1, self.num_pixels])*0.0001
 
         with tf.variable_scope("weights") as scope:
@@ -107,16 +103,22 @@ class SigmoidAutoencoderModel(Model):
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
         with tf.name_scope("output") as scope:
-          self.x_ = self.compute_recon(self.a)
+          self.reconstruction = self.compute_recon(self.a)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.x_)), axis=[1, 0],
+            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
+
+  def get_total_loss(self):
+    return self.total_loss
+
+  def get_encodings(self):
+    return self.a
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
@@ -130,7 +132,8 @@ class SigmoidAutoencoderModel(Model):
       input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["sparse_loss"],
-      self.loss_dict["weight_decay_loss"], self.total_loss, self.a, self.x_, self.learning_rates]
+      self.loss_dict["weight_decay_loss"], self.get_total_loss(), self.get_encodings(),
+      self.reconstruction, self.learning_rates]
     grad_name_list = []
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
@@ -179,7 +182,8 @@ class SigmoidAutoencoderModel(Model):
     """
     super(SigmoidAutoencoderModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.w_enc, self.b_enc, self.w_dec, self.x_,  self.a]
+    eval_list = [self.global_step, self.w_enc, self.b_enc, self.w_dec, self.reconstruction,
+      self.get_encodings()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     w_enc, b_enc, w_dec, recon, activity = eval_out[1:]

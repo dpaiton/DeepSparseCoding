@@ -96,9 +96,9 @@ class params(BaseParams):
       self.num_neurons = 768
       self.num_groups = 192
       for sched_idx in range(len(self.schedule)):
-        self.schedule["sparse_mult"] = 5.0
-        self.schedule["group_orth_mult"] = 0.1
-        self.schedule["weight_lr"] = [0.02]
+        self.schedule[sched_idx]["sparse_mult"] = 5.0
+        self.schedule[sched_idx]["group_orth_mult"] = 0.1
+        self.schedule[sched_idx]["weight_lr"] = [0.02]
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

@@ -10,8 +10,7 @@ run_analysis = True
 
 del_idx = []
 for idx, arg in enumerate(sys.argv):
-  #Find this flag, if exists, remove from argv so tensorflow testing args don't
-  #mess up
+  #Find this flag, if exists, remove from argv so tensorflow testing args don't mess up
   if arg == "--all":
     run_comb = True
     run_build = True

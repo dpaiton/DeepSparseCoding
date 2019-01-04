@@ -161,10 +161,8 @@ class Model(object):
             sch_grads_and_vars = list() # [weight_idx]
             sch_apply_grads = list() # [weight_idx]
             sch_lrs = list() # [weight_idx]
-
             #Construct weight ops
             weight_ops = [self.trainable_variables[weight] for weight in sch["weights"]]
-
             for w_idx, weight in enumerate(sch["weights"]):
               weight_name = weight.split("/")[-1].split(":")[0]
               learning_rates = tf.train.exponential_decay(

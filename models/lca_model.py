@@ -135,11 +135,9 @@ class LcaModel(Model):
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
       save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
-
     #Scale image by max and min of images and/or recon
     r_max = np.max([np.max(input_data), np.max(recon)])
     r_min = np.min([np.min(input_data), np.min(recon)])
-
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
@@ -148,11 +146,9 @@ class LcaModel(Model):
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
-
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
       save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
-
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.params.disp_dir+"phi_v"+self.params.version+"-"

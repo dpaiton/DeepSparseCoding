@@ -34,8 +34,8 @@ def testBasic(self):
 
 #Make class with specific model_type name in class name
 #model_list = mp.get_model_list()
-model_list = ["lca", "mlp", "vae", "lca_conv", "lca_pca", "lca_subspace", "fista", "ica"]
-data_type = "mnist"
+model_list = ["lca", "mlp", "vae", "lca_conv", "lca_pca", "lca_subspace", "fista", "ica", "sigmoid_autoencoder"]
+data_type = "mnist" # TODO: Should this be synthetic? We don't want MNIST to be required for testing
 for model_type in model_list:
   #Define class name with model_type
   class_name = "BuildTest_"+str(model_type)
