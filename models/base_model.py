@@ -141,6 +141,8 @@ class Model(object):
 
   def compute_weight_gradients(self, optimizer, weight_op=None):
     """Returns the gradients for a weight variable using a given optimizer"""
+    if self.params.optimizer == "lbfgsb":
+      return [(optimizer, weight_op)]
     return optimizer.compute_gradients(self.get_total_loss(), var_list=weight_op)
 
   def add_optimizers_to_graph(self):
@@ -150,6 +152,10 @@ class Model(object):
       - both member variables are indexed by [schedule_idx][weight_idx]
       - grads_and_vars holds the gradients for the weight updates
       - apply_grads is the operator to be called to perform weight updates
+    TODO: For BFGS - Could use the step_callback and loss_callback args to have functions that get
+      grads (loss_callback) and also increment the global step (step_callback)
+      Also, for BFGS the minimizer requires a session as input to minimize, not sure the best way
+      to minimize in the sch_grads_and_vars list?
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
@@ -157,6 +163,9 @@ class Model(object):
           self.grads_and_vars = list() # [sch_idx][weight_idx]
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
+          if self.params.optimizer == "lbfgsb":
+            self.minimizer = tf.contrib.opt.ScipyOptimizerInterface(self.total_loss,
+              options={"maxiter":self.params.maxiter}) # Default method is L-BFGSB
           for schedule_idx, sch in enumerate(self.params.schedule):
             sch_grads_and_vars = list() # [weight_idx]
             sch_apply_grads = list() # [weight_idx]
@@ -182,11 +191,21 @@ class Model(object):
               elif self.params.optimizer == "adadelta":
                 optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
                   name="adadelta_optimizer_"+weight_name)
+              elif self.params.optimizer == "lbfgsb":
+                optimizer = None
+              else:
+                assert False, ("Optimizer "+self.params.optimizer+" is not supported.")
               weight_op = self.trainable_variables[weight]
               sch_grads_and_vars.append(self.compute_weight_gradients(optimizer, weight_op))
               gstep = self.global_step if w_idx == 0 else None # Only increment once
-              sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
-                global_step=gstep))
+              if self.params.optimizer == "lbfgsb": # BFGS doesn't actually need the update op
+                if w_idx == 0:
+                  sch_apply_grads.append(tf.assign_add(self.global_step, 1))
+                else:
+                  sch_apply_grads.append(None)
+              else:
+                sch_apply_grads.append(optimizer.apply_gradients(sch_grads_and_vars[w_idx],
+                  global_step=gstep))
             self.learning_rates.append(sch_lrs)
             self.grads_and_vars.append(sch_grads_and_vars)
             self.apply_grads.append(sch_apply_grads)

@@ -101,7 +101,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
         sess_run_list.append(model.apply_grads[sch_idx][w_idx])
       sess.run(sess_run_list, feed_dict)
 
-      if model_type == "rica" and hasattr(model, "minimizer"):
+      if model.params.optimizer == "lbfgsb":
         model.minimizer.minimize(session=sess, feed_dict=feed_dict)
 
       ## Normalize weights

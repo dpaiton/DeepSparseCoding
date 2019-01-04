@@ -27,10 +27,8 @@ class params(BaseParams):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
-    self.num_batches = 1
     self.batch_size = 100000
     self.num_neurons = 768
-    self.norm_weights = False
     self.optimizer = "lbfgsb" #"adam"#"annealed_sgd"
     self.maxiter = 15000
     self.cp_int = 100000
@@ -45,10 +43,76 @@ class params(BaseParams):
     self.gen_plot_int = 5000
     self.save_plots = True
     self.schedule = [
-      {"weights": ["w"],
+      {"num_batches": 1,
+      "weights": None,
       "recon_mult": 0.8,
       "sparse_mult": 1.0,
-      "weight_lr": [0.3],
-      "decay_steps": [int(self.num_batches*0.9)],
-      "decay_rate": [0.5],
-      "staircase": [True]}]
+      "weight_lr": 0.3,
+      "decay_steps": 1,
+      "decay_rate": 0.5,
+      "staircase": True}]
+
+  def set_data_params(self, data_type):
+    self.data_type = data_type
+    if data_type.lower() == "mnist":
+      self.model_name += "_mnist"
+      self.vectorize_data = True
+      self.rescale_data = True
+      self.whiten_data = False
+      self.extract_patches = False
+      self.num_neurons = 768
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.5
+        self.schedule[sched_idx]["sparse_mult"] = 1.0
+        self.schedule[sched_idx]["weight_lr"] = 0.3
+        self.schedule[sched_idx]["num_batches"] = 1
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+
+    elif data_type.lower() == "vanhateren":
+      self.model_name += "_vh"
+      self.num_images = 150
+      self.vectorize_data = True
+      self.rescale_data = False
+      self.whiten_data = True
+      self.whiten_method = "ZCA"
+      self.lpf_data = True
+      self.lpf_cutoff = 0.7
+      self.extract_patches = True
+      self.num_neurons = 768
+      self.thresh_type = "soft"
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["recon_mult"] = 0.8
+        self.schedule[sched_idx]["sparse_mult"] = 1.0
+        self.schedule[sched_idx]["weight_lr"] = 0.3
+        self.schedule[sched_idx]["num_batches"] = 1
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+
+    elif data_type.lower() == "synthetic":
+      self.model_name += "_synthetic"
+      self.epoch_size = 1000
+      self.dist_type = "gaussian"
+      self.num_edge_pixels = 16
+      self.vectorize_data = True
+      self.rescale_data = True
+      self.whiten_data = False
+      self.extract_patches = False
+      self.num_neurons = 768
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["recon_mult"] = 0.8
+        self.schedule[sched_idx]["sparse_mult"] = 1.0
+        self.schedule[sched_idx]["weight_lr"] = 0.3
+        self.schedule[sched_idx]["num_batches"] = 1
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+
+    else:
+      assert False, ("Data type "+data_type+" is not supported.")
+
+  def set_test_params(self, data_type):
+    self.set_data_params(data_type)
+    self.epoch_size = 50
+    self.batch_size = 10
+    self.num_edge_pixels = 8
+    for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["num_batches"] = 1
+      self.schedule[sched_idx]["weight_lr"] = 1e-4
+    self.num_neurons = 100

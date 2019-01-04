@@ -11,10 +11,6 @@ Test for running models
 loads every model and runs on synthetic data
 
 NOTE: Should be executed from the repository's root directory
-
-## TODO:
-  * rica model has different interface for applying gradients when the L-BFGS minimizer is used
-    this is inconsistent and should be changed so that it acts like all models
 """
 def testBasic(self):
   schedule_index = 0 # Not testing support for multiple schedules
@@ -45,13 +41,12 @@ def testBasic(self):
     feed_dict = model.get_feed_dict(data, labels)
     for w_idx in range(len(model.get_schedule("weights"))):
       sess.run(model.apply_grads[schedule_index][w_idx], feed_dict)
-    ## FIXME ##
-    if self.model_type == "rica" and hasattr(model, "minimizer"):
+    if model.params.optimizer == "lbfgsb":
       model.minimizer.minimize(session=sess, feed_dict=feed_dict)
 
 
 #model_list = mp.get_model_list()
-model_list = ["lca", "mlp", "vae", "lca_conv", "lca_pca", "lca_subspace", "fista", "ica", "sigmoid_autoencoder"]
+model_list = ["lca", "mlp", "vae", "lca_conv", "lca_pca", "lca_subspace", "fista", "ica", "sigmoid_autoencoder", "rica"]
 data_type = "synthetic"
 for model_type in model_list:
   #Define class name with model_type

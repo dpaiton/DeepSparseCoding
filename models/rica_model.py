@@ -7,8 +7,12 @@ from models.base_model import Model
 class RicaModel(Model):
   """
   Implementation of Quoc Le et al. Reconstruction ICA described in:
-  QV Le, A Karpenko, J Ngiam, AY Ng (2011)
-  ICA with Reconstruction Cost for Efficient Overcomplete Feature Learning
+  QV Le, A Karpenko, J Ngiam, AY Ng (2011) - ICA with Reconstruction Cost for
+  Efficient Overcomplete Feature Learning
+
+  ## TODO:
+  * rica model has different interface for applying gradients when the L-BFGS minimizer is used,
+    which is inconsistent and should be changed so that it acts like all models
   """
   def __init__(self):
     super(RicaModel, self).__init__()
@@ -47,50 +51,12 @@ class RicaModel(Model):
     total_loss = tf.add_n([func(a_in) for func in loss_funcs.values()], name="total_loss")
     return total_loss
 
-  def add_optimizers_to_graph(self):
-    """
-    Add optimizers to graph
-    Creates member variables grads_and_vars and apply_grads for each weight
-      - both member variables are indexed by [schedule_idx][weight_idx]
-      - grads_and_vars holds the gradients for the weight updates
-      - apply_grads is the operator to be called to perform weight updates
-    NOTE: Overwritten function does not use these member variables. It instead creates
-      the optimizer member variable, which is minimized within the session.
-    TODO: Could use the step_callback and loss_callback args to have functions that get
-      grads (loss_callback) and also increment the global step (step_callback)
-    """
-    if self.optimizer == "lbfgsb":
-      with tf.device(self.device):
-        with self.graph.as_default():
-          with tf.name_scope("optimizers") as scope:
-            self.minimizer = tf.contrib.opt.ScipyOptimizerInterface(self.total_loss,
-              options={"maxiter":self.maxiter}) # default method is L-BFGSB
-            self.grads_and_vars = list() # [sch_idx][weight_idx]
-            self.apply_grads = list() # [sch_idx][weight_idx]
-            for schedule_idx, sch in enumerate(self.sched):
-              sch_grads_and_vars = list() # [weight_idx]
-              sch_apply_grads = list() # [weight_idx]
-              weight_ops = [self.trainable_variables[weight] for weight in sch["weights"]]
-              for w_idx, weight in enumerate(sch["weights"]):
-                weight_op = self.trainable_variables[weight]
-                sch_grads_and_vars.append([(None, weight_op[0])])
-                if w_idx == 0:
-                  update_op = tf.assign_add(self.global_step, 1)
-                else:
-                  update_op = None
-                sch_apply_grads.append(update_op)
-              self.grads_and_vars.append(sch_grads_and_vars)
-              self.apply_grads.append(sch_apply_grads)
-      self.optimizers_added = True
-    else:
-      super(RicaModel, self).add_optimizers_to_graph()
-
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
@@ -103,20 +69,12 @@ class RicaModel(Model):
         with tf.variable_scope("weights") as scope:
           w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
             dtype=tf.float32), axis=[0], name="w_init")
-          #self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init, trainable=True)
           w_unnormalized = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
             trainable=True)
           self.trainable_variables[w_unnormalized.name] = w_unnormalized
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0],
-            keepdims=True), self.eps))
+            keepdims=True), self.params.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
-
-        #with tf.name_scope("norm_weights") as scope: # Optional weight normalization
-        #  #w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(self.w), axis=[0]), self.eps))
-        #  #self.do_norm_w = self.w.assign(tf.divide(self.w, w_norm, name="row_l2_norm"))
-        #  self.norm_w = self.w.assign(tf.nn.l2_normalize(self.w, dim=[0], epsilon=self.eps,
-        #    name="row_l2_norm"))
-        #  self.norm_weights = tf.group(self.norm_w, name="l2_normalization")
 
         with tf.name_scope("inference") as scope:
           self.a = tf.matmul(self.x, self.w, name="activity")
