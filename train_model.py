@@ -40,6 +40,7 @@ data = model.preprocess_dataset(data, params)
 data = model.reshape_dataset(data, params)
 params.data_shape = list(data["train"].shape[1:])
 model.setup(params)
+
 if hasattr(params, "standardize_data") and params.standardize_data:
   model.log_info("Standardization was performed, dataset mean was "+str(np.mean(model.data_mean))
     +" and std was "+str(np.mean(model.data_std)))
@@ -104,9 +105,8 @@ with tf.Session(config=config, graph=model.graph) as sess:
         model.minimizer.minimize(session=sess, feed_dict=feed_dict)
 
       ## Normalize weights
-      if hasattr(model, "norm_weights"):
-        if params.norm_weights:
-          sess.run([model.norm_weights], feed_dict)
+      if params.norm_weights:
+        sess.run([model.norm_weights], feed_dict)
 
       batch_t1 = ti.time()
       avg_time += (batch_t1-batch_t0)/params.batch_size
@@ -125,22 +125,21 @@ with tf.Session(config=config, graph=model.graph) as sess:
         and params.cp_int > 0):
         save_dir = model.write_checkpoint(sess)
 
-        if hasattr(params, "val_on_cp"):
-          if params.val_on_cp: #Compute validation accuracy
-            val_images = data["val"].images
-            val_labels = data["val"].labels
-            with tf.Session(graph=model.graph) as tmp_sess:
-              val_feed_dict = model.get_feed_dict(val_images, val_labels)
-              tmp_sess.run(model.init_op, val_feed_dict)
+        if params.val_on_cp: #Compute validation accuracy
+          val_images = data["val"].images
+          val_labels = data["val"].labels
+          with tf.Session(graph=model.graph) as tmp_sess:
+            val_feed_dict = model.get_feed_dict(val_images, val_labels)
+            tmp_sess.run(model.init_op, val_feed_dict)
 
-              model.full_saver.restore(tmp_sess,
-                save_dir+"-"+str(current_step))
+            model.full_saver.restore(tmp_sess,
+              save_dir+"-"+str(current_step))
 
-              val_accuracy = (
-                np.array(tmp_sess.run(model.accuracy, val_feed_dict)).tolist())
-              stat_dict = {"validation_accuracy":val_accuracy}
-              js_str = model.js_dumpstring(stat_dict)
-              model.log_info("<stats>"+js_str+"</stats>")
+            val_accuracy = (
+              np.array(tmp_sess.run(model.accuracy, val_feed_dict)).tolist())
+            stat_dict = {"validation_accuracy":val_accuracy}
+            js_str = model.js_dumpstring(stat_dict)
+            model.log_info("<stats>"+js_str+"</stats>")
 
   save_dir = model.write_checkpoint(sess)
   avg_time /= tot_num_batches
