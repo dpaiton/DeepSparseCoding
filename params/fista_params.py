@@ -55,7 +55,7 @@ class params(BaseParams):
     self.do_batch_norm = [True, True, False]
     #Others
     self.cp_int = 10000
-    self.max_cp_to_keep = 1
+    self.max_cp_to_keep = None
     self.cp_load = False
     self.cp_load_name = "pretrain"
     self.cp_load_step = None # latest checkpoint
@@ -102,9 +102,11 @@ class params(BaseParams):
       self.output_channels = [300, 500, self.num_neurons]
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
-        self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+        #Set as 0.1 for training lca, and 0.01 for mlp
+        self.schedule[0]["weight_lr"] = 0.1
+        self.schedule[1]["weight_lr"] = 0.01
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"

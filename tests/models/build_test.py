@@ -4,36 +4,49 @@ import params.param_picker as pp
 import models.model_picker as mp
 import data.data_selector as ds
 import utils.data_processing as dp
+import sys
 
 """
 Test for building models
 NOTE: Should be executed from the repository's root directory
 loads every model
 """
-class BuildTest(tf.test.TestCase):
-  def testBasic(self):
-    data_type = "mnist"
-    model_list = ["mlp", "vae", "lca", "lca_conv",
-      "lca_pca", "lca_subspace", "fista"]#mp.get_model_list()
-    schedule_index = 0 # Not testing support for multiple schedules
 
-    for model_type in model_list:
-      params = pp.get_params(model_type) # Import params
-      params.set_test_params(data_type)
-      model = mp.get_model(model_type) # Import model
-      params.data_type = data_type
-      model.data_type = data_type
-      params.model_name = "test_build_" + params.model_name
-      try:
-        dataset = ds.get_data(params) # Import data
-        dataset = model.preprocess_dataset(dataset, params)
-        dataset = model.reshape_dataset(dataset, params)
-        params.data_shape = list(dataset["train"].shape[1:])
-        model.setup(params)
-        print("Model "+model_type+" passed")
-      except Exception as e:
-        #import IPython; IPython.embed(); raise SystemExit
-        raise Exception("Model "+model_type+" on BuildTest failed:\n") from e
+#Base method each dynamically generated class requires
+def testBasic(self):
+  schedule_index = 0 # Not testing support for multiple schedules
+  params = pp.get_params(self.model_type) # Import params
+  params.set_test_params(self.data_type)
+  #Don't do whitening in params for build
+  params.whiten_data = False
+  params.lpf_data = False
+
+  model = mp.get_model(self.model_type) # Import model
+  params.data_type = self.data_type
+  model.data_type = self.data_type
+  params.model_name = "test_build_" + params.model_name
+  dataset = ds.get_data(params) # Import data
+  dataset = model.preprocess_dataset(dataset, params)
+  dataset = model.reshape_dataset(dataset, params)
+  params.data_shape = list(dataset["train"].shape[1:])
+
+  model.setup(params)
+
+#Make class with specific model_type name in class name
+#model_list = mp.get_model_list()
+model_list = ["lca", "mlp", "vae", "lca_conv", "lca_pca", "lca_subspace", "fista", "ica"]
+data_type = "mnist"
+for model_type in model_list:
+  #Define class name with model_type
+  class_name = "BuildTest_"+str(model_type)
+  #Define class with class name, inherited from tf.test.TestCase
+  #and define attributes for the class
+  class_def = type(class_name, (tf.test.TestCase,),
+    {"testBasic": testBasic,
+    "model_type": model_type,
+    "data_type": data_type})
+  #Add this to module names so import * imports these class names
+  setattr(sys.modules[__name__], class_name, class_def)
 
 if __name__ == "__main__":
   tf.test.main()

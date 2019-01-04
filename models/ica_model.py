@@ -16,10 +16,10 @@ class IcaModel(Model):
      params: [obj] model parameters
     """
     super(IcaModel, self).load_params(params)
-    assert (True if self.prior.lower() in ("laplacian", "cauchy") else False), (
+    assert (True if self.params.prior.lower() in ("laplacian", "cauchy") else False), (
       "Prior must be 'laplacian' or 'cauchy'")
     ## Calculated params
-    self.num_pixels = int(np.prod(self.data_shape))
+    self.num_pixels = int(np.prod(self.params.data_shape))
     self.num_neurons = self.num_pixels
     self.x_shape = [None, self.num_pixels]
     self.w_synth_shape = [self.num_neurons, self.num_pixels]
@@ -27,7 +27,7 @@ class IcaModel(Model):
 
   def build_graph(self):
     """Build the TensorFlow graph object"""
-    with tf.device(self.device):
+    with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
@@ -53,17 +53,17 @@ class IcaModel(Model):
             initializer=Q.astype(np.float32), trainable=True)
           # w_analysis is W in Bell & Sejnowski 1997, which is used to compute the activations
           self.w_analysis = tf.matrix_inverse(self.w_synth, name="w_analysis")
-          self.trainable_variables[self.w_analysis.name] = self.w_analysis
+          self.trainable_variables[self.w_synth.name] = self.w_synth
 
           # Bell & Sejnowsky 1997
           #self.w_analysis = tf.get_variable(name="w_analysis", dtype=tf.float32,
           #  initializer=Q.astype(np.float32), trainable=True)
           #self.w_synth = tf.matrix_inverse(self.w_analysis, name="w_synth")
-          self.trainable_variables[self.w_synth.name] = self.w_synth
+          #self.trainable_variables[self.w_analysis.name] = self.w_analysis
 
         with tf.name_scope("inference") as scope:
           self.a = tf.matmul(self.x, self.w_analysis, name="activity")
-          if self.prior.lower() == "laplacian":
+          if self.params.prior.lower() == "laplacian":
             self.z = tf.sign(self.a)
           else: #It must be laplacian or cauchy
             self.z = (2*self.a) / (1 + tf.pow(self.a, 2.0))
@@ -81,6 +81,9 @@ class IcaModel(Model):
       This child function does not use optimizer input
       weight_op must be a list with a single matrix ("self.w_synth") in it
     """
+    if(type(weight_op) is not list):
+      weight_op = [weight_op]
+
     assert len(weight_op) == 1, ("IcaModel should only have one weight matrix")
     weight_name = weight_op[0].name.split('/')[1].split(':')[0]# last one is np.split
 

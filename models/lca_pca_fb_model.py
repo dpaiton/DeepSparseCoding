@@ -13,8 +13,8 @@ class LcaPcaFbModel(LcaPcaModel):
      params: [obj] model parameters
     """
     super(LcaPcaFbModel, self).load_params(params)
-    self.act_cov_loc = (params.out_dir+self.cp_load_name+"/analysis/"+self.cp_load_ver
-      +"/act_cov_"+self.act_cov_suffix+".npz")
+    self.act_cov_loc = (params.out_dir+params.cp_load_name+"/analysis/"+params.cp_load_ver
+      +"/act_cov_"+params.act_cov_suffix+".npz")
     assert os.path.exists(self.act_cov_loc), ("Can't find activity covariance file. "
       +"Maybe you didn't run the analysis? File location: "+self.act_cov_loc)
 

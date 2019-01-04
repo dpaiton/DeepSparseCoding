@@ -45,9 +45,24 @@ class params(BaseParams):
     self.gen_plot_int = 1000
     self.save_plots = True
     self.schedule = [
-      {"weights": ["w_synth"], # A, VS265
-      #{"weights": ["w_analysis"], # W=A^-1, Bell & Sejnowski
-      "weight_lr": [0.001],
-      "decay_steps": [5e5*0.8],
-      "decay_rate": [0.8],
-      "staircase": [True]}]
+      {"weights": None,
+      "num_batches": int(5e5),
+      "weight_lr": 0.001,
+      "decay_steps": int(5e5*0.8),
+      "decay_rate": 0.8,
+      "staircase": True}]
+  def set_data_params(self, data_type):
+    if data_type.lower() == "synthetic":
+      self.model_name += "_synthetic"
+      self.epoch_size = 1000
+      self.dist_type = "gaussian"
+      self.num_edge_pixels = 16
+
+  def set_test_params(self, data_type):
+    self.set_data_params(data_type)
+    self.epoch_size = 50
+    self.batch_size = 10
+    self.num_patches = 50
+    for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["num_batches"] = 2
+      self.schedule[sched_idx]["weight_lr"] = 1e-4

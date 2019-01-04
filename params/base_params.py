@@ -59,3 +59,10 @@ class BaseParams(object):
     self.rand_state = np.random.RandomState(self.rand_seed)
     self.out_dir = os.path.expanduser("~")+"/Work/Projects/"
     self.data_dir = os.path.expanduser("~")+"/Work/Datasets/"
+
+  #def set_data_params(self, data_type):
+  #  pass
+
+  #def set_test_params(self, data_type):
+  #  pass
+
