@@ -45,6 +45,7 @@ class BaseParams(object):
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.cp_load = False
+    self.val_on_cp = False
     self.cp_load_name = "pretrain"
     self.cp_load_step = None
     self.cp_load_ver = "0.0"
