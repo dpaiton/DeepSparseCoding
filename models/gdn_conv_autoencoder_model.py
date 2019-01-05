@@ -400,55 +400,58 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
     w_enc = dp.reshape_data(w_enc, flatten=True)[0]
     fig = pf.plot_data_tiled(w_enc, normalize=False,
       title="Encoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_enc_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"w_enc_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     w_dec = np.transpose(w_dec, axes=(2,0,1,3))
     w_dec = dp.reshape_data(w_dec, flatten=True)[0]
     fig = pf.plot_data_tiled(w_dec, normalize=False,
       title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"w_dec_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"w_dec_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_enc_norm_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.params.disp_dir+"w_enc_norm_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_dec_norm, num_xticks=5,
       title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_dec_norm_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.params.disp_dir+"w_dec_norm_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
     for idx, w_gdn in enumerate(w_gdn_eval_list):
       fig = pf.plot_weight_image(w_gdn, title="GDN "+str(idx)+" Weights", figsize=(10,10),
-        save_filename=(self.disp_dir+"w_gdn_"+str(idx)+"_v"+self.params.version+"-"
+        save_filename=(self.params.disp_dir+"w_gdn_"+str(idx)+"_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
     for idx, b_gdn in enumerate(b_gdn_eval_list):
       fig = pf.plot_activity_hist(b_gdn, title="GDN "+str(idx)+" Bias Histogram",
-        save_filename=(self.disp_dir+"b_gdn_"+str(idx)+"_hist_v"+self.params.version+"-"
+        save_filename=(self.params.disp_dir+"b_gdn_"+str(idx)+"_hist_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
     for idx, bias in enumerate(b_eval_list):
       fig = pf.plot_activity_hist(bias, title="Bias "+str(idx)+" Histogram",
-        save_filename=(self.disp_dir+"b_"+str(idx)+"_hist_v"+self.params.version+"-"
+        save_filename=(self.params.disp_dir+"b_"+str(idx)+"_hist_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
     for idx, gdn_mult_eval in enumerate(gdn_mult_eval_list):
       gdn_mult_resh = gdn_mult_eval.reshape(np.prod(gdn_mult_eval.shape))
       fig = pf.plot_activity_hist(gdn_mult_resh, title="GDN Multiplier Histogram",
-        save_filename=(self.disp_dir+"gdn_mult_v"+self.params.version+"-"
+        save_filename=(self.params.disp_dir+"gdn_mult_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
     pre_mem_activity = dp.reshape_data(pre_mem_activity, flatten=True)[0]
     fig = pf.plot_activity_hist(pre_mem_activity, title="Activity Histogram (pre-mem)",
-      save_filename=(self.disp_dir+"act_pre_mem_hist_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"act_pre_mem_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     post_mem_activity = dp.reshape_data(post_mem_activity, flatten=True)[0]
     fig = pf.plot_activity_hist(post_mem_activity, title="Activity Histogram (post-mem)",
-      save_filename=(self.disp_dir+"act_post_mem_hist_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"act_post_mem_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     #input_data, input_orig_shape = dp.reshape_data(input_data, flatten=True)[:2]
     #fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-    #  save_filename=(self.disp_dir+"img_hist_"+self.params.version+"-"
+    #  save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
     #  +current_step.zfill(5)+".png"))
     #input_data = dp.reshape_data(input_data, flatten=False, out_shape=input_orig_shape)[0]
     #fig = pf.plot_data_tiled(input_data, normalize=False,
     #  title="Images at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"images_"+self.params.version+"-"
+    #  save_filename=(self.params.disp_dir+"images_"+self.params.version+"-"
     #  +current_step.zfill(5)+".png"))
     recon = dp.reshape_data(recon, flatten=False)[0]
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.disp_dir+"recons_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))

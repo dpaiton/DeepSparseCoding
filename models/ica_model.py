@@ -178,25 +178,28 @@ class IcaModel(Model):
     #input_data = dp.reshape_data(input_data, flatten=False)[0]
     #pf.plot_data_tiled(input_data, normalize=False,
     #  title="Images at step "+current_step, vmin=np.min(input_data), vmax=np.max(input_data),
-    #  save_filename=(self.disp_dir+"images-"+current_step.zfill(5)+".png"))
+    #  save_filename=(self.params.disp_dir+"images-"+current_step.zfill(5)+".png"))
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False) # norm across pixels
     pf.plot_bar(weights_norm, num_xticks=5,
       title="$W_{analysis}$ l$_{2}$ norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_analysis_norm_v"+self.version+"-"
+      save_filename=(self.params.disp_dir+"w_analysis_norm_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     weights = dp.reshape_data(weights.T, flatten=False)[0] #[neurons, pixels_y, pixels_x]
     pf.plot_weights(weights.squeeze(), title="Unnormalized weights at step "+current_step,
-      save_filename=(self.disp_dir+"w_analysis_unnormalized_v"+self.version+"-"
+      save_filename=(self.params.disp_dir+"w_analysis_unnormalized_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     #pf.plot_data_tiled(weights, normalize=True,
     #  title="Weights at step "+current_step, vmin=-1.0, vmax=1.0,
-    #  save_filename=(self.disp_dir+"w_analysis_v"+self.version+"-"+current_step.zfill(5)+".png"))
+    #  save_filename=(self.params.disp_dir+"w_analysis_v"+self.params.version+"-"
+    #  +current_step.zfill(5)+".png"))
     pf.plot_activity_hist(a_vals, num_bins=1000,
       title="a Activity Histogram at step "+current_step,
-      save_filename=(self.disp_dir+"act_hist_v"+self.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.params.disp_dir+"act_hist_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
     #pf.plot_activity_hist(z_vals, num_bins=1000,
     #  title="z Activity Histogram at step "+current_step,
-    #  save_filename=(self.disp_dir+"z_hist_v"+self.version+"-"+current_step.zfill(5)+".png"))
+    #  save_filename=(self.params.disp_dir+"z_hist_v"+self.params.version+"-"
+    #  +current_step.zfill(5)+".png"))
     #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
     #  grad = weight_grad_var[0][0].eval(feed_dict)
     #  shape = grad.shape
@@ -204,4 +207,4 @@ class IcaModel(Model):
     #  grad = dp.reshape_data(grad, flatten=False)[0]
     #  pf.plot_data_tiled(grad, normalize=False,
     #    title="Gradient for "+name+" at step "+current_step, vmin=None, vmax=None,
-    #    save_filename=(self.disp_dir+"d"+name+"_v"+self.version+"_"+current_step.zfill(5)+".png"))
+    #    save_filename=(self.params.disp_dir+"d"+name+"_v"+self.params.version+"_"+current_step.zfill(5)+".png"))

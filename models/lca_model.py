@@ -145,7 +145,8 @@ class LcaModel(Model):
       +current_step.zfill(5)+".png"))
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
       save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
       +current_step.zfill(5)+".png"))

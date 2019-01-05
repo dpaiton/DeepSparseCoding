@@ -308,67 +308,71 @@ class GdnAutoencoderModel(Model):
     w_enc = np.squeeze(dp.reshape_data(w_enc.T, flatten=False)[0]) # neurons x pixels
     w_dec = np.squeeze(dp.reshape_data(w_dec, flatten=False)[0]) # neurons x pixels
     fig = pf.plot_weight_image(w_gdn, title="GDN Weights", figsize=(10,10),
-      save_filename=self.disp_dir+"w_gdn_v"+self.params.version+"-"+current_step.zfill(5)+".png")
+      save_filename=self.params.disp_dir+"w_gdn_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png")
     fig = pf.plot_weight_image(w_igdn, title="Inverse GDN Weights", figsize=(10,10),
-      save_filename=self.disp_dir+"w_igdn_v"+self.params.version+"-"+current_step.zfill(5)+".png")
+      save_filename=self.params.disp_dir+"w_igdn_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png")
     fig = pf.plot_activity_hist(b_gdn, title="GDN Bias Histogram",
-      save_filename=(self.disp_dir+"b_gdn_hist_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"b_gdn_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_igdn, title="IGDN Bias Histogram",
-      save_filename=(self.disp_dir+"b_igdn_hist_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"b_igdn_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_weights(w_enc, title="Encoding weights at step "+current_step,
-      save_filename=(self.disp_dir+"w_enc_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.params.disp_dir+"w_enc_v"+self.params.version+"-"
+        +current_step.zfill(5)+".png"))
     #fig = pf.plot_data_tiled(w_enc, normalize=False,
     #  title="Encoding weights at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"w_enc_v"+self.params.version+"-"
+    #  save_filename=(self.params.disp_dir+"w_enc_v"+self.params.version+"-"
     #  +current_step.zfill(5)+".png"))
     fig = pf.plot_weights(w_dec, title="Decoding weights at step "+current_step,
-      save_filename=(self.disp_dir+"w_dec_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=(self.params.disp_dir+"w_dec_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
     #fig = pf.plot_data_tiled(w_dec, normalize=False,
     #  title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.disp_dir+"w_dec_v"+self.params.version+"-"
+    #  save_filename=(self.params.disp_dir+"w_dec_v"+self.params.version+"-"
     #  +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_enc, title="Encoding Bias Histogram",
-      save_filename=(self.disp_dir+"b_enc_hist_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"b_enc_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(b_dec, title="Decoding Bias Histogram",
-      save_filename=(self.disp_dir+"b_dec_hist_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"b_dec_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_activity_hist(gdn_mult, title="GDN Multiplier Histogram",
-      save_filename=(self.disp_dir+"gdn_mult_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"gdn_mult_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     entropy_sort_indices = np.argsort(entropies)[::-1] # ascending
     for fig_id, neuron_id in enumerate(entropy_sort_indices[:3]):
       fig = pf.plot_activity_hist(activity[:, neuron_id],
         title=("Actvity Histogram (pre-noise) for Neuron "+str(neuron_id)+"\nwith entropy = "
         +str(np.round(entropies[neuron_id]))),
-        save_filename=(self.disp_dir+"indv_act_hist_v"+self.params.version+"-"
+        save_filename=(self.params.disp_dir+"indv_act_hist_v"+self.params.version+"-"
         +current_step.zfill(5)+"_"+str(fig_id).zfill(3)+".png"))
     fig = pf.plot_activity_hist(activity, title="Activity Histogram (pre-noise)",
-      save_filename=(self.disp_dir+"act_hist_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"act_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_enc_norm_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"w_enc_norm_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_dec_norm, num_xticks=5,
       title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.disp_dir+"w_dec_norm_v"+self.params.version+"-"
+      save_filename=(self.params.disp_dir+"w_dec_norm_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     if eval_out[0]*10 % self.params.cp_int == 0:
       fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-        save_filename=(self.disp_dir+"img_hist_"+self.params.version+"-"
+        save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
       input_data = dp.reshape_data(input_data, flatten=False)[0]
       fig = pf.plot_data_tiled(input_data, normalize=False,
         title="Images at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"images_"+self.params.version+"-"
+        save_filename=(self.params.disp_dir+"images_"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
       recon = dp.reshape_data(recon, flatten=False)[0]
       fig = pf.plot_data_tiled(recon, normalize=False,
         title="Recons at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.disp_dir+"recons_v"+self.params.version+"-"
+        save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"
         +current_step.zfill(5)+".png"))
       #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       #  grad = weight_grad_var[0][0].eval(feed_dict)
@@ -377,5 +381,5 @@ class GdnAutoencoderModel(Model):
       #  grad = dp.reshape_data(grad.T, flatten=False)[0]
       #  fig = pf.plot_data_tiled(grad, normalize=True,
       #    title="Gradient for"+name+" at step "+current_step, vmin=None, vmax=None,
-      #    save_filename=(self.disp_dir+"d"+name+"_v"+self.params.version+"-"
+      #    save_filename=(self.params.disp_dir+"d"+name+"_v"+self.params.version+"-"
       #    +current_step.zfill(5)+".png"))
