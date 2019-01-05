@@ -55,6 +55,7 @@ class params(BaseParams):
     self.do_batch_norm = [True, True, False]
     #Others
     self.cp_int = 10000
+    self.val_on_cp = False
     self.max_cp_to_keep = None
     self.cp_load = False
     self.cp_load_name = "pretrain"
