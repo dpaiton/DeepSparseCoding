@@ -42,18 +42,19 @@ class params(BaseParams):
     self.log_to_file = True
     self.gen_plot_int = 100000
     self.save_plots = True
-    self.num_batches = int(1e6)
     self.schedule = [
       {"weights": None,
+      "num_batches": int(1e5),
       "decay_mult": 0.008,
       "sparse_mult": 5.0, # How important is the sparse loss (tradeoff parameter)
       "target_act": 0.05, # Target firing rate for neurons
       "weight_lr": 0.002,
-      "decay_steps": int(self.num_batches*0.5),
+      "decay_steps": int(1e5*0.5),
       "decay_rate": 0.5,
       "staircase": True}]
 
   def set_data_params(self, data_type):
+    self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.vectorize_data = True
