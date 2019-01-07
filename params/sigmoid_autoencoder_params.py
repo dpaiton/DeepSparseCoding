@@ -66,7 +66,7 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(3e6)
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["decay_mult"] = 0.005
         self.schedule[sched_idx]["sparse_mult"] = 0.01
         self.schedule[sched_idx]["target_act"] = 0.09
