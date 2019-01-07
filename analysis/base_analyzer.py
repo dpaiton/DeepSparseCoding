@@ -116,16 +116,6 @@ class Analyzer(object):
         self.analysis_params.adversarial_target_id = 1
     else:
       self.analysis_params.do_adversaries = False
-    #  Orientation Selectivity
-    if hasattr(self.analysis_params, "do_orientation_analysis"):
-      # if we are doing orientation selectivity then we need to check for basis stats
-      if not self.analysis_params.do_basis_analysis: # it is possible the user did this previously
-        try:
-          self.load_basis_stats(save_info)
-        except FileNotFoundError as e:
-          assert False, ("Basis analysis must be done in order to do orientation analysis.\n"+e)
-    else: 
-      self.analysis_params.do_orientation_analysis = False
 
   def load_model(self):
     """Load model object into analysis object"""
