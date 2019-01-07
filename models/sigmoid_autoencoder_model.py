@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
+import utils.entropy_functions as ef
 from models.base_model import Model
 
 class SigmoidAutoencoderModel(Model):
@@ -52,9 +53,10 @@ class SigmoidAutoencoderModel(Model):
   def compute_sparse_loss(self, a_in):
     with tf.name_scope("unsupervised"):
       avg_act = tf.reduce_mean(a_in, axis=[0], name="batch_avg_activity")
+      #p_dist = self.target_act * tf.subtract(ef.safe_log(self.target_act), ef.safe_log(avg_act), name="kl_p")
+      #q_dist = (1-self.target_act) * tf.subtract(ef.safe_log(1-self.target_act), ef.safe_log(1-avg_act), name="kl_q")
       p_dist = self.target_act * tf.subtract(tf.log(self.target_act), tf.log(avg_act), name="kl_p")
-      q_dist = (1-self.target_act) * tf.subtract(tf.log(1-self.target_act), tf.log(1-avg_act),
-        name="kl_q")
+      q_dist = (1-self.target_act) * tf.subtract(tf.log(1-self.target_act), tf.log(1-avg_act), name="kl_q")
       kl_divergence = tf.reduce_sum(tf.add(p_dist, q_dist), name="kld")
       sparse_loss = tf.multiply(self.sparse_mult, kl_divergence, name="sparse_loss")
     return sparse_loss
@@ -110,7 +112,7 @@ class SigmoidAutoencoderModel(Model):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
-            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
+            self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
 

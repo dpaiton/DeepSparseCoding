@@ -27,7 +27,7 @@ class params(BaseParams):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
-    self.batch_size = 100000
+    self.batch_size = 100
     self.num_neurons = 768
     self.optimizer = "lbfgsb" #"adam"#"annealed_sgd"
     self.maxiter = 15000
@@ -56,13 +56,18 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.version = "1.0"
+      self.batch_size = 50000
       self.vectorize_data = True
       self.rescale_data = True
-      self.whiten_data = False
+      self.whiten_data = True
+      self.whiten_method = "ZCA"
+      self.lpf_data = True
+      self.lpf_cutoff = 0.7
       self.extract_patches = False
       self.num_neurons = 768
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.5
+        self.schedule[sched_idx]["recon_mult"] = 0.8
         self.schedule[sched_idx]["sparse_mult"] = 1.0
         self.schedule[sched_idx]["weight_lr"] = 0.3
         self.schedule[sched_idx]["num_batches"] = 1
@@ -71,6 +76,7 @@ class params(BaseParams):
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
       self.num_images = 150
+      self.batch_size = int(1e5)
       self.vectorize_data = True
       self.rescale_data = False
       self.whiten_data = True

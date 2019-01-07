@@ -40,7 +40,7 @@ class params(BaseParams):
     self.cp_load_var = ["w_enc", "w_dec", "b_enc", "b_dec"]
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = 100000
+    self.gen_plot_int = int(1e6)
     self.save_plots = True
     self.schedule = [
       {"weights": None,
@@ -64,15 +64,14 @@ class params(BaseParams):
       self.standardize_data = False
       self.contrast_normalize = False
       self.whiten_data = False
-      self.whiten_method = "FT"
-      self.lpf_data = False
-      self.lpf_cutoff = 0.7
       self.extract_patches = False
       for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(3e6)
         self.schedule[sched_idx]["decay_mult"] = 0.005
         self.schedule[sched_idx]["sparse_mult"] = 0.01
         self.schedule[sched_idx]["target_act"] = 0.09
         self.schedule[sched_idx]["weight_lr"] = 0.01
+        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["decay_steps"]*0.4)
 
     elif data_type.lower() == "vanhateren":
         self.model_name += "_vh"
@@ -95,10 +94,12 @@ class params(BaseParams):
         self.patch_variance_threshold = 0.0
         self.num_neurons = 768
         for sched_idx in range(len(self.schedule)):
-          self.schedule[sched_idx]["decay_mult"] = 0.008
-          self.schedule[sched_idx]["sparse_mult"] = 5.0
-          self.schedule[sched_idx]["target_act"] = 0.05
-          self.schedule[sched_idx]["weight_lr"] = 0.002
+          self.schedule[sched_idx]["num_batches"] = int(1e6)
+          self.schedule[sched_idx]["decay_mult"] = 0.000
+          self.schedule[sched_idx]["sparse_mult"] = 4.0
+          self.schedule[sched_idx]["target_act"] = 0.5
+          self.schedule[sched_idx]["weight_lr"] = 0.001
+          self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["decay_steps"]*0.4)
 
     elif data_type.lower() == "field":
         self.model_name += "_field"

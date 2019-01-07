@@ -46,7 +46,6 @@ class params(BaseParams):
     self.log_to_file = True
     self.gen_plot_int = 2000
     self.save_plots = True
-
     self.schedule = [
       {"weights": ["weights/w:0"],
       "num_batches": int(1e5),
