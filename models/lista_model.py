@@ -7,9 +7,9 @@ from models.base_model import Model
 from modules.lca_module import LcaModule
 from modules.mlp_module import MlpModule
 
-class FistaModel(Model):
+class ListaModel(Model):
   def __init__(self):
-    super(FistaModel, self).__init__()
+    super(ListaModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -17,7 +17,7 @@ class FistaModel(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(FistaModel, self).load_params(params)
+    super(ListaModel, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
@@ -89,7 +89,7 @@ class FistaModel(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(FistaModel, self).generate_update_dict(input_data, input_labels, batch_step)
+    update_dict = super(ListaModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.lca_module.loss_dict["recon_loss"],
       self.lca_module.loss_dict["sparse_loss"], self.get_total_loss(),
@@ -102,7 +102,7 @@ class FistaModel(Model):
       grad_name_list.append(grad_name)
       learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    current_step, recon_loss, sparse_loss, total_loss, lca_a_vals, fista_a_vals, recon, pSNRdB\
+    current_step, recon_loss, sparse_loss, total_loss, lca_a_vals, lista_a_vals, recon, pSNRdB\
       = out_vals[0:8]
     input_max = np.max(input_data)
     input_mean = np.mean(input_data)
@@ -115,11 +115,11 @@ class FistaModel(Model):
     lca_a_vals_min = np.array(lca_a_vals.min())
     lca_a_frac_act = np.array(np.count_nonzero(lca_a_vals)
       / float(lca_a_vals.size))
-    fista_a_vals_max = np.array(fista_a_vals.max())
-    fista_a_vals_mean = np.array(fista_a_vals.mean())
-    fista_a_vals_min = np.array(fista_a_vals.min())
-    fista_a_frac_act = np.array(np.count_nonzero(fista_a_vals)
-      / float(fista_a_vals.size))
+    lista_a_vals_max = np.array(lista_a_vals.max())
+    lista_a_vals_mean = np.array(lista_a_vals.mean())
+    lista_a_vals_min = np.array(lista_a_vals.min())
+    lista_a_frac_act = np.array(np.count_nonzero(lista_a_vals)
+      / float(lista_a_vals.size))
 
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
@@ -130,8 +130,8 @@ class FistaModel(Model):
       "pSNRdB": np.mean(pSNRdB),
       "lca_a_fraction_active":lca_a_frac_act,
       "lca_a_max_mean_min":[lca_a_vals_max, lca_a_vals_mean, lca_a_vals_min],
-      "fista_a_fraction_active":fista_a_frac_act,
-      "fista_a_max_mean_min":[fista_a_vals_max, fista_a_vals_mean, fista_a_vals_min],
+      "lista_a_fraction_active":lista_a_frac_act,
+      "lista_a_max_mean_min":[lista_a_vals_max, lista_a_vals_mean, lista_a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
     grads = out_vals[7:]
@@ -151,13 +151,13 @@ class FistaModel(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(FistaModel, self).generate_plots(input_data, input_labels)
+    super(ListaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.lca_module.w,
       self.lca_module.reconstruction, self.lca_module.a, self.get_encodings()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
-    weights, recon, lca_activity, fista_activity = eval_out[1:]
+    weights, recon, lca_activity, lista_activity = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
@@ -182,8 +182,8 @@ class FistaModel(Model):
     fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
       save_filename=(self.params.disp_dir+"lca_act_hist" + name_suffix))
 
-    fig = pf.plot_activity_hist(fista_activity, title="FISTA Activity Histogram",
-      save_filename=(self.params.disp_dir+"fista_act_hist" + name_suffix))
+    fig = pf.plot_activity_hist(lista_activity, title="LISTA Activity Histogram",
+      save_filename=(self.params.disp_dir+"lista_act_hist" + name_suffix))
 
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
