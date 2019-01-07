@@ -85,7 +85,7 @@ class Analyzer(object):
     # Evaluate model variables on images
     if not hasattr(self.analysis_params, "do_evals"):
       self.analysis_params.do_evals = False
-    # Training run analysis 
+    # Training run analysis
     if not hasattr(self.analysis_params, "do_run_analysis"):
       self.analysis_params.do_run_analysis = False
     # BF fits
@@ -757,9 +757,19 @@ class Analyzer(object):
     input_target_mse = mse(input_image, target_image)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+
+    if(self.analysis_params.adversarial_attack_method == "kurakin"):
+      update_dx = self.model.fast_sign_adv_dx
+    elif(self.analysis_params.adversarial_attack_method == "carlini"):
+      update_dx = self.model.carlini_adv_dx
+    else:
+      assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
+
     with tf.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(input_image)
       feed_dict[self.model.adv_target] = target_image
+      feed_dict[self.model.orig_input] = input_image
+      feed_dict[self.model.recon_mult] = self.analysis_params.recon_mult
       sess.run(self.model.init_op, feed_dict)
       self.model.load_model(sess, self.analysis_params.cp_loc)
       new_image = input_image.copy()
@@ -767,9 +777,9 @@ class Analyzer(object):
         adversarial_images.append(new_image.copy())
         self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
         eval_ops = [self.model.compute_recon(self.model.get_encodings()),
-          self.model.fast_sign_adv_dx]
-        recon, fast_sign_adv_dx = sess.run(eval_ops, feed_dict)
-        new_image += eps * fast_sign_adv_dx
+          update_dx]
+        recon, dx = sess.run(eval_ops, feed_dict)
+        new_image += eps * dx
         input_recon_mses.append(mse(input_image, recon))
         input_adv_mses.append(mse(input_image, new_image))
         target_recon_mses.append(mse(target_image, recon))

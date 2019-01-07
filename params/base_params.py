@@ -50,7 +50,7 @@ class BaseParams(object):
     self.cp_load_name = "pretrain"
     self.cp_load_step = None
     self.cp_load_ver = "0.0"
-    self.cp_load_var = ["w"]
+    self.cp_load_var = None
     self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 10000

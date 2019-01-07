@@ -7,8 +7,8 @@ import analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
-    self.model_type = "lca"
-    self.model_name = "lca_vh"
+    self.model_type = "vae"
+    self.model_name = "vae_mnist"
     self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
@@ -55,6 +55,10 @@ class params(object):
     self.adversarial_num_steps = 1000
     # Step size for adversarial attacks
     self.adversarial_eps = 0.005
+    #Attack method for adversarial attack, kurakin or carlini
+    self.adversarial_attack_method = "carlini"
+    #Recon_mult tradeoff for carlini attack method
+    self.recon_mult = 1
     # Will vary depending on preprocessing
     self.input_scale = 1.0
     # Which neurons to run tuning experiments on (None to do all)

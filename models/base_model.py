@@ -244,8 +244,7 @@ class Model(object):
     """Add savers to graph"""
     with self.graph.as_default():
       self.full_saver = tf.train.Saver(max_to_keep=self.params.max_cp_to_keep)
-      if(self.params.cp_load):
-        self.loader = tf.train.Saver(var_list=self.get_load_vars())
+      self.loader = tf.train.Saver(var_list=self.get_load_vars())
     self.savers_constructed = True
 
   def write_saver_defs(self):
@@ -282,7 +281,6 @@ class Model(object):
       session: tf.Session() that you want to load into
       model_dir: String specifying the path to the checkpoint
     """
-    assert self.params.cp_load, ("cp_load must be set to true for loading model")
     self.loader.restore(session, model_dir)
 
   def get_schedule(self, key=None):
