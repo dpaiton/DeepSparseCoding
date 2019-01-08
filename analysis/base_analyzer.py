@@ -62,7 +62,7 @@ class Analyzer(object):
     self.check_params()
     self.rand_state = np.random.RandomState(self.analysis_params.rand_seed)
     self.analysis_logger.log_params(self.analysis_params.__dict__)
-    self.load_model() # Adds "self.model" member variable that is another model class
+    self.get_model() # Adds "self.model" member variable that is another model class
 
   def make_dirs(self):
     """Make output directories"""
@@ -117,7 +117,7 @@ class Analyzer(object):
     else:
       self.analysis_params.do_adversaries = False
 
-  def load_model(self):
+  def get_model(self):
     """Load model object into analysis object"""
     self.model = mp.get_model(self.model_params.model_type)
 
@@ -249,7 +249,7 @@ class Analyzer(object):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, feed_dict)
-      self.model.load_model(sess, self.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
       eval_list = sess.run(tensors, feed_dict)
     evals = dict(zip(var_names, eval_list))
@@ -311,7 +311,7 @@ class Analyzer(object):
     with tf.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(images)
       sess.run(self.model.init_op, feed_dict)
-      self.model.load_model(sess, self.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       activations = sess.run(self.model.get_encodings(), feed_dict)
     return activations
 
@@ -771,7 +771,7 @@ class Analyzer(object):
       feed_dict[self.model.orig_input] = input_image
       feed_dict[self.model.recon_mult] = self.analysis_params.recon_mult
       sess.run(self.model.init_op, feed_dict)
-      self.model.load_model(sess, self.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       new_image = input_image.copy()
       for step in range(num_steps):
         adversarial_images.append(new_image.copy())

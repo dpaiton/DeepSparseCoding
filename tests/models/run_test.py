@@ -22,6 +22,7 @@ def testBasic(self):
 
   params.set_test_params(self.data_type)
   params.model_name = "test_run_"+params.model_name
+  params.out_dir += "tests/"
   dataset = ds.get_data(params) # Import data
   dataset = model.preprocess_dataset(dataset, params)
   dataset = model.reshape_dataset(dataset, params)
@@ -45,8 +46,9 @@ def testBasic(self):
       model.minimizer.minimize(session=sess, feed_dict=feed_dict)
 
 
+#Make class with specific model_type name in class name
 #model_list = mp.get_model_list()
-model_list = ["lca", "mlp", "vae", "lca_conv", "lca_pca", "lca_subspace", "lista", "ica", "sigmoid_autoencoder", "rica"]
+model_list = ["lca", "mlp", "vae", "lca_conv", "lca_pca", "lca_pca_fb", "lca_subspace", "lista", "ica", "sigmoid_autoencoder", "rica"]
 data_type = "synthetic"
 for model_type in model_list:
   #Define class name with model_type
@@ -59,8 +61,6 @@ for model_type in model_list:
     "data_type": data_type})
   #Add this to module names so import * imports these class names
   setattr(sys.modules[__name__], class_name, class_def)
-
-
 
 if __name__ == "__main__":
   tf.test.main()

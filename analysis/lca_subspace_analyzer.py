@@ -18,6 +18,6 @@ class LcaSubspaceAnalyzer(LcaAnalyzer):
     with tf.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(images)
       sess.run(self.model.init_op, feed_dict)
-      self.model.load_model(sess, self.model_params.cp_loc)
+      self.model.load_full_model(sess, self.model_params.cp_loc)
       activations = sess.run(self.model.group_activity, feed_dict)
     return np.squeeze(activations)

@@ -7,17 +7,17 @@ import analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
-    self.model_type = "vae"
-    self.model_name = "vae_mnist"
+    self.model_type = "lca"
+    self.model_name = "lca_mnist"
     self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
-    self.do_run_analysis = False
+    self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = False
+    self.do_evals = True
     # Dictionary fitting
     self.do_basis_analysis = False
     # LCA Inference analysis
@@ -25,7 +25,7 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Adversarial image analysis
-    self.do_adversaries = True
+    self.do_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis

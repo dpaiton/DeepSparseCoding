@@ -48,7 +48,7 @@ class LcaPcaAnalyzer(LcaAnalyzer):
       feed_dict = self.model.get_feed_dict(images)
       feed_dict[self.model.full_cov] = cov
       sess.run(self.model.init_op, feed_dict)
-      self.model.load_model(sess, self.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       activations = sess.run(self.model.pooled_activity, feed_dict)
     return activations
 
@@ -57,7 +57,7 @@ class LcaPcaAnalyzer(LcaAnalyzer):
       sess.run(self.model.init_op,
         feed_dict={self.model.x:np.zeros([self.model_params.batch_size,
         self.model_params.num_pixels], dtype=np.float32)})
-      self.model.load_model(sess, self.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       act_cov = None
       num_cov_in_avg = 0
       while dataset.curr_epoch_idx + self.model_params.batch_size < dataset.num_examples:
@@ -74,7 +74,7 @@ class LcaPcaAnalyzer(LcaAnalyzer):
       act_cov = act_cov / num_cov_in_avg
     with tf.Session(graph=self.model.graph) as sess:
       sess.run(self.model.init_op, feed_dict={self.model.x:dataset.images})
-      self.model.load_model(sess, self.analysis_params.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.analysis_params.cp_loc)
       feed_dict = self.model.get_feed_dict(dataset.images)
       feed_dict[self.model.full_cov] = act_cov
       run_list = [self.model.eigen_vals, self.model.eigen_vecs, self.model.pooling_filters,

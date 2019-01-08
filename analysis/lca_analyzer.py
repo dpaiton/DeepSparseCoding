@@ -79,7 +79,7 @@ class LcaAnalyzer(Analyzer):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
-      self.model.load_model(sess, self.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       inference_idx = 1 # first step of inference is zeros
       for img_idx in range(num_imgs):
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
@@ -165,7 +165,7 @@ class LcaAnalyzer(Analyzer):
     with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
       sess.graph.finalize() # Graph is read-only after this statement
-      self.model.load_model(sess, self.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       for img_idx in range(num_imgs):
         self.analysis_logger.log_info("Inference analysis on image "+str(img_idx))
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])

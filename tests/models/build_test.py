@@ -25,6 +25,7 @@ def testBasic(self):
   params.data_type = self.data_type
   model.data_type = self.data_type
   params.model_name = "test_build_" + params.model_name
+  params.out_dir += "tests/"
   dataset = ds.get_data(params) # Import data
   dataset = model.preprocess_dataset(dataset, params)
   dataset = model.reshape_dataset(dataset, params)
@@ -34,8 +35,8 @@ def testBasic(self):
 
 #Make class with specific model_type name in class name
 #model_list = mp.get_model_list()
-model_list = ["lca", "mlp", "vae", "lca_conv", "lca_pca", "lca_subspace", "lista", "ica", "sigmoid_autoencoder", "rica"]
-data_type = "mnist" # TODO: Should this be synthetic? We don't want MNIST to be required for testing
+model_list = ["mlp", "vae", "lca", "lca_conv", "lca_pca", "lca_pca_fb", "lca_subspace", "lista", "ica", "sigmoid_autoencoder", "rica"]
+data_type = "synthetic"
 for model_type in model_list:
   #Define class name with model_type
   class_name = "BuildTest_"+str(model_type)

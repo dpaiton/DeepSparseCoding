@@ -87,7 +87,7 @@ class CheckpointTest(tf.test.TestCase):
 
       cp_load_file = (params.cp_load_dir+params.cp_load_name+"_v"+params.cp_load_ver
         +"-"+str(params.cp_load_step))
-      model.load_model(sess,cp_load_file)
+      model.load_checkpoint(sess, cp_load_file)
 
       post_vars = {}
       for name, node in model.trainable_variables.items():
@@ -111,7 +111,7 @@ class CheckpointTest(tf.test.TestCase):
 
       cp_load_file = (params.cp_load_dir+params.cp_load_name+"_v"+params.cp_load_ver
         +"-"+str(params.cp_load_step))
-      model.load_model(sess,cp_load_file)
+      model.load_checkpoint(sess,cp_load_file)
 
       post_vars = {}
       for name, node in model.trainable_variables.items():

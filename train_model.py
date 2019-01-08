@@ -70,7 +70,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
     else:
       cp_load_file = (params.cp_load_dir+params.cp_load_name+"_v"+params.cp_load_ver
         +"-"+str(params.cp_load_step))
-    model.load_model(sess, cp_load_file)
+    model.load_checkpoint(sess, cp_load_file)
 
   avg_time = 0
   tot_num_batches = 0
@@ -130,8 +130,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
           with tf.Session(graph=model.graph) as tmp_sess:
             val_feed_dict = model.get_feed_dict(val_images, val_labels)
             tmp_sess.run(model.init_op, val_feed_dict)
-            model.full_saver.restore(tmp_sess,
-              save_dir+"-"+str(current_step))
+            model.load_full_model(tmp_sess, save_dir+"-"+str(current_step))
             val_accuracy = (
               np.array(tmp_sess.run(model.accuracy, val_feed_dict)).tolist())
             stat_dict = {"validation_accuracy":val_accuracy}

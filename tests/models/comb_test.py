@@ -63,13 +63,11 @@ def testBasic(self):
     ("lca_pca", "MNIST"),
     ("lca_pca", "CIFAR10"),
     ("lca_pca", "tinyImages"),
-    ("lca_pca", "synthetic"),
     ("lca_pca_fb", "vanHateren"),
     ("lca_pca_fb", "field"),
     ("lca_pca_fb", "MNIST"),
     ("lca_pca_fb", "CIFAR10"),
     ("lca_pca_fb", "tinyImages"),
-    ("lca_pca_fb", "synthetic"),
     ("lca_conv", "tinyImages"),
     ("lca_subspace", "field"),
     ("lca_subspace", "CIFAR10"),
@@ -129,6 +127,7 @@ def testBasic(self):
   else:
     params.set_test_params(self.data_type)
     params.model_name = "test_all_"+params.model_name
+    params.out_dir += "tests/"
     dataset = ds.get_data(params) # Import data
     dataset = model.preprocess_dataset(dataset, params)
     dataset = model.reshape_dataset(dataset, params)

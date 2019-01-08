@@ -57,7 +57,7 @@ class LcaConvAnalyzer(LcaAnalyzer):
     with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
       sess.graph.finalize() # Graph is read-only after this statement
-      self.model.load_model(sess, self.analysis_params.cp_loc)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       for img_idx in range(num_imgs):
         self.analysis_logger.log_info("Inference analysis on image "+str(img_idx))
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
