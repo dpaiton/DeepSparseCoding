@@ -730,10 +730,10 @@ class Analyzer(object):
         with tf.name_scope("loss") as scope:
           # Want to avg over batch, sum over the rest
           reduc_dim = list(range(1, len(self.model.get_encodings().shape)))
+          self.recon = self.model.compute_recon(self.model.get_encodings())
           self.model.adv_recon_loss = tf.reduce_mean(0.5 *
             tf.reduce_sum(tf.square(tf.subtract(self.model.adv_target,
-            self.model.compute_recon(self.model.get_encodings()))), axis=reduc_dim),
-            name="target_recon_loss")
+            self.recon)), axis=reduc_dim), name="target_recon_loss")
           self.model.input_pert_loss = tf.reduce_mean(0.5 *
             tf.reduce_sum(tf.square(tf.subtract(self.model.orig_input,
             self.model.x)), axis=reduc_dim),
@@ -777,8 +777,7 @@ class Analyzer(object):
       for step in range(num_steps):
         adversarial_images.append(new_image.copy())
         self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
-        eval_ops = [self.model.compute_recon(self.model.get_encodings()),
-          update_dx]
+        eval_ops = [self.recon, update_dx]
         recon, dx = sess.run(eval_ops, feed_dict)
         new_image += eps * dx
         if self.analysis_params.adversarial_clip:
