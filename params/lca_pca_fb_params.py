@@ -6,7 +6,8 @@ class params(lca_pca_params):
     """
     Additional modifiable parameters:
       num_pooling_units [int] indicating the number of 2nd layer units
-      act_cov_suffix [str] suffix appended to activity covariance matrix
+      act_cov_loc [str] file path indicating the location of the activity covariance
+        computed from analysis.
     """
     super(params, self).__init__()
     self.model_type = "lca_pca_fb"
@@ -28,11 +29,11 @@ class params(lca_pca_params):
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["phi"]
     self.log_int = 1
-    self.log_to_file = False
+    self.log_to_file = True
     self.gen_plot_int = 100
     self.save_plots = True
     self.schedule = [
-      {"weights": ["phi"],
+      {"weights": ["weights/w:0"],
       "sparse_mult": 0.08,
       "fb_mult": 1e-3,
       "weight_lr": [0.8],

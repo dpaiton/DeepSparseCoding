@@ -13,35 +13,9 @@ class LcaPcaFbModel(LcaPcaModel):
      params: [obj] model parameters
     """
     super(LcaPcaFbModel, self).load_params(params)
-    self.act_cov_loc = (params.out_dir+params.cp_load_name+"/analysis/"+params.cp_load_ver
-      +"/act_cov_"+params.act_cov_suffix+".npz")
-    assert os.path.exists(self.act_cov_loc), ("Can't find activity covariance file. "
-      +"Maybe you didn't run the analysis? File location: "+self.act_cov_loc)
-
-  def get_feed_dict(self, input_data, input_labels=None, dict_args=None):
-    """
-    Return dictionary containing all placeholders
-    Inputs:
-      input_data: data to be placed in self.x
-      input_labels: label to be placed in self.y
-      dict_args: optional dictionary to be appended to the automatically generated feed_dict
-    """
-    placeholders = [op.name
-      for op
-      in self.graph.get_operations()
-      if ("auto_placeholders" in op.name
-      and "full_covariance_matrix" not in op.name
-      and "input_data" not in op.name
-      and "input_label" not in op.name)]
-    activity_covariance = np.load(self.act_cov_loc)["data"].item().get("act_cov")
-    if input_labels is not None and hasattr(self, "y"):
-      feed_dict = {self.full_cov:activity_covariance, self.x:input_data, self.y:input_labels}
-    else:
-      feed_dict = {self.full_cov:activity_covariance, self.x:input_data}
-    for placeholder in placeholders:
-      feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
-        self.get_schedule(placeholder.split("/")[1]))
-    return feed_dict
+    if not hasattr(self.params, "act_cov_loc"):
+      self.params.act_cov_loc = None
+      print("WARNING: act cov file location should be specified for lca_pca_fb model.")
 
   def compute_feedback_loss(self, a_in):
     # TF produces SORTED eig vecs / vals -> indices do not match up with a values?
@@ -117,4 +91,9 @@ class LcaPcaFbModel(LcaPcaModel):
     with self.graph.as_default():
       with tf.name_scope("auto_placeholders") as scope:
         self.fb_mult = tf.placeholder(tf.float32, shape=(), name="fb_mult")
+      if self.params.act_cov_loc is None:
+        self.full_cov = np.eye(self.params.num_neurons)
+        print("WARNING: Covariance matrix was not specified")
+      else:
+        self.full_cov = np.load(self.params.act_cov_loc)["data"].item().get("act_cov")
     super(LcaPcaFbModel, self).build_graph()
