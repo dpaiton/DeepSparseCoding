@@ -68,7 +68,8 @@ class Dataset(object):
         batch_size is a scalar increment of num_examples.
     """
     assert batch_size <= self.num_examples, (
-        "Input batch_size was greater than the number of available examples.")
+        "Input batch_size (%g) was greater than the number of available examples (%g)."%(
+        batch_size, self.num_examples))
     if self.curr_epoch_idx + batch_size > self.num_examples:
       start = 0
       self.new_epoch(1)

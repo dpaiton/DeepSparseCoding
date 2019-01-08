@@ -94,7 +94,11 @@ def load_MNIST(params):
   data_dir = params.data_dir
   num_val = params.num_val if hasattr(params, "num_val") else 10000
   num_labeled = params.num_labeled if hasattr(params, "num_labeled") else 50000
-  rand_state = params.rand_state if hasattr(params, "rand_state") else np.random.RandomState()
+  if hasattr(params, "rand_state"):
+    rand_state = params.rand_state
+  else:
+    assert hasattr(params, "rand_seed"), ("Params must specify a random state or seed")
+    rand_state = np.random.RandomState(params.rand_seed)
   ## Training set
   train_img_filename = data_dir+"/train-images-idx3-ubyte.gz"
   train_lbl_filename = data_dir+"/train-labels-idx1-ubyte.gz"

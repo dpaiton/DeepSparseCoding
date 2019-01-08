@@ -27,7 +27,11 @@ def load_field(params):
   """
   assert hasattr(params, "data_dir"), ("function input must have 'data_dir' key")
   data_dir = params.data_dir
-  rand_state = params.rand_state if hasattr(params, "rand_state") else np.random.RandomState()
+  if hasattr(params, "rand_state"):
+    rand_state = params.rand_state
+  else:
+    assert hasattr(params, "rand_seed"), ("Params must specify a random state or seed")
+    rand_state = np.random.RandomState(params.rand_seed)
   num_images = int(params.num_images) if hasattr(params, "num_images") else None
   image_edge_size = int(params.image_edge_size) if hasattr(params, "image_edge_size") else None
   if hasattr(params, "whiten_data") and params.whiten_data:

@@ -29,7 +29,11 @@ class tinyImages(object):
 
 def load_tinyImages(params):
   data_dir = params.data_dir
-  rand_state = params.rand_state if hasattr(params, "rand_state") else np.random.RandomState()
+  if hasattr(params, "rand_state"):
+    rand_state = params.rand_state
+  else:
+    assert hasattr(params, "rand_seed"), ("Params must specify a random state or seed")
+    rand_state = np.random.RandomState(params.rand_seed)
   num_batches = int(params.num_batches) if hasattr(params, "num_batches") else None
   ti_data = tinyImages(data_dir, num_batches, rand_state)
   pf.plot_data_tiled(ti_data.images[1000:1100,...], cmap=None, save_filename="./tmp.png")

@@ -30,7 +30,11 @@ class synthetic(object):
     return labels
 
 def load_synthetic(params):
-  rand_state = params.rand_state if hasattr(params, "rand_state") else np.random.RandomState()
+  if hasattr(params, "rand_state"):
+    rand_state = params.rand_state
+  else:
+    assert hasattr(params, "rand_seed"), ("Params must specify a random state or seed")
+    rand_state = np.random.RandomState(params.rand_seed)
   synth_data = synthetic(
     dist_type=params.dist_type,
     num_edge_pixels=params.num_edge_pixels,
