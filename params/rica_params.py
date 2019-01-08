@@ -37,7 +37,7 @@ class params(BaseParams):
     self.cp_load_name = "rica_pretrain" # trained with sgd
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
-    self.cp_load_var = ["w"]
+    self.cp_load_var = None
     self.log_int = 10
     self.log_to_file = True
     self.gen_plot_int = 5000

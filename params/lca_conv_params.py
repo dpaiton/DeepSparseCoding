@@ -59,16 +59,11 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.vectorize_data = False
-      self.norm_data = False
       self.rescale_data = True
       self.center_data = False
-      self.standardize_data = False
-      self.contrast_normalize = False
       self.whiten_data = False
       self.lpf_data = False # only for ZCA
       self.lpf_cutoff = 0.7
-      self.extract_patches = False
       self.num_neurons = 768
       self.stride_y = 2
       self.stride_x = 2
@@ -78,51 +73,15 @@ class params(BaseParams):
         self.schedule[schedule_idx]["sparse_mult"] = 0.21
         self.schedule[schedule_idx]["weight_lr"] = [0.1]
 
-    elif data_type.lower() == "tinyImages":
-      self.model_name += "_tinyImages"
-      self.num_images = 150
-      self.vectorize_data = False
-      self.norm_data = False
-      self.rescale_data = False
-      self.center_data = True
-      self.standardize_data = False
-      self.contrast_normalize = False
-      self.whiten_data = True
-      self.whiten_method = "FT"
-      self.lpf_data = False # FT whitening already does LPF
-      self.lpf_cutoff = 0.7
-      self.extract_patches = False
-      self.image_edge_size = 28
-      self.stride_y = 8
-      self.stride_x = 8
-      self.patch_size_y = 16 # weight receptive field
-      self.patch_size_x = 16
-      self.num_neurons = 128
-      self.num_steps = 60
-      self.dt = 0.001
-      self.tau = 0.03
-      self.rectify_a = True
-      self.thresh_type = "soft"
-      for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.8
-        self.schedule[sched_idx]["weight_lr"] = [0.001]
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
-        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
-
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
       self.num_images = 150
-      self.vectorize_data = False
-      self.norm_data = False
       self.rescale_data = False
       self.center_data = True
-      self.standardize_data = False
-      self.contrast_normalize = False
       self.whiten_data = True
       self.whiten_method = "FT"
       self.lpf_data = False # FT whitening already does LPF
       self.lpf_cutoff = 0.7
-      self.extract_patches = False
       self.image_edge_size = 128
       self.stride_y = 8
       self.stride_x = 8
@@ -140,21 +99,68 @@ class params(BaseParams):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
+    elif data_type.lower() == "field":
+      self.model_name += "_field"
+      self.batch_size = 1
+      self.rescale_data = False
+      self.center_data = True
+      self.whiten_data = True
+      self.whiten_method = "FT"
+      self.lpf_data = False # FT whitening already does LPF
+      self.lpf_cutoff = 0.7
+      self.image_edge_size = 128
+      self.stride_y = 8
+      self.stride_x = 8
+      self.patch_size_y = 16 # weight receptive field
+      self.patch_size_x = 16
+      self.num_neurons = 128
+      self.num_steps = 60
+      self.dt = 0.001
+      self.tau = 0.03
+      self.rectify_a = True
+      self.thresh_type = "soft"
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.8
+        self.schedule[sched_idx]["weight_lr"] = [0.001]
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+
+    elif data_type.lower() == "cifar10":
+      self.model_name += "_cifar"
+      self.batch_size = 1
+      self.rescale_data = False
+      self.center_data = True
+      self.whiten_data = True
+      self.whiten_method = "FT"
+      self.lpf_data = False # FT whitening already does LPF
+      self.lpf_cutoff = 0.7
+      self.image_edge_size = 128
+      self.stride_y = 8
+      self.stride_x = 8
+      self.patch_size_y = 12 # weight receptive field
+      self.patch_size_x = 12
+      self.num_neurons = 100
+      self.num_steps = 60
+      self.dt = 0.001
+      self.tau = 0.03
+      self.rectify_a = True
+      self.thresh_type = "soft"
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.8
+        self.schedule[sched_idx]["weight_lr"] = [0.001]
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
       self.epoch_size = 1000
       self.dist_type = "gaussian"
       self.num_edge_pixels = 8
-      self.vectorize_data = False
-      self.norm_data = False
       self.rescale_data = True
-      self.center_data = False
-      self.standardize_data = False
-      self.contrast_normalize = False
+      self.center_data = True
       self.whiten_data = False
       self.lpf_data = False # only for ZCA
       self.lpf_cutoff = 0.7
-      self.extract_patches = False
       self.num_neurons = 32
       self.stride_y = 2
       self.stride_x = 2
@@ -163,6 +169,9 @@ class params(BaseParams):
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["sparse_mult"] = 0.21
         self.schedule[schedule_idx]["weight_lr"] = [0.1]
+
+    else:
+      assert False, ("Data type "+data_type+" is not supported.")
 
   def set_test_params(self, data_type):
     self.set_data_params(data_type)
