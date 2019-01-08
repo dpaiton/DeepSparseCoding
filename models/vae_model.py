@@ -43,7 +43,7 @@ class VaeModel(Model):
 
         with tf.name_scope("model") as scope:
           self.vae = VaeModule(self.x, self.params.output_channels, self.sparse_mult,
-            self.decay_mult, self.kld_mult, name="VAE")
+            self.decay_mult, self.kld_mult, self.params.latent_act_func, name="VAE")
           self.trainable_variables.update(self.vae.trainable_variables)
 
         with tf.name_scope("performance_metrics") as scope:

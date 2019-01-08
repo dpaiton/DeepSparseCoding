@@ -744,7 +744,8 @@ class Analyzer(object):
           self.model.fast_sign_adv_dx = -tf.sign(tf.gradients(self.model.adv_recon_loss, self.model.x)[0])
           self.model.carlini_adv_dx = -tf.gradients(self.model.carlini_loss, self.model.x)[0]
 
-  def construct_adversarial_stimulus(self, input_image, target_image, eps=0.01, num_steps=10):
+  def construct_adversarial_stimulus(self, input_image, target_image, min_img_val, max_img_val,
+      eps=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
     losses = []
     adversarial_images = []
@@ -780,6 +781,9 @@ class Analyzer(object):
           update_dx]
         recon, dx = sess.run(eval_ops, feed_dict)
         new_image += eps * dx
+        if self.analysis_params.adversarial_clip:
+          new_image = np.clip(new_image, min_img_val, max_img_val)
+
         input_recon_mses.append(mse(input_image, recon))
         input_adv_mses.append(mse(input_image, new_image))
         target_recon_mses.append(mse(target_image, recon))
@@ -796,8 +800,11 @@ class Analyzer(object):
     save_info=""):
     input_image = images[input_id, ...][None,...].astype(np.float32)
     target_image = images[target_id, ...][None,...].astype(np.float32)
+    max_img_val = np.max([np.max(input_image), np.max(target_image)])
+    min_img_val = np.min([np.min(input_image), np.min(target_image)])
+
     self.adversarial_images, self.adversarial_recons, mses = self.construct_adversarial_stimulus(input_image,
-      target_image, eps, num_steps)
+      target_image, min_img_val, max_img_val, eps, num_steps)
     self.adversarial_input_target_mses = mses["input_target_mse"]
     self.adversarial_input_recon_mses = mses["input_recon_mses"]
     self.adversarial_input_adv_mses = mses["input_adv_mses"]

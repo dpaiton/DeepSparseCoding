@@ -26,6 +26,7 @@ class params(BaseParams):
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
     self.output_channels = [512, 50]
+    self.latent_act_func = "relu"
     self.optimizer = "adam"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
