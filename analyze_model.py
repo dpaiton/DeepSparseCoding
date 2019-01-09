@@ -100,6 +100,7 @@ if analysis_params.do_full_recon:
     extract_patches = False
     image_edge_size = analysis_params.image_edge_size
     data_dir = os.path.expanduser("~")+"/Work/Datasets/"
-    random_seed = 5
+    rand_seed = analysis_params.rand_seed
+    rand_state = np.random.RandomState(analysis_params.rand_seed)
   full_img = dp.reshape_data(ds.get_data(img_params)["train"].images[0], flatten=False)[0]
   analyzer.run_patch_recon_analysis(full_img, save_info=analysis_params.save_info)
