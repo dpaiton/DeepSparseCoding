@@ -7,8 +7,8 @@ import analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
-    self.model_type = "lca"
-    self.model_name = "lca_mnist"
+    self.model_type = "vae"
+    self.model_name = "vae_relu_mnist"
     self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
@@ -57,6 +57,8 @@ class params(object):
     self.adversarial_eps = 0.005
     #Attack method for adversarial attack, kurakin or carlini
     self.adversarial_attack_method = "carlini"
+    #Flag to define if adversarial example can go beyond image range
+    self.adversarial_clip = True
     #Recon_mult tradeoff for carlini attack method
     self.recon_mult = 1
     # Will vary depending on preprocessing

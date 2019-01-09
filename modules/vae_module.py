@@ -5,7 +5,7 @@ import pdb
 
 class VaeModule(object):
   def __init__(self, data_tensor, output_channels,
-      sparse_mult, decay_mult, kld_mult, name="VAE"):
+      sparse_mult, decay_mult, kld_mult, latent_act_func, name="VAE"):
     """
     Variational Autoencoder module
     Inputs:
@@ -31,6 +31,7 @@ class VaeModule(object):
     self.sparse_mult = sparse_mult
     self.decay_mult = decay_mult
     self.kld_mult = kld_mult
+    self.latent_act_func = latent_act_func
 
     self.trainable_variables = TrainableVariableDict()
     self.num_encoder_layers = len(self.output_channels)
@@ -85,8 +86,20 @@ class VaeModule(object):
     out_activations = []
     for (l, (curr_w, curr_b)) in enumerate(zip(self.w_dec_list, self.b_dec_list)):
       curr_output = tf.matmul(curr_input, curr_w) + curr_b
+
+      #Adding relu to mean output
+      #TODO fix this with parameter
       if(l < self.num_encoder_layers - 1):
         curr_output = tf.nn.relu(curr_output)
+      else:
+        #Latent layer
+        if(self.latent_act_func == "relu"):
+          curr_output = tf.nn.relu(curr_output)
+        elif(self.latent_act_func == "none"):
+          pass
+        else:
+          assert False, ("latent_act_func must be \"relu\" or \"none\"")
+
       out_activations.append(curr_output)
       curr_input = curr_output
     return(out_activations)
