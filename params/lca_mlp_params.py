@@ -60,7 +60,7 @@ class params(BaseParams):
     self.max_pool_strides = [None, None, None]
     #Others
     self.cp_int = 10000
-    self.val_on_cp = False
+    self.val_on_cp = True
     self.max_cp_to_keep = None
     self.cp_load = True
     self.cp_load_name = "lca_mnist"
@@ -119,9 +119,9 @@ class params(BaseParams):
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
       # NOTE schedule index will change if lca training is happening
+      self.schedule[0]["num_batches"] = 2e4
       self.schedule[0]["sparse_mult"] = 0.21
       self.schedule[0]["weight_lr"] = 1e-4
-      self.schedule[0]["num_batches"] = 2e4
       self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
       self.schedule[0]["decay_rate"] = 0.90
 
