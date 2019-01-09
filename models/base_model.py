@@ -452,11 +452,6 @@ class Model(object):
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
               dp.whiten_data(dataset[key].images, method=params.whiten_method)
             print("Preprocessing: Whitened "+key+" data")
-      if hasattr(params, "center_data") and params.center_data:
-        dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
-          use_dataset_mean=True)
-        self.data_mean = dataset[key].data_mean
-        print("Preprocessing: Centered "+key+" data")
       if hasattr(params, "norm_data") and params.norm_data:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
         self.data_max = dataset[key].data_max
@@ -466,6 +461,11 @@ class Model(object):
         self.data_max = dataset[key].data_max
         self.data_min = dataset[key].data_min
         print("Preprocessing: Normalized "+key+" data with maximum")
+      if hasattr(params, "center_data") and params.center_data:
+        dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
+          use_dataset_mean=True)
+        self.data_mean = dataset[key].data_mean
+        print("Preprocessing: Centered "+key+" data")
     return dataset
 
   def print_update(self, input_data, input_labels=None, batch_step=0):
