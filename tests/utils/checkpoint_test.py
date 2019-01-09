@@ -16,7 +16,7 @@ class CheckpointTest(tf.test.TestCase):
 
     params = pp.get_params(model_type) # Import params
     params.cp_int = 1
-    params.do_batch_norm = [False, False]
+    params.batch_norm = [False, False]
     params.schedule[0]["weight_lr"] = 10
 
     if(load_style=="all"):
