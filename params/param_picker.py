@@ -7,6 +7,7 @@ import params.lca_pca_params as lca_pca
 import params.lca_pca_fb_params as lca_pca_fb
 import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
+import params.lca_mlp_params as lca_mlp
 import params.lista_params as lista
 import params.sigmoid_autoencoder_params as sa
 import params.gdn_autoencoder_params as ga
@@ -25,51 +26,37 @@ Outputs:
 """
 def get_params(model_type):
   if model_type.lower() == "mlp":
-    params = mlp.params()
-    return params
+    return mlp.params()
   if model_type.lower() == "ica":
-    params = ica.params()
-    return params
+    return ica.params()
   if model_type.lower() == "ica_pca":
-    params = ica_pca.params()
-    return params
+    return ica_pca.params()
   if model_type.lower() == "rica":
-    params = rica.params()
-    return params
+    return rica.params()
   if model_type.lower() == "lca":
-    params = lca.params()
-    return params
+    return lca.params()
   if model_type.lower() == "lca_pca":
-    params = lca_pca.params()
-    return params
+    return lca_pca.params()
   if model_type.lower() == "lca_pca_fb":
-    params = lca_pca_fb.params()
-    return params
+    return lca_pca_fb.params()
   if model_type.lower() == "lca_subspace":
-    params = lca_subspace.params()
-    return params
+    return lca_subspace.params()
   if model_type.lower() == "lca_conv":
-    params = lca_conv.params()
-    return params
+    return lca_conv.params()
+  if model_type.lower() == "lca_mlp":
+    return lca_mlp.params()
   if model_type.lower() == "lista":
-    params = lista.params()
-    return params
+    return lista.params()
   if model_type.lower() == "sigmoid_autoencoder":
-    params = sa.params()
-    return params
+    return sa.params()
   if model_type.lower() == "vae":
-    params = vae.params()
-    return params
+    return vae.params()
   if model_type.lower() == "gdn_autoencoder":
-    params = ga.params()
-    return params
+    return ga.params()
   if model_type.lower() == "gdn_conv_autoencoder":
-    params = cga.params()
-    return params
+    return cga.params()
   if model_type.lower() == "gdn_conv_decoder":
-    params = cgd.params()
-    return params
+    return cgd.params()
   if model_type.lower() == "relu_autoencoder":
-    params = ra.params()
-    return params
+    return ra.params()
   return False

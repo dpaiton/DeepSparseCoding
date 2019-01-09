@@ -46,7 +46,7 @@ class params(BaseParams):
     # If a scalar is provided then this value is broadcast to all trainable variables
     self.schedule = [
       {"num_batches": 1e4,
-      "weights": None, #["w1", "w2", "bias1", "bias2"],
+      "weights": None,
       "weight_lr": 0.01,
       "decay_steps": int(1e4*0.5),
       "decay_rate": 0.8,
