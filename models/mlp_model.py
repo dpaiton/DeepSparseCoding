@@ -29,17 +29,15 @@ class MlpModel(Model):
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.y = tf.placeholder(tf.float32, shape=self.y_shape, name="input_labels")
-          self.batch_norm_decay_mult = tf.placeholder(tf.float32, shape=(),
-            name="batch_norm_decay_mult")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
-        self.mlp = MlpModule(self.x, self.y, self.params.do_batch_norm,
-          self.batch_norm_decay_mult, self.params.layer_types, self.params.output_channels,
-          self.params.strides_y, self.params.strides_x,
-          self.params.patch_size_y, self.params.patch_size_x,
+        self.mlp = MlpModule(self.x, self.y, self.params.layer_types,
+          self.params.output_channels, self.params.batch_norm, self.params.dropout,
+          self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+          self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
           self.params.eps, name="mlp")
         self.trainable_variables.update(self.mlp.trainable_variables)
         self.y_ = self.mlp.y_
@@ -87,36 +85,17 @@ class MlpModel(Model):
 
   def generate_plots(self, input_data, input_labels=None):
     """
-    Plot weights, reconstruction, and gradients
+    Plot weights, gradients, etc
     Inputs: input_data and input_labels used for the session
     """
     super(MlpModel, self).generate_plots(input_data, input_labels)
-    #TODO
-    #feed_dict = self.get_feed_dict(input_data, input_labels)
-    #current_step = str(self.global_step.eval())
-    #w1, w2 = tf.get_default_session().run([self.w1, self.w2], feed_dict)
-    #w1 = dp.reshape_data(w1.T, flatten=False)[0]
-    #w2 = dp.reshape_data(w2.T, flatten=False)[0]
-    #pf.plot_data_tiled(w2, normalize=True,
-    #  title="Classification matrix at step number "+current_step,
-    #  vmin=None, vmax=None, save_filename=(self.params.disp_dir+"w2_v"+self.params.version+"-"
-    #  +current_step.zfill(5)+".png"))
-    #pf.plot_data_tiled(w1, normalize=True,
-    #  title="Dictionary at step "+current_step, vmin=None, vmax=None,
-    #  save_filename=(self.params.disp_dir+"w1_v"+self.params.version+"-"
-    #  +current_step.zfill(5)+".png"))
-    #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-    #  grad = weight_grad_var[0][0].eval(feed_dict)
-    #  shape = grad.shape
-    #  name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-    #  grad = dp.reshape_data(grad.T, flatten=False)[0]
-    #  if name == "w1":
-    #    pf.plot_data_tiled(grad, normalize=True,
-    #      title="Gradient for w1 at step "+current_step, vmin=None, vmax=None,
-    #      save_filename=(self.params.disp_dir+"dw1_v"+self.params.version+"_"
-    #      +current_step.zfill(5)+".png"))
-    #  elif name == "w2":
-    #    pf.plot_data_tiled(grad, normalize=True,
-    #      title="Gradient for w2 at step "+current_step, vmin=None, vmax=None,
-    #      save_filename=(self.params.disp_dir+"dw2_v"+self.params.version+"_"
-    #      +current_step.zfill(5)+".png"))
+    # TODO: there is a lot of variability in the MLP - which plots are general?
+    feed_dict = self.get_feed_dict(input_data, input_labels)
+    eval_list = [self.global_step, self.get_encodings()] # how to get first layer weights?
+    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    current_step = str(eval_out[0])
+    activity = eval_out[1]
+    fig = pf.plot_activity_hist(activity, title="Logit Histogram",
+      save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
+

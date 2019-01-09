@@ -5,13 +5,8 @@ class params(BaseParams):
   def __init__(self):
     """
     Additional modifiable parameters:
-      rectify_a    [bool] If set, rectify layer 1 activity
-      norm_a       [bool] If set, l2 normalize layer 1 activity
-      norm_weights [bool] If set, l2 normalize weights after updates
       batch_size   [int] Number of images in a training batch
-      num_pixels   [int] Number of pixels
-      num_hidden   [int] Number of layer 1 elements (# hidden units)
-      num_classes  [int] Number of layer 2 elements (# categories)
+      num_classes  [int] Number of categories
       num_val      [int] Number of validation images
       val_on_cp    [bool] If set, compute validation performance on checkpoint
     """
@@ -21,20 +16,21 @@ class params(BaseParams):
     self.version = "0.0"
     self.optimizer = "annealed_sgd"
     self.vectorize_data = False
-    self.rectify_a = True
-    self.norm_a = False
-    self.norm_weights = True
     self.batch_size = 100
+    self.num_classes = 10
     self.layer_types = ["conv", "fc"]
-    self.output_channels = [300, 10]
-    self.strides_y = [1, None]
-    self.strides_x = [1, None]
+    self.output_channels = [300, self.num_classes]
     self.patch_size_y = [8, None]
     self.patch_size_x = [8, None]
+    self.conv_strides = [(1,1,1,1), None]
     self.num_val = 10000
     self.num_labeled = 50000
-    self.do_batch_norm = [True, False]
-    self.cp_int = 100
+    self.batch_norm = [0.4, None]
+    self.dropout = [None, None]
+    self.max_pool = [False, False]
+    self.max_pool_ksize = [None, None]
+    self.max_pool_strides = [None, None]
+    self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.val_on_cp = True
     self.cp_load = False
@@ -42,15 +38,14 @@ class params(BaseParams):
     self.cp_load_step = None
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["w1"] #None means load everything
-    self.log_int = 50
+    self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = 1000
+    self.gen_plot_int = 5000
     self.save_plots = True
 
     # If a scalar is provided then this value is broadcast to all trainable variables
     self.schedule = [
       {"num_batches": 1e4,
-      "batch_norm_decay_mult": 0.4,
       "weights": None, #["w1", "w2", "bias1", "bias2"],
       "weight_lr": 0.01,
       "decay_steps": int(1e4*0.5),
@@ -61,15 +56,34 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.rescale_data = True
+      self.center_data = False
       self.num_classes = 10
-      self.output_channels = [400, 10]
+      self.optimizer = "adam"
+      self.layer_types = ["conv", "conv", "fc", "fc"]
+      self.output_channels = [32, 64, 1024, self.num_classes]
+      self.patch_size_y = [5, 5, None, None]
+      self.patch_size_x = self.patch_size_y
+      self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
+      self.batch_norm = [None, None, None, None]
+      self.dropout = [None, None, 0.4, None]
+      self.max_pool = [True, True, False, False]
+      self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
+      self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["weight_lr"] = 1e-4
+        self.schedule[sched_idx]["num_batches"] = 2e4
+        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["num_batches"] * 0.8)
+        self.schedule[sched_idx]["decay_rate"] = 0.90
+
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
       self.epoch_size = 1000
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
       self.num_classes = 2
-      self.output_channels = [400, 2]
+      self.output_channels[-1] = self.num_classes
+
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 

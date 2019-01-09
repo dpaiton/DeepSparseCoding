@@ -4,20 +4,24 @@ from utils.trainable_variable_dict import TrainableVariableDict
 from modules.batch_normalization_module import BatchNormalizationModule
 
 class MlpModule(object):
-  def __init__(self, data_tensor, label_tensor, do_batch_norm, norm_decay_mult,
-    layer_types, output_channels, patch_size_y, patch_size_x, strides_y, strides_x,
-    eps, loss_type="softmax_cross_entropy", name="MLP"):
+  def __init__(self, data_tensor, label_tensor, layer_types, output_channels, batch_norm,
+      dropout, max_pool, max_pool_ksize, max_pool_strides, patch_size_y, patch_size_x,
+      conv_strides, eps, loss_type="softmax_cross_entropy", name="MLP"):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
       data_tensor
       label_tensor
-      do_batch_norm is a list of booleans
-      norm_decay_mult
-      output_channels
-      layer_types
-      eps
-      name
+      layer_types list of "conv" or "fc"
+      output_channels is a list of ints
+      patch_size_(y,x) specifies the patch size in tye (y,x) directions
+      conv_strides specifies strides in (batch, y, x, channels) directions
+      max_pool is a list of booleans
+      dropout specifies the keep probability or None
+      batch_norm is a list of decay multipliers or None
+      eps is a float
+      loss_type is a string specifying the type of loss ("softmax_cross_entropy" or "l2")
+      name is a string
     Outputs:
       dictionary
     TODO: relu is hard coded, but should be a parameter that is passed to an activation module
@@ -49,15 +53,17 @@ class MlpModule(object):
     label_batch, self.num_classes = label_tensor.get_shape()
 
     # load params
-    self.do_batch_norm = do_batch_norm
-    self.norm_decay_mult = norm_decay_mult
     self.layer_types = layer_types
+    self.max_pool = max_pool
+    self.max_pool_ksize = max_pool_ksize
+    self.max_pool_strides = max_pool_strides
+    self.dropout = dropout
+    self.batch_norm = batch_norm
     # assert no FC after Conv in layer types
     self.output_channels = output_channels
     self.patch_size_y = patch_size_y
     self.patch_size_x = patch_size_x
-    self.strides_y = strides_y
-    self.strides_x = strides_x
+    self.conv_strides = conv_strides
     self.eps = eps
     self.name = str(name)
 
@@ -75,12 +81,18 @@ class MlpModule(object):
       ("patch_size_y must be a list of size " + str(self.num_layers))
     assert len(patch_size_x) == self.num_layers, \
       ("patch_size_x must be a list of size " + str(self.num_layers))
-    assert len(strides_y) == self.num_layers, \
-      ("strides_y must be a list of size " + str(self.num_layers))
-    assert len(strides_x) == self.num_layers, \
-      ("strides_x must be a list of size " + str(self.num_layers))
-    assert len(do_batch_norm) == self.num_layers, \
-      ("do_batch_norm must be a list of size " + str(self.num_layers))
+    assert len(conv_strides) == self.num_layers, \
+      ("conv_strides must be a list of size " + str(self.num_layers))
+    assert len(batch_norm) == self.num_layers, \
+      ("batch_norm must be a list of size " + str(self.num_layers))
+    assert len(dropout) == self.num_layers, \
+      ("dropout must be a list of size " + str(self.num_layers))
+    assert len(max_pool) == self.num_layers, \
+      ("max_pool must be a list of size " + str(self.num_layers))
+    assert len(max_pool_ksize) == self.num_layers, \
+      ("max_pool_ksize must be a list of size " + str(self.num_layers))
+    assert len(max_pool_strides) == self.num_layers, \
+      ("max_pool_strides must be a list of size " + str(self.num_layers))
 
     if(data_ndim == 4): #If at least one convolutional layers
       conv_input_channels = [self.num_data_channels] + self.output_channels[:-1]
@@ -92,47 +104,55 @@ class MlpModule(object):
     self.trainable_variables = TrainableVariableDict()
     self.build_graph()
 
-  def conv_layer_maker(self, layer_id, a_in, w_shape, stride_y, stride_x, b_shape):
+  def conv_layer_maker(self, layer_id, a_in, w_shape, strides, b_shape):
     with tf.variable_scope("layer"+str(layer_id)) as scope:
-      w_name = "w_"+str(layer_id)
+      w_name = "conv_w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
       self.trainable_variables[w.name] = w
 
-      b_name = "b_"+str(layer_id)
+      b_name = "conv_b_"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
 
-      conv_out = tf.nn.relu(tf.add(tf.nn.conv2d(a_in, w, [1, stride_y, stride_x, 1],
-        padding="SAME"), b), name="conv_out"+str(layer_id))
-      if self.do_batch_norm[layer_id]:
-        bn = BatchNormalizationModule(conv_out, self.norm_decay_mult, self.eps, reduc_axes=[0,1,2],
-          name="BatchNorm_"+str(layer_id))
+      conv_out = tf.nn.relu(tf.add(tf.nn.conv2d(a_in, w, strides, padding="SAME"),
+        b), name="conv_out"+str(layer_id))
+      if self.batch_norm[layer_id] is not None:
+        bn = BatchNormalizationModule(conv_out, self.batch_norm[layer_id], self.eps,
+          reduc_axes=[0,1,2], name="BatchNorm_"+str(layer_id))
         conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
+      if self.dropout[layer_id] is not None:
+        conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
+      if self.max_pool[layer_id]:
+        conv_out = tf.nn.max_pool(conv_out, ksize=self.max_pool_ksize[layer_id],
+          strides=self.max_pool_strides[layer_id], padding="SAME")
     return conv_out, w, b
 
   def fc_layer_maker(self, layer_id, a_in, w_shape, b_shape):
-    w_init = tf.truncated_normal_initializer(stddev=1/w_shape[0], dtype=tf.float32)
-
     with tf.variable_scope("layer"+str(layer_id)) as scope:
-      w_name = "w_"+str(layer_id)
+      w_name = "fc_w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-        initializer=w_init, trainable=True)
+        initializer=self.w_init, trainable=True)
       self.trainable_variables[w.name] = w
 
-      b_name = "b_"+str(layer_id)
+      b_name = "fc_b_"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
 
       fc_out = tf.nn.relu(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
-      if self.do_batch_norm[layer_id]:
-        bn = BatchNormalizationModule(fc_out, self.norm_decay_mult, self.eps, reduc_axes=[0],
+      if self.batch_norm[layer_id] is not None:
+        bn = BatchNormalizationModule(fc_out, self.batch_norm[layer_id], self.eps, reduc_axes=[0],
           name="BatchNorm_"+str(layer_id))
         fc_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
+      if self.dropout[layer_id] is not None:
+        fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
+      if self.max_pool[layer_id]:
+        fc_out = tf.nn.max_pool(fc_out, ksize=self.max_pool_ksize[layer_id],
+          strides=self.max_pool_strides[layer_id], padding="SAME")
     return fc_out, w, b
 
   def make_layers(self):
@@ -141,8 +161,7 @@ class MlpModule(object):
     b_list = []
     for layer_id in range(self.num_conv_layers):
       a_out, w, b = self.conv_layer_maker(layer_id, act_list[layer_id],
-        self.conv_w_shapes[layer_id], self.strides_y[layer_id], self.strides_x[layer_id],
-        self.output_channels[layer_id])
+      self.conv_w_shapes[layer_id], self.conv_strides[layer_id], self.output_channels[layer_id])
       act_list.append(a_out)
       w_list.append(w)
       b_list.append(b)
@@ -167,7 +186,7 @@ class MlpModule(object):
 
       with tf.name_scope("weight_inits") as scope:
         self.w_init = tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32)
-        self.b_init = tf.initializers.zeros(dtype=tf.float32)
+        self.b_init = tf.initializers.constant(0.1, dtype=tf.float32)
 
       self.layer_list, self.weight_list, self.bias_list = self.make_layers()
 
