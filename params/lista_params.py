@@ -52,16 +52,16 @@ class params(BaseParams):
     self.strides_x = [None, None, None]
     self.patch_size_y = [None, None, None]
     self.patch_size_x = [None, None, None]
-    self.do_batch_norm = [True, True, False]
+    self.do_batch_norm = [False, False, False]
     #Others
     self.cp_int = 10000
     self.val_on_cp = False
     self.max_cp_to_keep = None
-    self.cp_load = False
-    self.cp_load_name = "pretrain"
+    self.cp_load = True
+    self.cp_load_name = "lca_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
-    #self.cp_load_var = ["phi"]
+    self.cp_load_var = ["weights/w:0"]
     self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 10000
@@ -69,15 +69,15 @@ class params(BaseParams):
     self.schedule = [
       #Training LCA
       #TODO allow for loading of previously trained lca from lca_model
-      {"weights": None, #["weights/w:0"],
-      "train_lca": True,
-      "batch_norm_decay_mult": 0.4,
-      "num_batches": int(1e4),
-      "sparse_mult": 0.1,
-      "weight_lr": 0.01,#[0.01],
-      "decay_steps": int(1e4*0.5),#[int(1e4*0.5)],
-      "decay_rate": 0.8,#[0.8],
-      "staircase": True},
+      #{"weights": None, #["weights/w:0"],
+      #"train_lca": True,
+      #"batch_norm_decay_mult": 0.4,
+      #"num_batches": int(1e4),
+      #"sparse_mult": 0.1,
+      #"weight_lr": 0.01,#[0.01],
+      #"decay_steps": int(1e4*0.5),#[int(1e4*0.5)],
+      #"decay_rate": 0.8,#[0.8],
+      #"staircase": True},
       #Training MLP on LCA activations
       {"weights": None, #["weights/w:0"],
       "train_lca": False,
@@ -106,8 +106,9 @@ class params(BaseParams):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         #Set as 0.1 for training lca, and 0.01 for mlp
-        self.schedule[0]["weight_lr"] = 0.1
-        self.schedule[1]["weight_lr"] = 0.01
+        #self.schedule[0]["weight_lr"] = 0.1
+        #self.schedule[1]["weight_lr"] = 0.01
+        self.schedule[0]["weight_lr"] = 0.01
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
