@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "vae"
-    self.model_name = "vae"
+    self.model_name = "dvae"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -27,6 +27,7 @@ class params(BaseParams):
     #Decoder will automatically build the transpose of the encoder
     self.output_channels = [512, 50]
     self.latent_act_func = "relu"
+    self.noise_level = 0.0 # variance of noise added to the input data
     self.optimizer = "adam"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
@@ -51,11 +52,14 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.noise_level = 0.1
+
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
       self.epoch_size = 1000
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
+
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 

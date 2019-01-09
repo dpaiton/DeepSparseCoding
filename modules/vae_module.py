@@ -4,8 +4,8 @@ from utils.trainable_variable_dict import TrainableVariableDict
 import pdb
 
 class VaeModule(object):
-  def __init__(self, data_tensor, output_channels,
-      sparse_mult, decay_mult, kld_mult, latent_act_func, name="VAE"):
+  def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, kld_mult,
+    latent_act_func, noise_level=0, name="VAE"):
     """
     Variational Autoencoder module
     Inputs:
@@ -21,10 +21,19 @@ class VaeModule(object):
       "Module requires datal_tensor to have shape [batch, num_classes]")
 
     self.data_tensor = data_tensor
+
     if data_ndim == 2:
       self.batch_size, self.num_pixels = self.data_tensor.get_shape()
     else:
       assert False, ("Shouldn't get here")
+
+    self.noise_level = noise_level
+    if self.noise_level > 0:
+      self.corrupt_data = 0.5 * tf.add(tf.random.normal(shape=tf.shape(data_tensor),
+        mean=tf.reduce_mean(data_tensor), stddev=noise_level, dtype=tf.float32, name="data_noise"),
+        data_tensor)
+    else:
+      self.corrupt_data = data_tensor
 
     self.name = str(name)
     self.output_channels = output_channels
@@ -160,7 +169,7 @@ class VaeModule(object):
       self.b_dec_list = self.b_dec_list[::-1]
 
     with tf.variable_scope("inference") as scope:
-      curr_input = self.data_tensor
+      curr_input = self.corrupt_data
       #Encoder
       self.encoder_activations = []
       for (l, (curr_w, curr_b)) in enumerate(zip(self.w_enc_list, self.b_enc_list)):
