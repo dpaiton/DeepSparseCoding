@@ -48,11 +48,14 @@ class params(BaseParams):
     #MLP Params
     self.layer_types = ["fc", "fc", "fc"]
     self.output_channels = [300, 500, self.num_neurons]
-    self.strides_y = [None, None, None]
-    self.strides_x = [None, None, None]
     self.patch_size_y = [None, None, None]
     self.patch_size_x = [None, None, None]
-    self.do_batch_norm = [False, False, False]
+    self.conv_strides = [None, None, None]
+    self.batch_norm = [None, None, None]
+    self.dropout = [None, None, None]
+    self.max_pool = [False, False, False]
+    self.max_pool_ksize = [None, None, None]
+    self.max_pool_strides = [None, None, None]
     #Others
     self.cp_int = 10000
     self.val_on_cp = False
@@ -68,27 +71,24 @@ class params(BaseParams):
     self.save_plots = True
     self.schedule = [
       #Training LCA
-      #TODO allow for loading of previously trained lca from lca_model
-      #{"weights": None, #["weights/w:0"],
+      #{"weights": None,
       #"train_lca": True,
-      #"batch_norm_decay_mult": 0.4,
       #"num_batches": int(1e4),
       #"sparse_mult": 0.1,
-      #"weight_lr": 0.01,#[0.01],
-      #"decay_steps": int(1e4*0.5),#[int(1e4*0.5)],
-      #"decay_rate": 0.8,#[0.8],
+      #"weight_lr": 0.01,
+      #"decay_steps": int(1e4*0.5),
+      #"decay_rate": 0.8,
       #"staircase": True},
       #Training MLP on LCA activations
-      {"weights": None, #["weights/w:0"],
+      {"weights": None,
       "train_lca": False,
-      "batch_norm_decay_mult": 0.4,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
-      "weight_lr": 0.01,#[0.01],
-      "decay_steps": int(1e4*0.5),#[int(1e4*0.5)],
-      "decay_rate": 0.8,#[0.8],
+      "weight_lr": 0.01,
+      "decay_steps": int(1e4*0.5),
+      "decay_rate": 0.8,
       "staircase": True},
-      ]#[True]}]
+      ]
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -105,10 +105,10 @@ class params(BaseParams):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
-        #Set as 0.1 for training lca, and 0.01 for mlp
-        #self.schedule[0]["weight_lr"] = 0.1
-        #self.schedule[1]["weight_lr"] = 0.01
-        self.schedule[0]["weight_lr"] = 0.01
+        self.schedule[sched_idx]["weight_lr"] = 0.01
+      #Set as 0.1 for training lca, and 0.01 for mlp
+      #self.schedule[0]["weight_lr"] = 0.1
+      #self.schedule[1]["weight_lr"] = 0.01
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"

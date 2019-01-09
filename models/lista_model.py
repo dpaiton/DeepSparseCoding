@@ -31,11 +31,11 @@ class ListaModel(Model):
     return module
 
   def build_mlp_module(self):
-    module = MlpModule(self.x, self.lca_module.a, self.params.do_batch_norm,
-      self.batch_norm_decay_mult, self.params.layer_types, self.params.output_channels,
-      self.params.patch_size_y, self.params.patch_size_x,
-      self.params.strides_y, self.params.strides_x, self.params.eps,
-      loss_type="l2", name="mlp")
+    module = MlpModule(self.x, self.lca_module.a, self.params.layer_types,
+      self.params.output_channels, self.params.batch_norm, self.params.dropout,
+      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
+      self.params.eps, loss_type="l2", name="mlp")
     return module
 
   def build_graph(self):
@@ -45,8 +45,6 @@ class ListaModel(Model):
         with tf.name_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
-          self.batch_norm_decay_mult = tf.placeholder(tf.float32, shape=(),
-            name="batch_norm_decay_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
 
         self.train_lca = tf.cast(self.train_lca, tf.float32)
