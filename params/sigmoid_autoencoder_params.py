@@ -31,7 +31,7 @@ class params(BaseParams):
     self.batch_size = 200
     self.num_neurons = 768
     self.optimizer = "annealed_sgd"#"adam"
-    self.cp_int = 100000
+    self.cp_int = int(1e5)
     self.max_cp_to_keep = 1
     self.cp_load = False
     self.cp_load_name = "sigmoid_autoencoder"
@@ -40,7 +40,7 @@ class params(BaseParams):
     self.cp_load_var = ["w_enc", "w_dec", "b_enc", "b_dec"]
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = int(1e6)
+    self.gen_plot_int = int(1e5)
     self.save_plots = True
     self.schedule = [
       {"weights": None,
@@ -66,12 +66,13 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
-        self.schedule[sched_idx]["decay_mult"] = 0.005
-        self.schedule[sched_idx]["sparse_mult"] = 0.01
-        self.schedule[sched_idx]["target_act"] = 0.09
-        self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["decay_steps"]*0.4)
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["decay_mult"] = 0.001
+        self.schedule[sched_idx]["sparse_mult"] = 4.0
+        self.schedule[sched_idx]["target_act"] = 0.5
+        self.schedule[sched_idx]["weight_lr"] = 0.001
+        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["decay_steps"]*0.8)
+        self.schedule[sched_idx]["decay_rate"] = 0.90
 
     elif data_type.lower() == "vanhateren":
         self.model_name += "_vh"
