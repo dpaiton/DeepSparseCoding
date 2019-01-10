@@ -32,7 +32,7 @@ class CheckpointTest(tf.test.TestCase):
       params.cp_load_name = "test_checkpoints_mlp_synthetic"
       params.cp_load_step = 1
       params.cp_load_ver = "0.0"
-      params.cp_load_var = ["layer0/w_0:0", "layer0/b_0:0"]
+      params.cp_load_var = ["layer0/conv_w_0:0", "layer0/conv_b_0:0"]
     elif(load_style=="none"):
       pass
     else:
@@ -44,6 +44,7 @@ class CheckpointTest(tf.test.TestCase):
     params.set_test_params(data_type)
 
     params.model_name = model_name_prefix+params.model_name
+    params.out_dir = params.out_dir+"/tests/"
     dataset = ds.get_data(params) # Import data
     dataset = model.preprocess_dataset(dataset, params)
     dataset = model.reshape_dataset(dataset, params)

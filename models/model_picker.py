@@ -16,6 +16,7 @@ from models.gdn_conv_autoencoder_model import GdnConvAutoencoderModel as ga_conv
 from models.gdn_conv_decoder_model import GdnConvDecoderModel as gd_conv
 from models.relu_autoencoder_model import ReluAutoencoderModel as ra
 from models.vae_model import VaeModel as vae
+from models.ae_model import AeModel as ae
 
 def get_model(model_type):
   if model_type.lower() == "mlp":
@@ -52,9 +53,11 @@ def get_model(model_type):
     return ra()
   if model_type.lower() == "vae":
     return vae()
+  if model_type.lower() == "ae":
+    return ae()
 
 def get_model_list():
   model_list = ["mlp", "ica", "ica_pca", "rica", "lca", "lca_pca", "lca_pca_fb", "lca_conv",
     "lca_mlp", "lca_subspace", "lista", "sigmoid_autoencoder", "gdn_autoencoder",
-    "gdn_conv_autoencoder", "gdn_conv_decoder", "relu_autoencoder", "vae"]
+    "gdn_conv_autoencoder", "gdn_conv_decoder", "relu_autoencoder", "ae", "vae"]
   return model_list

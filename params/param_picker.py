@@ -15,6 +15,7 @@ import params.gdn_conv_autoencoder_params as cga
 import params.gdn_conv_decoder_params as cgd
 import params.relu_autoencoder_params as ra
 import params.vae_params as vae
+import params.ae_params as ae
 
 """
 Get function that returns the corresponding parameter and schedule files
@@ -49,6 +50,8 @@ def get_params(model_type):
     return lista.params()
   if model_type.lower() == "sigmoid_autoencoder":
     return sa.params()
+  if model_type.lower() == "ae":
+    return ae.params()
   if model_type.lower() == "vae":
     return vae.params()
   if model_type.lower() == "gdn_autoencoder":
