@@ -201,7 +201,7 @@ class VaeModule(object):
       self.decoder_activations = self.build_decoder(self.a)
 
     with tf.name_scope("output") as scope:
-      self.reconstruction = self.decoder_activations[-1]
+      self.reconstruction = tf.identity(self.decoder_activations[-1], name="reconstruction")
 
     with tf.name_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),

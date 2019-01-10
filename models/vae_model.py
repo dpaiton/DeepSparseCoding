@@ -25,9 +25,6 @@ class VaeModel(Model):
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
 
-  def compute_recon(self, a_in):
-    return self.vae.build_decoder(a_in)[-1]
-
   def build_graph(self):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
@@ -41,11 +38,10 @@ class VaeModel(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        with tf.name_scope("model") as scope:
-          self.vae = VaeModule(self.x, self.params.output_channels, self.sparse_mult,
-            self.decay_mult, self.kld_mult, self.params.latent_act_func, self.params.noise_level,
-            name="VAE")
-          self.trainable_variables.update(self.vae.trainable_variables)
+        self.vae = VaeModule(self.x, self.params.output_channels, self.sparse_mult,
+          self.decay_mult, self.kld_mult, self.params.latent_act_func, self.params.noise_level,
+          name="VAE")
+        self.trainable_variables.update(self.vae.trainable_variables)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
@@ -54,6 +50,12 @@ class VaeModel(Model):
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
+
+  def compute_recon(self, a_in):
+    return tf.identity(self.vae.build_decoder(a_in)[-1], "reconstruction")
+
+  def get_encodings(self):
+    return self.vae.a
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
