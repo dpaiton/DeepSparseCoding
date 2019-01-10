@@ -726,7 +726,7 @@ class Analyzer(object):
             name="original_input_data")
           self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.x_shape,
             name="adversarial_target_data")
-          self.model.recon_mult = tf.placeholder(tf.float32, name="recon_mult")
+          self.model.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
         with tf.name_scope("loss") as scope:
           # Want to avg over batch, sum over the rest
           reduc_dim = list(range(1, len(self.model.get_encodings().shape)))
@@ -747,53 +747,80 @@ class Analyzer(object):
   def construct_adversarial_stimulus(self, input_image, target_image, min_img_val, max_img_val,
       eps=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
-    losses = []
-    adversarial_images = []
-    recons = []
-    input_recon_mses = []
-    input_adv_mses = []
-    target_recon_mses = []
-    target_adv_mses = []
-    adv_recon_mses = []
     input_target_mse = mse(input_image, target_image)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
 
+    output_list = False
     if(self.analysis_params.adversarial_attack_method == "kurakin"):
       update_dx = self.model.fast_sign_adv_dx
     elif(self.analysis_params.adversarial_attack_method == "carlini"):
       update_dx = self.model.carlini_adv_dx
+      if(type(self.analysis_params.recon_mult) is not list):
+        self.analysis_params.recon_mult = [self.analysis_params.recon_mult]
+      else:
+        output_list = True
     else:
       assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
-    with tf.Session(config=config, graph=self.model.graph) as sess:
-      feed_dict = self.model.get_feed_dict(input_image)
-      feed_dict[self.model.adv_target] = target_image
-      feed_dict[self.model.orig_input] = input_image
-      feed_dict[self.model.recon_mult] = self.analysis_params.recon_mult
-      sess.run(self.model.init_op, feed_dict)
-      self.model.load_full_model(sess, self.analysis_params.cp_loc)
-      new_image = input_image.copy()
-      for step in range(num_steps):
-        adversarial_images.append(new_image.copy())
-        self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
-        eval_ops = [self.recon, update_dx]
-        recon, dx = sess.run(eval_ops, feed_dict)
-        new_image += eps * dx
-        if self.analysis_params.adversarial_clip:
-          new_image = np.clip(new_image, min_img_val, max_img_val)
 
-        input_recon_mses.append(mse(input_image, recon))
-        input_adv_mses.append(mse(input_image, new_image))
-        target_recon_mses.append(mse(target_image, recon))
-        target_adv_mses.append(mse(target_image, new_image))
-        adv_recon_mses.append(mse(new_image, recon))
-        recons.append(recon)
-        feed_dict[self.model.x] = new_image
-      mses = {"input_target_mse":input_target_mse, "input_recon_mses":input_recon_mses,
-      "input_adv_mses":input_adv_mses, "target_recon_mses":target_recon_mses,
-      "target_adv_mses":target_adv_mses, "adv_recon_mses":adv_recon_mses}
-      return adversarial_images, recons, mses
+    mses = {"input_target_mse":[], "input_recon_mses":[],
+    "input_adv_mses":[], "target_recon_mses":[],
+    "target_adv_mses":[], "adv_recon_mses":[]}
+    all_adversarial_images = []
+    all_recons = []
+    for r_mult in self.analysis_params.recon_mult:
+      adversarial_images = []
+      recons = []
+      input_recon_mses = []
+      input_adv_mses = []
+      target_recon_mses = []
+      target_adv_mses = []
+      adv_recon_mses = []
+
+      with tf.Session(config=config, graph=self.model.graph) as sess:
+        feed_dict = self.model.get_feed_dict(input_image)
+        feed_dict[self.model.adv_target] = target_image
+        feed_dict[self.model.orig_input] = input_image
+        feed_dict[self.model.recon_mult] = r_mult
+        sess.run(self.model.init_op, feed_dict)
+        self.model.load_full_model(sess, self.analysis_params.cp_loc)
+        new_image = input_image.copy()
+        for step in range(num_steps):
+          adversarial_images.append(new_image.copy())
+          self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
+          eval_ops = [self.recon, update_dx]
+          recon, dx = sess.run(eval_ops, feed_dict)
+          new_image += eps * dx
+          if self.analysis_params.adversarial_clip:
+            new_image = np.clip(new_image, min_img_val, max_img_val)
+
+          input_recon_mses.append(mse(input_image, recon))
+          input_adv_mses.append(mse(input_image, new_image))
+          target_recon_mses.append(mse(target_image, recon))
+          target_adv_mses.append(mse(target_image, new_image))
+          adv_recon_mses.append(mse(new_image, recon))
+          recons.append(recon)
+          feed_dict[self.model.x] = new_image
+      if(output_list):
+        mses["input_target_mse"].append(input_target_mse)
+        mses["input_recon_mses"].append(input_recon_mses)
+        mses["input_adv_mses"].append(input_adv_mses)
+        mses["target_recon_mses"].append(target_recon_mses)
+        mses["target_adv_mses"].append(target_adv_mses)
+        mses["adv_recon_mses"].append(adv_recon_mses)
+        all_adversarial_images.append(adversarial_images)
+        all_recons.append(recons)
+      else:
+        mses["input_target_mse"] = input_target_mse
+        mses["input_recon_mses"] = input_recon_mses
+        mses["input_adv_mses"] = input_adv_mses
+        mses["target_recon_mses"] = target_recon_mses
+        mses["target_adv_mses"] = target_adv_mses
+        mses["adv_recon_mses"] = adv_recon_mses
+        all_adversarial_images = adversarial_images
+        all_recons = recons
+    return all_adversarial_images, all_recons, mses
 
   def adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100,
     save_info=""):

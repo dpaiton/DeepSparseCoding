@@ -8,7 +8,7 @@ import analysis.analysis_picker as ap
 class params(object):
   def __init__(self):
     self.model_type = "vae"
-    self.model_name = "vae_relu_mnist"
+    self.model_name = "vae_relu_single_layer_undercomplete_mnist"
     self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
@@ -17,7 +17,7 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = True
+    self.do_evals = False
     # Dictionary fitting
     self.do_basis_analysis = False
     # LCA Inference analysis
@@ -25,7 +25,7 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Adversarial image analysis
-    self.do_adversaries = False
+    self.do_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -60,7 +60,8 @@ class params(object):
     #Flag to define if adversarial example can go beyond image range
     self.adversarial_clip = True
     #Recon_mult tradeoff for carlini attack method
-    self.recon_mult = 1
+    #Can be a list to sweep
+    self.recon_mult = list(np.arange(.1, 10, .1))
     # Will vary depending on preprocessing
     self.input_scale = 1.0
     # Which neurons to run tuning experiments on (None to do all)
