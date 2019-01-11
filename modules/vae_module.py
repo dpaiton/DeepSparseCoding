@@ -15,15 +15,15 @@ class VaeModule(AeModule):
       name
     Outputs:
       dictionary
+    TODO: Add optional flag to turn off ReLU for the final encoding layer (means)
     """
     self.noise_level = noise_level
-    if self.noise_level > 0:
+    if self.noise_level > 0.0:
       self.corrupt_data = 0.5 * tf.add(tf.random.normal(shape=tf.shape(data_tensor),
         mean=tf.reduce_mean(data_tensor), stddev=noise_level, dtype=tf.float32, name="data_noise"),
         data_tensor)
     else:
       self.corrupt_data = data_tensor
-
     self.sparse_mult = sparse_mult
     self.kld_mult = kld_mult
 

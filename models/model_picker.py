@@ -10,13 +10,13 @@ from models.lca_subspace_model import LcaSubspaceModel as lca_subspace
 from models.lca_conv_model import LcaConvModel as lca_conv
 from models.lca_mlp_model import LcaMlpModel as lca_mlp
 from models.lista_model import ListaModel as lista
-from models.sigmoid_autoencoder_model import SigmoidAutoencoderModel as sa
 from models.gdn_autoencoder_model import GdnAutoencoderModel as ga
 from models.gdn_conv_autoencoder_model import GdnConvAutoencoderModel as ga_conv
 from models.gdn_conv_decoder_model import GdnConvDecoderModel as gd_conv
 from models.relu_autoencoder_model import ReluAutoencoderModel as ra
-from models.vae_model import VaeModel as vae
 from models.ae_model import AeModel as ae
+from models.vae_model import VaeModel as vae
+from models.sae_model import SaeModel as sae
 
 def get_model(model_type):
   if model_type.lower() == "mlp":
@@ -41,8 +41,6 @@ def get_model(model_type):
     return lca_subspace()
   if model_type.lower() == "lista":
     return lista()
-  if model_type.lower() == "sigmoid_autoencoder":
-    return sa()
   if model_type.lower() == "gdn_autoencoder":
     return ga()
   if model_type.lower() == "gdn_conv_autoencoder":
@@ -51,13 +49,15 @@ def get_model(model_type):
     return gd_conv()
   if model_type.lower() == "relu_autoencoder":
     return ra()
-  if model_type.lower() == "vae":
-    return vae()
   if model_type.lower() == "ae":
     return ae()
+  if model_type.lower() == "sae":
+    return sae()
+  if model_type.lower() == "vae":
+    return vae()
 
 def get_model_list():
   model_list = ["mlp", "ica", "ica_pca", "rica", "lca", "lca_pca", "lca_pca_fb", "lca_conv",
-    "lca_mlp", "lca_subspace", "lista", "sigmoid_autoencoder", "gdn_autoencoder",
-    "gdn_conv_autoencoder", "gdn_conv_decoder", "relu_autoencoder", "ae", "vae"]
+    "lca_mlp", "lca_subspace", "lista", "gdn_autoencoder", "gdn_conv_autoencoder",
+    "gdn_conv_decoder", "relu_autoencoder", "ae", "sae", "vae"]
   return model_list

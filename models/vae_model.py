@@ -14,6 +14,7 @@ class VaeModel(AeModel):
     arXiv preprint arXiv:1312.6114 (2013).
     """
     super(VaeModel, self).__init__()
+    self.vector_inputs = True
 
   def build_module(self):
     module = VaeModule(self.x, self.params.output_channels, self.sparse_mult,
@@ -37,7 +38,6 @@ class VaeModel(AeModel):
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
-  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch

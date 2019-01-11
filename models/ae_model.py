@@ -74,7 +74,6 @@ class AeModel(Model):
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
-  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch

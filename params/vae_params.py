@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "vae"
-    self.model_name = "dvae"
+    self.model_name = "vae"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -52,7 +52,7 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.noise_level = 0.1
+      self.noise_level = 0.0
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

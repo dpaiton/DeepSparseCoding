@@ -9,13 +9,13 @@ import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
 import params.lca_mlp_params as lca_mlp
 import params.lista_params as lista
-import params.sigmoid_autoencoder_params as sa
 import params.gdn_autoencoder_params as ga
 import params.gdn_conv_autoencoder_params as cga
 import params.gdn_conv_decoder_params as cgd
 import params.relu_autoencoder_params as ra
-import params.vae_params as vae
 import params.ae_params as ae
+import params.sae_params as sae
+import params.vae_params as vae
 
 """
 Get function that returns the corresponding parameter and schedule files
@@ -48,10 +48,10 @@ def get_params(model_type):
     return lca_mlp.params()
   if model_type.lower() == "lista":
     return lista.params()
-  if model_type.lower() == "sigmoid_autoencoder":
-    return sa.params()
   if model_type.lower() == "ae":
     return ae.params()
+  if model_type.lower() == "sae":
+    return sae.params()
   if model_type.lower() == "vae":
     return vae.params()
   if model_type.lower() == "gdn_autoencoder":
