@@ -1,7 +1,6 @@
 import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
-import pdb
 
 class AeModule(object):
   def __init__(self, data_tensor, output_channels, decay_mult, act_func, name="AE"):
@@ -139,4 +138,3 @@ class AeModule(object):
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "weight_decay_loss":self.compute_weight_decay_loss()}
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
-

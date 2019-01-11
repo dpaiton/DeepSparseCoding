@@ -25,6 +25,11 @@ class AeModel(Model):
     self.x_shape = [None, self.num_pixels]
     self.act_func = tf.nn.relu # TODO: activation_picker(self.params.activation_function)
 
+  def build_module(self):
+    module = AeModule(self.x, self.params.output_channels, self.decay_mult, self.act_func,
+      name="AE")
+    return module
+
   def build_graph(self):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
@@ -39,17 +44,20 @@ class AeModel(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        self.ae = AeModule(self.x, self.params.output_channels, self.decay_mult, self.act_func,
-          name="AE")
-        self.trainable_variables.update(self.ae.trainable_variables)
+        self.module = self.build_module()
+        self.trainable_variables.update(self.module.trainable_variables)
 
-        self.decoder_recon = self.ae.build_decoder(self.ae.num_encoder_layers+1, self.latent_input,
-          [self.act_func,]*(self.ae.num_decoder_layers-1)+[tf.identity],
-          self.ae.w_shapes[self.ae.num_encoder_layers:])[0]
+        with tf.name_scope("inference") as scope:
+          self.a = tf.identity(self.module.a, name="activity")
+
+        # first index grabs u_list, second index grabs recon
+        self.decoder_recon = self.module.build_decoder(self.module.num_encoder_layers+1,
+          self.latent_input, [self.act_func,]*(self.module.num_decoder_layers-1)+[tf.identity],
+          self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.ae.reconstruction)),
+            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),
               axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
@@ -59,10 +67,10 @@ class AeModel(Model):
     return self.decoder_recon
 
   def get_encodings(self):
-    return self.ae.a
+    return self.module.a
 
   def get_total_loss(self):
-    return self.ae.total_loss
+    return self.module.total_loss
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
@@ -75,13 +83,13 @@ class AeModel(Model):
     update_dict = super(AeModel, self).generate_update_dict(input_data,
       input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.ae.loss_dict["recon_loss"],
-      self.ae.loss_dict["weight_decay_loss"], self.get_total_loss(), self.get_encodings(),
-      self.ae.reconstruction, self.learning_rates]
+    eval_list = [self.global_step, self.module.loss_dict["recon_loss"],
+      self.module.loss_dict["weight_decay_loss"], self.get_total_loss(), self.get_encodings(),
+      self.module.reconstruction, self.learning_rates]
     grad_name_list = []
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
-      grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
+      grad_name = weight_grad_var[0][1].name.split('/')[-1].split(':')[0] #2nd is np.split
       grad_name_list.append(grad_name)
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, decay_loss, total_loss, a_vals, recon = out_vals[0:6]
@@ -125,28 +133,22 @@ class AeModel(Model):
     """
     super(AeModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-
-    eval_list = [self.global_step, self.ae.w_list[0], self.ae.w_list[-1],
-      self.ae.b_list, self.ae.u_list[1:]]
-
+    eval_list = [self.global_step, self.module.w_list[0], self.module.w_list[-1],
+      self.module.b_list, self.module.u_list[1:]]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
-
     current_step = str(eval_out[0])
     w_enc, w_dec, b_list, activations = eval_out[1:]
     recon = activations[-1]
-
+    # compute weight norms
     w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
     w_dec_norm = np.linalg.norm(w_dec, axis=1, keepdims=False)
-
-    #Reshapes flat data into image
+    # reshapes flat data into image & normalize
     w_enc_img = dp.reshape_data(w_enc.T, flatten=False)[0]
     w_dec_img = dp.reshape_data(w_dec, flatten=False)[0]
-
     w_enc_img = dp.norm_weights(w_enc_img)
     w_dec_img = dp.norm_weights(w_dec_img)
-
+    # generate figures
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
-
     fig = pf.plot_data_tiled(w_enc_img, normalize=False,
       title="Encoding weights at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.params.disp_dir+"w_enc" + filename_suffix))
@@ -159,17 +161,14 @@ class AeModel(Model):
     fig = pf.plot_bar(w_dec_norm, num_xticks=5,
       title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.params.disp_dir+"w_dec_norm"+filename_suffix))
-
     for layer_id, activity in enumerate(activations[:-1]):
       fig = pf.plot_activity_hist(activity,
         title="Activity Encoder " + str(layer_id) + " Histogram",
         save_filename=(self.params.disp_dir+"act_enc_"+str(layer_id)+"_hist" + filename_suffix))
-
     for layer_id, bias in enumerate(b_list):
       fig = pf.plot_activity_hist(np.squeeze(bias),
         title="Bias " + str(layer_id) + " Histogram",
         save_filename=(self.params.disp_dir+"bias_"+str(layer_id)+"_hist" + filename_suffix))
-
     if eval_out[0]*10 % self.params.cp_int == 0:
       #Scale image by max and min of images and/or recon
       r_max = np.max([np.max(input_data), np.max(recon)])

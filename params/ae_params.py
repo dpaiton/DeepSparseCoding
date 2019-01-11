@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "ae"
-    self.model_name = "auto_encoder"
+    self.model_name = "ae"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
