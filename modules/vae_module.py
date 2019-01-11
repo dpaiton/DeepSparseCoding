@@ -84,6 +84,10 @@ class VaeModule(AeModule):
     self.w_list += dec_w_list
     self.b_list += dec_b_list
 
+    for w,b in zip(self.w_list, self.b_list):
+      self.trainable_variables[w.name] = w
+      self.trainable_variables[b.name] = b
+
     with tf.name_scope("output") as scope:
       self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 

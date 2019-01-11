@@ -94,9 +94,11 @@ class LcaModule(object):
    return (u_list, a_list)
 
   def compute_recon(self, a_in):
+    #TODO: Follow ae methods for computing decoder / recon
     return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")
 
   def compute_recon_loss(self, a_in):
+    #TODO: This should take recon as input to be consistent with auto encoder module
     with tf.name_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.reduce_mean(0.5 *

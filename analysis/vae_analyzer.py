@@ -8,7 +8,7 @@ class VaeAnalyzer(Analyzer):
   def __init__(self):
     super(VaeAnalyzer, self).__init__()
     self.var_names = [
-      "weights/w_enc_0:0",
+      "layer0/w_0:0",
       "inference/activity:0"]
 
   def run_analysis(self, images, save_info=""):

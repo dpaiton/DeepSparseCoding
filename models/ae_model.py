@@ -63,8 +63,13 @@ class AeModel(Model):
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
 
-  def compute_recon(self):
-    return self.decoder_recon
+  def compute_recon(self, a_in):
+    #TODO: use self.decoder_recon with placeholder, fix analysis
+    recon = self.module.build_decoder(self.module.num_encoder_layers+1,
+      a_in, [self.act_func,]*(self.module.num_decoder_layers-1)+[tf.identity],
+      self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
+    return recon
+
 
   def get_encodings(self):
     return self.module.a

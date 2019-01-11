@@ -34,7 +34,7 @@ class LcaAnalyzer(Analyzer):
     if self.analysis_params.do_basis_analysis:
       self.bf_stats = self.basis_analysis(self.evals["weights/w:0"], save_info)
     if self.analysis_params.do_atas:
-      self.atas, self.atcs = self.ata_analysis(images[:self.num_ata_images, ...],
+      self.atas, self.atcs = self.ata_analysis(images[:int(self.analysis_params.num_ata_images), ...],
         self.evals["inference/activity:0"], save_info)
       self.noise_activity, self.noise_atas, self.noise_atcs = self.run_noise_analysis(save_info)
     if self.analysis_params.do_inference:

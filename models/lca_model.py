@@ -59,6 +59,8 @@ class LcaModel(Model):
   def get_encodings(self):
     return self.module.a
 
+  #TODO: change to have access to the module's total loss for inference analysis
+  # Not sure what other dependencies there are on get_total_loss...
   def get_total_loss(self):
     return self.module.total_loss
 
