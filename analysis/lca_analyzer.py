@@ -40,8 +40,8 @@ class LcaAnalyzer(Analyzer):
     if self.analysis_params.do_inference:
       self.inference_stats = self.inference_analysis(images, save_info,
         self.analysis_params.num_inference_images, self.analysis_params.num_inference_steps)
-    if self.analysis_params.do_adversaries:
-      self.adversarial_images, self.adversarial_recons, mses = self.adversary_analysis(images,
+    if self.analysis_params.do_recon_adversaries:
+      self.adversarial_images, self.adversarial_recons, mses = self.recon_adversary_analysis(images,
         input_id=self.analysis_params.adversarial_input_id,
         target_id=self.analysis_params.adversarial_target_id,
         eps=self.analysis_params.adversarial_eps,

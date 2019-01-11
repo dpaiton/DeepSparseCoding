@@ -105,7 +105,7 @@ class Analyzer(object):
     if not hasattr(self.analysis_params, "num_noise_images"):
       self.analysis_params.num_noise_images = 100
     # Adversarial analysis
-    if hasattr(self.analysis_params, "do_adversaries"):
+    if hasattr(self.analysis_params, "do_recon_adversaries"):
       if not hasattr(self.analysis_params, "adversarial_eps"):
         self.analysis_params.adversarial_eps = 0.01
       if not hasattr(self.analysis_params, "adversarial_num_steps"):
@@ -115,7 +115,7 @@ class Analyzer(object):
       if not hasattr(self.analysis_params, "adversarial_target_id"):
         self.analysis_params.adversarial_target_id = 1
     else:
-      self.analysis_params.do_adversaries = False
+      self.analysis_params.do_recon_adversaries = False
 
   def get_model(self):
     """Load model object into analysis object"""
@@ -140,8 +140,8 @@ class Analyzer(object):
     self.model.construct_savers()
 
   def add_pre_init_ops_to_graph(self):
-    if self.analysis_params.do_adversaries:
-      self.add_adversarial_ops_to_graph()
+    if self.analysis_params.do_recon_adversaries:
+      self.add_recon_adversarial_ops_to_graph()
 
   def run_analysis(self, images, save_info=""):
     """
@@ -715,7 +715,7 @@ class Analyzer(object):
     proj_matrix = np.stack([bf1, v], axis=0)
     return proj_matrix, v
 
-  def add_adversarial_ops_to_graph(self):
+  def add_recon_adversarial_ops_to_graph(self):
     """
     Append opes to the graph for adversarial analysis
     """
@@ -744,7 +744,7 @@ class Analyzer(object):
           self.model.fast_sign_adv_dx = -tf.sign(tf.gradients(self.model.adv_recon_loss, self.model.x)[0])
           self.model.carlini_adv_dx = -tf.gradients(self.model.carlini_loss, self.model.x)[0]
 
-  def construct_adversarial_stimulus(self, input_image, target_image, min_img_val, max_img_val,
+  def construct_recon_adversarial_stimulus(self, input_image, target_image, min_img_val, max_img_val,
       eps=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
     input_target_mse = mse(input_image, target_image)
@@ -822,14 +822,14 @@ class Analyzer(object):
         all_recons = recons
     return all_adversarial_images, all_recons, mses
 
-  def adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100,
+  def recon_adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100,
     save_info=""):
     input_image = images[input_id, ...][None,...].astype(np.float32)
     target_image = images[target_id, ...][None,...].astype(np.float32)
     max_img_val = np.max([np.max(input_image), np.max(target_image)])
     min_img_val = np.min([np.min(input_image), np.min(target_image)])
 
-    self.adversarial_images, self.adversarial_recons, mses = self.construct_adversarial_stimulus(input_image,
+    self.adversarial_images, self.adversarial_recons, mses = self.construct_recon_adversarial_stimulus(input_image,
       target_image, min_img_val, max_img_val, eps, num_steps)
     self.adversarial_input_target_mses = mses["input_target_mse"]
     self.adversarial_input_recon_mses = mses["input_recon_mses"]

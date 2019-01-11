@@ -24,8 +24,8 @@ class VaeAnalyzer(Analyzer):
     if self.analysis_params.do_orientation_analysis:
       self.ot_grating_responses, self.co_grating_responses = self.grating_analysis(self.bf_stats,
         save_info)
-    if self.analysis_params.do_adversaries:
-      self.adversarial_images, self.adversarial_recons, mses = self.adversary_analysis(images,
+    if self.analysis_params.do_recon_adversaries:
+      self.adversarial_images, self.adversarial_recons, mses = self.recon_adversary_analysis(images,
         input_id=self.analysis_params.adversarial_input_id,
         target_id=self.analysis_params.adversarial_target_id,
         eps=self.analysis_params.adversarial_eps,

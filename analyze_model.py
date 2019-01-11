@@ -8,7 +8,7 @@ import analysis.analysis_picker as ap
 class params(object):
   def __init__(self):
     self.model_type = "vae"
-    self.model_name = "vae_relu_single_layer_undercomplete_mnist"
+    self.model_name = "vae_three_layer_mnist"
     self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
@@ -25,7 +25,7 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Adversarial image analysis
-    self.do_adversaries = True
+    self.do_recon_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
