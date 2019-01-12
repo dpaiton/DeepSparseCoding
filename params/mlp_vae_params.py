@@ -52,8 +52,8 @@ class params(BaseParams):
     self.cp_int = 10000
     self.val_on_cp = True
     self.max_cp_to_keep = None
-    self.cp_load = False
-    self.cp_load_name = "vae_mnist"
+    self.cp_load = True
+    self.cp_load_name = "vae_two_layer_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = None # all variables
@@ -92,17 +92,16 @@ class params(BaseParams):
       self.model_name += "_mnist"
       self.vectorize_data = True
       self.rescale_data = True
+      self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
-      # LCA params
-      self.num_neurons = 768
       # MLP params
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [28, 28, 1]
       self.num_classes = 10
       self.optimizer = "adam"
       self.layer_types = ["conv", "conv", "fc", "fc"]
-      self.output_channels = [32, 64, 1024, self.num_classes]
+      self.mlp_output_channels = [32, 64, 1024, self.num_classes]
       self.patch_size_y = [5, 5, None, None]
       self.patch_size_x = self.patch_size_y
       self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
@@ -127,10 +126,9 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.num_neurons = 768
       self.train_on_recon = True # if False, train on activations
       self.num_classes = 2
-      self.output_channels = [128, 64, self.num_classes]
+      self.mlp_output_channels = [128, 64, self.num_classes]
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
         self.schedule[sched_idx]["weight_lr"] = 0.1
