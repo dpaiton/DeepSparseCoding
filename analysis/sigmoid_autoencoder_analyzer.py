@@ -21,8 +21,8 @@ class SaAnalyzer(Analyzer):
         self.model.ax_grad = tf.gradients(tf.slice(self.model.get_encodings(), [0, 0], [-1, 1]),
           self.model.x)[0]
 
-  def run_analysis(self, images, save_info=""):
-    super(SaAnalyzer, self).run_analysis(images, save_info=save_info)
+  def run_analysis(self, images, labels=None, save_info=""):
+    super(SaAnalyzer, self).run_analysis(images, labels, save_info=save_info)
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.do_basis_analysis:

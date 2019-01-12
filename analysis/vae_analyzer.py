@@ -11,8 +11,8 @@ class VaeAnalyzer(Analyzer):
       "layer0/w_0:0",
       "inference/activity:0"]
 
-  def run_analysis(self, images, save_info=""):
-    super(VaeAnalyzer, self).run_analysis(images, save_info=save_info)
+  def run_analysis(self, images, labels=None, save_info=""):
+    super(VaeAnalyzer, self).run_analysis(images, labels, save_info=save_info)
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.analysis_params.do_basis_analysis:
