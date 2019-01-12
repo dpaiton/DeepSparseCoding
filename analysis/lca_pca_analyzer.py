@@ -7,7 +7,7 @@ from analysis.lca_analyzer import LcaAnalyzer
 
 class LcaPcaAnalyzer(LcaAnalyzer):
   def run_analysis(self, images, save_info=""):
-    super(LcaPcaAnalyzer, self).run_analysis(images, save_info)
+    super(LcaPcaAnalyzer, self).run_analysis(images, save_info=save_info)
     # Need to create a dataset object for cov analysis
     image_dataset = {"test":Dataset(dp.reshape_data(images, flatten=False)[0], lbls=None)}
     image_dataset = self.model.reshape_dataset(image_dataset, self.model_params)

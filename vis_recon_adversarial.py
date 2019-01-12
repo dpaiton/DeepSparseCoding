@@ -15,10 +15,10 @@ import matplotlib.gridspec as gridspec
 #List of models for analysis
 analysis_list = [
   ("lca", "lca_mnist"),
-  ("vae", "vae_relu_mnist"),
-  ("vae", "vae_relu_single_layer_mnist"),
-  ("vae", "vae_relu_single_layer_overcomplete_mnist"),
-  ("vae", "vae_relu_single_layer_undercomplete_mnist"),
+  ("vae", "vae_one_layer_overcomplete_mnist"),
+  ("vae", "vae_one_layer_undercomplete_mnist"),
+  ("vae", "vae_two_layer_mnist"),
+  ("vae", "vae_three_layer_mnist"),
   ]
 
 #colors for analysis_list
@@ -27,6 +27,7 @@ colors = [
   "b",
   "g",
   "c",
+  "m",
   "k",
   ]
 
@@ -61,7 +62,6 @@ def setup(params):
 makedir(outdir)
 
 fig = plt.figure()
-plt.hold(True)
 
 for idx, (model_type, model_name) in enumerate(analysis_list):
   analysis_params = params()
@@ -85,7 +85,6 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
 
   #plt.scatter(input_adv_vals, target_recon_vals, c=recon_mult)
   plt.scatter(input_adv_vals, target_recon_vals, label=model_name, c=colors[idx], s=2)
-plt.hold(False)
 
 plt.xlabel("Input Adv MSE")
 plt.ylabel("Target Recon MSE")

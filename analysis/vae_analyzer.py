@@ -12,7 +12,7 @@ class VaeAnalyzer(Analyzer):
       "inference/activity:0"]
 
   def run_analysis(self, images, save_info=""):
-    super(VaeAnalyzer, self).run_analysis(images, save_info)
+    super(VaeAnalyzer, self).run_analysis(images, save_info=save_info)
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.analysis_params.do_basis_analysis:
@@ -28,7 +28,7 @@ class VaeAnalyzer(Analyzer):
       self.adversarial_images, self.adversarial_recons, mses = self.recon_adversary_analysis(images,
         input_id=self.analysis_params.adversarial_input_id,
         target_id=self.analysis_params.adversarial_target_id,
-        eps=self.analysis_params.adversarial_eps,
+        step_size=self.analysis_params.adversarial_step_size,
         num_steps=self.analysis_params.adversarial_num_steps,
         save_info=save_info)
       self.adversarial_input_target_mses = mses["input_target_mse"]

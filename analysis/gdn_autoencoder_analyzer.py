@@ -18,7 +18,7 @@ class GaAnalyzer(Analyzer):
       "inference/activity:0"]
 
   def run_analysis(self, images, save_info=""):
-    super(GaAnalyzer, self).run_analysis(images, save_info)
+    super(GaAnalyzer, self).run_analysis(images, save_info=save_info)
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.do_basis_analysis:
@@ -38,5 +38,5 @@ class GaAnalyzer(Analyzer):
       feed_dict = self.model.get_feed_dict(images)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
-      activations = sess.run(self.model.gdn_output, feed_dict) 
+      activations = sess.run(self.model.gdn_output, feed_dict)
     return activations

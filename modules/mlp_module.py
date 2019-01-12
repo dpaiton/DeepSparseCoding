@@ -201,6 +201,7 @@ class MlpModule(object):
               self.cross_entropy_loss = (self.label_mult
                 * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
                 self.y_, self.eps, 1.0))), axis=[1]))
+              #Doing this to avoid divide by zero
               label_count = tf.reduce_sum(self.label_mult)
               f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
               f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count

@@ -7,8 +7,8 @@ import analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
-    self.model_type = "vae"
-    self.model_name = "vae_three_layer_mnist"
+    self.model_type = "mlp"
+    self.model_name = "mlp_mnist"
     self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
@@ -24,8 +24,10 @@ class params(object):
     self.do_inference = False
     # Activity triggered averages
     self.do_atas = False
-    # Adversarial image analysis
-    self.do_recon_adversaries = True
+    # Recon adversarial image analysis
+    self.do_recon_adversaries = False
+    #Classification adversarial image analysis
+    self.do_class_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -54,14 +56,18 @@ class params(object):
     # Number of adversarial image updates
     self.adversarial_num_steps = 1000
     # Step size for adversarial attacks
-    self.adversarial_eps = 0.005
+    self.adversarial_step_size = 0.005
     #Attack method for adversarial attack, kurakin or carlini
-    self.adversarial_attack_method = "carlini"
+    #self.adversarial_attack_method = "carlini"
+    self.adversarial_attack_method = "kurakin"
     #Flag to define if adversarial example can go beyond image range
     self.adversarial_clip = True
     #Recon_mult tradeoff for carlini attack method
     #Can be a list to sweep
     self.recon_mult = list(np.arange(.1, 10, .1))
+    #Target class for class adversary analysis
+    #None for untargeted
+    self.adversarial_target_label = None
     # Will vary depending on preprocessing
     self.input_scale = 1.0
     # Which neurons to run tuning experiments on (None to do all)
@@ -94,7 +100,7 @@ analyzer.setup_model(analyzer.model_params)
 #analyzer.model_params.input_shape = [
 #  data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
 
-analyzer.run_analysis(data["train"].images, save_info=analysis_params.save_info)
+analyzer.run_analysis(data["train"].images, data["train"].labels, save_info=analysis_params.save_info)
 
 if analysis_params.do_full_recon:
   class img_params():

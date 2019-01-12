@@ -104,10 +104,10 @@ class Analyzer(object):
       self.analysis_params.num_ata_images = 100
     if not hasattr(self.analysis_params, "num_noise_images"):
       self.analysis_params.num_noise_images = 100
-    # Adversarial analysis
+    # Recon Adversarial analysis
     if hasattr(self.analysis_params, "do_recon_adversaries"):
-      if not hasattr(self.analysis_params, "adversarial_eps"):
-        self.analysis_params.adversarial_eps = 0.01
+      if not hasattr(self.analysis_params, "adversarial_step_size"):
+        self.analysis_params.adversarial_step_size = 0.01
       if not hasattr(self.analysis_params, "adversarial_num_steps"):
         self.analysis_params.adversarial_num_steps = 200
       if not hasattr(self.analysis_params, "adversarial_input_id"):
@@ -116,6 +116,16 @@ class Analyzer(object):
         self.analysis_params.adversarial_target_id = 1
     else:
       self.analysis_params.do_recon_adversaries = False
+    # Class Adversarial analysis
+    if hasattr(self.analysis_params, "do_class_adversaries"):
+      if not hasattr(self.analysis_params, "adversarial_step_size"):
+        self.analysis_params.adversarial_step_size = 0.01
+      if not hasattr(self.analysis_params, "adversarial_num_steps"):
+        self.analysis_params.adversarial_num_steps = 200
+      if not hasattr(self.analysis_params, "adversarial_input_id"):
+        self.analysis_params.adversarial_input_id = 0
+    else:
+      self.analysis_params.do_class_adversaries = False
 
   def get_model(self):
     """Load model object into analysis object"""
@@ -142,8 +152,10 @@ class Analyzer(object):
   def add_pre_init_ops_to_graph(self):
     if self.analysis_params.do_recon_adversaries:
       self.add_recon_adversarial_ops_to_graph()
+    if self.analysis_params.do_class_adversaries:
+      self.add_class_adversarial_ops_to_graph()
 
-  def run_analysis(self, images, save_info=""):
+  def run_analysis(self, images, labels=None, save_info=""):
     """
     Wrapper function for running all available model analyses
     Log statistics should be consistent across models, but in general it is expected that
@@ -195,15 +207,16 @@ class Analyzer(object):
       self.full_image = recon_analysis["full_image"]
       self.full_recon = recon_analysis["full_recon"]
       self.recon_frac_act = recon_analysis["recon_frac_act"]
-    # Adversarial analysis
-    adversarial_file_loc = self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz"
-    if os.path.exists(adversarial_file_loc):
-      data = np.load(adversarial_file_loc)["data"].item()
+
+    # Recon Adversarial analysis
+    recon_adversarial_file_loc = self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz"
+    if os.path.exists(recon_adversarial_file_loc):
+      data = np.load(recon_adversarial_file_loc)["data"].item()
       self.adversarial_input_image = data["input_image"]
       self.adversarial_target_image = data["target_image"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_recons = data["adversarial_recons"]
-      self.analysis_params.adversarial_eps = data["eps"]
+      self.analysis_params.adversarial_step_size = data["step_size"]
       self.analysis_params.adversarial_num_steps = data["num_steps"]
       self.analysis_params.adversarial_input_id = data["input_id"]
       self.analysis_params.adversarial_target_id = data["target_id"]
@@ -213,6 +226,20 @@ class Analyzer(object):
       self.adversarial_target_recon_mses = data["target_recon_mses"]
       self.adversarial_target_adv_mses = data["target_adv_mses"]
       self.adversarial_adv_recon_mses = data["adv_recon_mses"]
+
+    #Class adversarial analysis
+    class_adversarial_file_loc = self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
+    if os.path.exists(class_adversarial_file_loc):
+      data = np.load(class_adversarial_file_loc)["data"].item()
+      self.adversarial_input_image = data["input_image"]
+      self.adversarial_target_class = data["target_class"]
+      self.adversarial_images = data["adversarial_images"]
+      self.adversarial_output = data["adversarial_output"]
+      self.analysis_params.adversarial_step_size = data["step_size"]
+      self.analysis_params.adversarial_num_steps = data["num_steps"]
+      self.analysis_params.adversarial_input_id = data["input_id"]
+      self.adversarial_input_adv_mses = data["input_adv_mses"]
+      self.adversarial_target_output_losses = data["target_output_losses"]
 
   def load_basis_stats(self, save_info):
     bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
@@ -745,7 +772,7 @@ class Analyzer(object):
           self.model.carlini_adv_dx = -tf.gradients(self.model.carlini_loss, self.model.x)[0]
 
   def construct_recon_adversarial_stimulus(self, input_image, target_image, min_img_val, max_img_val,
-      eps=0.01, num_steps=10):
+      step_size=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
     input_target_mse = mse(input_image, target_image)
     config = tf.ConfigProto()
@@ -788,10 +815,10 @@ class Analyzer(object):
         new_image = input_image.copy()
         for step in range(num_steps):
           adversarial_images.append(new_image.copy())
-          self.analysis_logger.log_info("Adversarial analysis, step "+str(step))
+          self.analysis_logger.log_info("Recon Adversarial analysis, step "+str(step))
           eval_ops = [self.recon, update_dx]
           recon, dx = sess.run(eval_ops, feed_dict)
-          new_image += eps * dx
+          new_image += step_size * dx
           if self.analysis_params.adversarial_clip:
             new_image = np.clip(new_image, min_img_val, max_img_val)
 
@@ -822,7 +849,7 @@ class Analyzer(object):
         all_recons = recons
     return all_adversarial_images, all_recons, mses
 
-  def recon_adversary_analysis(self, images, input_id=0, target_id=1, eps=0.01, num_steps=100,
+  def recon_adversary_analysis(self, images, input_id=0, target_id=1, step_size=0.01, num_steps=100,
     save_info=""):
     input_image = images[input_id, ...][None,...].astype(np.float32)
     target_image = images[target_id, ...][None,...].astype(np.float32)
@@ -830,7 +857,7 @@ class Analyzer(object):
     min_img_val = np.min([np.min(input_image), np.min(target_image)])
 
     self.adversarial_images, self.adversarial_recons, mses = self.construct_recon_adversarial_stimulus(input_image,
-      target_image, min_img_val, max_img_val, eps, num_steps)
+      target_image, min_img_val, max_img_val, step_size, num_steps)
     self.adversarial_input_target_mses = mses["input_target_mse"]
     self.adversarial_input_recon_mses = mses["input_recon_mses"]
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
@@ -841,8 +868,141 @@ class Analyzer(object):
     self.adversarial_target_image = target_image
     out_dict = {"input_image": input_image, "target_image":target_image,
       "adversarial_images":self.adversarial_images, "adversarial_recons":self.adversarial_recons,
-      "eps":eps, "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
+      "step_size":step_size, "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
     out_dict.update(mses)
-    np.savez(self.analysis_out_dir+"savefiles/adversary_"+save_info+".npz", data=out_dict)
+    np.savez(self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz", data=out_dict)
     self.analysis_logger.log_info("Adversary analysis is complete.")
     return self.adversarial_images, self.adversarial_recons, mses
+
+  def add_class_adversarial_ops_to_graph(self):
+    """
+    Append opes to the graph for adversarial analysis
+    """
+    with tf.device(self.analysis_params.device):
+      with self.model.graph.as_default():
+        with tf.name_scope("placeholders") as scope:
+          self.model.orig_input = tf.placeholder(tf.float32, shape=self.model.x_shape,
+            name="original_input_data")
+          self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.y_shape,
+            name="adversarial_target")
+
+          #self.model.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+        with tf.name_scope("loss") as scope:
+          # Want to avg over batch, sum over the rest
+          reduc_dim = list(range(1, len(self.model.get_encodings().shape)))
+          #Cross entropy loss
+          #Copying this here as opposed to getting model's total loss
+          #in case regularizers get added to the total loss
+          self.model.adv_loss_no_target = tf.reduce_mean(
+            -tf.reduce_sum(tf.multiply(self.model.y, tf.log(tf.clip_by_value(
+            self.model.y_, 1e-8, 1.0))), axis=reduc_dim)
+            )
+
+          #Negative here because we actually want to step in the direction
+          #of this gradient
+          self.model.adv_loss_target = -tf.reduce_mean(
+            -tf.reduce_sum(tf.multiply(self.model.adv_target, tf.log(tf.clip_by_value(
+            self.model.y_, 1e-8, 1.0))), axis=reduc_dim)
+            )
+
+          self.model.input_pert_loss = tf.reduce_mean(0.5 *
+            tf.reduce_sum(tf.square(tf.subtract(self.model.orig_input,
+            self.model.x)), axis=reduc_dim),
+            name="input_perturbed_loss")
+        #  self.model.carlini_loss = tf.add_n([self.model.input_pert_loss, tf.multiply(self.model.recon_mult,
+        #    self.model.adv_recon_loss)])
+          self.output = self.model.y_
+        with tf.name_scope("adversarial") as scope:
+          #Stepping in opposite direction of gradient
+          self.model.fast_sign_adv_no_target_dx = -tf.sign(
+            tf.gradients(self.model.adv_loss_no_target, self.model.x)[0])
+          self.model.fast_sign_adv_target_dx = -tf.sign(
+            tf.gradients(self.model.adv_loss_target, self.model.x)[0])
+          #self.model.carlini_adv_dx = -tf.gradients(self.model.carlini_loss, self.model.x)[0]
+
+  def construct_class_adversarial_stimulus(self, input_image, input_label, target_label,
+    min_img_val, max_img_val, step_size=0.01, num_steps=10):
+
+    mse = lambda x,y: np.mean(np.square(x - y))
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+
+    if(self.analysis_params.adversarial_attack_method == "kurakin"):
+      if(target_label is None):
+        update_dx = self.model.fast_sign_adv_no_target_dx
+      else:
+        update_dx = self.model.fast_sign_adv_target_dx
+    elif(self.analysis_params.adversarial_attack_method == "carlini"):
+      assert False, ("TODO")
+    else:
+      assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
+
+    mses = {
+      "input_adv_mses":[], "target_output_losses":[],
+      }
+
+    adversarial_images = []
+    outputs = []
+    input_adv_mses = []
+    target_output_losses = []
+
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      feed_dict = self.model.get_feed_dict(input_image, input_label)
+      feed_dict[self.model.orig_input] = input_image
+      if(target_label is not None):
+        feed_dict[self.model.adv_target] = target_label
+      #feed_dict[self.model.recon_mult] = r_mult
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
+      new_image = input_image.copy()
+      for step in range(num_steps):
+        adversarial_images.append(new_image.copy())
+        self.analysis_logger.log_info("Class Adversarial analysis, step "+str(step))
+        eval_ops = [self.output, update_dx]
+        output, dx = sess.run(eval_ops, feed_dict)
+        #TODO check for different losses here
+        if(target_label is None):
+          target_output_loss = sess.run(self.model.adv_loss_no_target, feed_dict)
+        else:
+          target_output_loss = sess.run(self.model.adv_loss_target, feed_dict)
+
+        new_image += step_size * dx
+        if self.analysis_params.adversarial_clip:
+          new_image = np.clip(new_image, min_img_val, max_img_val)
+
+        input_adv_mses.append(mse(input_image, new_image))
+        target_output_losses.append(target_output_loss)
+        outputs.append(output)
+        feed_dict[self.model.x] = new_image
+
+      mses["input_adv_mses"] = input_adv_mses
+      mses["target_output_losses"] = target_output_losses
+    return adversarial_images, outputs, mses
+
+  #Target_label can be None for "no target" or a tensor where first dimension is same
+  #as image dimensions with each as the target label
+  def class_adversary_analysis(self, images, labels, target_label=None, input_id=0, step_size=0.01, num_steps=100,
+    save_info=""):
+    input_image = images[input_id, ...][None,...].astype(np.float32)
+    input_label = labels[input_id, ...][None,...].astype(np.float32)
+    if(target_label is not None):
+      target_label = target_label[input_id, ...][None,...].astype(np.float32)
+
+    max_img_val = np.max([np.max(input_image)])
+    min_img_val = np.min([np.min(input_image)])
+
+    self.adversarial_images, self.adversarial_output, mses = self.construct_class_adversarial_stimulus(input_image,
+      input_label, target_label, min_img_val, max_img_val, step_size, num_steps)
+
+    self.adversarial_input_adv_mses = mses["input_adv_mses"]
+    self.adversarial_target_output_losses = mses["target_output_losses"]
+    self.adversarial_input_image = input_image
+    self.adversarial_target_label = target_label
+
+    out_dict = {"input_image": input_image, "target_label":target_label,
+      "adversarial_images":self.adversarial_images, "adversarial_output":self.adversarial_output,
+      "step_size":step_size, "num_steps":num_steps, "input_id":input_id}
+    out_dict.update(mses)
+    np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz", data=out_dict)
+    self.analysis_logger.log_info("Adversary analysis is complete.")
+    return self.adversarial_images, self.adversarial_output, mses
