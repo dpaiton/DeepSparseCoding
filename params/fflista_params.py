@@ -15,8 +15,8 @@ class params(BaseParams):
       thresh_type  [str] "hard" or "soft" - LCA threshold function specification
     """
     super(params, self).__init__()
-    self.model_type = "lista"
-    self.model_name = "lista"
+    self.model_type = "fflista"
+    self.model_name = "fflista"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -36,7 +36,6 @@ class params(BaseParams):
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
-    self.optimizer = "annealed_sgd"
     #LCA Params
     self.num_neurons = 768
     self.num_steps = 50
@@ -45,8 +44,18 @@ class params(BaseParams):
     self.rectify_a = True
     self.norm_weights = True
     self.thresh_type = "soft"
-    #LISTA Params
-    self.num_layers = 10
+    self.optimizer = "annealed_sgd"
+    #MLP Params
+    self.layer_types = ["fc", "fc", "fc"]
+    self.output_channels = [300, 500, self.num_neurons]
+    self.patch_size_y = [None, None, None]
+    self.patch_size_x = [None, None, None]
+    self.conv_strides = [None, None, None]
+    self.batch_norm = [None, None, None]
+    self.dropout = [None, None, None]
+    self.max_pool = [False, False, False]
+    self.max_pool_ksize = [None, None, None]
+    self.max_pool_strides = [None, None, None]
     #Others
     self.cp_int = 10000
     self.val_on_cp = False
@@ -70,11 +79,11 @@ class params(BaseParams):
       #"decay_steps": int(1e4*0.5),
       #"decay_rate": 0.8,
       #"staircase": True},
-      #Training LISTA on LCA activations
+      #Training MLP on LCA activations
       {"weights": None,
       "train_lca": False,
       "num_batches": int(1e4),
-      "sparse_mult": 0.1, # should be the same as what was used for LCA
+      "sparse_mult": 0.01,
       "weight_lr": 0.01,
       "decay_steps": int(1e4*0.5),
       "decay_rate": 0.8,
@@ -90,7 +99,8 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.num_neurons = 768
-      self.num_layers = 10
+      self.thresh_type = "soft"
+      self.output_channels = [300, 500, self.num_neurons]
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
         self.schedule[sched_idx]["num_batches"] = int(1e5)
@@ -109,7 +119,8 @@ class params(BaseParams):
       self.whiten_method = "FT"
       self.extract_patches = True
       self.num_neurons = 768
-      self.num_layers = 10
+      self.output_channels = [300, 500, self.num_neurons]
+      self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
         self.schedule[sched_idx]["weight_lr"] = 0.01
@@ -123,7 +134,8 @@ class params(BaseParams):
       self.whiten_data = True
       self.extract_patches = True
       self.num_neurons = 768
-      self.num_layers = 10
+      self.output_channels = [300, 500, self.num_neurons]
+      self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
         self.schedule[sched_idx]["weight_lr"] = 0.01
@@ -140,7 +152,7 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.num_neurons = 768
-      self.num_layers = 10
+      self.output_channels = [300, 500, self.num_neurons]
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
         self.schedule[sched_idx]["weight_lr"] = 0.1

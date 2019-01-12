@@ -9,6 +9,7 @@ import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
 import params.lca_mlp_params as lca_mlp
 import params.lista_params as lista
+import params.fflista_params as fflista
 import params.gdn_autoencoder_params as ga
 import params.gdn_conv_autoencoder_params as cga
 import params.gdn_conv_decoder_params as cgd
@@ -48,6 +49,8 @@ def get_params(model_type):
     return lca_mlp.params()
   if model_type.lower() == "lista":
     return lista.params()
+  if model_type.lower() == "fflista":
+    return fflista.params()
   if model_type.lower() == "ae":
     return ae.params()
   if model_type.lower() == "sae":
@@ -62,4 +65,4 @@ def get_params(model_type):
     return cgd.params()
   if model_type.lower() == "relu_autoencoder":
     return ra.params()
-  return False
+  assert False, (model_type+" is not a supported model_type")

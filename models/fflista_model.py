@@ -3,14 +3,13 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
-import ops.init_ops as init_ops
 from models.base_model import Model
 from modules.lca_module import LcaModule
 from modules.mlp_module import MlpModule
 
-class ListaModel(Model):
+class FfListaModel(Model):
   def __init__(self):
-    super(ListaModel, self).__init__()
+    super(FfListaModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -18,12 +17,10 @@ class ListaModel(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(ListaModel, self).load_params(params)
+    super(FfListaModel, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
-    self.w_shape = [self.num_pixels, self.params.num_neurons]
-    self.s_shape = [self.params.num_neurons, self.params.num_neurons]
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
@@ -31,6 +28,14 @@ class ListaModel(Model):
     module = LcaModule(self.x, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
       self.params.num_steps, self.params.eps, name="lca")
+    return module
+
+  def build_mlp_module(self):
+    module = MlpModule(self.x, self.lca_module.a, self.params.layer_types,
+      self.params.output_channels, self.params.batch_norm, self.params.dropout,
+      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
+      self.params.eps, loss_type="l2", name="mlp")
     return module
 
   def build_graph(self):
@@ -49,34 +54,13 @@ class ListaModel(Model):
 
         self.lca_module = self.build_lca_module()
         self.trainable_variables.update(self.lca_module.trainable_variables)
-
-        with tf.name_scope("weight_inits") as scope:
-          self.w_init = tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32)
-          self.s_init = init_ops.GDNGammaInitializer(diagonal_gain=0.0, off_diagonal_gain=0.001,
-            dtype=tf.float32)
-
-        with tf.variable_scope("weights") as scope:
-          self.w = tf.get_variable(name="w_enc", shape=self.w_shape, dtype=tf.float32,
-            initializer=self.w_init, trainable=True)
-          self.s = tf.get_variable(name="lateral_connectivity", shape=self.s_shape,
-            dtype=tf.float32, initializer=self.s_init, trainable=True)
-
-        with tf.name_scope("inference") as scope:
-          feedforward_drive = tf.matmul(self.x, self.w, name="feedforward_drive")
-          self.a_list = [self.lca_module.threshold_units(feedforward_drive, name="a_init")]
-          for layer_id in range(self.params.num_layers):
-            self.a_list.append(self.lca_module.threshold_units(feedforward_drive
-              + tf.matmul(self.s, self.a_list[layer_id])))
-          self.a = self.a_list[-1]
+        self.mlp_module = self.build_mlp_module()
+        self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.name_scope("loss") as scope:
-          reduc_dim = list(range(1, len(self.lca_module.a.shape)))
-          labels = tf.stop_gradient(self.lca_module.a)
-          self.lista_loss = tf.reduce_mean(tf.reduce_sum(tf.square(labels - self.a),
-            axis=reduc_dim))
           #Loss switches based on train_lca flag
           self.total_loss = self.train_lca * self.lca_module.total_loss + \
-            (1-self.train_lca) * self.lista_loss
+            (1-self.train_lca) * self.mlp_module.total_loss
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.lca_module.norm_w, name="l2_normalization")
@@ -103,7 +87,7 @@ class ListaModel(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(ListaModel, self).generate_update_dict(input_data, input_labels, batch_step)
+    update_dict = super(FfListaModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.lca_module.loss_dict["recon_loss"],
       self.lca_module.loss_dict["sparse_loss"], self.get_total_loss(),
@@ -165,7 +149,7 @@ class ListaModel(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(ListaModel, self).generate_plots(input_data, input_labels)
+    super(FfListaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.lca_module.w,
       self.lca_module.reconstruction, self.lca_module.a, self.get_encodings()]
