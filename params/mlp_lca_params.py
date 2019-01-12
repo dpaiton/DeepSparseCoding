@@ -81,13 +81,24 @@ class params(BaseParams):
       #"decay_steps": int(1e4*0.5),#[int(1e4*0.5)],
       #"decay_rate": 0.8,#[0.8],
       #"staircase": True},
-      #Training MLP on LCA activations
-      {"weights": None,
+      #Training MLP on LCA recons
+      #Only training MLP weights, not VAE
+      #TODO change weight names
+      {"weights": [
+        "layer0/conv_w_0:0",
+        "layer0/conv_b_0:0",
+        "layer1/conv_w_1:0",
+        "layer1/conv_b_1:0",
+        "layer2/fc_w_2:0",
+        "layer2/fc_b_2:0",
+        "layer3/fc_w_3:0",
+        "layer3/fc_b_3:0"
+        ],
       "train_lca": False,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
       "weight_lr": 0.01,
-      "decay_steps": int(1e4*0.5),
+      "decay_steps": int(1e4*0.8),
       "decay_rate": 0.8,
       "staircase": True},
       ]
@@ -98,6 +109,7 @@ class params(BaseParams):
       self.model_name += "_mnist"
       self.vectorize_data = True
       self.rescale_data = True
+      self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
       # LCA params
@@ -118,7 +130,7 @@ class params(BaseParams):
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
       # NOTE schedule index will change if lca training is happening
-      self.schedule[0]["num_batches"] = 2e4
+      self.schedule[0]["num_batches"] = int(2e4)
       self.schedule[0]["sparse_mult"] = 0.21
       self.schedule[0]["weight_lr"] = 1e-4
       self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])

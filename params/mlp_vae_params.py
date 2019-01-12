@@ -56,7 +56,18 @@ class params(BaseParams):
     self.cp_load_name = "vae_two_layer_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
-    self.cp_load_var = None # all variables
+    self.cp_load_var = [
+        "w_enc_2_std:0",
+        "b_enc_2_std:0",
+        "layer0/w_0:0",
+        "layer0/b_0:0",
+        "layer1/w_1:0",
+        "layer1/b_1:0",
+        "layer3/w_3:0",
+        "layer3/b_3:0",
+        "layer4/w_4:0",
+        "layer4/b_4:0",
+        ]
     self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 10000
@@ -73,8 +84,20 @@ class params(BaseParams):
       #"decay_steps": int(3e5*0.8),
       #"decay_rate": 0.8,
       #"staircase": True},
-      #Training MLP on LCA activations
-      {"weights": None,
+      #Training MLP on VAE recon
+      #Only training MLP weights, not VAE
+      #TODO change weight names
+      #TODO make option to train only mlp weights in schedule
+      {"weights": [
+        "layer0/conv_w_0:0",
+        "layer0/conv_b_0:0",
+        "layer1/conv_w_1:0",
+        "layer1/conv_b_1:0",
+        "layer2/fc_w_2:0",
+        "layer2/fc_b_2:0",
+        "layer3/fc_w_3:0",
+        "layer3/fc_b_3:0"
+        ],
       "train_vae": False,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
@@ -111,7 +134,7 @@ class params(BaseParams):
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
       # NOTE schedule index will change if lca training is happening
-      self.schedule[0]["num_batches"] = 2e4
+      self.schedule[0]["num_batches"] = int(2e4)
       self.schedule[0]["sparse_mult"] = 0.21
       self.schedule[0]["weight_lr"] = 1e-4
       self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])

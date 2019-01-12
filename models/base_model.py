@@ -29,6 +29,17 @@ class Model(object):
 
     self.construct_savers()
 
+  def check_schedule_type(self, val, target_type, target_len):
+    if (type(val) == list):
+      assert len(val) == target_len
+      out_val = val
+    else: #scalar is used
+      out_val = [val,] * target_len
+    #Check type
+    for v in out_val:
+      assert type(val) == target_type
+    return out_val
+
   def load_schedule(self, schedule):
     """
     Load schedule into object
@@ -36,27 +47,21 @@ class Model(object):
      schedule: [list of dict] learning schedule
     """
     for sched in schedule:
+      assert type(sched["num_batches"]) == int
       if sched["weights"] is not None: # schedule specificies specific variables for trainable vars
         assert type(sched["weights"]) == list
-        assert type(sched["weight_lr"]) == list
-        assert type(sched["decay_steps"]) == list
-        assert type(sched["decay_rate"]) == list
-        assert type(sched["staircase"]) == list
-        assert type(sched["num_batches"]) == int
-        assert len(sched["weights"]) == len(sched["weight_lr"])
-        assert len(sched["weights"]) == len(sched["decay_steps"])
-        assert len(sched["weights"]) == len(sched["decay_rate"])
-        assert len(sched["weights"]) == len(sched["staircase"])
       else: # scalar is used
-        assert type(sched["weight_lr"]) == float
-        assert type(sched["decay_steps"]) == int
-        assert type(sched["decay_rate"]) == float
-        assert type(sched["staircase"]) == bool
+        #assert type(sched["weight_lr"]) == float
+        #assert type(sched["decay_steps"]) == int
+        #assert type(sched["decay_rate"]) == float
+        #assert type(sched["staircase"]) == bool
         sched["weights"] = self.get_trainable_variable_names()
-        sched["weight_lr"] = [sched["weight_lr"],]*len(sched["weights"])
-        sched["decay_steps"] = [sched["decay_steps"],]*len(sched["weights"])
-        sched["decay_rate"] = [sched["decay_rate"],]*len(sched["weights"])
-        sched["staircase"] = [sched["staircase"],]*len(sched["weights"])
+
+      target_len = len(sched["weights"])
+      sched["weight_lr"] = self.check_schedule_type(sched["weight_lr"], float, target_len)
+      sched["decay_steps"] = self.check_schedule_type(sched["decay_steps"], int, target_len)
+      sched["decay_rate"] = self.check_schedule_type(sched["decay_rate"], float, target_len)
+      sched["staircase"] = self.check_schedule_type(sched["staircase"], bool, target_len)
 
   def get_trainable_variable_names(self):
     return list(self.trainable_variables.keys())

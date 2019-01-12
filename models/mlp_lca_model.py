@@ -190,41 +190,38 @@ class MlpLcaModel(Model):
       input_labels: data object containing the current label batch
     """
     super(MlpLcaModel, self).generate_plots(input_data, input_labels)
-    if self.get_schedule("train_lca"):
-      feed_dict = self.get_feed_dict(input_data, input_labels)
-      eval_list = [self.global_step, self.lca_module.w,
-        self.lca_module.reconstruction, self.lca_module.a]
-      eval_out = tf.get_default_session().run(eval_list, feed_dict)
-      current_step = str(eval_out[0])
-      weights, recon, lca_activity = eval_out[1:]
-      weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
-      recon = dp.reshape_data(recon, flatten=False)[0]
-      weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
-      fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-        save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
-        +current_step.zfill(5)+".png"))
-      #Scale image by max and min of images and/or recon
-      r_max = np.max([np.max(input_data), np.max(recon)])
-      r_min = np.min([np.min(input_data), np.min(recon)])
-      name_suffix = "_v"+self.params.version+"-"+current_step.zfill(5)+".png"
-      input_data = dp.reshape_data(input_data, flatten=False)[0]
-      fig = pf.plot_data_tiled(input_data, normalize=False,
-        title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
-        save_filename=(self.params.disp_dir+"images" + name_suffix))
-      fig = pf.plot_data_tiled(recon, normalize=False,
-        title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
-        save_filename=(self.params.disp_dir+"recons" + name_suffix))
-      fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
-        save_filename=(self.params.disp_dir+"lca_act_hist" + name_suffix))
-      fig = pf.plot_data_tiled(weights, normalize=False,
-        title="Dictionary at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.params.disp_dir+"phi" + name_suffix))
-    else:
-      feed_dict = self.get_feed_dict(input_data, input_labels)
-      eval_list = [self.global_step, self.get_encodings()] # how to get first layer weights?
-      eval_out = tf.get_default_session().run(eval_list, feed_dict)
-      current_step = str(eval_out[0])
-      activity = eval_out[1]
-      fig = pf.plot_activity_hist(activity, title="Logit Histogram",
-        save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
-        +current_step.zfill(5)+".png"))
+
+    feed_dict = self.get_feed_dict(input_data, input_labels)
+    eval_list = [self.global_step, self.lca_module.w,
+      self.lca_module.reconstruction, self.lca_module.a, self.get_encodings()]
+    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    current_step = str(eval_out[0])
+    weights, recon, lca_activity, activity = eval_out[1:]
+    fig = pf.plot_activity_hist(input_data, title="Image Histogram",
+      save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
+    fig = pf.plot_activity_hist(recon, title="Recon Histogram",
+      save_filename=(self.params.disp_dir+"recon_hist_"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
+    weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
+    recon = dp.reshape_data(recon, flatten=False)[0]
+    weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
+    #Scale image by max and min of images and/or recon
+    r_max = np.max([np.max(input_data), np.max(recon)])
+    r_min = np.min([np.min(input_data), np.min(recon)])
+    name_suffix = "_v"+self.params.version+"-"+current_step.zfill(5)+".png"
+    input_data = dp.reshape_data(input_data, flatten=False)[0]
+    fig = pf.plot_data_tiled(input_data, normalize=False,
+      title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
+      save_filename=(self.params.disp_dir+"images" + name_suffix))
+    fig = pf.plot_data_tiled(recon, normalize=False,
+      title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
+      save_filename=(self.params.disp_dir+"recons" + name_suffix))
+    fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
+      save_filename=(self.params.disp_dir+"lca_act_hist" + name_suffix))
+    fig = pf.plot_data_tiled(weights, normalize=False,
+      title="Dictionary at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.params.disp_dir+"phi" + name_suffix))
+    fig = pf.plot_activity_hist(activity, title="Logit Histogram",
+      save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
