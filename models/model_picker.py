@@ -1,5 +1,7 @@
 import params.param_picker as pp
 from models.mlp_model import MlpModel as mlp
+from models.mlp_lca_model import MlpLcaModel as mlp_lca
+from models.mlp_vae_model import MlpVaeModel as mlp_vae
 from models.ica_model import IcaModel as ica
 from models.ica_pca_model import IcaPcaModel as ica_pca
 from models.rica_model import RicaModel as rica
@@ -8,7 +10,6 @@ from models.lca_pca_model import LcaPcaModel as lca_pca
 from models.lca_pca_fb_model import LcaPcaFbModel as lca_pca_fb
 from models.lca_subspace_model import LcaSubspaceModel as lca_subspace
 from models.lca_conv_model import LcaConvModel as lca_conv
-from models.lca_mlp_model import LcaMlpModel as lca_mlp
 from models.fflista_model import FfListaModel as fflista
 from models.lista_model import ListaModel as lista
 from models.gdn_autoencoder_model import GdnAutoencoderModel as ga
@@ -22,6 +23,10 @@ from models.sae_model import SaeModel as sae
 def get_model(model_type):
   if model_type.lower() == "mlp":
     return mlp()
+  if model_type.lower() == "mlp_lca":
+    return mlp_lca()
+  if model_type.lower() == "mlp_vae":
+    return mlp_vae()
   if model_type.lower() == "ica":
     return ica()
   if model_type.lower() == "ica_pca":
@@ -36,8 +41,6 @@ def get_model(model_type):
     return lca_pca_fb()
   if model_type.lower() == "lca_conv":
     return lca_conv()
-  if model_type.lower() == "lca_mlp":
-    return lca_mlp()
   if model_type.lower() == "lca_subspace":
     return lca_subspace()
   if model_type.lower() == "lista":
@@ -60,7 +63,7 @@ def get_model(model_type):
     return vae()
 
 def get_model_list():
-  model_list = ["mlp", "ica", "ica_pca", "rica", "lca", "lca_pca", "lca_pca_fb", "lca_conv",
-    "lca_mlp", "lca_subspace", "lista", "fflista", "gdn_autoencoder", "gdn_conv_autoencoder",
-    "gdn_conv_decoder", "relu_autoencoder", "ae", "sae", "vae"]
+  model_list = ["mlp", "mlp_lca", "mlp_vae", "ica", "ica_pca", "rica", "lca", "lca_pca",
+    "lca_pca_fb", "lca_conv", "lca_subspace", "lista", "fflista", "gdn_autoencoder",
+    "gdn_conv_autoencoder", "gdn_conv_decoder", "relu_autoencoder", "ae", "sae", "vae"]
   return model_list

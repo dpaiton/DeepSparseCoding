@@ -7,9 +7,12 @@ from models.base_model import Model
 from modules.lca_module import LcaModule
 from modules.mlp_module import MlpModule
 
-class LcaMlpModel(Model):
+class MlpLcaModel(Model):
   def __init__(self):
-    super(LcaMlpModel, self).__init__()
+    """
+    MLP trained on the reconstruction from LCA
+    """
+    super(MlpLcaModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -17,7 +20,7 @@ class LcaMlpModel(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(LcaMlpModel, self).load_params(params)
+    super(MlpLcaModel, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
@@ -28,7 +31,7 @@ class LcaMlpModel(Model):
   def build_lca_module(self):
     module = LcaModule(self.x, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name="lca")
+      self.params.num_steps, self.params.eps, name="LCA")
     return module
 
   def build_mlp_module(self):
@@ -44,7 +47,7 @@ class LcaMlpModel(Model):
         self.params.output_channels, self.params.batch_norm, self.params.dropout,
         self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
         self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-        self.params.eps, loss_type="softmax_cross_entropy", name="mlp")
+        self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
     else: # train on LCA latent encoding
       assert self.params.layer_types[0] == "fc", (
         "MLP must have FC layers to train on LCA activity")
@@ -52,7 +55,7 @@ class LcaMlpModel(Model):
         self.params.output_channels, self.params.batch_norm, self.params.dropout,
         self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
         self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-        self.params.eps, loss_type="softmax_cross_entropy", name="mlp")
+        self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
     return module
 
   def build_graph(self):
@@ -113,7 +116,8 @@ class LcaMlpModel(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(LcaMlpModel, self).generate_update_dict(input_data, input_labels, batch_step)
+    update_dict = super(MlpLcaModel, self).generate_update_dict(input_data, input_labels,
+      batch_step)
     if self.get_schedule("train_lca"):
       feed_dict = self.get_feed_dict(input_data, input_labels)
       eval_list = [self.global_step, self.lca_module.loss_dict["recon_loss"],
@@ -185,7 +189,7 @@ class LcaMlpModel(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(LcaMlpModel, self).generate_plots(input_data, input_labels)
+    super(MlpLcaModel, self).generate_plots(input_data, input_labels)
     if self.get_schedule("train_lca"):
       feed_dict = self.get_feed_dict(input_data, input_labels)
       eval_list = [self.global_step, self.lca_module.w,

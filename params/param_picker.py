@@ -1,4 +1,6 @@
 import params.mlp_params as mlp
+import params.mlp_lca_params as mlp_lca
+import params.mlp_vae_params as mlp_vae
 import params.ica_params as ica
 import params.ica_pca_params as ica_pca
 import params.rica_params as rica
@@ -7,7 +9,6 @@ import params.lca_pca_params as lca_pca
 import params.lca_pca_fb_params as lca_pca_fb
 import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
-import params.lca_mlp_params as lca_mlp
 import params.lista_params as lista
 import params.fflista_params as fflista
 import params.gdn_autoencoder_params as ga
@@ -29,6 +30,10 @@ Outputs:
 def get_params(model_type):
   if model_type.lower() == "mlp":
     return mlp.params()
+  if model_type.lower() == "mlp_lca":
+    return mlp_lca.params()
+  if model_type.lower() == "mlp_vae":
+    return mlp_vae.params()
   if model_type.lower() == "ica":
     return ica.params()
   if model_type.lower() == "ica_pca":
@@ -45,8 +50,6 @@ def get_params(model_type):
     return lca_subspace.params()
   if model_type.lower() == "lca_conv":
     return lca_conv.params()
-  if model_type.lower() == "lca_mlp":
-    return lca_mlp.params()
   if model_type.lower() == "lista":
     return lista.params()
   if model_type.lower() == "fflista":

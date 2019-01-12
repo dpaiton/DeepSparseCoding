@@ -15,8 +15,8 @@ class params(BaseParams):
       thresh_type  [str] "hard" or "soft" - LCA threshold function specification
     """
     super(params, self).__init__()
-    self.model_type = "lca_mlp"
-    self.model_name = "lca_mlp"
+    self.model_type = "mlp_lca"
+    self.model_name = "mlp_lca"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -36,7 +36,7 @@ class params(BaseParams):
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
-    #LCA Params
+    # LCA Params
     self.num_neurons = 768
     self.num_steps = 50
     self.dt = 0.001
@@ -45,7 +45,7 @@ class params(BaseParams):
     self.norm_weights = True
     self.thresh_type = "soft"
     self.optimizer = "annealed_sgd"
-    #MLP Params
+    # MLP Params
     self.train_on_recon = True # if False, train on LCA latent activations
     self.num_classes = 10
     self.layer_types = ["fc", "fc", "fc"]
@@ -58,7 +58,7 @@ class params(BaseParams):
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
-    #Others
+    # Others
     self.cp_int = 10000
     self.val_on_cp = True
     self.max_cp_to_keep = None
@@ -75,7 +75,6 @@ class params(BaseParams):
       #Training LCA
       #{"weights": None, #["weights/w:0"],
       #"train_lca": True,
-      #"batch_norm_decay_mult": 0.4,
       #"num_batches": int(1e4),
       #"sparse_mult": 0.1,
       #"weight_lr": 0.01,#[0.01],
