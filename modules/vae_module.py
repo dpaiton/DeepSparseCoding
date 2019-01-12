@@ -72,8 +72,10 @@ class VaeModule(AeModule):
       self.b_enc_std)
     #Calculate latent - std is in log(std**2) space
     noise  = tf.random_normal(tf.shape(self.latent_std_activation))
-    self.u_list.append(tf.multiply(tf.add(self.latent_mean_activation,
-      tf.sqrt(tf.exp(self.latent_std_activation))), noise, name="activity"))
+    act = self.latent_mean_activation + tf.sqrt(tf.exp(self.latent_std_activation)) * noise
+    #Add name to act
+    act = tf.identity(act, name="activity")
+    self.u_list.append(act)
 
     self.a = self.u_list[-1]
 
