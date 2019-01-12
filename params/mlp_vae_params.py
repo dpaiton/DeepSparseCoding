@@ -31,7 +31,7 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     # VAE Params
-    self.output_channels = [512, 50]
+    self.vae_output_channels = [512, 50]
     self.latent_act_func = "relu"
     self.noise_level = 0.0 # variance of noise added to the input data
     self.optimizer = "adam"
@@ -39,7 +39,7 @@ class params(BaseParams):
     self.train_on_recon = True # if False, train on LCA latent activations
     self.num_classes = 10
     self.layer_types = ["fc", "fc", "fc"]
-    self.output_channels = [300, 500, self.num_classes]
+    self.mlp_output_channels = [300, 500, self.num_classes]
     self.patch_size_y = [None, None, None]
     self.patch_size_x = [None, None, None]
     self.conv_strides = [None, None, None]

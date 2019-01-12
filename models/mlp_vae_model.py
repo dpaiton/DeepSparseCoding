@@ -28,7 +28,7 @@ class MlpVaeModel(Model):
     self.act_func = tf.nn.relu # TODO: activation_picker(self.params.activation_function)
 
   def build_vae_module(self):
-    module = VaeModule(self.x, self.params.output_channels, self.sparse_mult,
+    module = VaeModule(self.x, self.params.vae_output_channels, self.sparse_mult,
       self.decay_mult, self.kld_mult, self.act_func, self.params.noise_level, name="VAE")
     return module
 
@@ -42,7 +42,7 @@ class MlpVaeModel(Model):
       else:
         assert False, ("params.layer_types must be 'fc' or 'conv'")
       module = MlpModule(recon, self.y, self.params.layer_types,
-        self.params.output_channels, self.params.batch_norm, self.params.dropout,
+        self.params.mlp_output_channels, self.params.batch_norm, self.params.dropout,
         self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
         self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
         self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
