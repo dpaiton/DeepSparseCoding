@@ -232,9 +232,9 @@ class Analyzer(object):
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.adversarial_input_image = data["input_image"]
-      self.adversarial_target_class = data["target_class"]
+      self.adversarial_target_class = data["target_label"]
       self.adversarial_images = data["adversarial_images"]
-      self.adversarial_output = data["adversarial_output"]
+      self.adversarial_outputs = data["adversarial_outputs"]
       self.analysis_params.adversarial_step_size = data["step_size"]
       self.analysis_params.adversarial_num_steps = data["num_steps"]
       self.analysis_params.adversarial_input_id = data["input_id"]
@@ -893,14 +893,14 @@ class Analyzer(object):
           #Cross entropy loss
           #Copying this here as opposed to getting model's total loss
           #in case regularizers get added to the total loss
+
+          #go in opposite direction
           self.model.adv_loss_no_target = tf.reduce_mean(
-            -tf.reduce_sum(tf.multiply(self.model.y, tf.log(tf.clip_by_value(
+            tf.reduce_sum(tf.multiply(self.model.y, tf.log(tf.clip_by_value(
             self.model.y_, 1e-8, 1.0))), axis=reduc_dim)
             )
 
-          #Negative here because we actually want to step in the direction
-          #of this gradient
-          self.model.adv_loss_target = -tf.reduce_mean(
+          self.model.adv_loss_target = tf.reduce_mean(
             -tf.reduce_sum(tf.multiply(self.model.adv_target, tf.log(tf.clip_by_value(
             self.model.y_, 1e-8, 1.0))), axis=reduc_dim)
             )
@@ -985,13 +985,16 @@ class Analyzer(object):
     save_info=""):
     input_image = images[input_id, ...][None,...].astype(np.float32)
     input_label = labels[input_id, ...][None,...].astype(np.float32)
-    if(target_label is not None):
-      target_label = target_label[input_id, ...][None,...].astype(np.float32)
+
+    #TODO allow for target label
+    assert (target_label is None), ("Target label not implemented yet")
+    #if(target_label is not None):
+    #  target_label = target_label[input_id, ...][None,...].astype(np.float32)
 
     max_img_val = np.max([np.max(input_image)])
     min_img_val = np.min([np.min(input_image)])
 
-    self.adversarial_images, self.adversarial_output, mses = self.construct_class_adversarial_stimulus(input_image,
+    self.adversarial_images, self.adversarial_outputs, mses = self.construct_class_adversarial_stimulus(input_image,
       input_label, target_label, min_img_val, max_img_val, step_size, num_steps)
 
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
@@ -1000,9 +1003,9 @@ class Analyzer(object):
     self.adversarial_target_label = target_label
 
     out_dict = {"input_image": input_image, "target_label":target_label,
-      "adversarial_images":self.adversarial_images, "adversarial_output":self.adversarial_output,
+      "adversarial_images":self.adversarial_images, "adversarial_outputs":self.adversarial_outputs,
       "step_size":step_size, "num_steps":num_steps, "input_id":input_id}
     out_dict.update(mses)
     np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz", data=out_dict)
     self.analysis_logger.log_info("Adversary analysis is complete.")
-    return self.adversarial_images, self.adversarial_output, mses
+    return self.adversarial_images, self.adversarial_outputs, mses
