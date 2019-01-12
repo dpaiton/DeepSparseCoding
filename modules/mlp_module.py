@@ -180,10 +180,6 @@ class MlpModule(object):
     Build an MLP TensorFlow Graph.
     """
     with tf.name_scope(self.name) as scope:
-      with tf.name_scope("constants") as scope:
-        ## For semi-supervised learning, loss is 0 if there is no label
-        self.label_mult = tf.reduce_sum(self.label_tensor, axis=[1])
-
       with tf.name_scope("weight_inits") as scope:
         self.w_init = tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32)
         self.b_init = tf.initializers.constant(0.1, dtype=tf.float32)
@@ -198,26 +194,27 @@ class MlpModule(object):
         with tf.name_scope("supervised"):
           with tf.name_scope(self.loss_type):
             if(self.loss_type == "softmax_cross_entropy"):
+              ## For semi-supervised learning, loss is 0 if there is no label
+              self.label_mult = tf.reduce_sum(self.label_tensor, axis=[1]) # vector with len [batch]
               self.cross_entropy_loss = (self.label_mult
                 * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
-                self.y_, self.eps, 1.0))), axis=[1]))
+                self.y_, self.eps, 1.0))), axis=[1])) # vector with len [batch]
               #Doing this to avoid divide by zero
-              label_count = tf.reduce_sum(self.label_mult)
-              f1 = lambda: tf.reduce_sum(self.cross_entropy_loss)
+              label_count = tf.reduce_sum(self.label_mult) # number of non-ignore labels in batch
+              f1 = lambda: tf.zeros_like(self.cross_entropy_loss)
               f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
               pred_fn_pairs = {
-                tf.equal(label_count, tf.constant(0.0)): f1,
-                tf.greater(label_count, tf.constant(0.0)): f2}
-              self.loss = tf.case(pred_fn_pairs,
+                tf.equal(label_count, tf.constant(0.0)): f1, # all labels are 'ignore'
+                tf.greater(label_count, tf.constant(0.0)): f2} # mean over non-ignore labels
+              self.mean_loss = tf.case(pred_fn_pairs,
                 default=f2, exclusive=True, name="mean_cross_entropy_loss")
             elif(self.loss_type == "l2"):
               # Want to avg over batch, sum over the rest
               reduc_dim = list(range(1, len(self.label_tensor.shape)))
-              #Label_tensor sometimes can depend on trainable variables
-              #Stop that here
+              # Label_tensor sometimes can depend on trainable variables
               labels = tf.stop_gradient(self.label_tensor)
-              self.loss = tf.reduce_mean(
+              self.mean_loss = tf.reduce_mean(
                 tf.reduce_sum(tf.square(labels - self.layer_list[-1]),
                 axis=reduc_dim))
-          self.supervised_loss = self.loss
+          self.supervised_loss = self.mean_loss
         self.total_loss = self.supervised_loss

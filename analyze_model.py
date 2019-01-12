@@ -24,9 +24,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = True
+    self.do_recon_adversaries = False
     #Classification adversarial image analysis
-    self.do_class_adversaries = False
+    self.do_class_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -55,10 +55,10 @@ class params(object):
     # Number of adversarial image updates
     self.adversarial_num_steps = 1000
     # Step size for adversarial attacks
-    self.adversarial_step_size = 0.005
-    #Attack method for adversarial attack, kurakin or carlini
-    self.adversarial_attack_method = "carlini"
-    #self.adversarial_attack_method = "kurakin"
+    self.adversarial_step_size = 0.0001
+    #Attack method for adversarial attack, kurakin (iterative fsg) or carlini
+    #self.adversarial_attack_method = "carlini"
+    self.adversarial_attack_method = "kurakin"
     #Flag to define if adversarial example can go beyond image range
     self.adversarial_clip = True
     #Recon_mult tradeoff for carlini attack method

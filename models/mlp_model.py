@@ -34,13 +34,13 @@ class MlpModel(Model):
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
-        self.mlp = MlpModule(self.x, self.y, self.params.layer_types,
+        self.mlp_module = MlpModule(self.x, self.y, self.params.layer_types,
           self.params.output_channels, self.params.batch_norm, self.params.dropout,
           self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
           self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-          self.params.eps, name="mlp")
-        self.trainable_variables.update(self.mlp.trainable_variables)
-        self.y_ = self.mlp.y_
+          self.params.eps, name="MLP")
+        self.trainable_variables.update(self.mlp_module.trainable_variables)
+        self.y_ = self.mlp_module.y_
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("prediction_bools"):
@@ -51,10 +51,10 @@ class MlpModel(Model):
               tf.float32), name="avg_accuracy")
 
   def get_encodings(self):
-    return self.mlp.layer_list[-1]
+    return self.mlp_module.layer_list[-1]
 
   def get_total_loss(self):
-    return self.mlp.total_loss
+    return self.mlp_module.total_loss
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """

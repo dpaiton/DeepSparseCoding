@@ -39,7 +39,7 @@ class Analyzer(object):
     # Load or create analysis params log
     self.analysis_out_dir = input_params.model_dir+"/analysis/"+input_params.version+"/"
     self.make_dirs() # If analysis log does not exist then we want to make the folder first
-    self.analysis_log_file = self.analysis_out_dir+"/logfiles/analysis.log"
+    self.analysis_log_file = (self.analysis_out_dir+"/logfiles/"+input_params.save_info+".log")
     if input_params.overwrite_analysis_log:
       if os.path.exists(self.analysis_log_file):
         os.remove(self.analysis_log_file)
@@ -790,7 +790,6 @@ class Analyzer(object):
     else:
       assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
-
     mses = {"input_target_mse":[], "input_recon_mses":[],
     "input_adv_mses":[], "target_recon_mses":[],
     "target_adv_mses":[], "adv_recon_mses":[]}
@@ -885,25 +884,15 @@ class Analyzer(object):
             name="original_input_data")
           self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.y_shape,
             name="adversarial_target")
-
           #self.model.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+
         with tf.name_scope("loss") as scope:
-          # Want to avg over batch, sum over the rest
-          reduc_dim = list(range(1, len(self.model.get_encodings().shape)))
-          #Cross entropy loss
-          #Copying this here as opposed to getting model's total loss
-          #in case regularizers get added to the total loss
+          self.model.adv_loss_no_target = tf.negative(self.model.mlp_module.mean_loss)
 
-          #go in opposite direction
-          self.model.adv_loss_no_target = tf.reduce_mean(
-            tf.reduce_sum(tf.multiply(self.model.y, tf.log(tf.clip_by_value(
-            self.model.y_, 1e-8, 1.0))), axis=reduc_dim)
-            )
-
+          reduc_dim = list(range(1, len(self.model.get_encodings().shape))) # sum over all but batch
           self.model.adv_loss_target = tf.reduce_mean(
             -tf.reduce_sum(tf.multiply(self.model.adv_target, tf.log(tf.clip_by_value(
-            self.model.y_, 1e-8, 1.0))), axis=reduc_dim)
-            )
+            self.model.y_, self.model_params.eps, 1.0))), axis=reduc_dim))
 
           self.model.input_pert_loss = tf.reduce_mean(0.5 *
             tf.reduce_sum(tf.square(tf.subtract(self.model.orig_input,
@@ -979,10 +968,12 @@ class Analyzer(object):
       mses["target_output_losses"] = target_output_losses
     return adversarial_images, outputs, mses
 
-  #Target_label can be None for "no target" or a tensor where first dimension is same
-  #as image dimensions with each as the target label
-  def class_adversary_analysis(self, images, labels, target_label=None, input_id=0, step_size=0.01, num_steps=100,
-    save_info=""):
+  def class_adversary_analysis(self, images, labels, target_label=None, input_id=0, step_size=0.01,
+    num_steps=100, save_info=""):
+    """
+    Target_label can be None for "no target" or a tensor where first dimension is same
+    as image dimensions with each as the target label
+    """
     input_image = images[input_id, ...][None,...].astype(np.float32)
     input_label = labels[input_id, ...][None,...].astype(np.float32)
 

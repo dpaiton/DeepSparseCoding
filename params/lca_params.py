@@ -56,13 +56,13 @@ class params(BaseParams):
     self.gen_plot_int = int(1e3)
     self.save_plots = True
     self.schedule = [
-      {"weights": ["weights/w:0"],
+      {"weights": None,#["weights/w:0"],
       "num_batches": int(1e4),
       "sparse_mult": 0.1,
-      "weight_lr": [0.01],
-      "decay_steps": [int(1e4*0.5)],
-      "decay_rate": [0.8],
-      "staircase": [True]}]
+      "weight_lr": 0.01,
+      "decay_steps": int(1e4*0.5),
+      "decay_rate": 0.8,
+      "staircase": True}]
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -75,10 +75,11 @@ class params(BaseParams):
       self.num_neurons = 768
       self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.21
-        self.schedule[sched_idx]["weight_lr"] = [0.1]
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
-        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+        self.schedule[sched_idx]["sparse_mult"] = 0.25
+        self.schedule[sched_idx]["weight_lr"] = 0.1
+        self.schedule[sched_idx]["num_batches"] = int(2e5)
+        self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.5
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
@@ -92,9 +93,9 @@ class params(BaseParams):
       self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
-        self.schedule[sched_idx]["weight_lr"] = [0.01]
+        self.schedule[sched_idx]["weight_lr"] = 0.01
         self.schedule[sched_idx]["num_batches"] = int(2e5)
-        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
 
     elif data_type.lower() == "field":
       self.model_name += "_field"
@@ -106,9 +107,9 @@ class params(BaseParams):
       self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
-        self.schedule[sched_idx]["weight_lr"] = [0.01]
+        self.schedule[sched_idx]["weight_lr"] = 0.01
         self.schedule[sched_idx]["num_batches"] = int(2e5)
-        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -122,9 +123,9 @@ class params(BaseParams):
       self.num_neurons = 768
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
-        self.schedule[sched_idx]["weight_lr"] = [0.1]
+        self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["num_batches"] = int(1e5)
-        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
 
     else:
       assert False, ("Data type "+data_type+" is not supported.")
@@ -136,6 +137,6 @@ class params(BaseParams):
     self.num_edge_pixels = 8
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
-      self.schedule[sched_idx]["weight_lr"] = [1e-4]
+      self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.num_neurons = 100
     self.num_steps = 5
