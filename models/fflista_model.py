@@ -7,9 +7,9 @@ from models.base_model import Model
 from modules.lca_module import LcaModule
 from modules.mlp_module import MlpModule
 
-class ListaModel(Model):
+class FfListaModel(Model):
   def __init__(self):
-    super(ListaModel, self).__init__()
+    super(FfListaModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -17,7 +17,7 @@ class ListaModel(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(ListaModel, self).load_params(params)
+    super(FfListaModel, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
@@ -87,7 +87,7 @@ class ListaModel(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(ListaModel, self).generate_update_dict(input_data, input_labels, batch_step)
+    update_dict = super(FfListaModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.lca_module.loss_dict["recon_loss"],
       self.lca_module.loss_dict["sparse_loss"], self.get_total_loss(),
@@ -149,7 +149,7 @@ class ListaModel(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(ListaModel, self).generate_plots(input_data, input_labels)
+    super(FfListaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.lca_module.w,
       self.lca_module.reconstruction, self.lca_module.a, self.get_encodings()]

@@ -15,8 +15,8 @@ class params(BaseParams):
       thresh_type  [str] "hard" or "soft" - LCA threshold function specification
     """
     super(params, self).__init__()
-    self.model_type = "lista"
-    self.model_name = "lista"
+    self.model_type = "fflista"
+    self.model_name = "fflista"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
