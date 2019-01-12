@@ -5,6 +5,10 @@ from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import linalg_ops_impl
 
 class GDNGammaInitializer(init_ops.Initializer):
+  """
+  Diagonal matrix with specified diagonal gain & off diagonal gain
+  TODO: Change name to something more descriptive
+  """
   def __init__(self, diagonal_gain=1.0, off_diagonal_gain=0.0, dtype=dtypes.float32):
     self.diagonal_gain = diagonal_gain
     self.off_diagonal_gain = off_diagonal_gain

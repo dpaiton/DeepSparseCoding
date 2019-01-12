@@ -54,25 +54,25 @@ class LcaModule(object):
    return (tf.matmul(tf.transpose(self.w), self.w, name="gram_matrix")
      - tf.constant(np.identity(self.w_shape[1], dtype=np.float32), name="identity_matrix"))
 
-  def threshold_units(self, u_in):
+  def threshold_units(self, u_in, name=None):
     if self.thresh_type == "soft":
       if self.rectify_a:
         a_out = tf.where(tf.greater(u_in, self.sparse_mult),
-          tf.subtract(u_in, self.sparse_mult), self.u_zeros)
+          tf.subtract(u_in, self.sparse_mult), self.u_zeros, name=name)
       else:
         a_out = tf.where(tf.greater_equal(u_in, self.sparse_mult),
           tf.subtract(u_in, self.sparse_mult),
           tf.where(tf.less_equal(u_in, -self.sparse_mult),
           tf.add(u_in, self.sparse_mult),
-          self.u_zeros))
+          self.u_zeros), name=name)
     elif self.thresh_type == "hard":
       if self.rectify_a:
-        a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in, self.u_zeros)
+        a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in, self.u_zeros, name=name)
       else:
         a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
-          tf.where(tf.less(u_in, -self.sparse_mult), u_in, self.u_zeros))
+          tf.where(tf.less(u_in, -self.sparse_mult), u_in, self.u_zeros), name=name)
     else:
-      a_out = tf.identity(u_in)
+      a_out = tf.identity(u_in, name=name)
     return a_out
 
   def step_inference(self, u_in, a_in, b, g, step):
