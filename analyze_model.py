@@ -1,15 +1,14 @@
 import os
 import numpy as np
+import argparse
 import tensorflow as tf
-import data.data_selector as ds
 import utils.data_processing as dp
+import data.data_selector as ds
+import models.model_picker as mp
 import analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
-    self.model_type = "mlp"
-    self.model_name = "mlp_mnist"
-    self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
     # If false, append to log file
@@ -25,9 +24,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False
+    self.do_recon_adversaries = True
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -58,8 +57,8 @@ class params(object):
     # Step size for adversarial attacks
     self.adversarial_step_size = 0.005
     #Attack method for adversarial attack, kurakin or carlini
-    #self.adversarial_attack_method = "carlini"
-    self.adversarial_attack_method = "kurakin"
+    self.adversarial_attack_method = "carlini"
+    #self.adversarial_attack_method = "kurakin"
     #Flag to define if adversarial example can go beyond image range
     self.adversarial_clip = True
     #Recon_mult tradeoff for carlini attack method
@@ -79,9 +78,29 @@ class params(object):
     # Orientations for orientation experiments
     self.orientations = np.linspace(0.0, np.pi, 16)
 
-# Computed params
+parser = argparse.ArgumentParser()
+
+# Get params, set dirs
 analysis_params = params() # construct object
-analysis_params.model_dir = (os.path.expanduser("~")+"/Work/Projects/"+analysis_params.model_name)
+analysis_params.projects_dir = os.path.expanduser("~")+"/Work/Projects/"
+
+# Load arguments
+model_type_list = mp.get_model_list()
+parser.add_argument("model_type", help=", ".join(model_type_list))
+
+model_name_list = os.listdir(analysis_params.projects_dir)
+parser.add_argument("model_name", help=", ".join(model_name_list))
+
+parser.add_argument("model_version",
+  help="Specify the string that was used for the 'version' parameter")
+
+args = parser.parse_args()
+analysis_params.model_type = args.model_type
+analysis_params.model_name = args.model_name
+analysis_params.version = args.model_version
+analysis_params.model_dir = analysis_params.projects_dir+analysis_params.model_name
+
+# Initialize & setup analyzer
 analyzer = ap.get_analyzer(analysis_params.model_type)
 analyzer.setup(analysis_params)
 
@@ -90,17 +109,19 @@ analyzer.model_params.num_images = analysis_params.num_analysis_images
 if hasattr(analyzer.model_params, "extract_patches") and analyzer.model_params.extract_patches:
   analyzer.model_params.num_patches = analysis_params.num_patches
 
+# Load data for analysis
 data = ds.get_data(analyzer.model_params)
 data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
 data = analyzer.model.reshape_dataset(data, analyzer.model_params)
-
 analyzer.model_params.data_shape = list(data["train"].shape[1:])
+
 #analyzer.model_schedule[0]["sparse_mult"]  = 0.4
 analyzer.setup_model(analyzer.model_params)
 #analyzer.model_params.input_shape = [
 #  data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
 
-analyzer.run_analysis(data["train"].images, data["train"].labels, save_info=analysis_params.save_info)
+analyzer.run_analysis(data["train"].images, data["train"].labels,
+  save_info=analysis_params.save_info)
 
 if analysis_params.do_full_recon:
   class img_params():
