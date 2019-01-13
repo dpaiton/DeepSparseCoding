@@ -52,7 +52,7 @@ class params(BaseParams):
     self.patch_size_x = [None, None, None]
     self.conv_strides = [None, None, None]
     self.batch_norm = [None, None, None]
-    self.dropout = [None, None, None]
+    self.dropout = [1.0, 1.0, 1.0]
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]

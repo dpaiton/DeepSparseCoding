@@ -60,6 +60,15 @@ class MlpModel(Model):
   def get_total_loss(self):
     return self.mlp_module.total_loss
 
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
+    feed_dict = super(MlpModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
+    #Explicitly set to no dropout if is not train
+    if(is_test):
+      feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
+    else:
+      feed_dict[self.dropout_keep_probs] = self.params.dropout
+    return feed_dict
+
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
     Generates a dictionary to be logged in the print_update function
@@ -70,6 +79,7 @@ class MlpModel(Model):
     """
     update_dict = super(MlpModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
+
     current_step = np.array(self.global_step.eval())
     total_loss = np.array(self.get_total_loss().eval(feed_dict))
     logits_vals = tf.get_default_session().run(self.get_encodings(), feed_dict)
