@@ -85,8 +85,8 @@ class MlpModule(object):
       ("conv_strides must be a list of size " + str(self.num_layers))
     assert len(batch_norm) == self.num_layers, \
       ("batch_norm must be a list of size " + str(self.num_layers))
-    assert len(dropout) == self.num_layers, \
-      ("dropout must be a list of size " + str(self.num_layers))
+    #assert len(dropout) == self.num_layers, \
+    #  ("dropout must be a list of size " + str(self.num_layers))
     assert len(max_pool) == self.num_layers, \
       ("max_pool must be a list of size " + str(self.num_layers))
     assert len(max_pool_ksize) == self.num_layers, \
@@ -123,14 +123,13 @@ class MlpModule(object):
           reduc_axes=[0,1,2], name="BatchNorm_"+str(layer_id))
         conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
-      if self.dropout[layer_id] is not None:
-        conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
+      conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
       if self.max_pool[layer_id]:
         conv_out = tf.nn.max_pool(conv_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
     return conv_out, w, b
 
-  def fc_layer_maker(self, layer_id, a_in, w_shape, b_shape):
+  def fc_layer_maker(self, layer_id, a_in, w_shape, b_shape, act_func):
     with tf.variable_scope("layer"+str(layer_id)) as scope:
       w_name = "fc_w_"+str(layer_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
@@ -142,7 +141,7 @@ class MlpModule(object):
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
 
-      fc_out = tf.nn.relu(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
+      fc_out = act_func(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
       if self.batch_norm[layer_id] is not None:
         bn = BatchNormalizationModule(fc_out, self.batch_norm[layer_id], self.eps, reduc_axes=[0],
           name="BatchNorm_"+str(layer_id))
@@ -165,11 +164,14 @@ class MlpModule(object):
       act_list.append(a_out)
       w_list.append(w)
       b_list.append(b)
+    #TODO: Make this a parameter like in the auto-encoder
+    act_funcs = [tf.nn.relu,]*(self.num_fc_layers-1) + [tf.identity]
     for fc_layer_id in range(self.num_fc_layers):
       layer_id = fc_layer_id + self.num_conv_layers
       a_resh = tf.contrib.layers.flatten(act_list[layer_id])
       w_shape = [a_resh.get_shape()[1].value, self.fc_output_channels[fc_layer_id]]
-      a_out, w, b = self.fc_layer_maker(layer_id, a_resh, w_shape, self.output_channels[layer_id])
+      a_out, w, b = self.fc_layer_maker(layer_id, a_resh, w_shape, self.output_channels[layer_id],
+        act_funcs[fc_layer_id])
       act_list.append(a_out)
       w_list.append(w)
       b_list.append(b)

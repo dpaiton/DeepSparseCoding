@@ -30,12 +30,16 @@ class MlpModel(Model):
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.y = tf.placeholder(tf.float32, shape=self.y_shape, name="input_labels")
 
+        with tf.name_scope("placeholders") as scope:
+          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="dropout_keep_probs")
+
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
         self.mlp_module = MlpModule(self.x, self.y, self.params.layer_types,
-          self.params.output_channels, self.params.batch_norm, self.params.dropout,
+          self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
           self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
           self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
           self.params.eps, name="MLP")
