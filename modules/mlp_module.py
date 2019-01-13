@@ -147,8 +147,7 @@ class MlpModule(object):
           name="BatchNorm_"+str(layer_id))
         fc_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
-      if self.dropout[layer_id] is not None:
-        fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
+      fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
       if self.max_pool[layer_id]:
         fc_out = tf.nn.max_pool(fc_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")

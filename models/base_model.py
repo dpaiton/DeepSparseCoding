@@ -324,7 +324,7 @@ class Model(object):
         "val must have type "+str(type(self.params.schedule[self.sched_idx][key])))
     self.params.schedule[self.sched_idx][key] = val
 
-  def get_feed_dict(self, input_data, input_labels=None, dict_args=None):
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     """
     Return dictionary containing all placeholders
     Inputs:

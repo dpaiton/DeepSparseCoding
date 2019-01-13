@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_vae"
-    self.model_name = "mlp_dvae"
+    self.model_name = "mlp_vae"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True

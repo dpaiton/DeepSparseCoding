@@ -127,7 +127,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
         if params.val_on_cp: #Compute validation accuracy
           val_images = data["val"].images
           val_labels = data["val"].labels
-          val_feed_dict = model.get_feed_dict(val_images, val_labels)
+          val_feed_dict = model.get_feed_dict(val_images, val_labels, is_test=True)
           val_accuracy = np.array(sess.run(model.accuracy, val_feed_dict)).tolist()
           stat_dict = {"validation_accuracy":val_accuracy}
           js_str = model.js_dumpstring(stat_dict)
