@@ -90,7 +90,7 @@ class ListaModel(Model):
             MSE)), name="recon_quality")
 
   def get_encodings(self):
-    return self.mlp_module.layer_list[-1]
+    return self.a
 
   def get_total_loss(self):
     return self.total_loss
