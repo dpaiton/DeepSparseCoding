@@ -37,7 +37,7 @@ class Model(object):
       out_val = [val,] * target_len
     #Check type
     for v in out_val:
-      assert type(val) == target_type
+      assert type(v) == target_type
     return out_val
 
   def load_schedule(self, schedule):
