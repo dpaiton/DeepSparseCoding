@@ -66,7 +66,7 @@ class ListaModel(Model):
           self.a_list = [self.lca_module.threshold_units(feedforward_drive, name="a_init")]
           for layer_id in range(self.params.num_layers):
             self.a_list.append(self.lca_module.threshold_units(feedforward_drive
-              + tf.matmul(self.s, self.a_list[layer_id])))
+              + tf.matmul(self.a_list[layer_id], self.s)))
           self.a = self.a_list[-1]
 
         with tf.name_scope("loss") as scope:
@@ -107,7 +107,8 @@ class ListaModel(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.lca_module.loss_dict["recon_loss"],
       self.lca_module.loss_dict["sparse_loss"], self.get_total_loss(),
-      self.lca_module.a, self.get_encodings(), self.lca_module.reconstruction, self.pSNRdB]
+      self.lca_module.a, self.get_encodings(), self.lca_module.reconstruction, self.pSNRdB,
+      self.lista_loss]
     grad_name_list = []
     learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
@@ -116,8 +117,8 @@ class ListaModel(Model):
       grad_name_list.append(grad_name)
       learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    current_step, recon_loss, sparse_loss, total_loss, lca_a_vals, lista_a_vals, recon, pSNRdB\
-      = out_vals[0:8]
+    current_step, recon_loss, sparse_loss, total_loss, lca_a_vals, lista_a_vals, recon, pSNRdB, lista_loss \
+      = out_vals[0:9]
     input_max = np.max(input_data)
     input_mean = np.mean(input_data)
     input_min = np.min(input_data)
@@ -140,6 +141,7 @@ class ListaModel(Model):
       "schedule_index":self.sched_idx,
       "lca_recon_loss":recon_loss,
       "lca_sparse_loss":sparse_loss,
+      "lista_loss":lista_loss,
       "total_loss":total_loss,
       "pSNRdB": np.mean(pSNRdB),
       "lca_a_fraction_active":lca_a_frac_act,
@@ -148,7 +150,7 @@ class ListaModel(Model):
       "lista_a_max_mean_min":[lista_a_vals_max, lista_a_vals_mean, lista_a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
-    grads = out_vals[7:]
+    grads = out_vals[9:]
     for grad, name in zip(grads, grad_name_list):
       grad_max = learning_rate_dict[name]*np.array(grad.max())
       grad_min = learning_rate_dict[name]*np.array(grad.min())
