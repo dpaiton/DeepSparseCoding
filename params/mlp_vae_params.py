@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_vae"
-    self.model_name = "mlp_vae"
+    self.model_name = "mlp_dvae"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -33,7 +33,7 @@ class params(BaseParams):
     # VAE Params
     self.vae_output_channels = [512, 50]
     self.latent_act_func = "relu"
-    self.noise_level = 0.0 # variance of noise added to the input data
+    self.noise_level = 0.01 # variance of noise added to the input data
     self.optimizer = "adam"
     # MLP Params
     self.train_on_recon = True # if False, train on LCA latent activations
@@ -44,7 +44,7 @@ class params(BaseParams):
     self.patch_size_x = [None, None, None]
     self.conv_strides = [None, None, None]
     self.batch_norm = [None, None, None]
-    self.dropout = [None, None, None]
+    self.dropout = [1.0, 1.0, 1.0]
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
@@ -129,7 +129,7 @@ class params(BaseParams):
       self.patch_size_x = self.patch_size_y
       self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
       self.batch_norm = [None, None, None, None]
-      self.dropout = [None, None, 0.4, None]
+      self.dropout = [1.0, 1.0, 0.4, 1.0]
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]

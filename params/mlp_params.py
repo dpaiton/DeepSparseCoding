@@ -26,7 +26,7 @@ class params(BaseParams):
     self.num_val = 10000
     self.num_labeled = 50000
     self.batch_norm = [0.4, None]
-    self.dropout = [None, None]
+    self.dropout = [1.0, 1.0]
     self.max_pool = [False, False]
     self.max_pool_ksize = [None, None]
     self.max_pool_strides = [None, None]
@@ -69,7 +69,7 @@ class params(BaseParams):
       self.patch_size_x = self.patch_size_y
       self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
       self.batch_norm = [None, None, None, None]
-      self.dropout = [None, None, 0.4, None]
+      self.dropout = [1.0, 1.0, 0.4, 1.0] # Todo, default this?
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
