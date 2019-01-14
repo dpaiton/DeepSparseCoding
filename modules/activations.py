@@ -16,11 +16,19 @@ import tensorflow_compression as tfc
 #    return gdn_mult
 
 def activation_picker(activation_function):
-    if activation_function =="relu":
+    if activation_function == "relu":
         return tf.nn.relu
-    if activation_function =="gdn":
+    if activation_function == "gdn":
         return gdn
+    if activation_function == "sigmoid":
+        return sigmoid
     assert False, ("Activation function " + activation_function + " is not supported!")
+
+def sigmoid(self, a_in, beta=1, name=None):
+    """Hyperbolic tangent non-linearity"""
+    a_out = tf.subtract(tf.multiply(2.0, tf.divide(1.0,
+      tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0, name=name)
+    return a_out
 
 def compute_gdn_mult(u_in, w_gdn, b_gdn, w_min, b_min, conv, eps=1e-6):
   w_bound = tf.sqrt(tf.add(w_min, tf.square(eps)))
