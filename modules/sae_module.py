@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 from modules.ae_module import AeModule
+from modules.activations import sigmoid
 
 class SaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, target_act,
@@ -45,7 +46,7 @@ class SaeModule(AeModule):
     self.w_list = []
     self.b_list = []
     enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
-      [self.act_func,]*(self.num_encoder_layers-1)+[tf.sigmoid],
+      [self.act_func,]*(self.num_encoder_layers-1)+[sigmoid],
       self.w_shapes[:self.num_encoder_layers])
     self.u_list += enc_u_list
     self.w_list += enc_w_list
