@@ -24,7 +24,7 @@ def activation_picker(activation_function):
         return sigmoid
     assert False, ("Activation function " + activation_function + " is not supported!")
 
-def sigmoid(self, a_in, beta=1, name=None):
+def sigmoid(a_in, beta=1.0, name=None):
     """Hyperbolic tangent non-linearity"""
     a_out = tf.subtract(tf.multiply(2.0, tf.divide(1.0,
       tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0, name=name)
