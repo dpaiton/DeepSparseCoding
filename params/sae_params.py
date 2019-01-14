@@ -30,7 +30,7 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     self.output_channels = [768]
-    self.latent_act_func = "relu" #TODO
+    self.activation_function = "relu" #TODO
     self.optimizer = "annealed_sgd"#"adam"
     self.cp_int = int(1e5)
     self.max_cp_to_keep = 1

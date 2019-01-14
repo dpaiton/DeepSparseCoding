@@ -4,7 +4,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
-from layers.non_linearities import gdn
+from modules.activations import gdn
 from ops.init_ops import GDNGammaInitializer
 from models.base_model import Model
 

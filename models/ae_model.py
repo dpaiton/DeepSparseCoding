@@ -5,7 +5,7 @@ import utils.data_processing as dp
 import utils.entropy_functions as ef
 from models.base_model import Model
 from modules.ae_module import AeModule
-#from moduels.activations import activation_picker
+from modules.activations import activation_picker
 
 class AeModel(Model):
   def __init__(self):
@@ -23,7 +23,7 @@ class AeModel(Model):
     super(AeModel, self).load_params(params)
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.x_shape = [None, self.num_pixels]
-    self.act_func = tf.nn.relu # TODO: activation_picker(self.params.activation_function)
+    self.act_func = activation_picker(self.params.activation_function)
 
   def build_module(self):
     module = AeModule(self.x, self.params.output_channels, self.decay_mult, self.act_func,
