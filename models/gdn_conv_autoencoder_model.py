@@ -6,7 +6,7 @@ import utils.data_processing as dp
 import utils.entropy_functions as ef
 import utils.get_data as get_data
 import utils.mem_utils as mem_utils
-from layers.non_linearities import gdn
+from modules.activations import gdn
 from ops.init_ops import GDNGammaInitializer
 from models.gdn_autoencoder_model import GdnAutoencoderModel
 

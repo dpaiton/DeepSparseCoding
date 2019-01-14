@@ -4,7 +4,7 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
-from layers.non_linearities import gdn
+from modules.activations import gdn, shift_sigmoid
 from ops.init_ops import GDNGammaInitializer
 from models.base_model import Model
 
@@ -36,10 +36,7 @@ class GdnAutoencoderModel(Model):
     self.b_igdn_shape = [1, self.params.num_pixels]
 
   def sigmoid(self, a_in, beta=1, name=None):
-    """Hyperbolic tangent non-linearity"""
-    a_out = tf.subtract(tf.multiply(2.0, tf.divide(1.0,
-      tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0, name=name)
-    return a_out
+    return shift_sigmoid(a_in, beta, name)
 
   def compute_entropies(self, a_in):
     a_sig = self.sigmoid(a_in, self.params.sigmoid_beta)

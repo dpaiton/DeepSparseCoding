@@ -15,6 +15,26 @@ import tensorflow_compression as tfc
 #    gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
 #    return gdn_mult
 
+def activation_picker(activation_function):
+    if activation_function == "relu":
+      return tf.nn.relu
+    if activation_function == "gdn":
+      return gdn
+    if activation_function == "sigmoid":
+      return sigmoid
+    if activation_function == "shift_sigmoid":
+      return shift_sigmoid
+    assert False, ("Activation function " + activation_function + " is not supported!")
+
+def sigmoid(a_in):
+  return tf.sigmoid(a_in)
+
+def shift_sigmoid(a_in, beta=1.0, name=None):
+  """Hyperbolic tangent non-linearity"""
+  a_out = tf.subtract(tf.multiply(2.0, tf.divide(1.0,
+    tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0, name=name)
+  return a_out
+
 def compute_gdn_mult(u_in, w_gdn, b_gdn, w_min, b_min, conv, eps=1e-6):
   w_bound = tf.sqrt(tf.add(w_min, tf.square(eps)))
   b_bound = tf.sqrt(tf.add(b_min, tf.square(eps)))

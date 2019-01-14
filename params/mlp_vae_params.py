@@ -32,7 +32,7 @@ class params(BaseParams):
     self.batch_size = 100
     # VAE Params
     self.vae_output_channels = [512, 50]
-    self.latent_act_func = "relu"
+    self.activation_function = "relu"
     self.noise_level = 0.01 # variance of noise added to the input data
     self.optimizer = "adam"
     # MLP Params
