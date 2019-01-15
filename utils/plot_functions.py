@@ -286,8 +286,7 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
   for x_id in range(num_bases):
     primary_bf_idx = bf_indices[x_id]
     sorted_cov_indices = np.argsort(a_cov[primary_bf_idx, :])[-2::-1]
-    primary_bf = np.squeeze(dp.reshape_data(weights.T[primary_bf_idx,...],
-      flatten=False)[0])
+    primary_bf = np.squeeze(dp.reshape_data(weights.T[primary_bf_idx,...], flatten=False)[0])
     ax = plt.subplot(gs[x_id,0])
     ax.imshow(primary_bf, cmap="Greys_r", interpolation="nearest")
     ax.tick_params(axis="both", bottom="off", top="off",
