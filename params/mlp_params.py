@@ -69,14 +69,14 @@ class params(BaseParams):
       self.patch_size_x = self.patch_size_y
       self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
       self.batch_norm = [None, None, None, None]
-      self.dropout = [1.0, 1.0, 0.4, 1.0] # Todo, default this?
+      self.dropout = [1.0, 1.0, 0.4, 1.0] # TODO: Set dropout defaults somewhere
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(2e4)
         self.schedule[sched_idx]["weight_lr"] = 1e-4
-        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["num_batches"] * 0.8)
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.90
 
     elif data_type.lower() == "synthetic":
