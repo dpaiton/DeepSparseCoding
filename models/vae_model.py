@@ -18,7 +18,8 @@ class VaeModel(AeModel):
 
   def build_module(self, input_node):
     module = VaeModule(input_node, self.params.output_channels, self.sparse_mult,
-      self.decay_mult, self.kld_mult, self.act_func, self.params.noise_level, name="VAE")
+      self.decay_mult, self.kld_mult, self.act_func, self.params.noise_level,
+      self.params.linear_latent, name="VAE")
     return module
 
   def build_graph_from_input(self, input_node):

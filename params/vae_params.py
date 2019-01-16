@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "vae"
-    self.model_name = "vae"
+    self.model_name = "deep_vae"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -21,13 +21,15 @@ class params(BaseParams):
     self.lpf_data = False
     self.lpf_cutoff = 0.7
     self.extract_patches = False
-    self.batch_size = 200
+    self.batch_size = 100
     #Specify number of neurons for encoder
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
     self.output_channels = [512, 50]
-    self.activation_function = "relu"
     self.noise_level = 0.0 # variance of noise added to the input data
+    self.activation_function = "relu" # Activation function for hidden layers
+    self.linear_latent = True # If True, latent mean values do not use activation_function
+    self.norm_weights = False
     self.optimizer = "adam"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
@@ -36,23 +38,33 @@ class params(BaseParams):
     self.log_to_file = True
     self.gen_plot_int = 10000
     self.save_plots = True
-
     self.schedule = [
       {"num_batches": int(3e5),
       "weights": None,
       "decay_mult": 0.0,
       "sparse_mult": 0.0,
       "kld_mult": 1/self.batch_size,
-      "weight_lr": 0.0001,
-      "decay_steps": int(3e5*0.4),
-      "decay_rate": 0.5,
+      "weight_lr": 0.0005,
+      "decay_steps": int(3e5*0.8),
+      "decay_rate": 0.8,
       "staircase": True,}]
 
   def set_data_params(self, data_type):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.log_int = 1000
+      self.cp_int = 1e6
+      self.gen_plot_int = 1e6
       self.noise_level = 0.0
+      self.output_channels = [768, 500, 20]
+      for schedule_idx in range(len(self.schedule)):
+        self.schedule[schedule_idx]["num_batches"] = int(3e6)
+        self.schedule[schedule_idx]["kld_mult"] = 1/self.batch_size
+        self.schedule[schedule_idx]["decay_mult"] = 0.0
+        self.schedule[schedule_idx]["weight_lr"] = 0.001
+        self.schedule[schedule_idx]["decay_steps"] = int(0.3*self.schedule[schedule_idx]["num_batches"])
+        self.schedule[schedule_idx]["decay_rate"] = 0.7
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

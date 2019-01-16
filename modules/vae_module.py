@@ -5,7 +5,7 @@ from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, kld_mult,
-    act_func, noise_level=0, name="VAE"):
+    act_func, noise_level=0, linear_latent=True, name="VAE"):
     """
     Variational Autoencoder module
     Inputs:
@@ -26,6 +26,7 @@ class VaeModule(AeModule):
       self.corrupt_data = data_tensor
     self.sparse_mult = sparse_mult
     self.kld_mult = kld_mult
+    self.linear_latent = linear_latent
 
     super(VaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_func, name)
 
@@ -48,11 +49,14 @@ class VaeModule(AeModule):
       self.w_init = tf.initializers.random_normal(mean=0.0, stddev=0.1, dtype=tf.float32)
       self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
 
+    if self.linear_latent:
+      act_func_list = [self.act_func,]*(self.num_encoder_layers-1)+[tf.identity]
+    else:
+      act_func_list = [self.act_func,]*(self.num_encoder_layers)
     self.u_list = [self.corrupt_data]
     self.w_list = []
     self.b_list = []
-    enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
-      [self.act_func,]*(self.num_encoder_layers-1)+[tf.identity],
+    enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0], act_func_list,
       self.w_shapes[:self.num_encoder_layers])
     self.u_list += enc_u_list[:-1] # don't store the mean value in u_list
     self.w_list += enc_w_list
