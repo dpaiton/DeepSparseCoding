@@ -60,7 +60,7 @@ class ListaModel(Model):
             initializer=self.w_init, trainable=True)
           self.s = tf.get_variable(name="lateral_connectivity", shape=self.s_shape,
             dtype=tf.float32, initializer=self.s_init, trainable=True)
-        self.trainable_variables.update([self.w, self.s])
+        self.trainable_variables.update({self.w.name:self.w, self.s.name:self.s})
 
         with tf.name_scope("inference") as scope:
           feedforward_drive = tf.matmul(self.x, self.w, name="feedforward_drive")

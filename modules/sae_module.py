@@ -52,7 +52,7 @@ class SaeModule(AeModule):
     self.w_list += enc_w_list
     self.b_list += enc_b_list
 
-    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers+1,
+    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers,
       self.u_list[-1], [self.act_func,]*(self.num_decoder_layers-1) + [tf.identity],
       self.w_shapes[self.num_encoder_layers:])
     self.u_list += dec_u_list

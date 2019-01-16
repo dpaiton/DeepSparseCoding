@@ -4,25 +4,16 @@ import tensorflow as tf
 from analysis.base_analyzer import Analyzer
 import utils.data_processing as dp
 
-class SaAnalyzer(Analyzer):
+class SaeAnalyzer(Analyzer):
   def __init__(self):
     Analyzer.__init__(self)
     self.var_names = [
-      "weights/w_enc:0",
+      "layer0/w_0:0",
+      "layer1/w_1:0",
       "inference/activity:0"]
 
-  def add_pre_init_ops_to_graph(self):
-    super(SaAnalyzer, self).add_pre_init_ops_to_graph()
-    self.add_a_deriv_ops_to_graph()
-
-  def add_a_deriv_ops_to_graph(self):
-    with tf.device(self.model.device):
-      with self.model.graph.as_default():
-        self.model.ax_grad = tf.gradients(tf.slice(self.model.get_encodings(), [0, 0], [-1, 1]),
-          self.model.x)[0]
-
   def run_analysis(self, images, labels=None, save_info=""):
-    super(SaAnalyzer, self).run_analysis(images, labels, save_info=save_info)
+    super(SaeAnalyzer, self).run_analysis(images, labels, save_info=save_info)
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.do_basis_analysis:
