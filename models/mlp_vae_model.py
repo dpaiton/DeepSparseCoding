@@ -6,6 +6,7 @@ import utils.entropy_functions as ef
 from models.base_model import Model
 from modules.vae_module import VaeModule
 from modules.mlp_module import MlpModule
+from modules.activations import activation_picker
 
 class MlpVaeModel(Model):
   def __init__(self):
@@ -25,7 +26,7 @@ class MlpVaeModel(Model):
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.input_shape = [None, self.num_pixels]
     self.label_shape = [None, self.params.num_classes]
-    self.act_func = tf.nn.relu # TODO: activation_picker(self.params.activation_function)
+    self.act_func = activation_picker(self.params.activation_function)
 
   def get_input_shape(self):
     return self.input_shape
