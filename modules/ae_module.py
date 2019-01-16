@@ -129,7 +129,7 @@ class AeModule(object):
       self.trainable_variables[b.name] = b
 
     with tf.variable_scope("inference") as scope:
-      self.a = tf.identity(self.u_list[int(self.num_layers/2-1)], name="activations")
+      self.a = tf.identity(self.u_list[int(self.num_layers/2-1)], name="activity")
 
     with tf.name_scope("output") as scope:
       self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
