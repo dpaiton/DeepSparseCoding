@@ -33,6 +33,7 @@ class params(BaseParams):
     # VAE Params
     self.vae_output_channels = [512, 50]
     self.activation_function = "relu"
+    self.linear_latent = True
     self.noise_level = 0.01 # variance of noise added to the input data
     self.optimizer = "adam"
     # MLP Params
@@ -133,7 +134,7 @@ class params(BaseParams):
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
-      # NOTE schedule index will change if lca training is happening
+      # NOTE schedule index will change if vae training is happening
       self.schedule[0]["num_batches"] = int(2e4)
       self.schedule[0]["sparse_mult"] = 0.21
       self.schedule[0]["weight_lr"] = 1e-4
