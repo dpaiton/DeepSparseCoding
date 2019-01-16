@@ -6,7 +6,7 @@ import utils.entropy_functions as ef
 import ops.init_ops as init_ops
 from models.base_model import Model
 from modules.mlp_module import MlpModule
-from modules.lca_module import LcaModule
+from modules.activations import lca_threshold
 
 class MlpListaModel(Model):
   def __init__(self):
@@ -32,13 +32,7 @@ class MlpListaModel(Model):
     self.eta = self.params.dt / self.params.tau
 
   def get_input_shape(self):
-    return self.input_shape 
-
-  def build_lca_module(self, input_node):
-    module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
-      self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name="lca")
-    return module
+    return self.input_shape
 
   def build_mlp_module(self):
     assert self.params.layer_types[0] == "fc", (
@@ -61,9 +55,6 @@ class MlpListaModel(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        # LCA module (for threshold func only)
-        self.lca_module = self.build_lca_module(input_node)
-
         # LISTA module
         with tf.name_scope("weight_inits") as scope:
           self.w_init = tf.truncated_normal_initializer(mean=0, stddev=0.05, dtype=tf.float32)
@@ -77,10 +68,12 @@ class MlpListaModel(Model):
 
         with tf.name_scope("inference") as scope:
           feedforward_drive = tf.matmul(input_node, self.w, name="feedforward_drive")
-          self.a_list = [self.lca_module.threshold_units(feedforward_drive, name="a_init")]
+          self.a_list = [lca_threshold(feedforward_drive, self.params.thresh_type,
+            self.params.rectify_a, self.sparse_mult, name="a_init")]
           for layer_id in range(self.params.num_layers):
-            self.a_list.append(self.lca_module.threshold_units(feedforward_drive
-              + tf.matmul(self.a_list[layer_id], self.s)))
+            u_in = feedforward_drive + tf.matmul(self.a_list[layer_id], self.s)
+            self.a_list.append(lca_threshold(u_in, self.params.thresh_type, self.params.rectify_a,
+              self.sparse_mult, name="a_init"))
           self.a = self.a_list[-1]
 
         # MLP module

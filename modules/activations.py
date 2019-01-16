@@ -24,6 +24,8 @@ def activation_picker(activation_function):
       return sigmoid
     if activation_function == "shift_sigmoid":
       return shift_sigmoid
+    if activation_function == "lca_threshold":
+      return lca_threshold
     assert False, ("Activation function " + activation_function + " is not supported!")
 
 def sigmoid(a_in):
@@ -59,3 +61,22 @@ def gdn(u_in, w, b, w_thresh_min, b_thresh_min, eps, inverse, conv, name=""):
   else:
     u_out = tf.divide(u_in, gdn_mult, name=name)
   return u_out, gdn_mult
+
+def lca_threshold(u_in, thresh_type, rectify, sparse_threshold, name=None):
+  if thresh_type == "soft":
+    if rectify:
+      a_out = tf.where(tf.greater(u_in, sparse_threshold), u_in - sparse_threshold,
+        tf.zeros_like(u_in), name=name)
+    else:
+      a_out = tf.where(tf.greater_equal(u_in, sparse_threshold), u_in - sparse_threshold,
+        tf.where(tf.less_equal(u_in, -sparse_threshold), u_in + sparse_threshold,
+        tf.zeros_like(u_in)), name=name)
+  elif thresh_type == "hard":
+    if rectify:
+      a_out = tf.where(tf.greater(u_in, sparse_threshold), u_in, self.u_zeros, name=name)
+    else:
+      a_out = tf.where(tf.greater(u_in, sparse_threshold), u_in,
+        tf.where(tf.less(u_in, -sparse_threshold), u_in, self.u_zeros), name=name)
+  else:
+    assert False, ("Parameter thresh_type must be 'soft' or 'hard', not "+thresh_type)
+  return a_out
