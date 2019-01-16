@@ -30,10 +30,10 @@ class LcaConvModel(LcaModel):
 
     self.num_pixels = int(self.params.patch_size_y * self.params.patch_size_x * self.params.data_shape[2])
 
-    self.x_shape = [None,] + self.params.data_shape
+    self.input_shape = [None,] + self.params.data_shape
 
-  def build_module(self):
-    module = LcaConvModule(self.x, self.params.num_neurons, self.sparse_mult,
+  def build_module(self, input_node):
+    module = LcaConvModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
       self.params.num_steps, self.params.patch_size_y, self.params.patch_size_x,
       self.params.stride_y, self.params.stride_x, self.params.eps, name="lca_conv")

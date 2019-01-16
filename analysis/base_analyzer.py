@@ -6,6 +6,7 @@ import models.model_picker as mp
 import utils.data_processing as dp
 from data.dataset import Dataset
 import tensorflow as tf
+import tensorflow_compression as tfc
 
 class Analyzer(object):
   """
@@ -131,6 +132,44 @@ class Analyzer(object):
     """Load model object into analysis object"""
     self.model = mp.get_model(self.model_params.model_type)
 
+  #If build_graph gets called without parameters,
+  #build placeholders call build graph with default input
+  def build_graph(self):
+    #Only need to do this if doing adversarial analysis
+    if(self.analysis_params.do_class_adversaries or
+      self.analysis_params.do_recon_adversaries):
+      with tf.device(self.model.params.device):
+        with self.model.graph.as_default():
+          #Build model's placeholder
+          input_placeholder = self.model.build_input_placeholder()
+          input_shape = self.model.get_input_shape()
+
+          #Initialize adversarial image variable with original image
+          init_val = input_placeholder
+
+          self.adv_var = tf.Variable(init_val,
+            dtype=tf.float32, trainable=True, validate_shape=False)
+          #Add this variable to model's full_model_ignore_list
+          #Otherwise, load_full_model will try to load this
+          self.model.full_model_load_ignore.append(self.adv_var)
+          #Here, adv_var has a fully dynamic shape. We reshape it to give the variable
+          #a semi-dymaic shape (i.e., only batch dimension unknown)
+          reshape_adv_var = tf.reshape(self.adv_var, [-1,] + input_shape[1:])
+          #If clipping, use bounds for useful gradients
+          if self.analysis_params.adversarial_clip:
+            self.min_img_val = tf.placeholder(tf.float32, shape=(), name="min_img_val")
+            self.max_img_val = tf.placeholder(tf.float32, shape=(), name="max_img_val")
+            self.adv_image = tfc.upper_bound(tfc.lower_bound(
+              reshape_adv_var, self.min_img_val), self.max_img_val)
+          else:
+            self.adv_image = reshape_adv_var
+      self.model.build_graph_from_input(self.adv_image)
+    else:
+      self.model.build_graph()
+
+  def set_input_transform_func(self, func):
+    self.input_transform_func = func
+
   def setup_model(self, params):
     """
     Run model setup, but also add adversarial nodes to graph
@@ -140,14 +179,15 @@ class Analyzer(object):
     self.model.make_dirs()
     self.model.init_logging()
     self.model.log_params()
-    self.model.build_graph()
+    #Call own build graph to call model's build graph
+    self.build_graph()
     self.model.load_schedule(params.schedule)
     self.model.sched_idx = 0
     self.model.log_schedule()
+    self.model.construct_savers()
     self.add_pre_init_ops_to_graph()
     self.model.add_optimizers_to_graph()
     self.model.add_initializer_to_graph()
-    self.model.construct_savers()
 
   def add_pre_init_ops_to_graph(self):
     if self.analysis_params.do_recon_adversaries:
@@ -749,31 +789,44 @@ class Analyzer(object):
     with tf.device(self.analysis_params.device):
       with self.model.graph.as_default():
         with tf.name_scope("placeholders") as scope:
-          self.model.orig_input = tf.placeholder(tf.float32, shape=self.model.x_shape,
-            name="original_input_data")
-          self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.x_shape,
+          self.adv_target = tf.placeholder(tf.float32, shape=self.model.get_input_shape(),
             name="adversarial_target_data")
-          self.model.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+          self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+
         with tf.name_scope("loss") as scope:
           # Want to avg over batch, sum over the rest
-          reduc_dim = list(range(1, len(self.model.get_encodings().shape)))
           self.recon = self.model.compute_recon(self.model.get_encodings())
-          self.model.adv_recon_loss = tf.reduce_mean(0.5 *
-            tf.reduce_sum(tf.square(tf.subtract(self.model.adv_target,
-            self.recon)), axis=reduc_dim), name="target_recon_loss")
-          self.model.input_pert_loss = tf.reduce_mean(0.5 *
-            tf.reduce_sum(tf.square(tf.subtract(self.model.orig_input,
-            self.model.x)), axis=reduc_dim),
-            name="input_perturbed_loss")
-          self.model.carlini_loss = tf.add_n([
-            (1 - self.model.recon_mult) * self.model.input_pert_loss,
-            self.model.recon_mult * self.model.adv_recon_loss])
-        with tf.name_scope("adversarial") as scope:
-          self.model.fast_sign_adv_dx = -tf.sign(tf.gradients(self.model.adv_recon_loss, self.model.x)[0])
-          self.model.carlini_adv_dx = -tf.gradients(self.model.carlini_loss, self.model.x)[0]
+          self.adv_recon_loss = 0.5 * tf.reduce_sum(
+            tf.square(tf.subtract(self.adv_target, self.recon)),
+            name="target_recon_loss")
+          if(self.analysis_params.adversarial_attack_method == "kurakin"):
+            self.adv_loss = self.adv_recon_loss
+          elif(self.analysis_params.adversarial_attack_method == "carlini"):
+            self.input_pert_loss = 0.5 * tf.reduce_sum(
+              tf.square(tf.subtract(self.model.input_placeholder, self.adv_image)),
+              name="input_perturbed_loss")
+            self.carlini_loss = tf.add_n([
+              (1 - self.recon_mult) * self.input_pert_loss,
+              self.recon_mult * self.adv_recon_loss])
+            self.adv_loss = self.carlini_loss
+          else:
+            assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
-  def construct_recon_adversarial_stimulus(self, input_image, target_image, min_img_val, max_img_val,
-      step_size=0.01, num_steps=10):
+        with tf.name_scope("optimizer") as scope:
+          if(self.analysis_params.adversarial_attack_method == "kurakin"):
+            self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
+            self.adv_update_op = self.adv_var.assign_add(
+              self.analysis_params.adversarial_step_size * self.adv_grad)
+          elif(self.analysis_params.adversarial_attack_method == "carlini"):
+            self.adv_opt = tf.train.AdamOptimizer(
+              learning_rate = self.analysis_params.adversarial_step_size)
+            #Find gradient wrt self.model.x, but apply them to tmp variable
+            self.adv_grads = self.adv_opt.compute_gradients(
+              self.adv_loss, var_list=[self.adv_var])
+            self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grads)
+
+  def construct_recon_adversarial_stimulus(self, input_image, target_image,
+      min_img_val, max_img_val, step_size=0.01, num_steps=10):
     mse = lambda x,y: np.mean(np.square(x - y))
     input_target_mse = mse(input_image, target_image)
     config = tf.ConfigProto()
@@ -781,11 +834,9 @@ class Analyzer(object):
 
     output_list = False
     if(self.analysis_params.adversarial_attack_method == "kurakin"):
-      update_dx = self.model.fast_sign_adv_dx
       #Not using recon_mult here, so set arb value
       self.analysis_params.recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini"):
-      update_dx = self.model.carlini_adv_dx
       if(type(self.analysis_params.recon_mult) is not list):
         self.analysis_params.recon_mult = [self.analysis_params.recon_mult]
       else:
@@ -809,30 +860,29 @@ class Analyzer(object):
 
       with tf.Session(config=config, graph=self.model.graph) as sess:
         feed_dict = self.model.get_feed_dict(input_image, is_test=True)
-        feed_dict[self.model.adv_target] = target_image
-        feed_dict[self.model.orig_input] = input_image
-        feed_dict[self.model.recon_mult] = r_mult
+        feed_dict[self.model.input_placeholder] = input_image
+        feed_dict[self.adv_target] = target_image
+        feed_dict[self.recon_mult] = r_mult
+        feed_dict[self.min_img_val] = min_img_val
+        feed_dict[self.max_img_val] = max_img_val
         sess.run(self.model.init_op, feed_dict)
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
-        new_image = input_image.copy()
         for step in range(num_steps):
-          if(step%10 == 0):
-            adversarial_images.append(new_image.copy())
-          self.analysis_logger.log_info("Recon Adversarial analysis, step "+str(step))
-          eval_ops = [self.recon, update_dx]
-          recon, dx = sess.run(eval_ops, feed_dict)
-          new_image += step_size * dx
-          if self.analysis_params.adversarial_clip:
-            new_image = np.clip(new_image, min_img_val, max_img_val)
-
-          if(step%10 == 0):
-            input_recon_mses.append(mse(input_image, recon))
-            input_adv_mses.append(mse(input_image, new_image))
-            target_recon_mses.append(mse(target_image, recon))
-            target_adv_mses.append(mse(target_image, new_image))
-            adv_recon_mses.append(mse(new_image, recon))
+          #Stats
+          if(step%self.analysis_params.adversarial_save_int == 0):
+            recon, adv_img = sess.run([self.recon, self.adv_image], feed_dict)
+            adversarial_images.append(adv_img)
             recons.append(recon)
-          feed_dict[self.model.x] = new_image
+            input_recon_mses.append(mse(input_image, recon))
+            input_adv_mses.append(mse(input_image, adv_img))
+            target_recon_mses.append(mse(target_image, recon))
+            target_adv_mses.append(mse(target_image, adv_img))
+            adv_recon_mses.append(mse(adv_img, recon))
+
+          self.analysis_logger.log_info("Recon Adversarial analysis, step "+str(step))
+          #Run update op
+          sess.run(self.adv_update_op, feed_dict)
+
       if(output_list):
         mses["input_target_mse"].append(input_target_mse)
         mses["input_recon_mses"].append(input_recon_mses)
@@ -885,51 +935,64 @@ class Analyzer(object):
     with tf.device(self.analysis_params.device):
       with self.model.graph.as_default():
         with tf.name_scope("placeholders") as scope:
-          self.model.orig_input = tf.placeholder(tf.float32, shape=self.model.x_shape,
-            name="original_input_data")
-          self.model.adv_target = tf.placeholder(tf.float32, shape=self.model.y_shape,
+          self.adv_target = tf.placeholder(tf.float32, shape=self.model.label_shape,
             name="adversarial_target")
-          self.model.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+          self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
 
         with tf.name_scope("loss") as scope:
-          self.model.adv_loss_no_target = tf.negative(self.model.mlp_module.mean_loss)
+          if(self.analysis_params.adversarial_attack_method == "kurakin"):
+            if(self.analysis_params.adversarial_target_label is None):
+              #No target attack
+              self.adv_loss = tf.negative(self.model.mlp_module.mean_loss)
+            else:
+              #Targeted attack
+              self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
+                tf.log(tf.clip_by_value(self.model.label_est, self.model_params.eps, 1.0))))
+          elif(self.analysis_params.adversarial_attack_method == "carlini"):
+            #Carlini attack must have target
+            assert self.analysis_params.adversarial_target_label is not None, (
+              "Carlini attack must have target label")
+            self.input_pert_loss = 0.5 * tf.reduce_sum(
+              tf.square(tf.subtract(self.model.input_placeholder, self.adv_image)),
+              name="input_perturbed_loss")
+            #Using method f_6 in carlini et al. 2017 seciton 5, A
+            #relu( max_{i != t}(Z(x)_i) - Z(x)_t )
+            self.model_logits = self.model.get_encodings()
 
-          reduc_dim = list(range(1, len(self.model.get_encodings().shape))) # sum over all but batch
-          self.model.adv_loss_target = tf.reduce_mean(
-            -tf.reduce_sum(tf.multiply(self.model.adv_target, tf.log(tf.clip_by_value(
-            self.model.y_, self.model_params.eps, 1.0))), axis=reduc_dim))
+            #Assuming adv_target is one hot
+            #Construct two boolean masks, one with only target class as true
+            #and one with everything not target class
+            self.target_mask = self.adv_target > .5
+            self.not_target_mask = self.adv_target < .5
 
-          self.model.input_pert_loss = tf.reduce_mean(0.5 *
-            tf.reduce_sum(tf.square(tf.subtract(self.model.orig_input,
-            self.model.x)), axis=reduc_dim),
-            name="input_perturbed_loss")
+            #TODO fix this with multiple batches
+            #Z(x)_t
+            self.logits_target_val = tf.boolean_mask(self.model_logits, self.target_mask)[0]
+            self.logits_not_target_val = tf.boolean_mask(self.model_logits, self.not_target_mask)
+            #max_{i!=t} Z(x)_i
+            self.max_logits_not_target_val = tf.reduce_max(self.logits_not_target_val)
 
-          #Using method f_6 in carlini et al. 2017 seciton 5, A
-          #relu( max_{i != t}(Z(x)_i) - Z(x)_t )
-          self.model_logits = self.model.get_encodings()
-          #Assuming adv_target is one hot
-          self.logits_target = self.model.adv_target * self.model_logits
-          self.logits_target_val = tf.reduce_sum(self.logits_target, axis=-1) #Z(x)_t
-          #Get min and set at index t to remove t from max
-          self.min_logits = tf.reduce_min(self.model_logits, axis=-1)
-          self.max_logits = tf.reduce_max(self.model_logits -
-            (self.model.adv_target * self.min_logits), axis=-1) #max_{i != t}(Z(x)_i)
-          #Reducing mean across batch dim
-          #TODO We might not want to do this with adv examples if we do more than 1 img
-          self.model.target_class_loss = tf.reduce_mean(
-            tf.nn.relu(self.max_logits - self.logits_target_val))
-          self.model.carlini_loss = tf.add_n([
-            (1-self.model.recon_mult) * self.model.input_pert_loss+
-            self.model.recon_mult * self.model.target_class_loss])
+            self.target_class_loss = tf.reduce_sum(tf.nn.relu(
+              self.max_logits_not_target_val - self.logits_target_val))
 
-          self.output = self.model.y_
-        with tf.name_scope("adversarial") as scope:
-          #Stepping in opposite direction of gradient
-          self.model.fast_sign_adv_no_target_dx = -tf.sign(
-            tf.gradients(self.model.adv_loss_no_target, self.model.x)[0])
-          self.model.fast_sign_adv_target_dx = -tf.sign(
-            tf.gradients(self.model.adv_loss_target, self.model.x)[0])
-          self.model.carlini_adv_dx = -tf.gradients(self.model.carlini_loss, self.model.x)[0]
+            self.adv_loss = (1-self.recon_mult) * self.input_pert_loss + \
+              self.recon_mult * self.target_class_loss
+          else:
+            assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
+          self.output = self.model.label_est
+
+        with tf.name_scope("optimizer") as scope:
+          if(self.analysis_params.adversarial_attack_method == "kurakin"):
+            self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
+            self.adv_update_op = self.adv_var.assign_add(
+              self.analysis_params.adversarial_step_size * self.adv_grad)
+          elif(self.analysis_params.adversarial_attack_method == "carlini"):
+            self.adv_opt = tf.train.AdamOptimizer(
+              learning_rate = self.analysis_params.adversarial_step_size)
+            #Find gradient wrt self.model.x, but apply them to tmp variable
+            self.adv_grads = self.adv_opt.compute_gradients(
+              self.adv_loss, var_list=[self.adv_var])
+            self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grads)
 
   def construct_class_adversarial_stimulus(self, input_image, input_label, target_label,
     min_img_val, max_img_val, step_size=0.01, num_steps=10):
@@ -940,15 +1003,10 @@ class Analyzer(object):
 
     output_list = False
     if(self.analysis_params.adversarial_attack_method == "kurakin"):
-      if(target_label is None):
-        update_dx = self.model.fast_sign_adv_no_target_dx
-      else:
-        update_dx = self.model.fast_sign_adv_target_dx
       #Not using recon_mult here, so set arb value
       self.analysis_params.recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini"):
       assert(target_label is not None)
-      update_dx = self.model.carlini_adv_dx
       if(type(self.analysis_params.recon_mult) is not list):
         self.analysis_params.recon_mult = [self.analysis_params.recon_mult]
       else:
@@ -969,35 +1027,27 @@ class Analyzer(object):
 
       with tf.Session(config=config, graph=self.model.graph) as sess:
         feed_dict = self.model.get_feed_dict(input_image, input_label, is_test=True)
-        feed_dict[self.model.orig_input] = input_image
+        feed_dict[self.model.input_placeholder] = input_image
         if(target_label is not None):
-          feed_dict[self.model.adv_target] = target_label
-        feed_dict[self.model.recon_mult] = r_mult
+          feed_dict[self.adv_target] = target_label
+        feed_dict[self.recon_mult] = r_mult
+        feed_dict[self.min_img_val] = min_img_val
+        feed_dict[self.max_img_val] = max_img_val
         sess.run(self.model.init_op, feed_dict)
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
-        new_image = input_image.copy()
         for step in range(num_steps):
-          if(step%10 == 0):
-            adversarial_images.append(new_image.copy())
-          self.analysis_logger.log_info("Class Adversarial analysis, step "+str(step))
-          eval_ops = [self.output, update_dx]
-          output, dx = sess.run(eval_ops, feed_dict)
-
-          if(target_label is None):
-            target_output_loss = sess.run(self.model.adv_loss_no_target, feed_dict)
-          else:
-            target_output_loss = sess.run(self.model.adv_loss_target, feed_dict)
-
-          new_image += step_size * dx
-          if self.analysis_params.adversarial_clip:
-            new_image = np.clip(new_image, min_img_val, max_img_val)
-
-          #TODO set this as param to save every so often
-          if(step % 10 == 0):
-            input_adv_mses.append(mse(input_image, new_image))
-            target_output_losses.append(target_output_loss)
+          #Stats
+          if(step%self.analysis_params.adversarial_save_int == 0):
+            adv_img, output, target_output_loss = \
+              sess.run([self.adv_image, self.output, self.adv_loss], feed_dict)
+            adversarial_images.append(adv_img)
             outputs.append(output)
-          feed_dict[self.model.x] = new_image
+            input_adv_mses.append(mse(input_image, adv_img))
+            target_output_losses.append(target_output_loss)
+
+          self.analysis_logger.log_info("Class Adversarial analysis, step "+str(step))
+          #Run update op
+          sess.run(self.adv_update_op, feed_dict)
 
       if(output_list):
         mses["input_adv_mses"].append(input_adv_mses)
@@ -1031,8 +1081,9 @@ class Analyzer(object):
     max_img_val = np.max([np.max(input_image)])
     min_img_val = np.min([np.min(input_image)])
 
-    self.adversarial_images, self.adversarial_outputs, mses = self.construct_class_adversarial_stimulus(input_image,
-      input_label, target_label, min_img_val, max_img_val, step_size, num_steps)
+    self.adversarial_images, self.adversarial_outputs, mses =  \
+      self.construct_class_adversarial_stimulus(input_image, input_label,
+      target_label, min_img_val, max_img_val, step_size, num_steps)
 
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
     self.adversarial_target_output_losses = mses["target_output_losses"]

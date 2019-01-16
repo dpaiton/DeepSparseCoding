@@ -11,19 +11,19 @@ class SaeModel(AeModel):
     super(SaeModel, self).__init__()
     self.vector_inputs = True
 
-  def build_module(self):
-    module = SaeModule(self.x, self.params.output_channels, self.sparse_mult, self.decay_mult,
+  def build_module(self, input_node):
+    module = SaeModule(input_node, self.params.output_channels, self.sparse_mult, self.decay_mult,
       self.target_act, self.act_func, name="SAE")
     return module
 
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.target_act = tf.placeholder(tf.float32, shape=(), name="target_act")
-    super(SaeModel, self).build_graph()
+    super(SaeModel, self).build_graph_from_input(input_node)
 
   def get_encodings(self):
     return self.module.a

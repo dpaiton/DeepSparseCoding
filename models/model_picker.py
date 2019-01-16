@@ -2,7 +2,7 @@ import params.param_picker as pp
 from models.mlp_model import MlpModel as mlp
 from models.mlp_lca_model import MlpLcaModel as mlp_lca
 from models.mlp_vae_model import MlpVaeModel as mlp_vae
-from models.mlp_sae_model import MlpSaeModel as mlp_sae
+#from models.mlp_sae_model import MlpSaeModel as mlp_sae
 from models.ica_model import IcaModel as ica
 from models.ica_pca_model import IcaPcaModel as ica_pca
 from models.rica_model import RicaModel as rica
@@ -28,8 +28,8 @@ def get_model(model_type):
     return mlp_lca()
   if model_type.lower() == "mlp_vae":
     return mlp_vae()
-  if model_type.lower() == "mlp_sae":
-    return mlp_sae()
+  #if model_type.lower() == "mlp_sae":
+  #  return mlp_sae()
   if model_type.lower() == "ica":
     return ica()
   if model_type.lower() == "ica_pca":

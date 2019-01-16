@@ -3,9 +3,9 @@ import params.param_picker as pp
 from models.lca_model import LcaModel
 
 class LcaPcaModel(LcaModel):
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
-    super(LcaPcaModel, self).build_graph()
+    super(LcaPcaModel, self).build_graph_from_input(input_node)
 
     with tf.device(self.params.device):
       with self.graph.as_default():
@@ -27,7 +27,7 @@ class LcaPcaModel(LcaModel):
           act_centered = self.get_encodings() - tf.reduce_mean(self.get_encodings(),
             axis=[1], keepdims=True)
           self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
-            tf.to_float(tf.shape(self.x)[0]), name="a_cov_matrix")
+            tf.to_float(tf.shape(input_node)[0]), name="a_cov_matrix")
 
         with tf.variable_scope("inference") as scope:
           self.a2 = tf.matmul(self.get_encodings(), self.eigen_vecs, name="a2")

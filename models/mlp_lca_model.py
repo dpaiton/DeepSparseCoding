@@ -23,13 +23,16 @@ class MlpLcaModel(Model):
     super(MlpLcaModel, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.params.data_shape))
-    self.x_shape = [None, self.num_pixels]
-    self.y_shape = [None, self.params.num_classes]
+    self.input_shape = [None, self.num_pixels]
+    self.label_shape = [None, self.params.num_classes]
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
-  def build_lca_module(self):
-    module = LcaModule(self.x, self.params.num_neurons, self.sparse_mult,
+  def get_input_shape(self):
+    return self.input_shape
+
+  def build_lca_module(self, input_node):
+    module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
       self.params.num_steps, self.params.eps, name="LCA")
     return module
@@ -37,13 +40,13 @@ class MlpLcaModel(Model):
   def build_mlp_module(self):
     if self.params.train_on_recon:
       if self.params.layer_types[0] == "conv":
-        data_shape = [tf.shape(self.x)[0]]+self.params.full_data_shape
+        data_shape = [tf.shape(self.input_placeholder)[0]]+self.params.full_data_shape
         recon = tf.reshape(self.lca_module.reconstruction, shape=data_shape)
       elif self.params.layer_types[0] == "fc":
         recon = self.lca_module.reconstruction
       else:
         assert False, ("params.layer_types must be 'fc' or 'conv'")
-      module = MlpModule(recon, self.y, self.params.layer_types,
+      module = MlpModule(recon, self.label_placeholder, self.params.layer_types,
         self.params.output_channels, self.params.batch_norm, self.params.dropout,
         self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
         self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
@@ -51,20 +54,20 @@ class MlpLcaModel(Model):
     else: # train on LCA latent encoding
       assert self.params.layer_types[0] == "fc", (
         "MLP must have FC layers to train on LCA activity")
-      module = MlpModule(self.lca_module.a, self.y, self.params.layer_types,
+      module = MlpModule(self.lca_module.a, self.label_placeholder, self.params.layer_types,
         self.params.output_channels, self.params.batch_norm, self.params.dropout,
         self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
         self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
         self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
     return module
 
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
-          self.y = tf.placeholder(tf.float32, shape=self.y_shape, name="input_labels")
+          self.label_placeholder = tf.placeholder(
+            tf.float32, shape=self.label_shape, name="input_labels")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
 
@@ -73,7 +76,7 @@ class MlpLcaModel(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        self.lca_module = self.build_lca_module()
+        self.lca_module = self.build_lca_module(input_node)
         self.trainable_variables.update(self.lca_module.trainable_variables)
         self.mlp_module = self.build_mlp_module()
         self.trainable_variables.update(self.mlp_module.trainable_variables)
@@ -86,18 +89,18 @@ class MlpLcaModel(Model):
         with tf.name_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.lca_module.norm_w, name="l2_normalization")
 
-        self.y_ = self.mlp_module.y_
+        self.label_est = self.mlp_module.label_est
 
         with tf.name_scope("performance_metrics") as scope:
           #LCA metrics
-          MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.lca_module.reconstruction)),
+          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
-          pixel_var = tf.nn.moments(self.x, axes=[1])[1]
+          pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
           with tf.name_scope("prediction_bools"):
-            self.correct_prediction = tf.equal(tf.argmax(self.y_, axis=1),
-              tf.argmax(self.y, axis=1), name="individual_accuracy")
+            self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
+              tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")

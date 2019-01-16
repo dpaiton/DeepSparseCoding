@@ -57,9 +57,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
   #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
   #sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
 
-  ## Need to provide shape if batch_size is used in graph
-  sess.run(model.init_op,
-    feed_dict={model.x:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
+  sess.run(model.init_op)
 
   sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)

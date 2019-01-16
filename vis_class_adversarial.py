@@ -15,8 +15,8 @@ import matplotlib.gridspec as gridspec
 class params(object):
   #model_type = "sigmoid_autoencoder"
   #model_name = "sigmoid_autoencoder"
-  model_type = "mlp_vae"
-  model_name = "mlp_vae_mnist"
+  model_type = "mlp"
+  model_name = "mlp_mnist"
   plot_title_name = model_name.replace("_", " ").title()
   #model_type = "lca"
   #model_name = "lca_mnist"
@@ -55,10 +55,11 @@ for step, (stim, output) in enumerate(zip(analyzer.adversarial_images, analyzer.
     f, axarr = plt.subplots(2, 1)
     axarr[0].imshow(adv_img, cmap='gray')
     axarr[0] = pf.clear_axis(axarr[0])
-    axarr[1].bar(np.arange(analyzer.model.params.num_classes), output[0])
+    axarr[1].bar(list(range(analyzer.model.params.num_classes)), output[0])
     axarr[1].set_ylim([0, 1])
     mse_val = np.mean((adv_img - orig_img) ** 2)
-    axarr[0].set_title(str(mse_val))
+    output_class = np.argmax(output[0])
+    axarr[0].set_title("output_class:"+str(output_class) + "  mse:" + str(mse_val))
     f.savefig(analyzer.analysis_out_dir+"/vis/adversarial_stims/stim_step_"+str(step)+".png")
     plt.close('all')
 

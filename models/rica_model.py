@@ -21,7 +21,7 @@ class RicaModel(Model):
   def load_params(self, params):
     super(RicaModel, self).load_params(params)
     self.num_pixels = int(np.prod(self.params.data_shape))
-    self.x_shape = [None, self.num_pixels]
+    self.input_shape = [None, self.num_pixels]
     self.w_shape = [self.num_pixels, self.params.num_neurons]
 
   def compute_recon(self, a_in):
@@ -30,8 +30,8 @@ class RicaModel(Model):
   def compute_recon_loss(self, a_in):
     with tf.name_scope("unsupervised"):
       recon_loss = tf.multiply(self.recon_mult,
-        tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon(a_in), self.x)),
-        axis=[1])), name="recon_loss")
+        tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon(a_in),
+        self.input_placeholder)), axis=[1])), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
@@ -59,7 +59,8 @@ class RicaModel(Model):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
+          self.input_placeholder = tf.placeholder(tf.float32,
+            shape=self.input_shape, name="input_data")
           self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult") # lambda
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
@@ -77,7 +78,7 @@ class RicaModel(Model):
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
         with tf.name_scope("inference") as scope:
-          self.a = tf.matmul(self.x, self.w, name="activity")
+          self.a = tf.matmul(self.input_placeholder, self.w, name="activity")
 
         with tf.name_scope("output") as scope:
           self.reconstruction = self.compute_recon(self.a)
@@ -90,9 +91,9 @@ class RicaModel(Model):
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.reconstruction)), axis=[1, 0],
+            MSE = tf.reduce_mean(tf.square(tf.subtract(self.input_placeholder, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
-            pixel_var = tf.nn.moments(self.x, axes=[1])[1]
+            pixel_var = tf.nn.moments(self.input_placeholder, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True

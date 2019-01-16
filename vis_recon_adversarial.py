@@ -11,14 +11,15 @@ import utils.data_processing as dp
 import utils.plot_functions as pf
 import analysis.analysis_picker as ap
 import matplotlib.gridspec as gridspec
+import pdb
 
 #List of models for analysis
 analysis_list = [
-  ("lca", "lca_mnist"),
+  #("lca", "lca_mnist"),
   ("vae", "vae_one_layer_overcomplete_mnist"),
-  ("vae", "vae_one_layer_undercomplete_mnist"),
-  ("vae", "vae_two_layer_mnist"),
-  ("vae", "vae_three_layer_mnist"),
+  #("vae", "vae_one_layer_undercomplete_mnist"),
+  #("vae", "vae_two_layer_mnist"),
+  #("vae", "vae_three_layer_mnist"),
   ]
 
 #colors for analysis_list
@@ -66,10 +67,14 @@ def setup(params):
 
 makedir(outdir)
 
-fig = plt.figure()
+fig_unnorm, ax_unnorm = plt.subplots()
+fig_norm, ax_norm = plt.subplots()
 
 saved_rm = [0 for i in analysis_list]
 
+#TODO only do this analysis if we're sweeping
+#Right now, single scalar for recon mult breaks this code
+#Work around is to make a one element list in analysis
 for idx, (model_type, model_name) in enumerate(analysis_list):
   analysis_params = params()
   analysis_params.model_type = model_type
@@ -84,34 +89,45 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
     int(np.sqrt(analyzer.model.num_pixels)))
 
   #Grab final mses
-  try:
-    input_adv_vals = [v[-1] for v in analyzer.adversarial_input_adv_mses]
-    target_recon_vals = [v[-1] for v in analyzer.adversarial_target_recon_mses]
-    input_recon_vals = [v[0] for v in analyzer.adversarial_input_recon_mses]
-  except:
-    import pdb; pdb.set_trace()
+  input_adv_vals = [v[-1] for v in analyzer.adversarial_input_adv_mses]
+  target_recon_vals = [v[-1] for v in analyzer.adversarial_target_recon_mses]
+  input_recon_val = [v[0] for v in analyzer.adversarial_input_recon_mses]
 
-  norm_target_recon_vals = np.array(target_recon_vals) / np.array(input_recon_vals)
+  #input_recon_val should be within threshold no matter the mse being tested
+  #Here, not identical because vae's sample latent space, so recon is non-deterministic
+  try:
+    assert(np.abs(input_recon_val[0] - np.mean(input_recon_val)) < 1e-3)
+  except:
+    pdb.set_trace()
+
+  input_recon_val = np.mean(input_recon_val)
+
+  norm_target_recon_vals = np.array(target_recon_vals) / input_recon_val
 
   #Normalize target_recon mse by orig_recon mse
 
   recon_mult = np.array(analyzer.analysis_params.recon_mult)
 
   #Find lowest l2 distance of the two axes to the 0,0
-  l2_dist = np.sqrt(np.array(input_adv_vals) ** 2 + np.array(norm_target_recon_vals) ** 2)
+  l2_dist = np.sqrt(np.array(input_adv_vals) ** 2 + np.array(target_recon_vals) ** 2)
   min_idx = np.argmin(l2_dist)
   saved_rm[idx] = (min_idx, recon_mult[min_idx])
 
   #plt.scatter(input_adv_vals, target_recon_vals, c=recon_mult)
-  plt.scatter(input_adv_vals, norm_target_recon_vals, label=model_name, c=colors[idx], s=2)
+  label_str = model_name + " recon_mse:%.4f"%input_recon_val
+  ax_norm.scatter(input_adv_vals, norm_target_recon_vals, label=label_str, c=colors[idx], s=2)
+  ax_unnorm.scatter(input_adv_vals, target_recon_vals, label=label_str, c=colors[idx], s=2)
 
-plt.xlabel("Input Adv MSE", fontsize=axes_font_size)
-plt.ylabel("Target Recon MSE", fontsize=axes_font_size)
-plt.legend()
-#plt.colorbar()
-#plt.title(analysis_params.plot_title_name)
+ax_norm.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
+ax_norm.set_ylabel("Normalized Target Recon MSE", fontsize=axes_font_size)
+ax_norm.legend()
 
-fig.savefig(outdir + "/recon_mult_tradeoff.png")
+ax_unnorm.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
+ax_unnorm.set_ylabel("Target Recon MSE", fontsize=axes_font_size)
+ax_unnorm.legend()
+
+fig_unnorm.savefig(outdir + "/recon_mult_tradeoff.png")
+fig_norm.savefig(outdir + "/norm_recon_mult_tradeoff.png")
 
 plt.close('all')
 
@@ -119,6 +135,7 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
   analysis_params = params()
   analysis_params.model_type = model_type
   analysis_params.model_name = model_name
+  analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
 
   analyzer = setup(analysis_params)
 
@@ -201,7 +218,11 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
 
     axbig = plt.subplot(gs[3:, :3])
 
-    line1 = axbig.plot(analyzer.adversarial_input_adv_mses[i_rm], 'r', label="input to perturbed")
+    #Generate x idxs based on length of lines and save int
+    line_x = np.arange(0, analyzer.analysis_params.adversarial_num_steps,
+      analyzer.analysis_params.adversarial_save_int)
+
+    line1 = axbig.plot(line_x, analyzer.adversarial_input_adv_mses[i_rm], 'r', label="input to perturbed")
     axbig.set_ylim([0, np.max(analyzer.adversarial_input_adv_mses[i_rm]+analyzer.adversarial_target_recon_mses[i_rm]+analyzer.adversarial_target_adv_mses[i_rm]+analyzer.adversarial_adv_recon_mses[i_rm])])
     axbig.tick_params('y', colors='k')
     axbig.set_xlabel("Step", fontsize=axes_font_size)
@@ -209,16 +230,16 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
     axbig.set_ylim([0, np.max(analyzer.adversarial_target_recon_mses[i_rm]+analyzer.adversarial_target_adv_mses[i_rm]+analyzer.adversarial_adv_recon_mses[i_rm])])
 
     #ax2 = ax1.twinx()
-    line2 = axbig.plot(analyzer.adversarial_target_adv_mses[i_rm], 'b', label="target to perturbed")
+    line2 = axbig.plot(line_x, analyzer.adversarial_target_adv_mses[i_rm], 'b', label="target to perturbed")
     #ax2.tick_params('y', colors='k')
     #ax2.set_ylim(ax1.get_ylim())
 
     #ax3 = ax1.twinx()
-    line3 = axbig.plot(analyzer.adversarial_target_recon_mses[i_rm], 'g', label="target to recon")
+    line3 = axbig.plot(line_x, analyzer.adversarial_target_recon_mses[i_rm], 'g', label="target to recon")
     #ax3.tick_params('y', colors='k')
     #ax3.set_ylim(ax1.get_ylim())
 
-    line4 = axbig.plot(analyzer.adversarial_adv_recon_mses[i_rm], 'k', label="perturbed to recon")
+    line4 = axbig.plot(line_x, analyzer.adversarial_adv_recon_mses[i_rm], 'k', label="perturbed to recon")
 
     lines = line1+line2+line3+line4
     #lines = line2+line3+line4

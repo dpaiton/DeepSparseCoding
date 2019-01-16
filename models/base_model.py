@@ -13,6 +13,8 @@ class Model(object):
     self.trainable_variables = TrainableVariableDict()
     self.graph = tf.Graph()
 
+    self.full_model_load_ignore = []
+
   def setup(self, params):
     self.load_params(params)
     #self.check_params()
@@ -248,7 +250,11 @@ class Model(object):
   def construct_savers(self):
     """Add savers to graph"""
     with self.graph.as_default():
-      self.full_saver = tf.train.Saver(max_to_keep=self.params.max_cp_to_keep)
+      #Loop through to find variables to ignore
+      all_vars = tf.global_variables()
+      load_vars = [v for v in all_vars if v not in self.full_model_load_ignore]
+      self.full_saver = tf.train.Saver(max_to_keep=self.params.max_cp_to_keep,
+        var_list=load_vars)
       if self.params.cp_load:
         self.loader = tf.train.Saver(var_list=self.get_load_vars())
     self.savers_constructed = True
@@ -328,8 +334,8 @@ class Model(object):
     """
     Return dictionary containing all placeholders
     Inputs:
-      input_data: data to be placed in self.x
-      input_labels: label to be placed in self.y
+      input_data: data to be placed in self.input_placeholder
+      input_labels: label to be placed in self.label_placeholder
       dict_args: optional dictionary to be appended to the automatically generated feed_dict
     """
     placeholders = [op.name
@@ -337,11 +343,14 @@ class Model(object):
       in self.graph.get_operations()
       if ("auto_placeholders" in op.name
       and "input_data" not in op.name
-      and "input_label" not in op.name)]
-    if input_labels is not None and hasattr(self, "y"):
-      feed_dict = {self.x:input_data, self.y:input_labels}
+      and "input_label" not in op.name)
+      ]
+
+    if input_labels is not None and hasattr(self, "label_placeholder"):
+      feed_dict = {self.input_placeholder:input_data, self.label_placeholder:input_labels}
     else:
-      feed_dict = {self.x:input_data}
+      feed_dict = {self.input_placeholder:input_data}
+
     for placeholder in placeholders:
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
         self.get_schedule(placeholder.split("/")[1]))
@@ -349,7 +358,24 @@ class Model(object):
       feed_dict.update(dict_args)
     return feed_dict
 
+  #subclass must overwrite this class, or overwrite build_graph
+  def get_input_shape(self):
+    return NotImplementedError
+
+  def build_input_placeholder(self):
+    with tf.device(self.params.device):
+      with self.graph.as_default():
+        self.input_placeholder = tf.placeholder(tf.float32,
+          shape=self.get_input_shape(), name="input_data")
+    return self.input_placeholder
+
+  #If build_graph gets called without parameters,
+  #will build placeholder first, then call build_graph_from_input
+  #Subclasses can overwrite this function to ignore this functionality
   def build_graph(self):
+    self.build_graph_from_input(self.build_input_placeholder())
+
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     return NotImplementedError
 

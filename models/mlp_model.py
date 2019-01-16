@@ -17,19 +17,20 @@ class MlpModel(Model):
     """
     super(MlpModel, self).load_params(params)
     self.num_pixels = int(np.prod(self.params.data_shape))
-    self.x_shape = [None,] + self.params.data_shape
-    self.y_shape = [None, self.params.num_classes]
+    self.input_shape = [None,] + self.params.data_shape
+    self.label_shape = [None, self.params.num_classes]
 
-  def build_graph(self):
+  def get_input_shape(self):
+    return self.input_shape
+
+  def build_graph_from_input(self, input_node):
     """
     Build an MLP TensorFlow Graph.
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
-          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
-          self.y = tf.placeholder(tf.float32, shape=self.y_shape, name="input_labels")
-
+        with tf.name_scope("label_placeholders") as scope:
+          self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
         with tf.name_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
@@ -38,18 +39,18 @@ class MlpModel(Model):
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
-        self.mlp_module = MlpModule(self.x, self.y, self.params.layer_types,
+        self.mlp_module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
           self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
           self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
           self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
           self.params.eps, name="MLP")
         self.trainable_variables.update(self.mlp_module.trainable_variables)
-        self.y_ = self.mlp_module.y_
+        self.label_est = self.mlp_module.label_est
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("prediction_bools"):
-            self.correct_prediction = tf.equal(tf.argmax(self.y_, axis=1),
-              tf.argmax(self.y, axis=1), name="individual_accuracy")
+            self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
+              tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")

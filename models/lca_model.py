@@ -19,37 +19,39 @@ class LcaModel(Model):
     super(LcaModel, self).load_params(params)
     # Network Size
     self.num_pixels = int(np.prod(self.params.data_shape))
-    self.x_shape = [None, self.num_pixels]
+    self.input_shape = [None, self.num_pixels]
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
-  def build_module(self):
-    module = LcaModule(self.x, self.params.num_neurons, self.sparse_mult,
+  def get_input_shape(self):
+    return self.input_shape
+
+  def build_module(self, input_node):
+    module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
       self.params.num_steps, self.params.eps, name="lca")
     return module
 
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        self.module = self.build_module()
+        self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
         with tf.name_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
 
         with tf.name_scope("performance_metrics") as scope:
-          MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),
+          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.module.reconstruction)),
             name="mean_squared_error")
-          pixel_var = tf.nn.moments(self.x, axes=[1])[1]
+          pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
             MSE)), name="recon_quality")
 

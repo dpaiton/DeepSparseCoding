@@ -27,7 +27,9 @@ class MlpModule(object):
     TODO: relu is hard coded, but should be a parameter that is passed to an activation module
       that has a bunch of activations
     """
-    data_ndim = len(data_tensor.get_shape().as_list())
+    data_shape = data_tensor.get_shape().as_list()
+
+    data_ndim = len(data_shape)
     assert (data_ndim == 2 or data_ndim == 4), (
       "Model requires data_tensor to have shape [batch, num_features] or [batch, y, x, features]")
     label_ndim = len(label_tensor.get_shape().as_list())
@@ -36,10 +38,10 @@ class MlpModule(object):
 
     self.data_tensor = data_tensor
     if data_ndim == 2:
-      self.batch_size, self.num_pixels = data_tensor.get_shape()
+      self.batch_size, self.num_pixels = data_shape
       assert layer_types[0] == "fc", ("Data tensor must have ndim==2 for fc layers")
     elif data_ndim == 4:
-      self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_tensor.get_shape()
+      self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
       self.num_pixels = self.y_size * self.x_size * self.num_data_channels
       assert layer_types[0] == "conv", ("Data tensor must have ndim==4 for conv layers")
     else:
@@ -189,7 +191,7 @@ class MlpModule(object):
 
       with tf.name_scope("output") as scope:
         with tf.name_scope("label_estimate"):
-          self.y_ = tf.nn.softmax(self.layer_list[-1])
+          self.label_est = tf.nn.softmax(self.layer_list[-1])
 
       with tf.name_scope("loss") as scope:
         with tf.name_scope("supervised"):
@@ -199,7 +201,7 @@ class MlpModule(object):
               self.label_mult = tf.reduce_sum(self.label_tensor, axis=[1]) # vector with len [batch]
               self.cross_entropy_loss = (self.label_mult
                 * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
-                self.y_, self.eps, 1.0))), axis=[1])) # vector with len [batch]
+                self.label_est, self.eps, 1.0))), axis=[1])) # vector with len [batch]
               #Doing this to avoid divide by zero
               label_count = tf.reduce_sum(self.label_mult) # number of non-ignore labels in batch
               f1 = lambda: tf.zeros_like(self.cross_entropy_loss)

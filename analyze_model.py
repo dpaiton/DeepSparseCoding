@@ -9,6 +9,9 @@ import analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
+    self.model_type = ""
+    self.model_name = ""
+    self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
     # If false, append to log file
@@ -24,9 +27,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False
+    self.do_recon_adversaries = True
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -53,9 +56,10 @@ class params(object):
     # Which dataset images to use for inference (None uses random)
     self.inference_img_indices = None
     # Number of adversarial image updates
-    self.adversarial_num_steps = 1000
+    self.adversarial_num_steps = 10000
     # Step size for adversarial attacks
-    self.adversarial_step_size = 0.0001
+    self.adversarial_step_size = 0.001
+    #self.adversarial_step_size = 0.01
     #Attack method for adversarial attack, kurakin (iterative fsg) or carlini
     #self.adversarial_attack_method = "carlini"
     self.adversarial_attack_method = "kurakin"
@@ -63,11 +67,15 @@ class params(object):
     self.adversarial_clip = True
     #Recon_mult tradeoff for carlini attack method
     #Can be a list to sweep
-    self.recon_mult = list(np.arange(.1, 10, .1))
+    #0 means ignore adv_recon loss, 1 means ignore input_pert loss
+    #self.recon_mult = list(np.arange(.01, 1, .01))
+    self.recon_mult = [.5]
     #Target class for class adversary analysis
     #None for untargeted
-    self.adversarial_target_label = None
+    self.adversarial_target_label = 4
     # Will vary depending on preprocessing
+    #Interval at which to save adversarial examples to the npy file
+    self.adversarial_save_int = 10
     self.input_scale = 1.0
     # Which neurons to run tuning experiments on (None to do all)
     self.neuron_indices = None
@@ -99,6 +107,7 @@ analysis_params.model_type = args.model_type
 analysis_params.model_name = args.model_name
 analysis_params.version = args.model_version
 analysis_params.model_dir = analysis_params.projects_dir+analysis_params.model_name
+
 
 # Initialize & setup analyzer
 analyzer = ap.get_analyzer(analysis_params.model_type)

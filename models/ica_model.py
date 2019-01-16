@@ -21,7 +21,7 @@ class IcaModel(Model):
     ## Calculated params
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.num_neurons = self.num_pixels
-    self.x_shape = [None, self.num_pixels]
+    self.input_shape = [None, self.num_pixels]
     self.w_synth_shape = [self.num_neurons, self.num_pixels]
     self.w_analysis_shape = [self.num_pixels, self.num_neurons]
 
@@ -30,7 +30,8 @@ class IcaModel(Model):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
+          self.input_placeholder = tf.placeholder(
+            tf.float32, shape=self.input_shape, name="input_data")
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
@@ -62,7 +63,7 @@ class IcaModel(Model):
           #self.trainable_variables[self.w_analysis.name] = self.w_analysis
 
         with tf.name_scope("inference") as scope:
-          self.a = tf.matmul(self.x, self.w_analysis, name="activity")
+          self.a = tf.matmul(self.input_placeholder, self.w_analysis, name="activity")
           if self.params.prior.lower() == "laplacian":
             self.z = tf.sign(self.a)
           else: #It must be laplacian or cauchy
@@ -70,7 +71,7 @@ class IcaModel(Model):
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
-            self.x_ = tf.matmul(self.a, self.w_synth, name="reconstruction")
+            self.reconstruction = tf.matmul(self.a, self.w_synth, name="reconstruction")
 
     self.graph_built = True
 
@@ -91,7 +92,7 @@ class IcaModel(Model):
     # Note this is performed on w_synthesis (A in Bell & Sejnowski 1997), while the B&S paper gives
     # an update rule for W.
     z_a_avg = tf.divide(tf.matmul(tf.transpose(self.z), self.a),
-      tf.to_float(tf.shape(self.x)[0]), name="avg_samples")
+      tf.to_float(tf.shape(self.input_placeholder)[0]), name="avg_samples")
     gradient = -tf.subtract(tf.matmul(tf.transpose(z_a_avg), weight_op[0]), weight_op[0],
       name=weight_name+"_gradient") # weight_op[0] is expected to be w_synth
 
@@ -116,7 +117,7 @@ class IcaModel(Model):
     """
     update_dict = super(IcaModel, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list  = [self.global_step, self.a, self.z, self.x_]
+    eval_list  = [self.global_step, self.a, self.z, self.reconstruction]
     grad_name_list = []
     learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):

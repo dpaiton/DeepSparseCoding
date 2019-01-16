@@ -16,19 +16,19 @@ class VaeModel(AeModel):
     super(VaeModel, self).__init__()
     self.vector_inputs = True
 
-  def build_module(self):
-    module = VaeModule(self.x, self.params.output_channels, self.sparse_mult,
+  def build_module(self, input_node):
+    module = VaeModule(input_node, self.params.output_channels, self.sparse_mult,
       self.decay_mult, self.kld_mult, self.act_func, self.params.noise_level, name="VAE")
     return module
 
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
-    super(VaeModel, self).build_graph()
+    super(VaeModel, self).build_graph_from_input(input_node)
 
   def get_encodings(self):
     return self.module.a

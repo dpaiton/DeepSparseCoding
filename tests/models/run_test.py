@@ -34,7 +34,7 @@ def testBasic(self):
   config.gpu_options.allow_growth = True
   with tf.Session(config=config, graph=model.graph) as sess:
     sess.run(model.init_op,
-      feed_dict={model.x:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
+      feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
     sess.graph.finalize() # Graph is read-only after this statement
     model.write_graph(sess.graph_def)
     model.sched_idx = 0

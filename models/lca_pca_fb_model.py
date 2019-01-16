@@ -87,7 +87,7 @@ class LcaPcaFbModel(LcaPcaModel):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss,
         "feedback_loss":self.compute_mean_feedback_loss}
 
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     with self.graph.as_default():
       with tf.name_scope("auto_placeholders") as scope:
         self.fb_mult = tf.placeholder(tf.float32, shape=(), name="fb_mult")
@@ -96,4 +96,4 @@ class LcaPcaFbModel(LcaPcaModel):
         print("WARNING: Covariance matrix was not specified")
       else:
         self.full_cov = np.load(self.params.act_cov_loc)["data"].item().get("act_cov")
-    super(LcaPcaFbModel, self).build_graph()
+    super(LcaPcaFbModel, self).build_graph_from_input(input_node)

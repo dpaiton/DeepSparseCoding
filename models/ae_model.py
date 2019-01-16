@@ -22,20 +22,22 @@ class AeModel(Model):
     """
     super(AeModel, self).load_params(params)
     self.num_pixels = int(np.prod(self.params.data_shape))
-    self.x_shape = [None, self.num_pixels]
+    self.input_shape = [None, self.num_pixels]
     self.act_func = activation_picker(self.params.activation_function)
 
-  def build_module(self):
-    module = AeModule(self.x, self.params.output_channels, self.decay_mult, self.act_func,
+  def get_input_shape(self):
+    return self.input_shape
+
+  def build_module(self, input_node):
+    module = AeModule(input_node, self.params.output_channels, self.decay_mult, self.act_func,
       name="AE")
     return module
 
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
 
         with tf.name_scope("placeholders") as sess:
@@ -44,7 +46,7 @@ class AeModel(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        self.module = self.build_module()
+        self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
         with tf.name_scope("inference") as scope:
@@ -57,9 +59,9 @@ class AeModel(Model):
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.module.reconstruction)),
+            MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.module.reconstruction)),
               axis=[1, 0], name="mean_squared_error")
-            pixel_var = tf.nn.moments(self.x, axes=[1])[1]
+            pixel_var = tf.nn.moments(input_node, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
 
