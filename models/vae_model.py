@@ -30,6 +30,13 @@ class VaeModel(AeModel):
           self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
     super(VaeModel, self).build_graph_from_input(input_node)
 
+    with tf.name_scope("norm_weights") as scope:
+      norm_enc_w = self.module.w_list[0].assign(tf.nn.l2_normalize(self.module.w_list[0], axis=0,
+        epsilon=self.params.eps, name="row_l2_norm"))
+      norm_dec_w = self.module.w_list[-1].assign(tf.nn.l2_normalize(self.module.w_list[-1], axis=1,
+        epsilon=self.params.eps, name="row_l2_norm"))
+      self.norm_weights = tf.group(norm_enc_w, norm_dec_w, name="l2_normalization")
+
   def get_encodings(self):
     return self.module.a
 
