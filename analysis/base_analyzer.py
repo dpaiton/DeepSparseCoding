@@ -947,8 +947,8 @@ class Analyzer(object):
               self.adv_loss = tf.negative(self.model.mlp_module.mean_loss)
             else:
               #Targeted attack
-              self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
-                tf.log(tf.clip_by_value(self.model.label_est, self.model_params.eps, 1.0))))
+              self.adv_loss = -tf.reduce_sum(tf.multiply(self.model.label_est,
+                tf.log(tf.clip_by_value(self.adv_target, self.model_params.eps, 1.0))))
           elif(self.analysis_params.adversarial_attack_method == "carlini"):
             #Carlini attack must have target
             assert self.analysis_params.adversarial_target_label is not None, (
