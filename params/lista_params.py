@@ -92,7 +92,7 @@ class params(BaseParams):
       self.num_neurons = 768
       self.num_layers = 10
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.21
+        self.schedule[sched_idx]["sparse_mult"] = 0.19
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["weight_lr"] = 0.01

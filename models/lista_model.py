@@ -82,7 +82,9 @@ class ListaModel(Model):
             (1-self.train_lca) * self.lista_loss
 
         with tf.name_scope("norm_weights") as scope:
-          self.norm_weights = tf.group(self.lca_module.norm_w, name="l2_normalization")
+          self.norm_lista_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=0, epsilon=self.params.eps, 
+            name="row_l2_norm"))
+          self.norm_weights = tf.group(self.norm_lista_w, name="l2_normalization")
 
         with tf.name_scope("performance_metrics") as scope:
           #LCA metrics

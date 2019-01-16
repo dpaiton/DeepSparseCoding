@@ -2,6 +2,7 @@ import params.mlp_params as mlp
 import params.mlp_lca_params as mlp_lca
 import params.mlp_vae_params as mlp_vae
 import params.mlp_sae_params as mlp_sae
+import params.mlp_lista_params as mlp_lista
 import params.ica_params as ica
 import params.ica_pca_params as ica_pca
 import params.rica_params as rica
@@ -37,6 +38,8 @@ def get_params(model_type):
     return mlp_vae.params()
   if model_type.lower() == "mlp_sae":
     return mlp_sae.params()
+  if model_type.lower() == 'mlp_lista':
+    return mlp_lista.params()
   if model_type.lower() == "ica":
     return ica.params()
   if model_type.lower() == "ica_pca":

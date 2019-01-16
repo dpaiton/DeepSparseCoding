@@ -3,6 +3,7 @@ from models.mlp_model import MlpModel as mlp
 from models.mlp_lca_model import MlpLcaModel as mlp_lca
 from models.mlp_vae_model import MlpVaeModel as mlp_vae
 from models.mlp_sae_model import MlpSaeModel as mlp_sae
+from models.mlp_lista_model import MlpListaModel as mlp_lista
 from models.ica_model import IcaModel as ica
 from models.ica_pca_model import IcaPcaModel as ica_pca
 from models.rica_model import RicaModel as rica
@@ -30,6 +31,8 @@ def get_model(model_type):
     return mlp_vae()
   if model_type.lower() == "mlp_sae":
     return mlp_sae()
+  if model_type.lower() == "mlp_lista":
+    return mlp_lista()
   if model_type.lower() == "ica":
     return ica()
   if model_type.lower() == "ica_pca":
@@ -66,7 +69,7 @@ def get_model(model_type):
     return vae()
 
 def get_model_list():
-  model_list = ["mlp", "mlp_lca", "mlp_vae", "ica", "ica_pca", "rica", "lca", "lca_pca",
+  model_list = ["mlp", "mlp_lca", "mlp_vae", "mlp_sae", "mlp_lista", "ica", "ica_pca", "rica", "lca", "lca_pca",
     "lca_pca_fb", "lca_conv", "lca_subspace", "lista", "fflista", "gdn_autoencoder",
     "gdn_conv_autoencoder", "gdn_conv_decoder", "relu_autoencoder", "ae", "sae", "vae"]
   return model_list
