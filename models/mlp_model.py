@@ -39,6 +39,7 @@ class MlpModel(Model):
           self.global_step = tf.Variable(0, trainable=False,
             name="global_step")
 
+        #TODO: with tf.name_scope("mlp_module"):
         self.mlp_module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
           self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
           self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,

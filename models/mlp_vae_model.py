@@ -77,8 +77,10 @@ class MlpVaeModel(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
+        #TODO: with tf.name_scope("vae_module"):
         self.vae_module = self.build_vae_module(input_node)
         self.trainable_variables.update(self.vae_module.trainable_variables)
+        #TODO: with tf.name_scope("mlp_module"):
         self.mlp_module = self.build_mlp_module()
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 

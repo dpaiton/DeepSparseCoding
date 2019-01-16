@@ -52,7 +52,8 @@ class VaeModule(AeModule):
     self.w_list = []
     self.b_list = []
     enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
-      [self.act_func,]*self.num_encoder_layers, self.w_shapes[:self.num_encoder_layers])
+      [self.act_func,]*(self.num_encoder_layers-1)+[tf.identity],
+      self.w_shapes[:self.num_encoder_layers])
     self.u_list += enc_u_list[:-1] # don't store the mean value in u_list
     self.w_list += enc_w_list
     self.b_list += enc_b_list

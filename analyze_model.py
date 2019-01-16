@@ -7,11 +7,11 @@ import data.data_selector as ds
 import models.model_picker as mp
 import analysis.analysis_picker as ap
 
+
+## TODO: Remove model_type as an argument, get that form model_name params
+
 class params(object):
   def __init__(self):
-    self.model_type = ""
-    self.model_name = ""
-    self.version = "0.0"
     self.save_info = "analysis"
     self.device = "/gpu:0"
     # If false, append to log file
@@ -19,7 +19,7 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = False
+    self.do_evals = True
     # Dictionary fitting
     self.do_basis_analysis = False
     # LCA Inference analysis
@@ -27,9 +27,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = True
+    self.do_recon_adversaries = False # TODO: Broken for mlp_lca_mnist
     #Classification adversarial image analysis
-    self.do_class_adversaries = False
+    self.do_class_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -61,8 +61,8 @@ class params(object):
     self.adversarial_step_size = 0.001
     #self.adversarial_step_size = 0.01
     #Attack method for adversarial attack, kurakin (iterative fsg) or carlini
-    #self.adversarial_attack_method = "carlini"
-    self.adversarial_attack_method = "kurakin"
+    self.adversarial_attack_method = "carlini"; self.save_info += "_carlini" #TODO: attack method should modify output filenames; both should be able to be run
+    #self.adversarial_attack_method = "kurakin"; self.save_info += "_kurakin" #FIXME
     #Flag to define if adversarial example can go beyond image range
     self.adversarial_clip = True
     #Recon_mult tradeoff for carlini attack method

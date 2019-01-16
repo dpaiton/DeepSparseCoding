@@ -61,8 +61,8 @@ def setup(params):
   analyzer.setup(params)
   analyzer.model.setup(analyzer.model_params)
   analyzer.load_analysis(save_info=params.save_info)
-  makedir(analyzer.analysis_out_dir+"/vis/adversarial_recons/")
-  makedir(analyzer.analysis_out_dir+"/vis/adversarial_stims/")
+  makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_recons/")
+  makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_stims/")
   return analyzer
 
 makedir(outdir)
@@ -145,10 +145,10 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
     int(np.sqrt(analyzer.model.num_pixels)))
 
   pf.plot_image(orig_img, title="Input Image",
-    save_filename=analyzer.analysis_out_dir+"/vis/adversarial_input.png")
+    save_filename=analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_input.png")
 
   pf.plot_image(target_img, title="Input Image",
-    save_filename=analyzer.analysis_out_dir+"/vis/adversarial_target.png")
+    save_filename=analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_target.png")
 
   plot_int = 100
   recon_mult = analyzer.analysis_params.recon_mult
@@ -164,13 +164,13 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
       if(step % plot_int == 0):
         adv_recon = recon.reshape(int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
         pf.plot_image(adv_recon, title="step_"+str(step),
-          save_filename=analyzer.analysis_out_dir+"/vis/adversarial_recons/recon_step_"+str(step)+"_recon_mult_"+rm_str+".png")
+          save_filename=analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_recons/recon_step_"+str(step)+"_recon_mult_"+rm_str+".png")
 
     for step, stim in enumerate(analyzer.adversarial_images[i_rm]):
       if(step % plot_int == 0):
         adv_img = stim.reshape(int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
         pf.plot_image(adv_img, title="step_"+str(step),
-          save_filename=analyzer.analysis_out_dir+"/vis/adversarial_stims/stim_step_"+str(step)+"_recon_mult_"+rm_str+".png")
+          save_filename=analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_stims/stim_step_"+str(step)+"_recon_mult_"+rm_str+".png")
 
     out_filename = analyzer.analysis_out_dir+"/vis/adversarial_losses_rm_"+rm_str+".pdf"
     print(out_filename)
@@ -252,4 +252,3 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
 
     fig.savefig(out_filename)
     plt.close("all")
-

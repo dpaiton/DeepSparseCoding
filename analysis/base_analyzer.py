@@ -248,6 +248,7 @@ class Analyzer(object):
       self.full_recon = recon_analysis["full_recon"]
       self.recon_frac_act = recon_analysis["recon_frac_act"]
 
+    #TODO: Assign unique variable names to recon & adv analysis output attributes
     # Recon Adversarial analysis
     recon_adversarial_file_loc = self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz"
     if os.path.exists(recon_adversarial_file_loc):
@@ -1049,16 +1050,20 @@ class Analyzer(object):
           #Run update op
           sess.run(self.adv_update_op, feed_dict)
 
-      if(output_list):
-        mses["input_adv_mses"].append(input_adv_mses)
-        mses["target_output_losses"].append(target_output_losses)
-        all_adversarial_images.append(adversarial_images)
-        all_outputs.append(outputs)
-      else:
-        mses["input_adv_mses"] = input_adv_mses
-        mses["target_output_losses"] = target_output_losses
-        all_adversarial_images = adversarial_images
-        all_outputs = outputs
+      mses["input_adv_mses"].append(input_adv_mses)
+      mses["target_output_losses"].append(target_output_losses)
+      all_adversarial_images.append(adversarial_images)
+      all_outputs.append(outputs)
+      #if(output_list):
+      #  mses["input_adv_mses"].append(input_adv_mses)
+      #  mses["target_output_losses"].append(target_output_losses)
+      #  all_adversarial_images.append(adversarial_images)
+      #  all_outputs.append(outputs)
+      #else:
+      #  mses["input_adv_mses"] = input_adv_mses
+      #  mses["target_output_losses"] = target_output_losses
+      #  all_adversarial_images = adversarial_images
+      #  all_outputs = outputs
     return all_adversarial_images, all_outputs, mses
 
   def class_adversary_analysis(self, images, labels, target_label=None, input_id=0, step_size=0.01,

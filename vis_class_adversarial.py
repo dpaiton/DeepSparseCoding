@@ -13,16 +13,16 @@ import analysis.analysis_picker as ap
 import matplotlib.gridspec as gridspec
 
 class params(object):
-  #model_type = "sigmoid_autoencoder"
-  #model_name = "sigmoid_autoencoder"
-  model_type = "mlp"
-  model_name = "mlp_mnist"
-  plot_title_name = model_name.replace("_", " ").title()
-  #model_type = "lca"
-  #model_name = "lca_mnist"
-  version = "0.0"
-  save_info = "analysis"
-  overwrite_analysis_log = False
+  def __init__(self):
+    #self.model_type = "sigmoid_autoencoder"
+    #self.model_name = "sigmoid_autoencoder"
+    self.model_type = "mlp"
+    self.model_name = "mlp_mnist"
+    self.plot_title_name = self.model_name.replace("_", " ").title()
+    self.version = "0.0"
+    self.save_info = "analysis_carlini"
+    #self.save_info = "analysis_kurakin"
+    self.overwrite_analysis_log = False
 
 def makedir(name):
   if not os.path.exists(name):
@@ -34,22 +34,23 @@ def setup(params):
   analyzer.setup(params)
   analyzer.model.setup(analyzer.model_params)
   analyzer.load_analysis(save_info=params.save_info)
-  makedir(analyzer.analysis_out_dir+"/vis/adversarial_recons/")
-  makedir(analyzer.analysis_out_dir+"/vis/adversarial_stims/")
+  makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_stims/")
   return analyzer
-
 
 analysis_params = params()
 analyzer = setup(analysis_params)
 
+class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversary_"+analysis_params.save_info+".npz"
+assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
+
 orig_img = analyzer.adversarial_input_image.reshape(int(np.sqrt(analyzer.model.num_pixels)),
   int(np.sqrt(analyzer.model.num_pixels)))
 pf.plot_image(orig_img, title="Input Image",
-  save_filename=analyzer.analysis_out_dir+"/vis/adversarial_input.png")
+  save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_input.png")
 
 plot_int = 100
 
-for step, (stim, output) in enumerate(zip(analyzer.adversarial_images, analyzer.adversarial_outputs)):
+for step, (stim, output) in enumerate(zip(analyzer.adversarial_images[0], analyzer.adversarial_outputs[0])):
   if(step % plot_int == 0):
     adv_img = stim.reshape(int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
     f, axarr = plt.subplots(2, 1)
@@ -60,7 +61,8 @@ for step, (stim, output) in enumerate(zip(analyzer.adversarial_images, analyzer.
     mse_val = np.mean((adv_img - orig_img) ** 2)
     output_class = np.argmax(output[0])
     axarr[0].set_title("output_class:"+str(output_class) + "  mse:" + str(mse_val))
-    f.savefig(analyzer.analysis_out_dir+"/vis/adversarial_stims/stim_step_"+str(step)+".png")
+    f.savefig(analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_stims/"
+      +"_stim_step_"+str(step)+".png")
     plt.close('all')
 
 #orig_recon = analyzer.adversarial_recons[0].reshape(
