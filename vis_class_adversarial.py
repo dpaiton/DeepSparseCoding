@@ -62,7 +62,7 @@ for step, (stim, output) in enumerate(zip(analyzer.adversarial_images[0], analyz
     output_class = np.argmax(output[0])
     axarr[0].set_title("output_class:"+str(output_class) + "  mse:" + str(mse_val))
     f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
-      +"_stim_step_"+str(step)+".png")
+      +"stim_step_"+str(step)+".png")
     plt.close('all')
 
 #orig_recon = analyzer.adversarial_recons[0].reshape(
