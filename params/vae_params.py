@@ -53,18 +53,18 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.log_int = 1000
-      self.cp_int = 1e6
-      self.gen_plot_int = 1e6
+      self.log_int = 100
+      self.cp_int = 1e4
+      self.gen_plot_int = 1e4
       self.noise_level = 0.0
-      self.output_channels = [768, 500, 20]
+      self.output_channels = [768, 20]
       for schedule_idx in range(len(self.schedule)):
-        self.schedule[schedule_idx]["num_batches"] = int(3e6)
+        self.schedule[schedule_idx]["num_batches"] = int(1e5)
         self.schedule[schedule_idx]["kld_mult"] = 1/self.batch_size
-        self.schedule[schedule_idx]["decay_mult"] = 0.0
-        self.schedule[schedule_idx]["weight_lr"] = 0.001
-        self.schedule[schedule_idx]["decay_steps"] = int(0.3*self.schedule[schedule_idx]["num_batches"])
-        self.schedule[schedule_idx]["decay_rate"] = 0.7
+        self.schedule[schedule_idx]["decay_mult"] = 2e-6
+        self.schedule[schedule_idx]["weight_lr"] = 2e-3
+        self.schedule[schedule_idx]["decay_steps"] = int(0.5*self.schedule[schedule_idx]["num_batches"])
+        self.schedule[schedule_idx]["decay_rate"] = 0.8
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

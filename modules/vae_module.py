@@ -46,10 +46,10 @@ class VaeModule(AeModule):
 
   def build_graph(self):
     with tf.name_scope("weight_inits") as scope:
-      self.w_init = tf.initializers.random_normal(mean=0.0, stddev=0.1, dtype=tf.float32)
+      self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
       self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
 
-    if self.linear_latent:
+    if self.linear_latent: # TODO: Support list of act functions as input
       act_func_list = [self.act_func,]*(self.num_encoder_layers-1)+[tf.identity]
     else:
       act_func_list = [self.act_func,]*(self.num_encoder_layers)
@@ -73,20 +73,20 @@ class VaeModule(AeModule):
     self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
 
     self.latent_mean_activation = enc_u_list[-1]
-    self.latent_std_activation = tf.add(tf.matmul(self.u_list[-1], self.w_enc_std),
+    self.latent_std_activation = tf.add(tf.matmul(enc_u_list[-2], self.w_enc_std),
       self.b_enc_std)
     #Calculate latent - std is in log(std**2) space
-    noise  = tf.random_normal(tf.shape(self.latent_std_activation))
+    noise = tf.random_normal(tf.shape(self.latent_std_activation))
     act = self.latent_mean_activation + tf.sqrt(tf.exp(self.latent_std_activation)) * noise
     #Add name to act
     act = tf.identity(act, name="activity")
-    self.u_list.append(act)
 
+    self.u_list.append(act)
     self.a = self.u_list[-1]
 
+    dec_act_func_list = [self.act_func,]*(self.num_decoder_layers-1)+[tf.identity]
     dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers+1,
-      self.u_list[-1], [self.act_func,]*(self.num_decoder_layers-1) + [tf.identity],
-      self.w_shapes[self.num_encoder_layers:])
+      self.u_list[-1], dec_act_func_list, self.w_shapes[self.num_encoder_layers:])
     self.u_list += dec_u_list
     self.w_list += dec_w_list
     self.b_list += dec_b_list
