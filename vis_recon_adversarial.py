@@ -16,9 +16,9 @@ import pdb
 #List of models for analysis
 analysis_list = [
   #("lca", "lca_mnist"),
-  ("vae", "vae_one_layer_overcomplete_mnist"),
+  #("vae", "vae_one_layer_overcomplete_mnist"),
   #("vae", "vae_one_layer_undercomplete_mnist"),
-  #("vae", "vae_two_layer_mnist"),
+  ("vae", "vae_two_layer_mnist"),
   #("vae", "vae_three_layer_mnist"),
   ]
 
@@ -35,21 +35,20 @@ colors = [
 title_font_size = 16
 axes_font_size = 16
 
-plot_all = True
+plot_all = False
 
+#Base outdir for multi-network plot
 outdir = "/home/slundquist/Work/Projects/vis/"
 
 class params(object):
-  #model_type = "sigmoid_autoencoder"
-  #model_name = "sigmoid_autoencoder"
-  model_type = ""
-  model_name = ""
-  plot_title_name = model_name.replace("_", " ").title()
-  #model_type = "lca"
-  #model_name = "lca_mnist"
-  version = "0.0"
-  save_info = "analysis"
-  overwrite_analysis_log = False
+  def __init__(self):
+    self.model_type = ""
+    self.model_name = ""
+    self.plot_title_name = model_name.replace("_", " ").title()
+    self.version = "0.0"
+    self.save_info = "analysis_carlini"
+    #self.save_info = "analysis_kurakin"
+    self.overwrite_analysis_log = False
 
 def makedir(name):
   if not os.path.exists(name):
@@ -73,9 +72,7 @@ fig_norm, ax_norm = plt.subplots()
 saved_rm = [0 for i in analysis_list]
 
 #TODO only do this analysis if we're sweeping
-#Right now, single scalar for recon mult breaks this code
-#Work around is to make a one element list in analysis
-for idx, (model_type, model_name) in enumerate(analysis_list):
+for model_idx, (model_type, model_name) in enumerate(analysis_list):
   analysis_params = params()
   analysis_params.model_type = model_type
   analysis_params.model_name = model_name
@@ -83,40 +80,46 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
 
   analyzer = setup(analysis_params)
 
-  orig_img = analyzer.adversarial_input_image.reshape(int(np.sqrt(analyzer.model.num_pixels)),
+  batch_size = analyzer.analysis_params.adversarial_batch_size
+  orig_img = analyzer.adversarial_input_images.reshape(
+    int(batch_size),
+    int(np.sqrt(analyzer.model.num_pixels)),
     int(np.sqrt(analyzer.model.num_pixels)))
-  target_img = analyzer.adversarial_target_image.reshape(int(np.sqrt(analyzer.model.num_pixels)),
+  target_img = analyzer.adversarial_target_images.reshape(
+    int(batch_size),
+    int(np.sqrt(analyzer.model.num_pixels)),
     int(np.sqrt(analyzer.model.num_pixels)))
 
   #Grab final mses
-  input_adv_vals = [v[-1] for v in analyzer.adversarial_input_adv_mses]
-  target_recon_vals = [v[-1] for v in analyzer.adversarial_target_recon_mses]
-  input_recon_val = [v[0] for v in analyzer.adversarial_input_recon_mses]
+  #These mses are in shape [num_recon_mults, num_iterations, num_batch]
+  input_adv_vals = np.array(analyzer.adversarial_input_adv_mses)[:, -1, :]
+  target_recon_vals = np.array(analyzer.adversarial_target_recon_mses)[:, -1, :]
+  input_recon_val = np.array(analyzer.adversarial_input_recon_mses)[:, 0, :]
 
-  #input_recon_val should be within threshold no matter the mse being tested
+  #input_recon_val should be within threshold no matter the recon val being tested
   #Here, not identical because vae's sample latent space, so recon is non-deterministic
   try:
-    assert(np.abs(input_recon_val[0] - np.mean(input_recon_val)) < 1e-3)
+    assert np.all(np.abs(input_recon_val[0] - np.mean(input_recon_val, axis=0)) < 1e-3)
   except:
     pdb.set_trace()
 
-  input_recon_val = np.mean(input_recon_val)
+  input_recon_val = np.mean(input_recon_val, axis=0)
 
-  norm_target_recon_vals = np.array(target_recon_vals) / input_recon_val
+  norm_target_recon_vals = target_recon_vals / input_recon_val[None, :]
 
   #Normalize target_recon mse by orig_recon mse
-
   recon_mult = np.array(analyzer.analysis_params.recon_mult)
 
   #Find lowest l2 distance of the two axes to the 0,0
-  l2_dist = np.sqrt(np.array(input_adv_vals) ** 2 + np.array(target_recon_vals) ** 2)
+  l2_dist = np.mean(np.sqrt(np.array(input_adv_vals) ** 2 + np.array(target_recon_vals) ** 2), axis=-1)
   min_idx = np.argmin(l2_dist)
-  saved_rm[idx] = (min_idx, recon_mult[min_idx])
+  saved_rm[model_idx] = (min_idx, recon_mult[min_idx])
 
   #plt.scatter(input_adv_vals, target_recon_vals, c=recon_mult)
-  label_str = model_name + " recon_mse:%.4f"%input_recon_val
-  ax_norm.scatter(input_adv_vals, norm_target_recon_vals, label=label_str, c=colors[idx], s=2)
-  ax_unnorm.scatter(input_adv_vals, target_recon_vals, label=label_str, c=colors[idx], s=2)
+  label_str = model_name + " recon_mse:%.4f"%np.mean(input_recon_val)
+  #TODO how to draw error bars? for now, treat each batch as a scatter data point
+  ax_norm.scatter(input_adv_vals[-1], norm_target_recon_vals[-1], label=label_str, c=colors[model_idx], s=2)
+  ax_unnorm.scatter(input_adv_vals[-1], target_recon_vals[-1], label=label_str, c=colors[model_idx], s=2)
 
 ax_norm.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
 ax_norm.set_ylabel("Normalized Target Recon MSE", fontsize=axes_font_size)
@@ -131,7 +134,7 @@ fig_norm.savefig(outdir + "/norm_recon_mult_tradeoff.png")
 
 plt.close('all')
 
-for idx, (model_type, model_name) in enumerate(analysis_list):
+for model_idx, (model_type, model_name) in enumerate(analysis_list):
   analysis_params = params()
   analysis_params.model_type = model_type
   analysis_params.model_name = model_name
@@ -139,16 +142,22 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
 
   analyzer = setup(analysis_params)
 
-  orig_img = analyzer.adversarial_input_image.reshape(int(np.sqrt(analyzer.model.num_pixels)),
+  orig_imgs = analyzer.adversarial_input_images.reshape(
+    int(batch_size),
+    int(np.sqrt(analyzer.model.num_pixels)),
     int(np.sqrt(analyzer.model.num_pixels)))
-  target_img = analyzer.adversarial_target_image.reshape(int(np.sqrt(analyzer.model.num_pixels)),
+  target_imgs = analyzer.adversarial_target_images.reshape(
+    int(batch_size),
+    int(np.sqrt(analyzer.model.num_pixels)),
     int(np.sqrt(analyzer.model.num_pixels)))
 
-  pf.plot_image(orig_img, title="Input Image",
-    save_filename=analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_input.png")
-
-  pf.plot_image(target_img, title="Input Image",
-    save_filename=analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_target.png")
+  for batch_idx in range(batch_size):
+    pf.plot_image(orig_imgs[batch_idx], title="Input Image",
+      save_filename=analyzer.analysis_out_dir+"/vis/"+\
+      analysis_params.save_info+"_adversarial_input.png")
+    pf.plot_image(target_imgs[batch_idx], title="Target Image",
+      save_filename=analyzer.analysis_out_dir+"/vis/"+\
+      analysis_params.save_info+"_adversarial_target.png")
 
   plot_int = 100
   recon_mult = analyzer.analysis_params.recon_mult
@@ -156,99 +165,123 @@ for idx, (model_type, model_name) in enumerate(analysis_list):
     rm_list = enumerate(recon_mult)
   else:
     #saved_rm is a tuple of (idx, recon_mult val)
-    rm_list = [saved_rm[idx]]
+    rm_list = [saved_rm[model_idx]]
+
+  #plot all recons of adv per step
 
   for i_rm, rm in rm_list:
     rm_str = "%.2f"%rm
     for step, recon in enumerate(analyzer.adversarial_recons[i_rm]):
       if(step % plot_int == 0):
-        adv_recon = recon.reshape(int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
-        pf.plot_image(adv_recon, title="step_"+str(step),
-          save_filename=analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_recons/recon_step_"+str(step)+"_recon_mult_"+rm_str+".png")
+        adv_recon = recon.reshape(
+          int(batch_size),
+          int(np.sqrt(analyzer.model.num_pixels)),
+          int(np.sqrt(analyzer.model.num_pixels)))
+
+        for batch_idx in range(batch_size):
+          pf.plot_image(adv_recon[batch_idx], title="step_"+str(step),
+            save_filename=analyzer.analysis_out_dir+"/vis/"+\
+            analysis_params.save_info+"_adversarial_recons/"+\
+            "recon_batch_"+str(batch_idx)+"_rm_"+rm_str+"_step_"+str(step)+".png")
 
     for step, stim in enumerate(analyzer.adversarial_images[i_rm]):
       if(step % plot_int == 0):
-        adv_img = stim.reshape(int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
-        pf.plot_image(adv_img, title="step_"+str(step),
-          save_filename=analyzer.analysis_out_dir+"/vis/"+anaylysis_params.save_info+"_adversarial_stims/stim_step_"+str(step)+"_recon_mult_"+rm_str+".png")
+        adv_img = stim.reshape(
+          int(batch_size),
+          int(np.sqrt(analyzer.model.num_pixels)),
+          int(np.sqrt(analyzer.model.num_pixels)))
+        for batch_idx in range(batch_size):
+          pf.plot_image(adv_img[batch_idx], title="step_"+str(step),
+            save_filename=analyzer.analysis_out_dir+"/vis/"+\
+            analysis_params.save_info+"_adversarial_stims/"+\
+            "stim_batch_"+str(batch_idx)+"_rm_"+rm_str+"_step_"+str(step)+".png")
 
-    out_filename = analyzer.analysis_out_dir+"/vis/adversarial_losses_rm_"+rm_str+".pdf"
-    print(out_filename)
+  for i_rm, rm in rm_list:
+    orig_recon = np.array(analyzer.adversarial_recons)[i_rm, 0, ...].reshape(
+      int(batch_size),
+      int(np.sqrt(analyzer.model.num_pixels)),
+      int(np.sqrt(analyzer.model.num_pixels)))
 
-    orig_recon = analyzer.adversarial_recons[i_rm][0].reshape(
-      int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
-    adv_recon = analyzer.adversarial_recons[i_rm][-1].reshape(
-      int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
-    adv_img = analyzer.adversarial_images[i_rm][-1].reshape(int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
+    adv_recon = np.array(analyzer.adversarial_recons)[i_rm, -1, ...].reshape(
+      int(batch_size),
+      int(np.sqrt(analyzer.model.num_pixels)),
+      int(np.sqrt(analyzer.model.num_pixels)))
 
-    fig = plt.figure()
-    gs = gridspec.GridSpec(5, 5)
-    gs.update(wspace=.5, hspace=1)
+    adv_img = np.array(analyzer.adversarial_images)[i_rm, -1, ...].reshape(
+      int(batch_size),
+      int(np.sqrt(analyzer.model.num_pixels)),
+      int(np.sqrt(analyzer.model.num_pixels)))
 
-    ax = plt.subplot(gs[0, 0:3])
-    ax = pf.clear_axis(ax)
-    ax.text(0.5, 0.5, analysis_params.plot_title_name + " recon_mult:"+rm_str,
-      fontsize=title_font_size,
-      horizontalalignment='center', verticalalignment='center')
+    input_adv_mses = np.array(analyzer.adversarial_input_adv_mses)[i_rm]
+    target_recon_mses = np.array(analyzer.adversarial_target_recon_mses)[i_rm]
+    target_adv_mses = np.array(analyzer.adversarial_target_adv_mses)[i_rm]
+    adv_recon_mses = np.array(analyzer.adversarial_adv_recon_mses)[i_rm]
 
-    ax = plt.subplot(gs[2, 0])
-    ax = pf.clear_axis(ax)
-    ax.imshow(target_img, cmap='gray')
-    ax.set_title(r"$S_t$", fontsize = title_font_size)
+    for batch_idx in range(batch_size):
+      out_filename = analyzer.analysis_out_dir+"/vis/"+\
+        "adversarial_losses_"+analysis_params.save_info+"_batch_"+str(batch_idx)+"_rm_"+rm_str+".pdf"
+      print(out_filename)
 
-    ax = plt.subplot(gs[1, 1])
-    ax = pf.clear_axis(ax)
-    ax.imshow(orig_img, cmap='gray')
-    ax.set_title(r"$S_i$", fontsize = title_font_size)
+      fig = plt.figure()
+      gs = gridspec.GridSpec(5, 5)
+      gs.update(wspace=.5, hspace=1)
 
-    ax = plt.subplot(gs[2, 1])
-    ax = pf.clear_axis(ax)
-    ax.imshow(orig_recon, cmap='gray')
-    ax.set_title(r"$\hat{S}_i$", fontsize = title_font_size)
+      ax = plt.subplot(gs[0, 0:3])
+      ax = pf.clear_axis(ax)
+      ax.text(0.5, 0.5, analysis_params.plot_title_name + " recon_mult:"+rm_str,
+        fontsize=title_font_size,
+        horizontalalignment='center', verticalalignment='center')
 
-    ax = plt.subplot(gs[1, 2])
-    ax = pf.clear_axis(ax)
-    ax.imshow(adv_img, cmap='gray')
-    ax.set_title(r"$S^*$", fontsize = title_font_size)
+      ax = plt.subplot(gs[2, 0])
+      ax = pf.clear_axis(ax)
+      ax.imshow(target_imgs[batch_idx], cmap='gray')
+      ax.set_title(r"$S_t$", fontsize = title_font_size)
 
-    ax = plt.subplot(gs[2, 2])
-    ax = pf.clear_axis(ax)
-    ax.imshow(adv_recon, cmap='gray')
-    ax.set_title(r"$\hat{S}^*$", fontsize = title_font_size)
+      ax = plt.subplot(gs[1, 1])
+      ax = pf.clear_axis(ax)
+      ax.imshow(orig_imgs[batch_idx], cmap='gray')
+      ax.set_title(r"$S_i$", fontsize = title_font_size)
 
-    axbig = plt.subplot(gs[3:, :3])
+      ax = plt.subplot(gs[2, 1])
+      ax = pf.clear_axis(ax)
+      ax.imshow(orig_recon[batch_idx], cmap='gray')
+      ax.set_title(r"$\hat{S}_i$", fontsize = title_font_size)
 
-    #Generate x idxs based on length of lines and save int
-    line_x = np.arange(0, analyzer.analysis_params.adversarial_num_steps,
-      analyzer.analysis_params.adversarial_save_int)
+      ax = plt.subplot(gs[1, 2])
+      ax = pf.clear_axis(ax)
+      ax.imshow(adv_img[batch_idx], cmap='gray')
+      ax.set_title(r"$S^*$", fontsize = title_font_size)
 
-    line1 = axbig.plot(line_x, analyzer.adversarial_input_adv_mses[i_rm], 'r', label="input to perturbed")
-    axbig.set_ylim([0, np.max(analyzer.adversarial_input_adv_mses[i_rm]+analyzer.adversarial_target_recon_mses[i_rm]+analyzer.adversarial_target_adv_mses[i_rm]+analyzer.adversarial_adv_recon_mses[i_rm])])
-    axbig.tick_params('y', colors='k')
-    axbig.set_xlabel("Step", fontsize=axes_font_size)
-    axbig.set_ylabel("MSE", fontsize=axes_font_size)
-    axbig.set_ylim([0, np.max(analyzer.adversarial_target_recon_mses[i_rm]+analyzer.adversarial_target_adv_mses[i_rm]+analyzer.adversarial_adv_recon_mses[i_rm])])
+      ax = plt.subplot(gs[2, 2])
+      ax = pf.clear_axis(ax)
+      ax.imshow(adv_recon[batch_idx], cmap='gray')
+      ax.set_title(r"$\hat{S}^*$", fontsize = title_font_size)
 
-    #ax2 = ax1.twinx()
-    line2 = axbig.plot(line_x, analyzer.adversarial_target_adv_mses[i_rm], 'b', label="target to perturbed")
-    #ax2.tick_params('y', colors='k')
-    #ax2.set_ylim(ax1.get_ylim())
+      axbig = plt.subplot(gs[3:, :3])
+      axbig.set_ylim([0, np.max([
+        input_adv_mses[:, batch_idx],
+        target_recon_mses[:, batch_idx],
+        target_adv_mses[:, batch_idx],
+        adv_recon_mses[:, batch_idx]])])
+      axbig.tick_params('y', colors='k')
+      axbig.set_xlabel("Step", fontsize=axes_font_size)
+      axbig.set_ylabel("MSE", fontsize=axes_font_size)
 
-    #ax3 = ax1.twinx()
-    line3 = axbig.plot(line_x, analyzer.adversarial_target_recon_mses[i_rm], 'g', label="target to recon")
-    #ax3.tick_params('y', colors='k')
-    #ax3.set_ylim(ax1.get_ylim())
+      #Generate x idxs based on length of lines and save int
+      line_x = np.arange(0, analyzer.analysis_params.adversarial_num_steps,
+        analyzer.analysis_params.adversarial_save_int)
 
-    line4 = axbig.plot(line_x, analyzer.adversarial_adv_recon_mses[i_rm], 'k', label="perturbed to recon")
+      line1 = axbig.plot(line_x, input_adv_mses[:, batch_idx], 'r', label="input to perturbed")
+      line2 = axbig.plot(line_x, target_adv_mses[:, batch_idx], 'b', label="target to perturbed")
+      line3 = axbig.plot(line_x, target_recon_mses[:, batch_idx], 'g', label="target to recon")
+      line4 = axbig.plot(line_x, adv_recon_mses[:, batch_idx], 'k', label="perturbed to recon")
 
-    lines = line1+line2+line3+line4
-    #lines = line2+line3+line4
-    line_labels = [l.get_label() for l in lines]
+      lines = line1+line2+line3+line4
+      line_labels = [l.get_label() for l in lines]
 
-    #Set legend to own ax
-    ax = plt.subplot(gs[3, 3])
-    ax = pf.clear_axis(ax)
-    ax.legend(lines, line_labels, loc='upper left')
+      ax = plt.subplot(gs[3, 3])
+      ax = pf.clear_axis(ax)
+      ax.legend(lines, line_labels, loc='upper left')
 
-    fig.savefig(out_filename)
-    plt.close("all")
+      fig.savefig(out_filename)
+      plt.close("all")

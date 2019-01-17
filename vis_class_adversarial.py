@@ -11,11 +11,10 @@ import utils.data_processing as dp
 import utils.plot_functions as pf
 import analysis.analysis_picker as ap
 import matplotlib.gridspec as gridspec
+import pdb
 
 class params(object):
   def __init__(self):
-    #self.model_type = "sigmoid_autoencoder"
-    #self.model_name = "sigmoid_autoencoder"
     self.model_type = "mlp"
     self.model_name = "mlp_mnist"
     self.plot_title_name = self.model_name.replace("_", " ").title()
@@ -43,27 +42,38 @@ analyzer = setup(analysis_params)
 class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversary_"+analysis_params.save_info+".npz"
 assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
 
-orig_img = analyzer.adversarial_input_image.reshape(int(np.sqrt(analyzer.model.num_pixels)),
+batch_size = analyzer.analysis_params.adversarial_batch_size
+orig_imgs = analyzer.adversarial_input_images.reshape(
+  int(batch_size),
+  int(np.sqrt(analyzer.model.num_pixels)),
   int(np.sqrt(analyzer.model.num_pixels)))
-pf.plot_image(orig_img, title="Input Image",
-  save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_input.png")
+for idx in range(batch_size):
+  pf.plot_image(orig_imgs[idx], title="Input Image",
+    save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+\
+    "_adversarial_input_batch_"+str(idx)+".png")
+
+target_classes = np.argmax(analyzer.adversarial_target_labels, axis=-1)
 
 plot_int = 100
-
 for step, (stim, output) in enumerate(zip(analyzer.adversarial_images[0], analyzer.adversarial_outputs[0])):
   if(step % plot_int == 0):
-    adv_img = stim.reshape(int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
-    f, axarr = plt.subplots(2, 1)
-    axarr[0].imshow(adv_img, cmap='gray')
-    axarr[0] = pf.clear_axis(axarr[0])
-    axarr[1].bar(list(range(analyzer.model.params.num_classes)), output[0])
-    axarr[1].set_ylim([0, 1])
-    mse_val = np.mean((adv_img - orig_img) ** 2)
-    output_class = np.argmax(output[0])
-    axarr[0].set_title("output_class:"+str(output_class) + "  mse:" + str(mse_val))
-    f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
-      +"stim_step_"+str(step)+".png")
-    plt.close('all')
+    adv_imgs = stim.reshape(
+      int(batch_size),
+      int(np.sqrt(analyzer.model.num_pixels)),
+      int(np.sqrt(analyzer.model.num_pixels)))
+    for idx in range(batch_size):
+      f, axarr = plt.subplots(2, 1)
+      axarr[0].imshow(adv_imgs[idx], cmap='gray')
+      axarr[0] = pf.clear_axis(axarr[0])
+      axarr[1].bar(list(range(analyzer.model.params.num_classes)), output[idx])
+      axarr[1].set_ylim([0, 1])
+      mse_val = np.mean((adv_imgs[idx] - orig_imgs[idx]) ** 2)
+      output_class = np.argmax(output[idx])
+      target_class = target_classes[idx]
+      axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_val))
+      f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
+        +"stim_batch_"+str(idx)+"_step_"+str(step)+".png")
+      plt.close('all')
 
 #orig_recon = analyzer.adversarial_recons[0].reshape(
 #  int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))

@@ -27,7 +27,9 @@ class SaeAnalyzer(Analyzer):
         save_info)
     if self.analysis_params.do_recon_adversaries:
       self.adversarial_images, self.adversarial_recons, mses = self.recon_adversary_analysis(images,
+        labels=labels, batch_size=self.analysis_params.adversarial_batch_size,
         input_id=self.analysis_params.adversarial_input_id,
+        target_method=self.analysis_params.adversarial_target_method,
         target_id=self.analysis_params.adversarial_target_id,
         step_size=self.analysis_params.adversarial_step_size,
         num_steps=self.analysis_params.adversarial_num_steps,

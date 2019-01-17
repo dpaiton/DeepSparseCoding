@@ -19,7 +19,7 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = True
+    self.do_evals = False
     # Dictionary fitting
     self.do_basis_analysis = False
     # LCA Inference analysis
@@ -27,9 +27,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False # TODO: Broken for mlp_lca_mnist
+    self.do_recon_adversaries = True # TODO: Broken for mlp_lca_mnist
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -56,23 +56,38 @@ class params(object):
     # Which dataset images to use for inference (None uses random)
     self.inference_img_indices = None
     # Number of adversarial image updates
-    self.adversarial_num_steps = 10000
-    # Step size for adversarial attacks
-    self.adversarial_step_size = 0.001
-    #self.adversarial_step_size = 0.01
+    self.adversarial_num_steps = 10000 # Step size for adversarial attacks
+
+    #Kurakin params
     #Attack method for adversarial attack, kurakin (iterative fsg) or carlini
-    self.adversarial_attack_method = "carlini"; self.save_info += "_carlini" #TODO: attack method should modify output filenames; both should be able to be run
+    #TODO: attack method should modify output filenames; both should be able to be run
     #self.adversarial_attack_method = "kurakin"; self.save_info += "_kurakin" #FIXME
+    #self.adversarial_step_size = 0.0001 #Step size for kurakin
+
+    #Carlini params
+    self.adversarial_step_size = 0.001 #Step size for carlini
+    self.adversarial_attack_method = "carlini"; self.save_info += "_carlini" #FIXME
+
+    #How to pick Target class for class adversary analysis
+    #Options are "random", "untargeted", or "specified" for class attack
+    #Options are "random" or "specified" for recon attack
+    self.adversarial_target_method = "random"
+
     #Flag to define if adversarial example can go beyond image range
     self.adversarial_clip = True
     #Recon_mult tradeoff for carlini attack method
     #Can be a list to sweep
     #0 means ignore adv_recon loss, 1 means ignore input_pert loss
-    #self.recon_mult = list(np.arange(.01, 1, .01))
-    self.recon_mult = [.5]
-    #Target class for class adversary analysis
-    #None for untargeted
-    self.adversarial_target_label = 4
+    self.recon_mult = list(np.arange(.01, 1, .01))
+    #self.recon_mult = [.5]
+    #Batch size for adversarial examples
+    self.adversarial_batch_size = 16
+
+    #Parameter for "specified" target_method
+    #Only for class attack
+    #Need to be a list or numpy array of size [adv_batch_size]
+    self.adversarial_target_labels = None
+
     # Will vary depending on preprocessing
     #Interval at which to save adversarial examples to the npy file
     self.adversarial_save_int = 10

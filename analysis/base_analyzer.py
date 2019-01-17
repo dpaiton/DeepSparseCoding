@@ -7,6 +7,7 @@ import utils.data_processing as dp
 from data.dataset import Dataset
 import tensorflow as tf
 import tensorflow_compression as tfc
+import pdb
 
 class Analyzer(object):
   """
@@ -112,9 +113,9 @@ class Analyzer(object):
       if not hasattr(self.analysis_params, "adversarial_num_steps"):
         self.analysis_params.adversarial_num_steps = 200
       if not hasattr(self.analysis_params, "adversarial_input_id"):
-        self.analysis_params.adversarial_input_id = 0
+        self.analysis_params.adversarial_input_id = None
       if not hasattr(self.analysis_params, "adversarial_target_id"):
-        self.analysis_params.adversarial_target_id = 1
+        self.analysis_params.adversarial_target_id = None
     else:
       self.analysis_params.do_recon_adversaries = False
     # Class Adversarial analysis
@@ -124,7 +125,7 @@ class Analyzer(object):
       if not hasattr(self.analysis_params, "adversarial_num_steps"):
         self.analysis_params.adversarial_num_steps = 200
       if not hasattr(self.analysis_params, "adversarial_input_id"):
-        self.analysis_params.adversarial_input_id = 0
+        self.analysis_params.adversarial_input_id = None
     else:
       self.analysis_params.do_class_adversaries = False
 
@@ -135,6 +136,7 @@ class Analyzer(object):
   #If build_graph gets called without parameters,
   #build placeholders call build graph with default input
   def build_graph(self):
+
     #Only need to do this if doing adversarial analysis
     if(self.analysis_params.do_class_adversaries or
       self.analysis_params.do_recon_adversaries):
@@ -253,8 +255,8 @@ class Analyzer(object):
     recon_adversarial_file_loc = self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz"
     if os.path.exists(recon_adversarial_file_loc):
       data = np.load(recon_adversarial_file_loc)["data"].item()
-      self.adversarial_input_image = data["input_image"]
-      self.adversarial_target_image = data["target_image"]
+      self.adversarial_input_images = data["input_images"]
+      self.adversarial_target_images = data["target_images"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_recons = data["adversarial_recons"]
       self.analysis_params.adversarial_step_size = data["step_size"]
@@ -272,8 +274,8 @@ class Analyzer(object):
     class_adversarial_file_loc = self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
-      self.adversarial_input_image = data["input_image"]
-      self.adversarial_target_class = data["target_label"]
+      self.adversarial_input_images = data["input_images"]
+      self.adversarial_target_labels = data["target_labels"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_outputs = data["adversarial_outputs"]
       self.analysis_params.adversarial_step_size = data["step_size"]
@@ -806,10 +808,8 @@ class Analyzer(object):
             self.input_pert_loss = 0.5 * tf.reduce_sum(
               tf.square(tf.subtract(self.model.input_placeholder, self.adv_image)),
               name="input_perturbed_loss")
-            self.carlini_loss = tf.add_n([
-              (1 - self.recon_mult) * self.input_pert_loss,
-              self.recon_mult * self.adv_recon_loss])
-            self.adv_loss = self.carlini_loss
+            self.adv_loss = (1 - self.recon_mult) * self.input_pert_loss +\
+              self.recon_mult * self.adv_recon_loss
           else:
             assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
@@ -826,22 +826,24 @@ class Analyzer(object):
               self.adv_loss, var_list=[self.adv_var])
             self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grads)
 
-  def construct_recon_adversarial_stimulus(self, input_image, target_image,
-      min_img_val, max_img_val, step_size=0.01, num_steps=10):
-    mse = lambda x,y: np.mean(np.square(x - y))
-    input_target_mse = mse(input_image, target_image)
+  #Compute mse for all dims except batch dim
+  def mse(self, x, y):
+    reduc_dims = tuple(range(1, x.ndim))
+    return np.mean(np.square(x-y), axis=reduc_dims)
+
+  def construct_recon_adversarial_stimulus(self, input_images, target_images,
+    min_img_val, max_img_val, step_size=0.01, num_steps=10):
+
+    input_target_mse = self.mse(input_images, target_images)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
 
-    output_list = False
     if(self.analysis_params.adversarial_attack_method == "kurakin"):
       #Not using recon_mult here, so set arb value
       self.analysis_params.recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini"):
       if(type(self.analysis_params.recon_mult) is not list):
         self.analysis_params.recon_mult = [self.analysis_params.recon_mult]
-      else:
-        output_list = True
     else:
       assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
@@ -860,9 +862,9 @@ class Analyzer(object):
       adv_recon_mses = []
 
       with tf.Session(config=config, graph=self.model.graph) as sess:
-        feed_dict = self.model.get_feed_dict(input_image, is_test=True)
-        feed_dict[self.model.input_placeholder] = input_image
-        feed_dict[self.adv_target] = target_image
+        feed_dict = self.model.get_feed_dict(input_images, is_test=True)
+        feed_dict[self.model.input_placeholder] = input_images
+        feed_dict[self.adv_target] = target_images
         feed_dict[self.recon_mult] = r_mult
         feed_dict[self.min_img_val] = min_img_val
         feed_dict[self.max_img_val] = max_img_val
@@ -874,54 +876,89 @@ class Analyzer(object):
             recon, adv_img = sess.run([self.recon, self.adv_image], feed_dict)
             adversarial_images.append(adv_img)
             recons.append(recon)
-            input_recon_mses.append(mse(input_image, recon))
-            input_adv_mses.append(mse(input_image, adv_img))
-            target_recon_mses.append(mse(target_image, recon))
-            target_adv_mses.append(mse(target_image, adv_img))
-            adv_recon_mses.append(mse(adv_img, recon))
+            input_recon_mses.append(self.mse(input_images, recon))
+            input_adv_mses.append(self.mse(input_images, adv_img))
+            target_recon_mses.append(self.mse(target_images, recon))
+            target_adv_mses.append(self.mse(target_images, adv_img))
+            adv_recon_mses.append(self.mse(adv_img, recon))
 
           self.analysis_logger.log_info("Recon Adversarial analysis, step "+str(step))
           #Run update op
           sess.run(self.adv_update_op, feed_dict)
 
-      if(output_list):
-        mses["input_target_mse"].append(input_target_mse)
-        mses["input_recon_mses"].append(input_recon_mses)
-        mses["input_adv_mses"].append(input_adv_mses)
-        mses["target_recon_mses"].append(target_recon_mses)
-        mses["target_adv_mses"].append(target_adv_mses)
-        mses["adv_recon_mses"].append(adv_recon_mses)
-        all_adversarial_images.append(adversarial_images)
-        all_recons.append(recons)
-      else:
-        mses["input_target_mse"] = input_target_mse
-        mses["input_recon_mses"] = input_recon_mses
-        mses["input_adv_mses"] = input_adv_mses
-        mses["target_recon_mses"] = target_recon_mses
-        mses["target_adv_mses"] = target_adv_mses
-        mses["adv_recon_mses"] = adv_recon_mses
-        all_adversarial_images = adversarial_images
-        all_recons = recons
+      mses["input_target_mse"].append(input_target_mse)
+      mses["input_recon_mses"].append(input_recon_mses)
+      mses["input_adv_mses"].append(input_adv_mses)
+      mses["target_recon_mses"].append(target_recon_mses)
+      mses["target_adv_mses"].append(target_adv_mses)
+      mses["adv_recon_mses"].append(adv_recon_mses)
+      all_adversarial_images.append(adversarial_images)
+      all_recons.append(recons)
     return all_adversarial_images, all_recons, mses
 
-  def recon_adversary_analysis(self, images, input_id=0, target_id=1, step_size=0.01, num_steps=100,
+  def recon_adversary_analysis(self, images, labels=None, batch_size=1, input_id=None,
+    target_method="random", target_id=None, step_size=0.01, num_steps=100,
     save_info=""):
-    input_image = images[input_id, ...][None,...].astype(np.float32)
-    target_image = images[target_id, ...][None,...].astype(np.float32)
-    max_img_val = np.max([np.max(input_image), np.max(target_image)])
-    min_img_val = np.min([np.min(input_image), np.min(target_image)])
 
-    self.adversarial_images, self.adversarial_recons, mses = self.construct_recon_adversarial_stimulus(input_image,
-      target_image, min_img_val, max_img_val, step_size, num_steps)
+    #Get max/min of all images passed in
+    #TODO get these elsewhere
+    max_img_val = np.max(np.array(images))
+    min_img_val = np.min(np.array(images))
+
+    #Default parameters
+    if input_id is None:
+      input_id = np.arange(batch_size).astype(np.int32)
+    else:
+      input_id = np.array(input_id)
+
+    input_images = images[input_id, ...].astype(np.float32)
+    num_images = images.shape[0]
+
+    #Define target label based on target method
+    if(target_method == "random"):
+      target_id = input_id.copy()
+      #If labels is defined, resample until target label is not true label
+      if(labels is not None):
+        input_labels = labels[input_id, ...].astype(np.float32)
+        input_classes = np.argmax(input_labels, axis=-1)
+        target_classes = input_classes.copy()
+        while(np.any(target_classes == input_classes)):
+          resample_idx = np.nonzero(target_classes == input_classes)
+          target_id[resample_idx] = self.rand_state.randint(
+            0, num_images, size=resample_idx[0].shape)
+          target_labels = labels[target_id, ...].astype(np.float32)
+          target_classes = np.argmax(target_labels, axis=-1)
+      else:
+        #Resample until target_id is not input_id
+        #Also check labels if set
+        while(np.any(target_id == input_id) or has_same_labels):
+          resample_idx = np.nonzero(target_id == input_id)
+          target_id[resample_idx] = self.rand_state.randint(
+            0, num_images, size=resample_idx[0].shape)
+    elif(target_method == "specified"):
+      assert(target_id is not None)
+      target_id = np.array(target_id)
+      assert(target_id.shape[0] == batch_size)
+    else:
+      assert False, ("Allowed target methods for recon adversary are " +
+        "\"random\", \"random_different_labels\", or \"specified\"")
+
+    #Define target label based on target method
+
+    target_images = images[target_id, ...].astype(np.float32)
+
+    self.adversarial_images, self.adversarial_recons, mses = self.construct_recon_adversarial_stimulus(input_images,
+      target_images, min_img_val, max_img_val, step_size, num_steps)
+
     self.adversarial_input_target_mses = mses["input_target_mse"]
     self.adversarial_input_recon_mses = mses["input_recon_mses"]
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
     self.adversarial_target_recon_mses = mses["target_recon_mses"]
     self.adversarial_target_adv_mses = mses["target_adv_mses"]
     self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
-    self.adversarial_input_image = input_image
-    self.adversarial_target_image = target_image
-    out_dict = {"input_image": input_image, "target_image":target_image,
+    self.adversarial_input_images = input_images
+    self.adversarial_target_images = target_images
+    out_dict = {"input_images": input_images, "target_images":target_images,
       "adversarial_images":self.adversarial_images, "adversarial_recons":self.adversarial_recons,
       "step_size":step_size, "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
     out_dict.update(mses)
@@ -942,7 +979,7 @@ class Analyzer(object):
 
         with tf.name_scope("loss") as scope:
           if(self.analysis_params.adversarial_attack_method == "kurakin"):
-            if(self.analysis_params.adversarial_target_label is None):
+            if(self.analysis_params.adversarial_target_method == "untargeted"):
               #No target attack
               self.adv_loss = tf.negative(self.model.mlp_module.mean_loss)
             else:
@@ -950,9 +987,6 @@ class Analyzer(object):
               self.adv_loss = -tf.reduce_sum(tf.multiply(self.model.label_est,
                 tf.log(tf.clip_by_value(self.adv_target, self.model_params.eps, 1.0))))
           elif(self.analysis_params.adversarial_attack_method == "carlini"):
-            #Carlini attack must have target
-            assert self.analysis_params.adversarial_target_label is not None, (
-              "Carlini attack must have target label")
             self.input_pert_loss = 0.5 * tf.reduce_sum(
               tf.square(tf.subtract(self.model.input_placeholder, self.adv_image)),
               name="input_perturbed_loss")
@@ -961,17 +995,24 @@ class Analyzer(object):
             self.model_logits = self.model.get_encodings()
 
             #Assuming adv_target is one hot
+            with tf.control_dependencies([
+              tf.assert_equal(tf.reduce_sum(self.adv_target, axis=-1), 1.0)]):
+              self.adv_target = self.adv_target
+
             #Construct two boolean masks, one with only target class as true
             #and one with everything not target class
             self.target_mask = self.adv_target > .5
             self.not_target_mask = self.adv_target < .5
 
-            #TODO fix this with multiple batches
             #Z(x)_t
-            self.logits_target_val = tf.boolean_mask(self.model_logits, self.target_mask)[0]
-            self.logits_not_target_val = tf.boolean_mask(self.model_logits, self.not_target_mask)
+            #boolean_mask returns a flattened array, so need to reshape back
+            self.logits_target_val = tf.boolean_mask(self.model_logits, self.target_mask)[:, None]
             #max_{i!=t} Z(x)_i
-            self.max_logits_not_target_val = tf.reduce_max(self.logits_not_target_val)
+            self.logits_not_target_val = tf.boolean_mask(self.model_logits, self.not_target_mask)
+            self.logits_not_target_val = tf.reshape(self.logits_not_target_val,
+              [-1, self.model.label_shape[-1]-1])
+
+            self.max_logits_not_target_val = tf.reduce_max(self.logits_not_target_val, axis=-1)
 
             self.target_class_loss = tf.reduce_sum(tf.nn.relu(
               self.max_logits_not_target_val - self.logits_target_val))
@@ -995,23 +1036,19 @@ class Analyzer(object):
               self.adv_loss, var_list=[self.adv_var])
             self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grads)
 
-  def construct_class_adversarial_stimulus(self, input_image, input_label, target_label,
+  def construct_class_adversarial_stimulus(self, input_images, input_labels, target_labels,
     min_img_val, max_img_val, step_size=0.01, num_steps=10):
 
-    mse = lambda x,y: np.mean(np.square(x - y))
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
 
-    output_list = False
     if(self.analysis_params.adversarial_attack_method == "kurakin"):
       #Not using recon_mult here, so set arb value
       self.analysis_params.recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini"):
-      assert(target_label is not None)
+      assert(target_labels is not None)
       if(type(self.analysis_params.recon_mult) is not list):
         self.analysis_params.recon_mult = [self.analysis_params.recon_mult]
-      else:
-        output_list = True
     else:
       assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
@@ -1027,10 +1064,10 @@ class Analyzer(object):
       target_output_losses = []
 
       with tf.Session(config=config, graph=self.model.graph) as sess:
-        feed_dict = self.model.get_feed_dict(input_image, input_label, is_test=True)
-        feed_dict[self.model.input_placeholder] = input_image
-        if(target_label is not None):
-          feed_dict[self.adv_target] = target_label
+        feed_dict = self.model.get_feed_dict(input_images, input_labels, is_test=True)
+        feed_dict[self.model.input_placeholder] = input_images
+        if(target_labels is not None):
+          feed_dict[self.adv_target] = target_labels
         feed_dict[self.recon_mult] = r_mult
         feed_dict[self.min_img_val] = min_img_val
         feed_dict[self.max_img_val] = max_img_val
@@ -1043,7 +1080,7 @@ class Analyzer(object):
               sess.run([self.adv_image, self.output, self.adv_loss], feed_dict)
             adversarial_images.append(adv_img)
             outputs.append(output)
-            input_adv_mses.append(mse(input_image, adv_img))
+            input_adv_mses.append(self.mse(input_images, adv_img))
             target_output_losses.append(target_output_loss)
 
           self.analysis_logger.log_info("Class Adversarial analysis, step "+str(step))
@@ -1054,48 +1091,65 @@ class Analyzer(object):
       mses["target_output_losses"].append(target_output_losses)
       all_adversarial_images.append(adversarial_images)
       all_outputs.append(outputs)
-      #if(output_list):
-      #  mses["input_adv_mses"].append(input_adv_mses)
-      #  mses["target_output_losses"].append(target_output_losses)
-      #  all_adversarial_images.append(adversarial_images)
-      #  all_outputs.append(outputs)
-      #else:
-      #  mses["input_adv_mses"] = input_adv_mses
-      #  mses["target_output_losses"] = target_output_losses
-      #  all_adversarial_images = adversarial_images
-      #  all_outputs = outputs
     return all_adversarial_images, all_outputs, mses
 
-  def class_adversary_analysis(self, images, labels, target_label=None, input_id=0, step_size=0.01,
-    num_steps=100, save_info=""):
-    """
-    Target_label can be None for "no target" or a tensor where first dimension is same
-    as image dimensions with each as the target label
-    """
-    input_image = images[input_id, ...][None,...].astype(np.float32)
-    input_label = labels[input_id, ...][None,...].astype(np.float32)
-    num_classes = input_label.shape[-1]
+  def class_adversary_analysis(self, images, labels, batch_size=1, input_id=None,
+      target_method="untargeted", target_labels=None, step_size=0.01, num_steps=100, save_info=""):
 
-    #TODO allow for target label
-    #If scalar, convert to one-hot
-    if(np.array(target_label).shape == ()):
-      out = np.zeros((1, num_classes))
-      out[:, target_label] = 1
-      target_label = out
+    #Get max/min of all images passed in
+    #TODO get these elsewhere
+    max_img_val = np.max(np.array(images))
+    min_img_val = np.min(np.array(images))
 
-    max_img_val = np.max([np.max(input_image)])
-    min_img_val = np.min([np.min(input_image)])
+    #Default parameters
+    #TODO need to make sure these are getting correct classifications
+    if input_id is None:
+      input_id = np.arange(batch_size).astype(np.int32)
+    else:
+      input_id = np.array(input_id)
+
+    input_images = images[input_id, ...].astype(np.float32)
+    input_labels = labels[input_id, ...].astype(np.float32)
+    num_classes = input_labels.shape[-1]
+
+    #Define target label based on target method
+    if(target_method == "random"):
+      input_classes = np.argmax(input_labels, axis=-1)
+      target_labels = input_classes.copy()
+      #Resample until target label is not a true label
+      while(np.any(target_labels == input_classes)):
+        resample_idx = np.nonzero(target_labels == input_classes)
+        target_labels[resample_idx] = self.rand_state.randint(0, num_classes, size=resample_idx[0].shape)
+    elif(target_method == "specified"):
+      assert(target_labels is not None)
+      target_labels = np.array(target_labels)
+      assert(target_labels.shape[0] == batch_size)
+    elif(target_method == "untargeted"):
+      target_labels = None
+    else:
+      assert False, ("Allowed target methods forclassification adversary are " +
+        "\"random\", \"untargeted\", or \"specified\"")
+
+    #Check if target_labels is a class or one hot
+    #If class, convert to one hot
+    if(target_labels is not None):
+      if(target_labels.ndim == 1):
+        out = np.zeros((batch_size, num_classes))
+        #Convert target_labels into idx
+        target_labels_idx = (np.arange(batch_size).astype(np.int32), target_labels)
+        out[target_labels_idx] = 1
+        target_labels = out
 
     self.adversarial_images, self.adversarial_outputs, mses =  \
-      self.construct_class_adversarial_stimulus(input_image, input_label,
-      target_label, min_img_val, max_img_val, step_size, num_steps)
+      self.construct_class_adversarial_stimulus(input_images, input_labels,
+      target_labels, min_img_val, max_img_val, step_size, num_steps)
 
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
     self.adversarial_target_output_losses = mses["target_output_losses"]
-    self.adversarial_input_image = input_image
-    self.adversarial_target_label = target_label
+    self.adversarial_input_images = input_images
+    self.adversarial_target_labels = target_labels
 
-    out_dict = {"input_image": input_image, "target_label":target_label,
+    out_dict = {"input_images": input_images, "target_labels":target_labels,
       "adversarial_images":self.adversarial_images, "adversarial_outputs":self.adversarial_outputs,
       "step_size":step_size, "num_steps":num_steps, "input_id":input_id}
     out_dict.update(mses)

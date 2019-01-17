@@ -10,8 +10,10 @@ class MlpAnalyzer(Analyzer):
       #TODO generate target labels based on options here
       #For now, defined in analysis_params
       self.adversarial_images, self.adversarial_output, mses = self.class_adversary_analysis(images,
-        labels, self.analysis_params.adversarial_target_label,
+        labels, batch_size=self.analysis_params.adversarial_batch_size,
         input_id=self.analysis_params.adversarial_input_id,
+        target_method = self.analysis_params.adversarial_target_method,
+        target_labels = self.analysis_params.adversarial_target_labels,
         step_size=self.analysis_params.adversarial_step_size,
         num_steps=self.analysis_params.adversarial_num_steps,
         save_info=save_info)
