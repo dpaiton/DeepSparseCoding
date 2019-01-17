@@ -399,29 +399,25 @@ class Analyzer(object):
     assert num_act_images == num_images, (
       "activities.shape[0] = %g and images.shape[0] = %g must be equal"%(
       num_act_images, num_images))
-    if num_images > batch_size: # enforce batching to limit memory usage
-      atas = np.zeros([num_pixels, num_neurons])
-      num_images_processed = 0
-      while num_images_processed < num_images:
-        num_batches = 0
-        if batch_size + num_images_processed <= num_images:
-          img_slice = images[num_images_processed:num_images_processed+batch_size, ...]
-          act_slice = activities[num_images_processed:num_images_processed+batch_size, ...]
-          atas = atas + img_slice.T.dot(act_slice) / batch_size
-          num_batches += 1
-          num_images_processed += batch_size
-        if num_batches > 0:
-          atas = atas / num_batches #average out the completed batches, if any
-        if num_images_processed <= num_images: # If there are still images left
-          num_remaining = num_images - num_images_processed
-          img_slice = images[num_images_processed:num_images, ...]
-          act_slice = activities[num_images_processed:num_images, ...]
-          batch_multiplier = (num_batches * batch_size) / num_images
-          atas = ((batch_multiplier * atas)
-            + ((1 - batch_multiplier) * (img_slice.T.dot(act_slice) / num_remaining)))
-          num_images_processed += num_remaining
-    else:
-      atas = images.T.dot(activities) / num_images
+    if num_images < batch_size: # No need to do batches
+      return images.T.dot(activities) / num_images
+    num_extra_images = num_images % batch_size
+    num_batches = (num_images - num_extra_images) // batch_size
+    atas = np.zeros([num_pixels, num_neurons])
+    num_images_processed = 0
+    for batch_index in range(num_batches):
+      img_slice = images[num_images_processed:num_images_processed+batch_size, ...]
+      act_slice = activities[num_images_processed:num_images_processed+batch_size, ...]
+      atas +=  img_slice.T.dot(act_slice) / batch_size
+      num_images_processed += batch_size
+    atas /= num_batches
+    if num_extra_images > 0: # there are still images left
+      img_slice = images[-num_extra_images:, ...]
+      act_slice = activities[-num_extra_images:, ...]
+      batch_multiplier = num_images_processed / num_images
+      atas = ((batch_multiplier * atas)
+        + ((1 - batch_multiplier) * (img_slice.T.dot(act_slice) / num_extra_images)))
+      num_images_processed += num_extra_images
     return atas
 
   def compute_atcs(self, activities, images, atas=None):
