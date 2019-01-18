@@ -82,7 +82,7 @@ class ListaModel(Model):
             (1-self.train_lca) * self.lista_loss
 
         with tf.name_scope("norm_weights") as scope:
-          self.norm_lista_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=0, epsilon=self.params.eps, 
+          self.norm_lista_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=0, epsilon=self.params.eps,
             name="row_l2_norm"))
           self.norm_weights = tf.group(self.norm_lista_w, name="l2_normalization")
 
@@ -174,14 +174,17 @@ class ListaModel(Model):
     """
     super(ListaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.lca_module.w,
+    eval_list = [self.global_step, self.lca_module.w, self.w,
       self.lca_module.reconstruction, self.lca_module.a, self.get_encodings()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
-    weights, recon, lca_activity, lista_activity = eval_out[1:]
-    weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
+    lca_weights, lista_weights, recon, lca_activity, lista_activity = eval_out[1:]
+    lca_weights_norm = np.linalg.norm(lca_weights, axis=0, keepdims=False)
+    lista_weights_norm = np.linalg.norm(lista_weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
-    weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
+    lca_weights = dp.reshape_data(lca_weights.T, flatten=False)[0] # [num_neurons, height, width]
+    lista_weights = dp.reshape_data(lista_weights.T, flatten=False)[0] # [num_neurons, height, width]
+
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
       save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
@@ -206,9 +209,13 @@ class ListaModel(Model):
     fig = pf.plot_activity_hist(lista_activity, title="LISTA Activity Histogram",
       save_filename=(self.params.disp_dir+"lista_act_hist" + name_suffix))
 
-    fig = pf.plot_data_tiled(weights, normalize=False,
-      title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"phi" + name_suffix))
+    fig = pf.plot_data_tiled(lca_weights, normalize=False,
+      title="LCA Dictionary at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.params.disp_dir+"lca_w" + name_suffix))
+
+    fig = pf.plot_data_tiled(lista_weights, normalize=False,
+      title="LISTA Dictionary at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.params.disp_dir+"lista_w" + name_suffix))
 
     #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
     #  grad = weight_grad_var[0][0].eval(feed_dict)

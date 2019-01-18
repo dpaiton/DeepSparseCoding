@@ -58,8 +58,7 @@ class AeModule(object):
 
   def compute_recon_loss(self, reconstruction):
     with tf.name_scope("unsupervised"):
-      #Want to avg over batch, sum over the rest
-      reduc_dim = list(range(1, len(reconstruction.shape)))
+      reduc_dim = list(range(1, len(reconstruction.shape)))# We want to avg over batch
       recon_loss = 0.5 * tf.reduce_mean(
         tf.reduce_sum(tf.square(tf.subtract(reconstruction, self.data_tensor)),
         axis=reduc_dim), name="recon_loss")

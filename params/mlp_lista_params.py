@@ -15,7 +15,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_lista"
-    self.model_name = "mlp_lista"
+    self.model_name = "mlp_lista_20"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -64,7 +64,7 @@ class params(BaseParams):
     self.val_on_cp = True
     self.max_cp_to_keep = None
     self.cp_load = True
-    self.cp_load_name = "lista_mnist"
+    self.cp_load_name = "lista_20_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["weights/w_enc:0", "weights/lateral_connectivity:0"]
@@ -89,19 +89,27 @@ class params(BaseParams):
       self.model_name += "_mnist"
       self.vectorize_data = True
       self.rescale_data = True
-      self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
+      self.log_int = 100
+      self.gen_plot_int = 1000
       # LISTA params
       self.num_layers = 5
       self.num_neurons = 768
       # MLP params
-      self.num_classes = 10
+      self.output_channels = [1536, 1200, self.num_classes]
+      self.layer_types = ["fc"]*3
       self.optimizer = "adam"
-
-      # NOTE schedule index will change if lca training is happening
-      self.schedule[0]["num_batches"] = int(2e4)
-      self.schedule[0]["sparse_mult"] = 0.21
+      self.patch_size_y = [None]*3
+      self.patch_size_x = [None]*3
+      self.conv_strides = [None]*3
+      self.batch_norm = [None]*3
+      self.dropout = [0.5, 0.4, 1.0]
+      self.max_pool = [False]*3
+      self.max_pool_ksize = [None]*3
+      self.max_pool_strides = [None]*3
+      self.schedule[0]["num_batches"] = int(4e4)
+      self.schedule[0]["sparse_mult"] = 0.19
       self.schedule[0]["weight_lr"] = 1e-4
       self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
       self.schedule[0]["decay_rate"] = 0.90

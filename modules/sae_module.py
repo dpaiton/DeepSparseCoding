@@ -57,7 +57,7 @@ class SaeModule(AeModule):
     self.b_list += enc_b_list
 
     with tf.variable_scope("inference") as scope:
-      self.a = tf.identity(enc_u_list[-1], name="activations")
+      self.a = tf.identity(enc_u_list[-1], name="activity")
 
     dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers,
       enc_u_list[-1], self.act_funcs[self.num_encoder_layers:],

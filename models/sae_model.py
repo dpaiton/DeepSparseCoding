@@ -24,6 +24,13 @@ class SaeModel(AeModel):
           self.target_act = tf.placeholder(tf.float32, shape=(), name="target_act")
     super(SaeModel, self).build_graph_from_input(input_node)
 
+  def compute_recon(self, a_in):
+    #TODO: use self.decoder_recon with placeholder, fix analysis
+    recon = self.module.build_decoder(self.module.num_encoder_layers,
+      a_in, self.act_funcs[self.module.num_encoder_layers:],
+      self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
+    return recon
+
   def get_encodings(self):
     return self.module.a
 

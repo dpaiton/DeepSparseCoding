@@ -136,20 +136,20 @@ class params(BaseParams):
         self.schedule[0]["decay_steps"] = int(0.5*self.schedule[0]["num_batches"])
         self.schedule[0]["decay_rate"] = 0.50
       else:
-        self.output_channels = [1200, 1200, self.num_classes]
+        self.output_channels = [1536, 1200, self.num_classes]
         self.layer_types = ["fc"]*3
         self.optimizer = "adam"
         self.patch_size_y = [None]*3
         self.patch_size_x = [None]*3
         self.conv_strides = [None]*3
         self.batch_norm = [None]*3
-        self.dropout = [0.5, 0.5, 1.0]
+        self.dropout = [0.5, 0.4, 1.0]
         self.max_pool = [False]*3
         self.max_pool_ksize = [None]*3
         self.max_pool_strides = [None]*3
         self.schedule[0]["num_batches"] = int(4e4)
         self.schedule[0]["sparse_mult"] = 0.19
-        self.schedule[0]["weight_lr"] = 1e-2
+        self.schedule[0]["weight_lr"] = 1e-4
         self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
         self.schedule[0]["decay_rate"] = 0.90
 
