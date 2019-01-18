@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
-import utils.entropy_functions as ef
 from models.ae_model import AeModel
 from modules.sae_module import SaeModule
 
@@ -13,7 +12,7 @@ class SaeModel(AeModel):
 
   def build_module(self, input_node):
     module = SaeModule(input_node, self.params.output_channels, self.sparse_mult, self.decay_mult,
-      self.target_act, self.act_func, name="SAE")
+      self.target_act, self.act_funcs, self.dropout_keep_probs, name="SAE")
     return module
 
   def build_graph_from_input(self, input_node):

@@ -31,9 +31,9 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     # VAE Params
-    self.vae_output_channels = [512, 50]
-    self.activation_function = "relu"
-    self.linear_latent = True
+    self.vae_output_channels = [768, 50]
+    self.activation_functions = ["relu", "identity", "relu", "identity"]
+    self.ae_dropout = [1.0]*2*len(self.vae_output_channels)
     self.noise_level = 0.01 # variance of noise added to the input data
     self.optimizer = "adam"
     # MLP Params
@@ -53,8 +53,8 @@ class params(BaseParams):
     self.cp_int = 10000
     self.val_on_cp = True
     self.max_cp_to_keep = None
-    self.cp_load = True
-    self.cp_load_name = "vae_two_layer_mnist"
+    self.cp_load = False
+    self.cp_load_name = "vae_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = [
@@ -89,16 +89,7 @@ class params(BaseParams):
       #Only training MLP weights, not VAE
       #TODO change weight names
       #TODO make option to train only mlp weights in schedule
-      {"weights": [
-        "layer0/conv_w_0:0",
-        "layer0/conv_b_0:0",
-        "layer1/conv_w_1:0",
-        "layer1/conv_b_1:0",
-        "layer2/fc_w_2:0",
-        "layer2/fc_b_2:0",
-        "layer3/fc_w_3:0",
-        "layer3/fc_b_3:0"
-        ],
+      {"weights": None,
       "train_vae": False,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
@@ -119,6 +110,7 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
+      self.cp_load = True
       # MLP params
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [28, 28, 1]
@@ -150,9 +142,20 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
+      self.ae_dropout = [1.0]*2*len(self.vae_output_channels)
       self.train_on_recon = True # if False, train on activations
+      self.full_data_shape = [16, 16, 1]
       self.num_classes = 2
-      self.mlp_output_channels = [128, 64, self.num_classes]
+      self.layer_types = ["conv", "fc", "fc"]
+      self.mlp_output_channels = [128, 768, self.num_classes]
+      self.patch_size_y = [5, None, None]
+      self.patch_size_x = self.patch_size_y
+      self.conv_strides = [(1,1,1,1), None, None]
+      self.batch_norm = [None, None, None]
+      self.dropout = [1.0]*len(self.mlp_output_channels)
+      self.max_pool = [True, False, False]
+      self.max_pool_ksize = [(1,2,2,1), None, None]
+      self.max_pool_strides = [(1,2,2,1), None, None]
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
         self.schedule[sched_idx]["weight_lr"] = 0.1
@@ -167,9 +170,12 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 8
+    self.full_data_shape = [8, 8, 1]
+    self.cp_load = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["weights"] = None
+      self.schedule[sched_idx]["kld_mult"] = 1.0
+      self.schedule[sched_idx]["decay_mult"] = 0.0
+      self.schedule[sched_idx]["sparse_mult"] = 0.0
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.num_neurons = 100
-    self.num_steps = 5

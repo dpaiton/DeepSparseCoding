@@ -1,23 +1,15 @@
 import tensorflow as tf
 import tensorflow_compression as tfc
 
-## Old
-#def compute_gdn_mult(u_in, w_gdn, b_gdn, w_min, b_min, conv, eps=1e-6):
-#    u_in_shape = tf.shape(u_in)
-#    w_threshold = tf.where(tf.less(w_gdn, tf.constant(w_min, dtype=tf.float32)),
-#      tf.multiply(w_min, tf.ones_like(w_gdn)), w_gdn)
-#    w_symmetric = tf.multiply(0.5, tf.add(w_threshold, tf.transpose(w_threshold)))
-#    b_threshold = tf.where(tf.less(b_gdn, tf.constant(b_min, dtype=tf.float32)),
-#      tf.multiply(b_min, tf.ones_like(b_gdn)), b_gdn)
-#    collapsed_u_sq = tf.reshape(tf.square(u_in),
-#      shape=tf.stack([u_in_shape[0]*u_in_shape[1]*u_in_shape[2], u_in_shape[3]]))
-#    weighted_norm = tf.reshape(tf.matmul(collapsed_u_sq, w_symmetric), shape=u_in_shape)
-#    gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
-#    return gdn_mult
-
 def activation_picker(activation_function):
+    if activation_function == "identity":
+      return tf.identity
     if activation_function == "relu":
       return tf.nn.relu
+    if activation_function == "elu":
+      return tf.nn.elu
+    if activation_function == "tanh":
+      return tf.nn.tanh
     if activation_function == "gdn":
       return gdn
     if activation_function == "sigmoid":

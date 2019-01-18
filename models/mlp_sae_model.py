@@ -23,41 +23,27 @@ class MlpSaeModel(Model):
     """
     super(MlpSaeModel, self).load_params(params)
     # Network Size
+    self.vector_inputs = True
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.input_shape = [None, self.num_pixels]
     self.label_shape = [None, self.params.num_classes]
-    self.act_func = activation_picker(self.params.activation_function)
+    self.act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.activation_functions]
 
   def get_input_shape(self):
     return self.input_shape
 
   def build_sae_module(self, input_node):
     module = SaeModule(input_node, self.params.sae_output_channels, self.sparse_mult,
-      self.decay_mult, self.target_act, self.act_func, name="SAE")
+      self.decay_mult, self.target_act, self.act_funcs, self.ae_dropout_keep_probs, name="SAE")
     return module
 
   def build_mlp_module(self, input_node):
-    if self.params.train_on_recon:
-      if self.params.layer_types[0] == "conv":
-        data_shape = [tf.shape(self.input_placeholder)[0]]+self.params.full_data_shape
-        recon = tf.reshape(self.sae_module.reconstruction, shape=data_shape)
-      elif self.params.layer_types[0] == "fc":
-        recon = self.sae_module.reconstruction
-      else:
-        assert False, ("params.layer_types must be 'fc' or 'conv'")
-      module = MlpModule(recon, self.label_placeholder, self.params.layer_types,
-        self.params.mlp_output_channels, self.params.batch_norm, self.params.dropout,
-        self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-        self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-        self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
-    else: # train on VAE latent encoding
-      assert self.params.layer_types[0] == "fc", (
-        "MLP must have FC layers to train on SAE activity")
-      module = MlpModule(self.sae_module.a, self.label_placeholder, self.params.layer_types,
-        self.params.output_channels, self.params.batch_norm, self.params.dropout,
-        self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-        self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-        self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
+    module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
+      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
+      self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -65,11 +51,18 @@ class MlpSaeModel(Model):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
+          self.label_placeholder = tf.placeholder(tf.float32,
+            shape=self.label_shape, name="input_labels")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.target_act = tf.placeholder(tf.float32, shape=(), name="target_act")
           self.train_sae = tf.placeholder(tf.bool, shape=(), name="train_sae")
+
+        with tf.name_scope("placeholders") as sess:
+          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="dropout_keep_probs")
+          self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="ae_dropout_keep_probs")
 
         self.train_sae = tf.cast(self.train_sae, tf.float32)
 
@@ -80,7 +73,19 @@ class MlpSaeModel(Model):
           self.sae_module = self.build_sae_module(input_node)
           self.trainable_variables.update(self.sae_module.trainable_variables)
         with tf.name_scope("mlp_module"):
-          self.mlp_module = self.build_mlp_module(input_node)
+          if self.params.train_on_recon:
+            if self.params.layer_types[0] == "conv":
+              data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
+              mlp_input = tf.reshape(self.sae_module.reconstruction, shape=data_shape)
+            elif self.params.layer_types[0] == "fc":
+              mlp_input = self.sae_module.reconstruction
+            else:
+              assert False, ("params.layer_types must be 'fc' or 'conv'")
+          else: # train on VAE latent encoding
+            assert self.params.layer_types[0] == "fc", (
+              "MLP must have FC layers to train on SAE activity")
+            mlp_input = self.sae_module.a
+          self.mlp_module = self.build_mlp_module(mlp_input)
           self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.name_scope("loss") as scope:
@@ -103,6 +108,16 @@ class MlpSaeModel(Model):
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
+
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
+    feed_dict = super(MlpSaeModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
+    if(is_test): # Turn off dropout when not training
+      feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
+      feed_dict[self.ae_dropout_keep_probs] = [1.0,] * len(self.params.ae_dropout)
+    else:
+      feed_dict[self.dropout_keep_probs] = self.params.dropout
+      feed_dict[self.ae_dropout_keep_probs] = self.params.ae_dropout
+    return feed_dict
 
   def get_encodings(self):
     return self.mlp_module.layer_list[-1]
@@ -192,7 +207,6 @@ class MlpSaeModel(Model):
       input_labels: data object containing the current label batch
     """
     super(MlpSaeModel, self).generate_plots(input_data, input_labels)
-
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.sae_module.w_list[0],
       self.sae_module.reconstruction, self.sae_module.a, self.get_encodings()]

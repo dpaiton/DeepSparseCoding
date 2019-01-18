@@ -23,42 +23,28 @@ class MlpVaeModel(Model):
     """
     super(MlpVaeModel, self).load_params(params)
     # Network Size
+    self.vector_inputs = True
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.input_shape = [None, self.num_pixels]
     self.label_shape = [None, self.params.num_classes]
-    self.act_func = activation_picker(self.params.activation_function)
+    self.act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.activation_functions]
 
   def get_input_shape(self):
     return self.input_shape
 
   def build_vae_module(self, input_node):
     module = VaeModule(input_node, self.params.vae_output_channels, self.sparse_mult,
-      self.decay_mult, self.kld_mult, self.act_func, self.params.noise_level,
-      self.params.linear_latent, name="VAE")
+      self.decay_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
+      self.params.noise_level, name="VAE")
     return module
 
-  def build_mlp_module(self):
-    if self.params.train_on_recon:
-      if self.params.layer_types[0] == "conv":
-        data_shape = [tf.shape(self.input_placeholder)[0]]+self.params.full_data_shape
-        recon = tf.reshape(self.vae_module.reconstruction, shape=data_shape)
-      elif self.params.layer_types[0] == "fc":
-        recon = self.vae_module.reconstruction
-      else:
-        assert False, ("params.layer_types must be 'fc' or 'conv'")
-      module = MlpModule(recon, self.label_placeholder, self.params.layer_types,
-        self.params.mlp_output_channels, self.params.batch_norm, self.params.dropout,
-        self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-        self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-        self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
-    else: # train on VAE latent encoding
-      assert self.params.layer_types[0] == "fc", (
-        "MLP must have FC layers to train on VAE activity")
-      module = MlpModule(self.vae_module.a, self.label_placeholder, self.params.layer_types,
-        self.params.output_channels, self.params.batch_norm, self.params.dropout,
-        self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-        self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-        self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
+  def build_mlp_module(self, input_node):
+    module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
+      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
+      self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -73,17 +59,35 @@ class MlpVaeModel(Model):
           self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
           self.train_vae = tf.placeholder(tf.bool, shape=(), name="train_vae")
 
+        with tf.name_scope("placeholders") as sess:
+          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="dropout_keep_probs")
+          self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="ae_dropout_keep_probs")
+
         self.train_vae = tf.cast(self.train_vae, tf.float32)
 
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        #TODO: with tf.name_scope("vae_module"):
-        self.vae_module = self.build_vae_module(input_node)
-        self.trainable_variables.update(self.vae_module.trainable_variables)
-        #TODO: with tf.name_scope("mlp_module"):
-        self.mlp_module = self.build_mlp_module()
-        self.trainable_variables.update(self.mlp_module.trainable_variables)
+        with tf.name_scope("vae_module"):
+          self.vae_module = self.build_vae_module(input_node)
+          self.trainable_variables.update(self.vae_module.trainable_variables)
+        with tf.name_scope("mlp_module"):
+          if self.params.train_on_recon:
+            if self.params.layer_types[0] == "conv":
+              data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
+              mlp_input = tf.reshape(self.vae_module.reconstruction, shape=data_shape)
+            elif self.params.layer_types[0] == "fc":
+              mlp_input = self.vae_module.reconstruction
+            else:
+              assert False, ("params.layer_types must be 'fc' or 'conv'")
+          else: # train on VAE latent encoding
+            assert self.params.layer_types[0] == "fc", (
+              "MLP must have FC layers to train on VAE activity")
+            mlp_input = self.vae_module.a
+          self.mlp_module = self.build_mlp_module(mlp_input)
+          self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.name_scope("loss") as scope:
           #Loss switches based on train_vae flag
@@ -105,6 +109,16 @@ class MlpVaeModel(Model):
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
+
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
+    feed_dict = super(MlpVaeModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
+    if(is_test): # Turn off dropout when not training
+      feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
+      feed_dict[self.ae_dropout_keep_probs] = [1.0,] * len(self.params.ae_dropout)
+    else:
+      feed_dict[self.dropout_keep_probs] = self.params.dropout
+      feed_dict[self.ae_dropout_keep_probs] = self.params.ae_dropout
+    return feed_dict
 
   def get_encodings(self):
     return self.mlp_module.layer_list[-1]

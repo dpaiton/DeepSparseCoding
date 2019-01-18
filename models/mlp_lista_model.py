@@ -38,7 +38,7 @@ class MlpListaModel(Model):
     assert self.params.layer_types[0] == "fc", (
       "MLP must have FC layers to train on LISTA activity")
     module = MlpModule(self.a, self.label_placeholder, self.params.layer_types,
-      self.params.output_channels, self.params.batch_norm, self.params.dropout,
+      self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
       self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
@@ -52,13 +52,18 @@ class MlpListaModel(Model):
           self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
+        with tf.name_scope("placeholders") as scope:
+          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="dropout_keep_probs")
+
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         # LISTA module
         with tf.name_scope("weight_inits") as scope:
           self.w_init = tf.truncated_normal_initializer(mean=0, stddev=0.05, dtype=tf.float32)
-          self.s_init = init_ops.GDNGammaInitializer(diagonal_gain=0.0, off_diagonal_gain=0.001, dtype=tf.float32)
+          self.s_init = init_ops.GDNGammaInitializer(diagonal_gain=0.0, off_diagonal_gain=0.001,
+            dtype=tf.float32)
 
         with tf.variable_scope("weights") as scope:
           self.w = tf.get_variable(name="w_enc", shape=self.w_shape, dtype=tf.float32,
@@ -95,6 +100,13 @@ class MlpListaModel(Model):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
+    feed_dict = super(MlpListaModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
+    if(is_test): # Turn off dropout when not training
+      feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
+    else:
+      feed_dict[self.dropout_keep_probs] = self.params.dropout
+    return feed_dict
 
   def get_encodings(self):
     return self.mlp_module.layer_list[-1]
@@ -111,7 +123,6 @@ class MlpListaModel(Model):
       batch_step: current batch number within the schedule
     """
     update_dict = super(MlpListaModel, self).generate_update_dict(input_data, input_labels, batch_step)
-    
     feed_dict = self.get_feed_dict(input_data, input_labels)
     current_step = np.array(self.global_step.eval())
     total_loss = np.array(self.get_total_loss().eval(feed_dict))
@@ -138,7 +149,6 @@ class MlpListaModel(Model):
       input_labels: data object containing the current label batch
     """
     super(MlpListaModel, self).generate_plots(input_data, input_labels)
-
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w, self.a, self.get_encodings()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
@@ -147,7 +157,6 @@ class MlpListaModel(Model):
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
       save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
-
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     #Scale image by max and min of images and/or recon
     r_max = np.max(input_data)

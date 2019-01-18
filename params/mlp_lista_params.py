@@ -64,7 +64,7 @@ class params(BaseParams):
     self.val_on_cp = True
     self.max_cp_to_keep = None
     self.cp_load = True
-    self.cp_load_name = "lista_5_thresh_mnist"
+    self.cp_load_name = "lista_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["weights/w_enc:0", "weights/lateral_connectivity:0"]
@@ -73,14 +73,7 @@ class params(BaseParams):
     self.gen_plot_int = 1000
     self.save_plots = True
     self.schedule = [
-      {"weights": [
-        "mlp_module/layer0/fc_w_0:0",
-        "mlp_module/layer0/fc_w_0:0",
-        "mlp_module/layer1/fc_w_1:0",
-        "mlp_module/layer1/fc_b_1:0",
-        "mlp_module/layer2/fc_w_2:0",
-        "mlp_module/layer2/fc_b_2:0"
-        ],
+      {"weights": None,
       "train_lca": False,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
@@ -100,8 +93,8 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       # LISTA params
+      self.num_layers = 5
       self.num_neurons = 768
-      #self.num_layers = 5
       # MLP params
       self.num_classes = 10
       self.optimizer = "adam"

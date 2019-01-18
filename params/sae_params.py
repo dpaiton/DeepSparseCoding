@@ -6,7 +6,7 @@ class params(BaseParams):
     """
     Additional modifiable parameters:
       output_channels [list of ints]
-      activation_function [str]
+      activation_functions [list of strs]
     """
     super(params, self).__init__()
     self.model_type = "sae"
@@ -31,7 +31,8 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     self.output_channels = [768]
-    self.activation_function = "relu"
+    self.activation_functions = ["sigmoid", "identity"]
+    self.dropout = [1.0]*2
     self.optimizer = "annealed_sgd"#"adam"
     self.cp_int = int(1e5)
     self.max_cp_to_keep = 1
@@ -68,11 +69,13 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.output_channels = [768]
+      self.activation_functions = ["sigmoid", "identity"]
+      self.dropout = [1.0]*2*len(self.output_channels)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(3.0e6)
+        self.schedule[sched_idx]["num_batches"] = int(3e6)
         self.schedule[sched_idx]["decay_mult"] = 0.03
-        self.schedule[sched_idx]["sparse_mult"] = 0.2
-        self.schedule[sched_idx]["target_act"] = 0.3
+        self.schedule[sched_idx]["sparse_mult"] = 0.15
+        self.schedule[sched_idx]["target_act"] = 0.2
         self.schedule[sched_idx]["weight_lr"] = 0.001
         self.schedule[sched_idx]["decay_steps"] = int(0.3*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.70
@@ -87,6 +90,8 @@ class params(BaseParams):
       self.whiten_method = "FT"
       self.extract_patches = True
       self.output_channels = [768]
+      self.activation_functions = ["sigmoid", "identity"]
+      self.dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["decay_mult"] = 0.02
@@ -97,26 +102,28 @@ class params(BaseParams):
         self.schedule[sched_idx]["decay_rate"] = 0.90
 
     elif data_type.lower() == "field":
-        self.model_name += "_field"
-        self.vectorize_data = True
-        self.rescale_data = False
-        self.standardize_data = True
-        self.whiten_data = True
-        self.whiten_method = "FT"
-        self.lpf_data = False
-        self.lpf_cutoff = 0.7
-        self.extract_patches = True
-        self.num_patches = 1e6
-        self.patch_edge_size = 16
-        self.overlapping_patches = True
-        self.randomize_patches = True
-        self.patch_variance_threshold = 0.0
-        self.num_neurons = 768
-        for sched_idx in range(len(self.schedule)):
-          self.schedule[sched_idx]["decay_mult"] = 0.008
-          self.schedule[sched_idx]["sparse_mult"] = 5.0
-          self.schedule[sched_idx]["target_act"] = 0.05
-          self.schedule[sched_idx]["weight_lr"] = 0.002
+      self.model_name += "_field"
+      self.vectorize_data = True
+      self.rescale_data = False
+      self.standardize_data = True
+      self.whiten_data = True
+      self.whiten_method = "FT"
+      self.lpf_data = False
+      self.lpf_cutoff = 0.7
+      self.extract_patches = True
+      self.num_patches = 1e6
+      self.patch_edge_size = 16
+      self.overlapping_patches = True
+      self.randomize_patches = True
+      self.patch_variance_threshold = 0.0
+      self.output_channels = [768]
+      self.activation_functions = ["sigmoid", "identity"]
+      self.dropout = [1.0]*2
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["decay_mult"] = 0.008
+        self.schedule[sched_idx]["sparse_mult"] = 5.0
+        self.schedule[sched_idx]["target_act"] = 0.05
+        self.schedule[sched_idx]["weight_lr"] = 0.002
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -127,12 +134,15 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.num_neurons = 768
+      self.output_channels = [768]
+      self.activation_functions = ["sigmoid", "identity"]
+      self.dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["decay_mult"] = 0.005
-        self.schedule[sched_idx]["sparse_mult"] = 1.0
-        self.schedule[sched_idx]["weight_lr"] = 0.01
         self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["decay_mult"] = 0.03
+        self.schedule[sched_idx]["sparse_mult"] = 0.15
+        self.schedule[sched_idx]["target_act"] = 0.2
+        self.schedule[sched_idx]["weight_lr"] = 1e-3
 
     else:
       assert False, ("Data type "+data_type+" is not supported.")
@@ -145,5 +155,10 @@ class params(BaseParams):
     self.num_patches = 100
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
+      self.schedule[sched_idx]["decay_mult"] = 0.03
+      self.schedule[sched_idx]["sparse_mult"] = 0.15
+      self.schedule[sched_idx]["target_act"] = 0.2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.num_neurons = 100
+    self.output_channels = [100]
+    self.activation_functions = ["sigmoid", "identity"]
+    self.dropout = [1.0]*2

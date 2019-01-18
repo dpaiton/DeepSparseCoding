@@ -3,14 +3,15 @@ import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
-  def __init__(self, data_tensor, output_channels, decay_mult, act_func, name="AE"):
+  def __init__(self, data_tensor, output_channels, decay_mult, act_funcs, dropout, name="AE"):
     """
     Autoencoder module
     Inputs:
       data_tensor
       output_channels - a list of channels to make, also defines number of layers
       decay_mult - weight decay multiplier
-      act_func - activation function
+      act_funcs - activation functions
+      dropout - specifies the keep probability or None
       name
     Outputs:
       dictionary
@@ -24,14 +25,19 @@ class AeModule(object):
 
     self.name = str(name)
     self.output_channels = output_channels
+    self.act_funcs = act_funcs
+    self.dropout = dropout
+
     self.decay_mult = decay_mult
-    self.act_func = act_func
 
     self.trainable_variables = TrainableVariableDict()
 
     self.num_encoder_layers = len(self.output_channels)
     self.num_decoder_layers = self.num_encoder_layers
     self.num_layers = self.num_encoder_layers + self.num_decoder_layers
+
+    assert len(self.act_funcs) == self.num_layers, \
+      ("act_funcs parameter must have the same length as output_channels")
 
     w_enc_shape = []
     w_dec_shape = []
@@ -71,6 +77,7 @@ class AeModule(object):
       b = tf.get_variable(name=b_name, shape=w_shape[1],
         dtype=tf.float32, initializer=self.b_init, trainable=True)
       output_tensor = activation_function(tf.add(tf.matmul(input_tensor, w), b))
+      output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, w, b
 
   def build_encoder(self, input_tensor, activation_functions, w_shapes):
@@ -105,20 +112,23 @@ class AeModule(object):
 
   def build_graph(self):
     with tf.name_scope("weight_inits") as scope:
-      self.w_init = tf.initializers.random_normal(mean=0.0, stddev=0.1, dtype=tf.float32)
+      self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
       self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
 
     self.u_list = [self.data_tensor]
     self.w_list = []
     self.b_list = []
     enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
-      [self.act_func,]*self.num_encoder_layers, self.w_shapes[:self.num_encoder_layers])
+      self.act_funcs[:self.num_encoder_layers], self.w_shapes[:self.num_encoder_layers])
     self.u_list += enc_u_list
     self.w_list += enc_w_list
     self.b_list += enc_b_list
 
-    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers+1,
-      self.u_list[-1], [self.act_func,]*(self.num_decoder_layers-1) + [tf.identity],
+    with tf.variable_scope("inference") as scope:
+      self.a = tf.identity(enc_u_list[-1], name="activity")
+
+    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers,
+      self.u_list[-1], self.act_funcs[self.num_encoder_layers:],
       self.w_shapes[self.num_encoder_layers:])
     self.u_list += dec_u_list
     self.w_list += dec_w_list
@@ -127,9 +137,6 @@ class AeModule(object):
     for w,b in zip(self.w_list, self.b_list):
       self.trainable_variables[w.name] = w
       self.trainable_variables[b.name] = b
-
-    with tf.variable_scope("inference") as scope:
-      self.a = tf.identity(self.u_list[int(self.num_layers/2-1)], name="activity")
 
     with tf.name_scope("output") as scope:
       self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")

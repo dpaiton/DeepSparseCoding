@@ -22,13 +22,13 @@ class params(BaseParams):
     self.lpf_cutoff = 0.7
     self.extract_patches = False
     self.batch_size = 100
-    #Specify number of neurons for encoder
-    #Last element in list is the size of the latent space
-    #Decoder will automatically build the transpose of the encoder
+    # Specify number of neurons for encoder
+    # Last element in list is the size of the latent space
+    # Decoder will automatically build the transpose of the encoder
     self.output_channels = [512, 50]
-    self.noise_level = 0.0 # variance of noise added to the input data
-    self.activation_function = "relu" # Activation function for hidden layers
-    self.linear_latent = True # If True, latent mean values do not use activation_function
+    self.activation_functions = ["relu", "identity", "relu", "identity"]
+    self.dropout = [1.0]*4
+    self.noise_level = 0.0 # Variance of noise added to the input data
     self.norm_weights = False
     self.optimizer = "adam"
     self.cp_int = 10000
@@ -58,6 +58,8 @@ class params(BaseParams):
       self.gen_plot_int = 1e4
       self.noise_level = 0.0
       self.output_channels = [768, 20]
+      self.activation_functions = ["relu", "identity", "relu", "identity"]
+      self.dropout = [1.0]*4
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["num_batches"] = int(1e5)
         self.schedule[schedule_idx]["kld_mult"] = 1/self.batch_size
@@ -84,3 +86,5 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.output_channels = [20, 10]
+    self.activation_functions = ["relu", "identity", "relu", "identity"]
+    self.dropout = [1.0]*4

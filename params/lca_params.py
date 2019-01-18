@@ -44,7 +44,7 @@ class params(BaseParams):
     self.norm_weights = True
     self.thresh_type = "soft"
     self.optimizer = "annealed_sgd"
-    self.cp_int = int(1e3)
+    self.cp_int = int(1e4)
     self.max_cp_to_keep = 1
     self.cp_load = False
     self.cp_load_name = "pretrain"
@@ -53,7 +53,7 @@ class params(BaseParams):
     #self.cp_load_var = ["phi"]
     self.log_int = int(1e2)
     self.log_to_file = True
-    self.gen_plot_int = int(1e3)
+    self.gen_plot_int = int(1e4)
     self.save_plots = True
     self.schedule = [
       {"weights": None,#["weights/w:0"],
@@ -78,7 +78,7 @@ class params(BaseParams):
         self.schedule[sched_idx]["sparse_mult"] = 0.25
         self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["num_batches"] = int(2e5)
-        self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
     elif data_type.lower() == "vanhateren":

@@ -26,7 +26,8 @@ class params(BaseParams):
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
     self.output_channels = [512, 50]
-    self.activation_function = "relu"
+    self.activation_functions = ["relu", "relu", "relu", "identity"]
+    self.dropout = [1.0]*4
     self.optimizer = "annealed_sgd"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
@@ -49,7 +50,9 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.output_channels = [100, 50]
+      self.output_channels = [768, 50]
+      self.activation_functions = ["relu", "relu", "relu", "identity"]
+      self.dropout = [1.0]*4
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -69,3 +72,5 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.output_channels = [20, 10]
+    self.activation_functions = ["relu", "relu", "relu", "identity"]
+    self.dropout = [1.0]*4

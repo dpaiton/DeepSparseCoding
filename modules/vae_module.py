@@ -5,17 +5,18 @@ from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, kld_mult,
-    act_func, noise_level=0, linear_latent=True, name="VAE"):
+    act_funcs, dropout, noise_level=0, name="VAE"):
     """
     Variational Autoencoder module
     Inputs:
       data_tensor
       params
       output_channels: A list of channels to make, also defines number of layers
+      act_funcs - activation functions
+      dropout - specifies the keep probability or None
       name
     Outputs:
       dictionary
-    TODO: Add optional flag to turn off ReLU for the final encoding layer (means)
     """
     self.noise_level = noise_level
     if self.noise_level > 0.0:
@@ -26,9 +27,8 @@ class VaeModule(AeModule):
       self.corrupt_data = data_tensor
     self.sparse_mult = sparse_mult
     self.kld_mult = kld_mult
-    self.linear_latent = linear_latent
-
-    super(VaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_func, name)
+    super(VaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
+      dropout, name)
 
   def compute_latent_loss(self, a_mean, a_log_std_sq):
     with tf.name_scope("latent"):
@@ -38,7 +38,7 @@ class VaeModule(AeModule):
     return latent_loss
 
   def compute_sparse_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.name_scope("unsupervised"): # TODO: change to loss from sae? look into this
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       act_l1 = tf.reduce_mean(tf.reduce_sum(tf.square(a_in), axis=reduc_dim))
       sparse_loss = self.sparse_mult * act_l1
@@ -49,15 +49,11 @@ class VaeModule(AeModule):
       self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
       self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
 
-    if self.linear_latent: # TODO: Support list of act functions as input
-      act_func_list = [self.act_func,]*(self.num_encoder_layers-1)+[tf.identity]
-    else:
-      act_func_list = [self.act_func,]*(self.num_encoder_layers)
     self.u_list = [self.corrupt_data]
     self.w_list = []
     self.b_list = []
-    enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0], act_func_list,
-      self.w_shapes[:self.num_encoder_layers])
+    enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
+      self.act_funcs[:self.num_encoder_layers], self.w_shapes[:self.num_encoder_layers])
     self.u_list += enc_u_list[:-1] # don't store the mean value in u_list
     self.w_list += enc_w_list
     self.b_list += enc_b_list
@@ -78,15 +74,14 @@ class VaeModule(AeModule):
     #Calculate latent - std is in log(std**2) space
     noise = tf.random_normal(tf.shape(self.latent_std_activation))
     act = self.latent_mean_activation + tf.sqrt(tf.exp(self.latent_std_activation)) * noise
-    #Add name to act
     act = tf.identity(act, name="activity")
 
     self.u_list.append(act)
     self.a = self.u_list[-1]
 
-    dec_act_func_list = [self.act_func,]*(self.num_decoder_layers-1)+[tf.identity]
-    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers+1,
-      self.u_list[-1], dec_act_func_list, self.w_shapes[self.num_encoder_layers:])
+    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers,
+      self.u_list[-1], self.act_funcs[self.num_encoder_layers:],
+      self.w_shapes[self.num_encoder_layers:])
     self.u_list += dec_u_list
     self.w_list += dec_w_list
     self.b_list += dec_b_list

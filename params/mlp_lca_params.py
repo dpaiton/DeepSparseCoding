@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_lca"
-    self.model_name = "mlp_lca"
+    self.model_name = "mlp_lca_latent"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -83,17 +83,7 @@ class params(BaseParams):
       #"staircase": True},
       #Training MLP on LCA recons
       #Only training MLP weights, not VAE
-      #TODO change weight names
-      {"weights": [
-        "layer0/conv_w_0:0",
-        "layer0/conv_b_0:0",
-        "layer1/conv_w_1:0",
-        "layer1/conv_b_1:0",
-        "layer2/fc_w_2:0",
-        "layer2/fc_b_2:0",
-        "layer3/fc_w_3:0",
-        "layer3/fc_b_3:0"
-        ],
+      {"weights": None,
       "train_lca": False,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
@@ -115,26 +105,53 @@ class params(BaseParams):
       # LCA params
       self.num_neurons = 768
       # MLP params
-      self.train_on_recon = True # if False, train on activations
-      self.full_data_shape = [28, 28, 1]
-      self.num_classes = 10
-      self.optimizer = "adam"
-      self.layer_types = ["conv", "conv", "fc", "fc"]
-      self.output_channels = [32, 64, 1024, self.num_classes]
-      self.patch_size_y = [5, 5, None, None]
-      self.patch_size_x = self.patch_size_y
-      self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
-      self.batch_norm = [None, None, None, None]
-      self.dropout = [1.0, 1.0, 0.4, 1.0]
-      self.max_pool = [True, True, False, False]
-      self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
-      self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
-      # NOTE schedule index will change if lca training is happening
-      self.schedule[0]["num_batches"] = int(2e4)
-      self.schedule[0]["sparse_mult"] = 0.21
-      self.schedule[0]["weight_lr"] = 1e-4
-      self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
-      self.schedule[0]["decay_rate"] = 0.90
+      self.train_on_recon = False # if False, train on activations
+      if self.train_on_recon:
+        self.full_data_shape = [28, 28, 1]
+        self.num_classes = 10
+        self.optimizer = "adam"
+        self.layer_types = ["conv", "conv", "fc", "fc"]
+        self.output_channels = [32, 64, 1024, self.num_classes]
+        self.patch_size_y = [5, 5, None, None]
+        self.patch_size_x = self.patch_size_y
+        self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
+        self.batch_norm = [None, None, None, None]
+        self.dropout = [1.0, 1.0, 0.4, 1.0]
+        self.max_pool = [True, True, False, False]
+        self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
+        self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
+        # NOTE schedule index will change if lca training is happening
+        self.schedule[0]["weights"] = [
+          "layer0/conv_w_0:0",
+          "layer0/conv_b_0:0",
+          "layer1/conv_w_1:0",
+          "layer1/conv_b_1:0",
+          "layer2/fc_w_2:0",
+          "layer2/fc_b_2:0",
+          "layer3/fc_w_3:0",
+          "layer3/fc_b_3:0"]
+        self.schedule[0]["num_batches"] = int(4e4)
+        self.schedule[0]["sparse_mult"] = 0.19
+        self.schedule[0]["weight_lr"] = 1e-4
+        self.schedule[0]["decay_steps"] = int(0.5*self.schedule[0]["num_batches"])
+        self.schedule[0]["decay_rate"] = 0.50
+      else:
+        self.output_channels = [1200, 1200, self.num_classes]
+        self.layer_types = ["fc"]*3
+        self.optimizer = "adam"
+        self.patch_size_y = [None]*3
+        self.patch_size_x = [None]*3
+        self.conv_strides = [None]*3
+        self.batch_norm = [None]*3
+        self.dropout = [0.5, 0.5, 1.0]
+        self.max_pool = [False]*3
+        self.max_pool_ksize = [None]*3
+        self.max_pool_strides = [None]*3
+        self.schedule[0]["num_batches"] = int(4e4)
+        self.schedule[0]["sparse_mult"] = 0.19
+        self.schedule[0]["weight_lr"] = 1e-2
+        self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
+        self.schedule[0]["decay_rate"] = 0.90
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

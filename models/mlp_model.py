@@ -64,8 +64,7 @@ class MlpModel(Model):
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(MlpModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
-    #Explicitly set to no dropout if is not train
-    if(is_test):
+    if(is_test): # Turn off dropout when not training
       feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
     else:
       feed_dict[self.dropout_keep_probs] = self.params.dropout

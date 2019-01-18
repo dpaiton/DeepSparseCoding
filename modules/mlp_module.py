@@ -87,8 +87,6 @@ class MlpModule(object):
       ("conv_strides must be a list of size " + str(self.num_layers))
     assert len(batch_norm) == self.num_layers, \
       ("batch_norm must be a list of size " + str(self.num_layers))
-    #assert len(dropout) == self.num_layers, \
-    #  ("dropout must be a list of size " + str(self.num_layers))
     assert len(max_pool) == self.num_layers, \
       ("max_pool must be a list of size " + str(self.num_layers))
     assert len(max_pool_ksize) == self.num_layers, \

@@ -46,7 +46,7 @@ class params(BaseParams):
     self.norm_weights = True
     self.thresh_type = "soft"
     #LISTA Params
-    self.num_layers = 10
+    self.num_layers = 5
     #Others
     self.cp_int = 10000
     self.val_on_cp = False
@@ -90,15 +90,12 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.num_neurons = 768
-      self.num_layers = 10
+      self.num_layers = 5
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.19
+        self.schedule[sched_idx]["sparse_mult"] = 0.25
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["weight_lr"] = 0.01
-      #Set as 0.1 for training lca, and 0.01 for mlp
-      #self.schedule[0]["weight_lr"] = 0.1
-      #self.schedule[1]["weight_lr"] = 0.01
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"

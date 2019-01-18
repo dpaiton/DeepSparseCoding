@@ -23,14 +23,15 @@ class AeModel(Model):
     super(AeModel, self).load_params(params)
     self.num_pixels = int(np.prod(self.params.data_shape))
     self.input_shape = [None, self.num_pixels]
-    self.act_func = activation_picker(self.params.activation_function)
+    self.act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.activation_functions]
 
   def get_input_shape(self):
     return self.input_shape
 
   def build_module(self, input_node):
-    module = AeModule(input_node, self.params.output_channels, self.decay_mult, self.act_func,
-      name="AE")
+    module = AeModule(input_node, self.params.output_channels, self.decay_mult, self.act_funcs,
+      self.dropout_keep_probs, name="AE")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -41,6 +42,8 @@ class AeModel(Model):
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
 
         with tf.name_scope("placeholders") as sess:
+          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="dropout_keep_probs")
           self.latent_input = tf.placeholder(tf.float32, name="latent_input")
 
         with tf.name_scope("step_counter") as scope:
@@ -53,8 +56,8 @@ class AeModel(Model):
           self.a = tf.identity(self.module.a, name="activity")
 
         # first index grabs u_list, second index grabs recon
-        self.decoder_recon = self.module.build_decoder(self.module.num_encoder_layers+1,
-          self.latent_input, [self.act_func,]*(self.module.num_decoder_layers-1)+[tf.identity],
+        self.decoder_recon = self.module.build_decoder(self.module.num_encoder_layers,
+          self.latent_input, self.act_funcs[self.module.num_encoder_layers:],
           self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
 
         with tf.name_scope("performance_metrics") as scope:
@@ -67,11 +70,18 @@ class AeModel(Model):
 
   def compute_recon(self, a_in):
     #TODO: use self.decoder_recon with placeholder, fix analysis
-    recon = self.module.build_decoder(self.module.num_encoder_layers+1,
-      a_in, [self.act_func,]*(self.module.num_decoder_layers-1)+[tf.identity],
+    recon = self.module.build_decoder(self.module.num_encoder_layers,
+      a_in, self.act_funcs[self.module.num_encoder_laers:],
       self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
     return recon
 
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
+    feed_dict = super(AeModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
+    if(is_test): # Turn off dropout when not training
+      feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
+    else:
+      feed_dict[self.dropout_keep_probs] = self.params.dropout
+    return feed_dict
 
   def get_encodings(self):
     return self.module.a

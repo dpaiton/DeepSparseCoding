@@ -47,7 +47,7 @@ class MlpLcaModel(Model):
       else:
         assert False, ("params.layer_types must be 'fc' or 'conv'")
       module = MlpModule(recon, self.label_placeholder, self.params.layer_types,
-        self.params.output_channels, self.params.batch_norm, self.params.dropout,
+        self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
         self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
         self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
         self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
@@ -55,7 +55,7 @@ class MlpLcaModel(Model):
       assert self.params.layer_types[0] == "fc", (
         "MLP must have FC layers to train on LCA activity")
       module = MlpModule(self.lca_module.a, self.label_placeholder, self.params.layer_types,
-        self.params.output_channels, self.params.batch_norm, self.params.dropout,
+        self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
         self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
         self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
         self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
@@ -70,6 +70,10 @@ class MlpLcaModel(Model):
             tf.float32, shape=self.label_shape, name="input_labels")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
+
+        with tf.name_scope("placeholders") as scope:
+          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="dropout_keep_probs")
 
         self.train_lca = tf.cast(self.train_lca, tf.float32)
 
@@ -106,6 +110,14 @@ class MlpLcaModel(Model):
           with tf.name_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
+
+  def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
+    feed_dict = super(MlpLcaModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
+    if(is_test): # Turn off dropout when not training
+      feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
+    else:
+      feed_dict[self.dropout_keep_probs] = self.params.dropout
+    return feed_dict
 
   def get_encodings(self):
     return self.mlp_module.layer_list[-1]

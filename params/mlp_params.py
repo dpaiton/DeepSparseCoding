@@ -40,7 +40,7 @@ class params(BaseParams):
     self.cp_load_var = ["w1"] #None means load everything
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = 5000
+    self.gen_plot_int = 1e4
     self.save_plots = True
 
     # If a scalar is provided then this value is broadcast to all trainable variables
@@ -74,7 +74,7 @@ class params(BaseParams):
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(2e4)
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["weight_lr"] = 1e-4
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.90
