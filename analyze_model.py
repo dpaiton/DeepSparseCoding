@@ -27,9 +27,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = True # TODO: Broken for mlp_lca_mnist
+    self.do_recon_adversaries = False # TODO: Broken for mlp_lca_mnist
     #Classification adversarial image analysis
-    self.do_class_adversaries = False
+    self.do_class_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -78,10 +78,13 @@ class params(object):
     #Recon_mult tradeoff for carlini attack method
     #Can be a list to sweep
     #0 means ignore adv_recon loss, 1 means ignore input_pert loss
-    self.recon_mult = list(np.arange(.01, 1, .01))
-    #self.recon_mult = [.5]
+
+    ##For recon attack
+    #self.recon_mult = list(np.arange(.1, 1, .1))
+    #For class attack
+    self.recon_mult = list(10 ** np.arange(-2, 2, 4/9))
     #Batch size for adversarial examples
-    self.adversarial_batch_size = 16
+    self.adversarial_batch_size = 8
 
     #Parameter for "specified" target_method
     #Only for class attack
@@ -122,7 +125,6 @@ analysis_params.model_type = args.model_type
 analysis_params.model_name = args.model_name
 analysis_params.version = args.model_version
 analysis_params.model_dir = analysis_params.projects_dir+analysis_params.model_name
-
 
 # Initialize & setup analyzer
 analyzer = ap.get_analyzer(analysis_params.model_type)

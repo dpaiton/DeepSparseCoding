@@ -275,6 +275,7 @@ class Analyzer(object):
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.adversarial_input_images = data["input_images"]
+      self.adversarial_input_labels = data["input_labels"]
       self.adversarial_target_labels = data["target_labels"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_outputs = data["adversarial_outputs"]
@@ -1013,7 +1014,7 @@ class Analyzer(object):
             self.target_class_loss = tf.reduce_sum(tf.nn.relu(
               self.max_logits_not_target_val - self.logits_target_val))
 
-            self.adv_loss = (1-self.recon_mult) * self.input_pert_loss + \
+            self.adv_loss = self.input_pert_loss + \
               self.recon_mult * self.target_class_loss
           else:
             assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
@@ -1143,9 +1144,10 @@ class Analyzer(object):
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
     self.adversarial_target_output_losses = mses["target_output_losses"]
     self.adversarial_input_images = input_images
+    self.adversarial_input_labels = input_labels
     self.adversarial_target_labels = target_labels
 
-    out_dict = {"input_images": input_images, "target_labels":target_labels,
+    out_dict = {"input_images": input_images, "input_labels":input_labels, "target_labels":target_labels,
       "adversarial_images":self.adversarial_images, "adversarial_outputs":self.adversarial_outputs,
       "step_size":step_size, "num_steps":num_steps, "input_id":input_id}
     out_dict.update(mses)
