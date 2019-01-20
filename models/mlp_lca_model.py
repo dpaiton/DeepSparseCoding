@@ -38,7 +38,6 @@ class MlpLcaModel(Model):
     return module
 
   def build_mlp_module(self, input_node):
-    input_node = tf.stop_gradient(input_node)
     module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,

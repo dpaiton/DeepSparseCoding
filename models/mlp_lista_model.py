@@ -37,7 +37,6 @@ class MlpListaModel(Model):
   def build_mlp_module(self, input_node):
     assert self.params.layer_types[0] == "fc", (
       "MLP must have FC layers to train on LISTA activity")
-    input_node = tf.stop_gradient(input_node)
     module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
