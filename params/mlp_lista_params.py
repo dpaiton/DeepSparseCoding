@@ -15,7 +15,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_lista"
-    self.model_name = "mlp_lista_20"
+    self.model_name = "mlp_lista_5"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -60,17 +60,17 @@ class params(BaseParams):
     self.max_pool_ksize = [None]*num_mlp_layers
     self.max_pool_strides = [None]*num_mlp_layers
     # Others
-    self.cp_int = 500
+    self.cp_int = 1e4
     self.val_on_cp = True
-    self.max_cp_to_keep = None
+    self.max_cp_to_keep = 1
     self.cp_load = True
-    self.cp_load_name = "lista_20_mnist"
+    self.cp_load_name = "lista_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["weights/w_enc:0", "weights/lateral_connectivity:0"]
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = 1000
+    self.gen_plot_int = 1e4
     self.save_plots = True
     self.schedule = [
       {"weights": None,
@@ -92,7 +92,8 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.log_int = 100
-      self.gen_plot_int = 1000
+      self.cp_int = 1e4
+      self.gen_plot_int = 1e4
       # LISTA params
       self.num_layers = 5
       self.num_neurons = 768

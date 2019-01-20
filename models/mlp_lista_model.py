@@ -34,10 +34,11 @@ class MlpListaModel(Model):
   def get_input_shape(self):
     return self.input_shape
 
-  def build_mlp_module(self):
+  def build_mlp_module(self, input_node):
     assert self.params.layer_types[0] == "fc", (
       "MLP must have FC layers to train on LISTA activity")
-    module = MlpModule(self.a, self.label_placeholder, self.params.layer_types,
+    input_node = tf.stop_gradient(input_node)
+    module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
@@ -83,7 +84,7 @@ class MlpListaModel(Model):
 
         # MLP module
         with tf.name_scope("mlp_module") as scope:
-          self.mlp_module = self.build_mlp_module()
+          self.mlp_module = self.build_mlp_module(self.a)
           self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.name_scope("loss") as scope:

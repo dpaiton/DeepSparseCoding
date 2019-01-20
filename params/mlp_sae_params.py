@@ -37,7 +37,6 @@ class params(BaseParams):
     self.noise_level = 0.01 # variance of noise added to the input data
     self.optimizer = "adam"
     # MLP Params
-    self.train_on_recon = True # if False, train on LCA latent activations
     self.num_classes = 10
     self.layer_types = ["fc", "fc", "fc"]
     self.mlp_output_channels = [300, 500, self.num_classes]
@@ -105,9 +104,11 @@ class params(BaseParams):
       self.sae_output_channels = [768]
       self.activation_functions = ["sigmoid", "identity"]
       self.dropout = [1.0]*2*len(self.sae_output_channels)
+      self.cp_int = 1e4
+      self.gen_plot_int = 1e4
       self.cp_load = True
       # MLP params
-      self.train_on_recon = True # if False, train on activations
+      self.train_on_recon = False # if False, train on activations
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
         self.num_classes = 10
@@ -128,7 +129,7 @@ class params(BaseParams):
         self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
         self.schedule[0]["decay_rate"] = 0.90
       else:
-        self.sae_output_channels = [1536, 1200, self.num_classes]
+        self.mlp_output_channels = [1536, 1200, self.num_classes]
         self.layer_types = ["fc"]*3
         self.optimizer = "adam"
         self.patch_size_y = [None]*3
