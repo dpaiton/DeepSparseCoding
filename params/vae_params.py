@@ -29,14 +29,15 @@ class params(BaseParams):
     self.activation_functions = ["relu", "identity", "relu", "identity"]
     self.dropout = [1.0]*4
     self.noise_level = 0.0 # Variance of noise added to the input data
+    self.recon_loss_type = "mse" # or "cross-entropy"
     self.norm_weights = False
     self.optimizer = "adam"
-    self.cp_int = 10000
+    self.cp_int = 1e4
     self.max_cp_to_keep = 1
     self.cp_load = False
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = 10000
+    self.gen_plot_int = 1e4
     self.save_plots = True
     self.schedule = [
       {"num_batches": int(3e5),
@@ -53,18 +54,20 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.batch_size = 200
       self.log_int = 100
-      self.cp_int = 1e4
-      self.gen_plot_int = 1e4
+      self.cp_int = 1e5
+      self.gen_plot_int = 1e5
       self.noise_level = 0.0
       self.output_channels = [768, 20]
-      self.activation_functions = ["relu", "identity", "relu", "identity"]
+      self.recon_loss_type = "mse" # "mse" or "crossentropy"
+      self.activation_functions = ["relu", "identity", "relu", "sigmoid"]
       self.dropout = [1.0]*4
       for schedule_idx in range(len(self.schedule)):
-        self.schedule[schedule_idx]["num_batches"] = int(1e5)
-        self.schedule[schedule_idx]["kld_mult"] = 1/self.batch_size
-        self.schedule[schedule_idx]["decay_mult"] = 2e-6
-        self.schedule[schedule_idx]["weight_lr"] = 2e-3
+        self.schedule[schedule_idx]["num_batches"] = int(2e5)
+        self.schedule[schedule_idx]["kld_mult"] = 1
+        self.schedule[schedule_idx]["decay_mult"] = 2e-7
+        self.schedule[schedule_idx]["weight_lr"] = 5e-5
         self.schedule[schedule_idx]["decay_steps"] = int(0.5*self.schedule[schedule_idx]["num_batches"])
         self.schedule[schedule_idx]["decay_rate"] = 0.8
 

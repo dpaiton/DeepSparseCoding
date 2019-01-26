@@ -1,11 +1,12 @@
 import numpy as np
 import tensorflow as tf
+import utils.entropy_functions as ef
 from utils.trainable_variable_dict import TrainableVariableDict
 from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, kld_mult,
-    act_funcs, dropout, noise_level=0, name="VAE"):
+    act_funcs, dropout, noise_level=0, recon_loss_type="mse", name="VAE"):
     """
     Variational Autoencoder module
     Inputs:
@@ -25,16 +26,28 @@ class VaeModule(AeModule):
         data_tensor)
     else:
       self.corrupt_data = data_tensor
+    self.recon_loss_type = recon_loss_type
     self.sparse_mult = sparse_mult
     self.kld_mult = kld_mult
     super(VaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
       dropout, name)
 
+  def compute_recon_loss(self, reconstruction):
+    if self.recon_loss_type == "mse":
+      return super(VaeModule, self).compute_recon_loss(reconstruction)
+    elif self.recon_loss_type == "crossentropy":
+      reduc_dim = list(range(1, len(reconstruction.shape)))# We want to avg over batch
+      recon_loss = tf.reduce_mean(-tf.reduce_sum(self.data_tensor * ef.safe_log(reconstruction) \
+        + (1-self.data_tensor) * ef.safe_log(1-reconstruction), axis=reduc_dim))
+      return recon_loss
+    else:
+      assert False, ("recon_loss_type param must be `mse` or `crossentropy`")
+
   def compute_latent_loss(self, a_mean, a_log_std_sq):
     with tf.name_scope("latent"):
       reduc_dim = list(range(1, len(a_mean.shape))) # Want to avg over batch, sum over the rest
-      latent_loss= self.kld_mult * -0.5 * tf.reduce_mean(tf.reduce_sum(1 + a_log_std_sq -
-        tf.square(a_mean) - tf.exp(a_log_std_sq), reduc_dim))
+      latent_loss = self.kld_mult * -0.5 * tf.reduce_mean(tf.reduce_sum(1 + a_log_std_sq
+        - tf.square(a_mean) - tf.exp(a_log_std_sq), reduc_dim))
     return latent_loss
 
   def compute_sparse_loss(self, a_in):
@@ -46,8 +59,9 @@ class VaeModule(AeModule):
 
   def build_graph(self):
     with tf.name_scope("weight_inits") as scope:
-      self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
-      self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
+      #self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
+      self.w_init = tf.contrib.layers.variance_scaling_initializer(dtype=tf.float32)
+      self.b_init = tf.initializers.constant(1e-8, dtype=tf.float32)
 
     self.u_list = [self.corrupt_data]
     self.w_list = []
@@ -69,11 +83,20 @@ class VaeModule(AeModule):
     self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
 
     self.latent_mean_activation = enc_u_list[-1]
+
     self.latent_std_activation = tf.add(tf.matmul(enc_u_list[-2], self.w_enc_std),
       self.b_enc_std)
-    #Calculate latent - std is in log(std**2) space
+    #self.latent_std_activation = 1e-8 + tf.nn.softplus(tf.matmul(enc_u_list[-2],
+    #  self.w_enc_std) + self.b_enc_std) # std must be positive
+
     noise = tf.random_normal(tf.shape(self.latent_std_activation))
-    act = self.latent_mean_activation + tf.sqrt(tf.exp(self.latent_std_activation)) * noise
+
+    #act = self.latent_mean_activation + self.latent_std_activation * noise
+    #Calculate latent - std is in log(std**2) space
+    #act = self.latent_mean_activation + tf.sqrt(tf.exp(self.latent_std_activation)) * noise
+    #act = self.latent_mean_activation + tf.exp(0.5 * self.latent_std_activation) * noise
+    act = self.latent_mean_activation + tf.exp(self.latent_std_activation) * noise
+
     act = tf.identity(act, name="activity")
 
     self.u_list.append(act)
