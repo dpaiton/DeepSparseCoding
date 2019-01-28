@@ -26,6 +26,7 @@ class params(BaseParams):
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
     self.output_channels = [512, 50]
+    self.tie_decoder_weights = False
     self.activation_functions = ["relu", "relu", "relu", "identity"]
     self.dropout = [1.0]*4
     self.optimizer = "annealed_sgd"

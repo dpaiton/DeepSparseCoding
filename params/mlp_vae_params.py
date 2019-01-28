@@ -35,6 +35,7 @@ class params(BaseParams):
     self.activation_functions = ["relu", "identity", "relu", "identity"]
     self.ae_dropout = [1.0]*2*len(self.vae_output_channels)
     self.noise_level = 0.01 # variance of noise added to the input data
+    self.tie_decoder_weights = False
     self.optimizer = "adam"
     # MLP Params
     self.train_on_recon = True # if False, train on LCA latent activations

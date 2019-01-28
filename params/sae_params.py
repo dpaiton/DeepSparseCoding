@@ -31,6 +31,7 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     self.output_channels = [768]
+    self.tie_decoder_weights = False
     self.activation_functions = ["sigmoid", "identity"]
     self.dropout = [1.0]*2
     self.optimizer = "annealed_sgd"#"adam"

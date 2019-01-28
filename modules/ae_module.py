@@ -3,7 +3,8 @@ import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
-  def __init__(self, data_tensor, output_channels, decay_mult, act_funcs, dropout, name="AE"):
+  def __init__(self, data_tensor, output_channels, decay_mult, act_funcs, dropout,
+    tie_decoder_weights, name="AE"):
     """
     Autoencoder module
     Inputs:
@@ -35,6 +36,7 @@ class AeModule(object):
     self.num_encoder_layers = len(self.output_channels)
     self.num_decoder_layers = self.num_encoder_layers
     self.num_layers = self.num_encoder_layers + self.num_decoder_layers
+    self.tie_decoder_weights=tie_decoder_weights
 
     assert len(self.act_funcs) == self.num_layers, \
       ("act_funcs parameter must have the same length as output_channels")
@@ -43,7 +45,7 @@ class AeModule(object):
     w_dec_shape = []
     prev_input_features = self.num_pixels
     for l in range(self.num_encoder_layers):
-      w_enc_shape.append([prev_input_features, self.output_channels[l]])
+      w_enc_shape.append([int(prev_input_features), int(self.output_channels[l])])
       prev_input_features = self.output_channels[l]
     w_dec_shape = [shape[::-1] for shape in w_enc_shape[::-1]]
     self.w_shapes = w_enc_shape + w_dec_shape
@@ -64,17 +66,28 @@ class AeModule(object):
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
-  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape):
+  #If input_weight is None, create the weight, otherwise use the provided weight
+  #Same with input_bias
+  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape,
+    input_weight=None):
     """
     Make layer that does act(u*w+b)
     """
     with tf.variable_scope("layer"+str(layer_id), reuse=tf.AUTO_REUSE) as scope:
-      w_name = "w_"+str(layer_id)
-      w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-        initializer=self.w_init, trainable=True)
+      if(input_weight is None):
+        w_name = "w_"+str(layer_id)
+        w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+          initializer=self.w_init, trainable=True)
+      else:
+        assert np.all(np.array(w_shape) == \
+          np.array(input_weight.get_shape().as_list())), \
+          ("Layer " + str(layer_id) + " has mismatched weight shapes")
+        w = input_weight
+
       b_name = "b_"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=w_shape[1],
         dtype=tf.float32, initializer=self.b_init, trainable=True)
+
       output_tensor = activation_function(tf.add(tf.matmul(input_tensor, w), b))
       output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, w, b
@@ -101,10 +114,21 @@ class AeModule(object):
     dec_b_list = []
     layer_id = start_layer_id
     for dec_layer_id in range(len(w_shapes)):
+      if(self.tie_decoder_weights):
+        #Get encoder weights in reverse
+        #these weights must be 2d for this to work
+        input_weight = tf.transpose(self.w_list[-(dec_layer_id) - 1])
+      else:
+        input_weight = None
+
       u_out, w, b = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
-        activation_functions[dec_layer_id], w_shapes[dec_layer_id])
+        activation_functions[dec_layer_id], w_shapes[dec_layer_id],
+        input_weight)
       dec_u_list.append(u_out)
-      dec_w_list.append(w)
+
+      if(not self.tie_decoder_weights):
+        dec_w_list.append(w)
+
       dec_b_list.append(b)
       layer_id += 1
     return dec_u_list, dec_w_list, dec_b_list

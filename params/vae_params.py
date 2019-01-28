@@ -30,6 +30,7 @@ class params(BaseParams):
     self.dropout = [1.0]*4
     self.noise_level = 0.0 # Variance of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
+    self.tie_decoder_weights = False
     self.norm_weights = False
     self.optimizer = "adam"
     self.cp_int = 1e4

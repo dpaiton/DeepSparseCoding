@@ -6,7 +6,7 @@ from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, kld_mult,
-    act_funcs, dropout, noise_level=0, recon_loss_type="mse", name="VAE"):
+    act_funcs, dropout, tie_decoder_weights, noise_level=0, recon_loss_type="mse", name="VAE"):
     """
     Variational Autoencoder module
     Inputs:
@@ -30,7 +30,7 @@ class VaeModule(AeModule):
     self.sparse_mult = sparse_mult
     self.kld_mult = kld_mult
     super(VaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
-      dropout, name)
+      dropout, tie_decoder_weights, name)
 
   def compute_recon_loss(self, reconstruction):
     if self.recon_loss_type == "mse":

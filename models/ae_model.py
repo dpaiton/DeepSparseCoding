@@ -31,7 +31,7 @@ class AeModel(Model):
 
   def build_module(self, input_node):
     module = AeModule(input_node, self.params.output_channels, self.decay_mult, self.act_funcs,
-      self.dropout_keep_probs, name="AE")
+      self.dropout_keep_probs, self.params.tie_decoder_weights, name="AE")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -59,6 +59,7 @@ class AeModel(Model):
           self.reconstruction = tf.identity(self.module.reconstruction, name="reconstruction")
 
         # first index grabs u_list, second index grabs recon
+        #TODO when tie weights is set, w_shapes
         self.decoder_recon = self.module.build_decoder(self.module.num_encoder_layers,
           self.latent_input, self.act_funcs[self.module.num_encoder_layers:],
           self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
@@ -164,12 +165,15 @@ class AeModel(Model):
     recon = activations[-1]
     # compute weight norms
     w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
-    w_dec_norm = np.linalg.norm(w_dec, axis=1, keepdims=False)
     # reshapes flat data into image & normalize
     w_enc_img = dp.reshape_data(w_enc.T, flatten=False)[0]
-    w_dec_img = dp.reshape_data(w_dec, flatten=False)[0]
     w_enc_img = dp.norm_weights(w_enc_img)
-    w_dec_img = dp.norm_weights(w_dec_img)
+
+    if(not self.params.tie_decoder_weights):
+      w_dec_norm = np.linalg.norm(w_dec, axis=1, keepdims=False)
+      w_dec_img = dp.reshape_data(w_dec, flatten=False)[0]
+      w_dec_img = dp.norm_weights(w_dec_img)
+
     # generate figures
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     fig = pf.plot_data_tiled(w_enc_img, normalize=False,
@@ -178,12 +182,14 @@ class AeModel(Model):
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=(self.params.disp_dir+"w_enc_norm"+filename_suffix))
-    fig = pf.plot_data_tiled(w_dec_img, normalize=False,
-      title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"w_dec" + filename_suffix))
-    fig = pf.plot_bar(w_dec_norm, num_xticks=5,
-      title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.params.disp_dir+"w_dec_norm"+filename_suffix))
+    if(not self.params.tie_decoder_weights):
+      fig = pf.plot_data_tiled(w_dec_img, normalize=False,
+        title="Decoding weights at step "+current_step, vmin=None, vmax=None,
+        save_filename=(self.params.disp_dir+"w_dec" + filename_suffix))
+      fig = pf.plot_bar(w_dec_norm, num_xticks=5,
+        title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+        save_filename=(self.params.disp_dir+"w_dec_norm"+filename_suffix))
+
     for layer_id, activity in enumerate(activations[:-1]):
       fig = pf.plot_activity_hist(activity,
         title="Activity Encoder " + str(layer_id) + " Histogram",
