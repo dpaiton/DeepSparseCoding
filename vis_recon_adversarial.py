@@ -82,7 +82,7 @@ for model_idx, (model_type, model_name) in enumerate(analysis_list):
   analyzer = setup(analysis_params)
 
   batch_size = analyzer.analysis_params.adversarial_batch_size
-  orig_img = analyzer.adversarial_input_images.reshape(
+  orig_img = analyzer.recon_adversarial_input_images.reshape(
     int(batch_size),
     int(np.sqrt(analyzer.model.num_pixels)),
     int(np.sqrt(analyzer.model.num_pixels)))
@@ -157,7 +157,7 @@ if(plot_over_time):
     analyzer = setup(analysis_params)
 
     batch_size = analyzer.analysis_params.adversarial_batch_size
-    orig_imgs = analyzer.adversarial_input_images.reshape(
+    orig_imgs = analyzer.recon_adversarial_input_images.reshape(
       int(batch_size),
       int(np.sqrt(analyzer.model.num_pixels)),
       int(np.sqrt(analyzer.model.num_pixels)))

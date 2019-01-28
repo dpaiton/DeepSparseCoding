@@ -7,6 +7,7 @@ run_build = True
 run_run = True
 run_utils = True
 run_analysis = True
+run_data = False
 
 del_idx = []
 for idx, arg in enumerate(sys.argv):
@@ -17,6 +18,7 @@ for idx, arg in enumerate(sys.argv):
     run_run = True
     run_utils = True
     run_analysis = True
+    run_data = True
     del_idx.append(idx)
   if arg == "--comb":
     run_comb = True
@@ -24,6 +26,7 @@ for idx, arg in enumerate(sys.argv):
     run_run = False
     run_utils = False
     run_analysis = False
+    run_data = False
     del_idx.append(idx)
   if arg == "--build":
     run_comb = False
@@ -31,6 +34,7 @@ for idx, arg in enumerate(sys.argv):
     run_run = False
     run_utils = False
     run_analysis = False
+    run_data = False
     del_idx.append(idx)
   if arg == "--run":
     run_comb = False
@@ -38,6 +42,7 @@ for idx, arg in enumerate(sys.argv):
     run_run = True
     run_utils = False
     run_analysis = False
+    run_data = False
     del_idx.append(idx)
   if arg == "--utils":
     run_comb = False
@@ -45,6 +50,7 @@ for idx, arg in enumerate(sys.argv):
     run_run = False
     run_utils = True
     run_analysis = False
+    run_data = False
     del_idx.append(idx)
   if arg == "--analysis":
     run_comb = False
@@ -52,6 +58,15 @@ for idx, arg in enumerate(sys.argv):
     run_run = False
     run_utils = False
     run_analysis = True
+    run_data = False
+    del_idx.append(idx)
+  if arg == "--data":
+    run_comb = False
+    run_build = False
+    run_run = False
+    run_utils = False
+    run_analysis = False
+    run_data = True
     del_idx.append(idx)
 
 
@@ -81,6 +96,9 @@ if run_utils:
 
 if run_analysis:
   from tests.analysis.atas_test import ActivityTriggeredAverageTest
+
+if run_data:
+  from tests.data.data_selector_test import DataSelectorTest
 
 tf.test.main()
 

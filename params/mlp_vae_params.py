@@ -169,10 +169,9 @@ class params(BaseParams):
     self.set_data_params(data_type)
     self.epoch_size = 50
     self.batch_size = 10
-    self.num_edge_pixels = 8
-    self.full_data_shape = [8, 8, 1]
     self.cp_load = False
     for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["train_vae"] = True
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["kld_mult"] = 1.0
       self.schedule[sched_idx]["decay_mult"] = 0.0

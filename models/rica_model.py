@@ -24,13 +24,13 @@ class RicaModel(Model):
     self.input_shape = [None, self.num_pixels]
     self.w_shape = [self.num_pixels, self.params.num_neurons]
 
-  def compute_recon(self, a_in):
+  def compute_recon_from_encoding(self, a_in):
     return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")
 
   def compute_recon_loss(self, a_in):
     with tf.name_scope("unsupervised"):
       recon_loss = tf.multiply(self.recon_mult,
-        tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon(a_in),
+        tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon_from_encoding(a_in),
         self.input_placeholder)), axis=[1])), name="recon_loss")
     return recon_loss
 
@@ -81,7 +81,7 @@ class RicaModel(Model):
           self.a = tf.matmul(self.input_placeholder, self.w, name="activity")
 
         with tf.name_scope("output") as scope:
-          self.reconstruction = self.compute_recon(self.a)
+          self.reconstruction = self.compute_recon_from_encoding(self.a)
 
         with tf.name_scope("loss") as scope:
           loss_funcs = self.get_loss_funcs()

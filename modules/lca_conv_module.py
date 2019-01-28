@@ -38,14 +38,14 @@ class LcaConvModule(LcaModule):
     self.batch_size, self.num_pixels_y, self.num_pixels_x, self.num_input_features = \
       self.data_tensor.get_shape()
 
-  def compute_recon(self, a_in):
-    x_ = tf.nn.conv2d_transpose(a_in, self.w, tf.shape(self.data_tensor),
-      [1, self.stride_y, self.stride_x, 1], padding="SAME", name="reconstruction")
+  def build_decoder(self, input_tensor, name=None):
+    x_ = tf.nn.conv2d_transpose(input_tensor, self.w, tf.shape(self.data_tensor),
+      [1, self.stride_y, self.stride_x, 1], padding="SAME", name=name)
     return x_
 
   def step_inference(self, u_in, a_in, step):
     with tf.name_scope("update_u"+str(step)) as scope:
-      recon_error = self.data_tensor - self.compute_recon(a_in)
+      recon_error = self.data_tensor - self.build_decoder(a_in, name="reconstruction")
       error_injection = tf.nn.conv2d(recon_error, self.w, [1, self.stride_y,
         self.stride_x, 1], padding="SAME", use_cudnn_on_gpu=True, name="forward_injection")
       du = tf.subtract(tf.add(error_injection, a_in), u_in, name="du")

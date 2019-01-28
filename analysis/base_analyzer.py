@@ -136,7 +136,6 @@ class Analyzer(object):
   #If build_graph gets called without parameters,
   #build placeholders call build graph with default input
   def build_graph(self):
-
     #Only need to do this if doing adversarial analysis
     if(self.analysis_params.do_class_adversaries or
       self.analysis_params.do_recon_adversaries):
@@ -255,7 +254,7 @@ class Analyzer(object):
     recon_adversarial_file_loc = self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz"
     if os.path.exists(recon_adversarial_file_loc):
       data = np.load(recon_adversarial_file_loc)["data"].item()
-      self.adversarial_input_images = data["input_images"]
+      self.recon_adversarial_input_images = data["input_images"]
       self.adversarial_target_images = data["target_images"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_recons = data["adversarial_recons"]
@@ -274,7 +273,7 @@ class Analyzer(object):
     class_adversarial_file_loc = self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
-      self.adversarial_input_images = data["input_images"]
+      self.class_adversarial_input_images = data["input_images"]
       self.adversarial_input_labels = data["input_labels"]
       self.adversarial_target_labels = data["target_labels"]
       self.adversarial_images = data["adversarial_images"]
@@ -794,34 +793,31 @@ class Analyzer(object):
           self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
 
         with tf.name_scope("loss") as scope:
-          # Want to avg over batch, sum over the rest
-          self.recon = self.model.compute_recon(self.model.get_encodings())
+          self.recon = self.model.compute_recon_from_encoding(self.model.get_encodings())
           self.adv_recon_loss = 0.5 * tf.reduce_sum(
             tf.square(tf.subtract(self.adv_target, self.recon)),
             name="target_recon_loss")
-          if(self.analysis_params.adversarial_attack_method == "kurakin"):
-            self.adv_loss = self.adv_recon_loss
-          elif(self.analysis_params.adversarial_attack_method == "carlini"):
+          if(self.analysis_params.adversarial_attack_method == "carlini"):
             self.input_pert_loss = 0.5 * tf.reduce_sum(
-              tf.square(tf.subtract(self.model.input_placeholder, self.adv_image)),
+              tf.square(self.model.input_placeholder - self.adv_image),
               name="input_perturbed_loss")
-            self.adv_loss = (1 - self.recon_mult) * self.input_pert_loss +\
-              self.recon_mult * self.adv_recon_loss
-          else:
-            assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
+            self.adv_carlini_loss = (1 - self.recon_mult) * self.input_pert_loss \
+              + self.recon_mult * self.adv_recon_loss
 
         with tf.name_scope("optimizer") as scope:
           if(self.analysis_params.adversarial_attack_method == "kurakin"):
-            self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
+            self.adv_grad = -tf.sign(tf.gradients(self.adv_recon_loss, self.adv_var)[0])
             self.adv_update_op = self.adv_var.assign_add(
               self.analysis_params.adversarial_step_size * self.adv_grad)
           elif(self.analysis_params.adversarial_attack_method == "carlini"):
             self.adv_opt = tf.train.AdamOptimizer(
               learning_rate = self.analysis_params.adversarial_step_size)
-            #Find gradient wrt self.model.x, but apply them to tmp variable
+            #Find gradient wrt self.model.input_variable, but apply them to tmp variable
             self.adv_grads = self.adv_opt.compute_gradients(
-              self.adv_loss, var_list=[self.adv_var])
+              self.adv_carlini_loss, var_list=[self.adv_var])
             self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grads)
+          else:
+            assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
   #Compute mse for all dims except batch dim
   def mse(self, x, y):
@@ -870,14 +866,14 @@ class Analyzer(object):
         for step in range(num_steps):
           #Stats
           if(step%self.analysis_params.adversarial_save_int == 0):
-            recon, adv_img = sess.run([self.recon, self.adv_image], feed_dict)
-            adversarial_images.append(adv_img)
-            recons.append(recon)
-            input_recon_mses.append(self.mse(input_images, recon))
-            input_adv_mses.append(self.mse(input_images, adv_img))
-            target_recon_mses.append(self.mse(target_images, recon))
-            target_adv_mses.append(self.mse(target_images, adv_img))
-            adv_recon_mses.append(self.mse(adv_img, recon))
+            recon_eval, adv_image_eval = sess.run([self.recon, self.adv_image], feed_dict)
+            adversarial_images.append(adv_image_eval)
+            recons.append(recon_eval)
+            input_recon_mses.append(self.mse(input_images, recon_eval))
+            input_adv_mses.append(self.mse(input_images, adv_image_eval))
+            target_recon_mses.append(self.mse(target_images, recon_eval))
+            target_adv_mses.append(self.mse(target_images, adv_image_eval))
+            adv_recon_mses.append(self.mse(adv_image_eval, recon_eval))
 
           self.analysis_logger.log_info("Recon Adversarial analysis, step "+str(step))
           #Run update op
@@ -898,7 +894,6 @@ class Analyzer(object):
     save_info=""):
 
     #Get max/min of all images passed in
-    #TODO get these elsewhere
     max_img_val = np.max(np.array(images))
     min_img_val = np.min(np.array(images))
 
@@ -947,13 +942,14 @@ class Analyzer(object):
     self.adversarial_images, self.adversarial_recons, mses = self.construct_recon_adversarial_stimulus(input_images,
       target_images, min_img_val, max_img_val, step_size, num_steps)
 
+    # TODO: Get cosyne separation between self.adversarial_images (perturbations) and target_images
     self.adversarial_input_target_mses = mses["input_target_mse"]
     self.adversarial_input_recon_mses = mses["input_recon_mses"]
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
     self.adversarial_target_recon_mses = mses["target_recon_mses"]
     self.adversarial_target_adv_mses = mses["target_adv_mses"]
     self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
-    self.adversarial_input_images = input_images
+    self.recon_adversarial_input_images = input_images
     self.adversarial_target_images = target_images
     out_dict = {"input_images": input_images, "target_images":target_images,
       "adversarial_images":self.adversarial_images, "adversarial_recons":self.adversarial_recons,
@@ -1073,11 +1069,11 @@ class Analyzer(object):
         for step in range(num_steps):
           #Stats
           if(step%self.analysis_params.adversarial_save_int == 0):
-            adv_img, output, target_output_loss = \
+            adv_image_eval, output, target_output_loss = \
               sess.run([self.adv_image, self.output, self.adv_loss], feed_dict)
-            adversarial_images.append(adv_img)
+            adversarial_images.append(adv_image_eval)
             outputs.append(output)
-            input_adv_mses.append(self.mse(input_images, adv_img))
+            input_adv_mses.append(self.mse(input_images, adv_image_eval))
             target_output_losses.append(target_output_loss)
 
           self.analysis_logger.log_info("Class Adversarial analysis, step "+str(step))
@@ -1094,7 +1090,6 @@ class Analyzer(object):
       target_method="untargeted", target_labels=None, step_size=0.01, num_steps=100, save_info=""):
 
     #Get max/min of all images passed in
-    #TODO get these elsewhere
     max_img_val = np.max(np.array(images))
     min_img_val = np.min(np.array(images))
 
@@ -1143,7 +1138,7 @@ class Analyzer(object):
 
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
     self.adversarial_target_output_losses = mses["target_output_losses"]
-    self.adversarial_input_images = input_images
+    self.class_adversarial_input_images = input_images
     self.adversarial_input_labels = input_labels
     self.adversarial_target_labels = target_labels
 

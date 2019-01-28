@@ -162,7 +162,7 @@ class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversar
 assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
 
 batch_size = analyzer.analysis_params.adversarial_batch_size
-orig_imgs = analyzer.adversarial_input_images.reshape(
+orig_imgs = analyzer.class_adversarial_input_images.reshape(
   int(batch_size),
   int(np.sqrt(analyzer.model.num_pixels)),
   int(np.sqrt(analyzer.model.num_pixels)))

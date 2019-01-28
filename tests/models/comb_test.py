@@ -41,6 +41,30 @@ def testBasic(self):
     ("mlp", "field"),
     ("mlp", "tinyImages"),
     ("mlp", "synthetic"),
+    ("mlp_lca", "CIFAR10"),
+    ("mlp_lca", "MNIST"),
+    ("mlp_lca", "vanHateren"),
+    ("mlp_lca", "field"),
+    ("mlp_lca", "tinyImages"),
+    ("mlp_lca", "synthetic"),
+    ("mlp_sae", "CIFAR10"),
+    ("mlp_sae", "MNIST"),
+    ("mlp_sae", "vanHateren"),
+    ("mlp_sae", "field"),
+    ("mlp_sae", "tinyImages"),
+    ("mlp_sae", "synthetic"),
+    ("mlp_vae", "CIFAR10"),
+    ("mlp_vae", "MNIST"),
+    ("mlp_vae", "vanHateren"),
+    ("mlp_vae", "field"),
+    ("mlp_vae", "tinyImages"),
+    ("mlp_vae", "synthetic"),
+    ("mlp_lista", "CIFAR10"),
+    ("mlp_lista", "MNIST"),
+    ("mlp_lista", "vanHateren"),
+    ("mlp_lista", "field"),
+    ("mlp_lista", "tinyImages"),
+    ("mlp_lista", "synthetic"),
     ("ica", "vanHateren"),
     ("ica", "field"),
     ("ica", "MNIST"),
@@ -148,7 +172,8 @@ def testBasic(self):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=model.graph) as sess:
       sess.run(model.init_op,
-        feed_dict={model.x:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
+        feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape,
+        dtype=np.float32)})
       sess.graph.finalize() # Graph is read-only after this statement
       model.write_graph(sess.graph_def)
       model.sched_idx = 0

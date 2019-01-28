@@ -54,12 +54,12 @@ class ReluAutoencoderModel(Model):
   def compute_recon_loss(self, a_in):
     with tf.name_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
-      x_ = self.compute_recon(a_in)
-      recon_loss = tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(tf.subtract(self.x, x_)),
-        axis=reduc_dim), name="recon_loss")
+      reconstruction = self.compute_recon_from_encoding(a_in)
+      recon_loss = tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(tf.subtract(self.input_placeholder,
+        reconstruction)), axis=reduc_dim), name="recon_loss")
     return recon_loss
 
-  def compute_recon(self, a_in):
+  def compute_recon_from_encoding(self, a_in):
     recon = tf.add(tf.matmul(a_in, self.w_dec), self.b_dec)
     return recon
 
@@ -71,7 +71,6 @@ class ReluAutoencoderModel(Model):
     with tf.device(self.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.triangle_centers = tf.placeholder(tf.float32, shape=[self.num_triangles],
             name="triangle_centers")
           self.ent_mult = tf.placeholder(tf.float32, shape=(), name="ent_mult")
@@ -109,8 +108,8 @@ class ReluAutoencoderModel(Model):
           self.trainable_variables[self.b_enc.name] = self.b_dec
 
         with tf.variable_scope("inference") as scope:
-          self.enc_output = tf.nn.relu(tf.add(tf.matmul(self.x, self.w_enc), self.b_enc),
-            name="relu_output")
+          self.enc_output = tf.nn.relu(tf.add(tf.matmul(self.input_placeholder, self.w_enc),
+            self.b_enc), name="relu_output")
           self.enc_entropies = self.compute_entropies(self.enc_output)
           noise_var = tf.multiply(self.noise_var_mult, tf.subtract(tf.reduce_max(self.enc_output),
             tf.reduce_min(self.enc_output))) # 1/2 of 10% of range of relu output
@@ -131,13 +130,13 @@ class ReluAutoencoderModel(Model):
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
         with tf.name_scope("output") as scope:
-          self.x_ = self.compute_recon(self.a)
+          self.reconstruction = self.compute_recon_from_encoding(self.a)
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.x_)), axis=[1, 0],
-              name="mean_squared_error")
-            pixel_var = tf.nn.moments(self.x, axes=[1])[1]
+            MSE = tf.reduce_mean(tf.square(tf.subtract(self.input_placeholder,
+              self.reconstruction)), axis=[1, 0], name="mean_squared_error")
+            pixel_var = tf.nn.moments(self.input_placeholder, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
@@ -152,7 +151,7 @@ class ReluAutoencoderModel(Model):
     """
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.loss_dict["recon_loss"], self.loss_dict["entropy_loss"],
-      self.total_loss, self.a, self.x_]
+      self.total_loss, self.a, self.reconstruction]
     init_eval_length = len(eval_list)
     grad_name_list = []
     learning_rate_dict = {}
@@ -200,7 +199,7 @@ class ReluAutoencoderModel(Model):
     super(ReluAutoencoderModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_enc, self.b_enc, self.w_dec, self.b_dec,
-      self.x_, self.enc_output, self.enc_entropies]
+      self.reconstruction, self.enc_output, self.enc_entropies]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     w_enc, b_enc, w_dec, b_dec, recon, activity, entropies = eval_out[1:]

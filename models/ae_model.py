@@ -55,6 +55,9 @@ class AeModel(Model):
         with tf.name_scope("inference") as scope:
           self.a = tf.identity(self.module.a, name="activity")
 
+        with tf.name_scope("output") as scope:
+          self.reconstruction = tf.identity(self.module.reconstruction, name="reconstruction")
+
         # first index grabs u_list, second index grabs recon
         self.decoder_recon = self.module.build_decoder(self.module.num_encoder_layers,
           self.latent_input, self.act_funcs[self.module.num_encoder_layers:],
@@ -68,8 +71,10 @@ class AeModel(Model):
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), self.MSE)),
               name="recon_quality")
 
-  def compute_recon(self, a_in):
-    #TODO: use self.decoder_recon with placeholder, fix analysis
+  def compute_recon_from_placeholder(self):
+    return self.decoder_recon
+
+  def compute_recon_from_encoding(self, a_in):
     recon = self.module.build_decoder(self.module.num_encoder_layers,
       a_in, self.act_funcs[self.module.num_encoder_layers:],
       self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]

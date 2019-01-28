@@ -102,3 +102,9 @@ class params(BaseParams):
     self.layer_types = ["conv", "fc"]
     self.patch_size_y = [2, None]
     self.patch_size_x = self.patch_size_y
+    self.conv_strides = [(1,1,1,1), None]
+    self.batch_norm = [None, None]
+    self.dropout = [1.0, 1.0]
+    self.max_pool = [True, False]
+    self.max_pool_ksize = [(1,2,2,1), None]
+    self.max_pool_strides = [(1,2,2,1), None]

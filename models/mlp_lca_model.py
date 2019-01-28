@@ -121,8 +121,8 @@ class MlpLcaModel(Model):
   def get_total_loss(self):
     return self.total_loss
 
-  def compute_recon(self, a_in):
-    return self.lca_module.compute_recon(a_in)
+  def compute_recon_from_encoding(self, a_in):
+    return self.lca_module.build_decoder(a_in, name="reconstruction")
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """

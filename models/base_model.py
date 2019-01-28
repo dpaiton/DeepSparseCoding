@@ -405,6 +405,8 @@ class Model(object):
     assert hasattr(params, "vectorize_data"), (
       "Model params must set vectorize_data.")
     for key in dataset.keys():
+      if dataset[key] is None:
+        continue
       dataset[key].images = dp.reshape_data(dataset[key].images, params.vectorize_data)[0]
       dataset[key].shape = dataset[key].images.shape
     return dataset
@@ -433,6 +435,8 @@ class Model(object):
         "You must either provide parameters or load the model params before preprocessing.")
       params = self.params
     for key in dataset.keys():
+      if dataset[key] is None:
+        continue
       if hasattr(params, "whiten_data") and params.whiten_data:
         if hasattr(params, "whiten_method"):
           if params.whiten_method == "FT": # other methods require patching first

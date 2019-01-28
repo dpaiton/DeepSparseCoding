@@ -2,13 +2,11 @@ import os
 import numpy as np
 import argparse
 import tensorflow as tf
+from utils.logger import Logger
 import utils.data_processing as dp
 import data.data_selector as ds
 import models.model_picker as mp
 import analysis.analysis_picker as ap
-
-
-## TODO: Remove model_type as an argument, get that form model_name params
 
 class params(object):
   def __init__(self):
@@ -27,15 +25,15 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False # TODO: Broken for mlp_lca_mnist
+    self.do_recon_adversaries = True # TODO: Broken for mlp_lca_mnist
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
     self.do_orientation_analysis = False
     # How many images to use for analysis, patches are generated from these
-    self.num_analysis_images = 200
+    self.num_analysis_images = 1000
     # How many input patches to create - only used if model calls for patching
     self.num_patches = 1e4
     # How many images to use in the ATA analysis
@@ -61,12 +59,12 @@ class params(object):
     #Kurakin params
     #Attack method for adversarial attack, kurakin (iterative fsg) or carlini
     #TODO: attack method should modify output filenames; both should be able to be run
-    #self.adversarial_attack_method = "kurakin"; self.save_info += "_kurakin" #FIXME
-    #self.adversarial_step_size = 0.0001 #Step size for kurakin
+    self.adversarial_attack_method = "kurakin"; self.save_info += "_kurakin" #FIXME
+    self.adversarial_step_size = 0.0001 #Step size for kurakin
 
     #Carlini params
-    self.adversarial_step_size = 0.001 #Step size for carlini
-    self.adversarial_attack_method = "carlini"; self.save_info += "_carlini" #FIXME
+    #self.adversarial_attack_method = "carlini"; self.save_info += "_carlini" #FIXME
+    #self.adversarial_step_size = 0.001 #Step size for carlini
 
     #How to pick Target class for class adversary analysis
     #Options are "random", "untargeted", or "specified" for class attack
@@ -78,13 +76,10 @@ class params(object):
     #Recon_mult tradeoff for carlini attack method
     #Can be a list to sweep
     #0 means ignore adv_recon loss, 1 means ignore input_pert loss
-
-    ##For recon attack
-    #self.recon_mult = list(np.arange(.1, 1, .1))
-    #For class attack
-    self.recon_mult = list(10 ** np.arange(-2, 2, 4/9))
+    self.recon_mult = [1]#list(np.arange(.01, 1, 10))
+    #self.recon_mult = [.5]
     #Batch size for adversarial examples
-    self.adversarial_batch_size = 8
+    self.adversarial_batch_size = 500
 
     #Parameter for "specified" target_method
     #Only for class attack
@@ -93,7 +88,7 @@ class params(object):
 
     # Will vary depending on preprocessing
     #Interval at which to save adversarial examples to the npy file
-    self.adversarial_save_int = 10
+    self.adversarial_save_int = 50
     self.input_scale = 1.0
     # Which neurons to run tuning experiments on (None to do all)
     self.neuron_indices = None
@@ -111,9 +106,6 @@ analysis_params = params() # construct object
 analysis_params.projects_dir = os.path.expanduser("~")+"/Work/Projects/"
 
 # Load arguments
-model_type_list = mp.get_model_list()
-parser.add_argument("model_type", help=", ".join(model_type_list))
-
 model_name_list = os.listdir(analysis_params.projects_dir)
 parser.add_argument("model_name", help=", ".join(model_name_list))
 
@@ -121,10 +113,16 @@ parser.add_argument("model_version",
   help="Specify the string that was used for the 'version' parameter")
 
 args = parser.parse_args()
-analysis_params.model_type = args.model_type
 analysis_params.model_name = args.model_name
 analysis_params.version = args.model_version
 analysis_params.model_dir = analysis_params.projects_dir+analysis_params.model_name
+
+model_log_file = (analysis_params.model_dir+"/logfiles/"+analysis_params.model_name
+  +"_v"+analysis_params.version+".log")
+model_logger = Logger(model_log_file, overwrite=False)
+model_log_text = model_logger.load_file()
+model_params = model_logger.read_params(model_log_text)[-1]
+analysis_params.model_type = model_params.model_type
 
 # Initialize & setup analyzer
 analyzer = ap.get_analyzer(analysis_params.model_type)

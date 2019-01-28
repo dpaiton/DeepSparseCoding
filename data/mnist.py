@@ -4,14 +4,9 @@ from data.dataset import Dataset
 import utils.data_processing as dp
 
 class MNIST(object):
-  def __init__(self,
-    img_dir,
-    lbl_dir,
-    num_val=0,
-    num_labeled=50000,
+  def __init__(self, img_dir, lbl_dir, num_val, num_ignored=None,
     rand_state=np.random.RandomState()):
     ## Extract images
-    self.num_labeled = num_labeled
     if num_val < 1:
       num_val = 0
     self.num_classes = 10 # 10 MNIST classes
@@ -22,8 +17,8 @@ class MNIST(object):
       "Error: %g images and %g labels"%(self.images.shape[0], self.labels.shape[0]))
     ## Grab a random sample of images for the validation set
     tot_images = self.images.shape[0]
-    if tot_images < num_val:
-      num_val = tot_images
+    assert num_val < tot_images, (
+      "Argument num_val=%g must be less than tot_images=%g."%(num_val, tot_images))
     if num_val > 0:
       self.val_indices = rand_state.choice(np.arange(tot_images, dtype=np.int32),
         size=num_val, replace=False)
@@ -32,9 +27,17 @@ class MNIST(object):
     else:
       self.val_indices = None
       self.train_indices = np.arange(tot_images, dtype=np.int32)
-    self.num_train_images = len(self.train_indices)
-    ## Construct list of images to be ignored
-    if self.num_labeled < self.num_train_images:
+    self.num_val_images = num_val
+    self.num_train = len(self.train_indices)
+    if num_ignored is not None:
+      assert type(num_ignored) == int, ("Argument 'num_ignored' must be an int or None.")
+      assert num_ignored <= self.num_train , (
+        "Argument num_ignored=%g must be <= to num_train=%g")%(num_ignored, self.num_train )
+      self.num_labeled = self.num_train  - num_ignored
+      assert self.num_labeled % self.num_classes == 0, (
+        "num_classes=%g must divide evenly into num_labeled=%g"%(self.num_classes,
+        self.num_labeled))
+      ## Construct list of images to be ignored
       ignore_idx_list = []
       for lbl in range(0, self.num_classes):
         lbl_loc = [idx
@@ -42,7 +45,7 @@ class MNIST(object):
           in np.arange(len(self.train_indices), dtype=np.int32)
           if self.labels[self.train_indices[idx]] == lbl]
         ignore_idx_list.extend(rand_state.choice(lbl_loc,
-          size=int(len(lbl_loc) - (self.num_labeled/float(self.num_classes))),
+          size=int(len(lbl_loc) - (self.num_labeled / self.num_classes)),
           replace=False).tolist())
       self.ignore_indices = np.array(ignore_idx_list, dtype=np.int32)
     else:
@@ -86,14 +89,14 @@ Load MNIST data and format as a Dataset object
 inputs: params [obj] containing attributes:
   data_dir [str] directory to MNIST data
   num_val [int] (10000) number of validation images
-  num_labeled [int] (50000) number of labeled images
+  num_ignored [int] (None) number of labeled images to ignore
   rand_state [obj] (np.random.RandomState()) numpy random state object
 """
 def load_MNIST(params):
   assert hasattr(params, "data_dir"), ("function input must have 'data_dir' key")
   data_dir = params.data_dir
-  num_val = params.num_val if hasattr(params, "num_val") else 10000
-  num_labeled = params.num_labeled if hasattr(params, "num_labeled") else 50000
+  num_val = params.num_val if hasattr(params, "num_val") else 0
+  num_ignored = params.num_ignored if hasattr(params, "num_ignored") else None
   if hasattr(params, "rand_state"):
     rand_state = params.rand_state
   else:
@@ -106,7 +109,7 @@ def load_MNIST(params):
     train_img_filename,
     train_lbl_filename,
     num_val=num_val,
-    num_labeled=num_labeled,
+    num_ignored=num_ignored,
     rand_state=rand_state)
   train_images = train_val.images[train_val.train_indices, ...]
   train_lbls = train_val.labels[train_val.train_indices, ...]
@@ -129,7 +132,7 @@ def load_MNIST(params):
     test_img_filename,
     test_lbl_filename,
     num_val=0,
-    num_labeled=10000,
+    num_ignored=None,
     rand_state=rand_state)
   test_images = test.images
   test_lbls = test.labels

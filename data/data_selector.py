@@ -28,29 +28,32 @@ Outputs:
 """
 def get_data(params):
   assert "data_type" in params.__dict__.keys(), ("params must include data_type")
-  # TODO: Add assert that gives meaningful error if data_type is not one of the options
   if params.data_type.lower() == "vanhateren":
     if "vanHateren" not in params.data_dir:
       params.data_dir += "/vanHateren/"
     dataset = load_vanHateren(params)
-  if params.data_type.lower() == "mnist":
+  elif params.data_type.lower() == "mnist":
     if "MNIST" not in params.data_dir:
       params.data_dir += "/MNIST/"
     dataset = load_MNIST(params)
-  if params.data_type.lower() == "cifar10" or params.data_type.lower() == "cifar100":
+  elif params.data_type.lower() == "cifar10" or params.data_type.lower() == "cifar100":
     if "CIFAR" not in params.data_dir:
       params.data_dir += "/CIFAR/"
     params.num_classes = int(params.data_type[5:len(params.data_type)])
     dataset = load_CIFAR(params)
-  if params.data_type.lower() == "synthetic":
+  elif params.data_type.lower() == "synthetic":
     assert "epoch_size" in params.__dict__.keys(), ("Params must include 'epoch_size'")
     dataset = load_synthetic(params)
-  if params.data_type.lower() == "field":
+  elif params.data_type.lower() == "field":
     dataset = load_field(params)
-  if params.data_type.lower() == "tinyimages":
+  elif params.data_type.lower() == "tinyimages":
     if "TinyImages" not in params.data_dir:
       params.data_dir += "/TinyImages/"
     dataset = load_tinyImages(params)
+  else:
+    data_list = get_dataset_list()
+    assert False, ("data_type "+str(params.data_type)+" is not supported. "
+      +"Supported data_types are: \n"+" ".join(data_list))
   return dataset
 
 def get_dataset_list():

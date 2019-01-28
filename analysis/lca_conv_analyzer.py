@@ -19,30 +19,33 @@ class LcaConvAnalyzer(LcaAnalyzer):
   def add_inference_ops_to_graph(self, num_imgs, num_inference_steps=None):
     if num_inference_steps is None:
       num_inference_steps = self.model_params.num_steps
-    loss_funcs = self.model.module.get_loss_funcs()
     with tf.device(self.model_params.device):
       with self.model.graph.as_default():
         self.u_list = [self.model.module.u_zeros]
         self.a_list = [self.model.module.threshold_units(self.u_list[0])]
         self.psnr_list = [tf.constant(0.0, dtype=tf.float32)]
         self.loss_list = {}
-        current_loss_list = [func(self.a_list[0]) for func in loss_funcs.values()]
-        for index, key in enumerate(loss_funcs.keys()):
-          self.loss_list[key] = [current_loss_list[index]]
-        self.loss_list["total_loss"] = [self.model.compute_total_loss(self.a_list[0], loss_funcs)]
+        current_recon = self.model.compute_recon_from_encoding(self.a_list[0])
+        current_loss_list = [
+          [self.model.module.compute_recon_loss(current_recon)],
+          [self.model.module.compute_sparse_loss(self.a_list[0])]]
+        self.loss_dict = dict(zip(["recon_loss", "sparse_loss"], current_loss_list))
+        self.loss_dict["total_loss"] = [
+          tf.add_n([item[0] for item in current_loss_list], name="total_loss")]
         for step in range(num_inference_steps-1):
           u = self.model.module.step_inference(self.u_list[step], self.a_list[step], step)
           self.u_list.append(u)
           self.a_list.append(self.model.module.threshold_units(self.u_list[step+1]))
-          current_loss_list = [func(self.a_list[-1]) for func in loss_funcs.values()]
-          for index, key in enumerate(loss_funcs.keys()):
-            self.loss_list[key].append(current_loss_list[index])
-          self.loss_list["total_loss"].append(self.model.module.compute_total_loss(self.a_list[-1],
-            loss_funcs))
-          current_recon = self.model.module.compute_recon(self.a_list[-1])
-          MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.x, current_recon)))
-          reduc_dim = list(range(1, len(self.model.x.shape)))
-          pixel_var = tf.nn.moments(self.model.x, axes=reduc_dim)[1]
+          current_recon = self.model.compute_recon_from_encoding(self.a_list[-1])
+          current_loss_list = [
+            self.model.module.compute_recon_loss(current_recon),
+            self.model.module.compute_sparse_loss(self.a_list[-1])]
+          self.loss_dict["recon_loss"].append(current_loss_list[0])
+          self.loss_dict["sparse_loss"].append(current_loss_list[1])
+          self.loss_dict["total_loss"].append(tf.add_n(current_loss_list, name="total_loss"))
+          MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.input_placeholder, current_recon)))
+          reduc_dim = list(range(1, len(self.model.input_placeholder.shape)))
+          pixel_var = tf.nn.moments(self.model.input_placeholder, axes=reduc_dim)[1]
           pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)))
           self.psnr_list.append(pSNRdB)
 

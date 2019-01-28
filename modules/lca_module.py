@@ -57,25 +57,6 @@ class LcaModule(object):
 
   def threshold_units(self, u_in, name=None):
     return lca_threshold(u_in, self.thresh_type, self.rectify_a, self.sparse_mult, name)
-    #if self.thresh_type == "soft":
-    #  if self.rectify_a:
-    #    a_out = tf.where(tf.greater(u_in, self.sparse_mult),
-    #      tf.subtract(u_in, self.sparse_mult), self.u_zeros, name=name)
-    #  else:
-    #    a_out = tf.where(tf.greater_equal(u_in, self.sparse_mult),
-    #      tf.subtract(u_in, self.sparse_mult),
-    #      tf.where(tf.less_equal(u_in, -self.sparse_mult),
-    #      tf.add(u_in, self.sparse_mult),
-    #      self.u_zeros), name=name)
-    #elif self.thresh_type == "hard":
-    #  if self.rectify_a:
-    #    a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in, self.u_zeros, name=name)
-    #  else:
-    #    a_out = tf.where(tf.greater(u_in, self.sparse_mult), u_in,
-    #      tf.where(tf.less(u_in, -self.sparse_mult), u_in, self.u_zeros), name=name)
-    #else:
-    #  a_out = tf.identity(u_in, name=name)
-    #return a_out
 
   def step_inference(self, u_in, a_in, b, g, step):
     with tf.name_scope("update_u"+str(step)) as scope:
@@ -95,16 +76,14 @@ class LcaModule(object):
      a_list.append(self.threshold_units(u_list[step+1]))
    return (u_list, a_list)
 
-  def compute_recon(self, a_in):
-    #TODO: Follow ae methods for computing decoder / recon
-    return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")
+  def build_decoder(self, input_tensor, name=None):
+    return tf.matmul(input_tensor, tf.transpose(self.w), name=name)
 
-  def compute_recon_loss(self, a_in):
-    #TODO: This should take recon as input to be consistent with auto encoder module
+  def compute_recon_loss(self, recon):
     with tf.name_scope("unsupervised"):
-      reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
+      reduc_dim = list(range(1, len(recon.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.reduce_mean(0.5 *
-        tf.reduce_sum(tf.square(tf.subtract(self.data_tensor, self.compute_recon(a_in))),
+        tf.reduce_sum(tf.square(tf.subtract(self.data_tensor, recon)),
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
@@ -114,20 +93,6 @@ class LcaModule(object):
       sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(tf.abs(a_in),
         axis=reduc_dim), name="sparse_loss")
     return sparse_loss
-
-  def compute_total_loss(self, a_in, loss_funcs):
-    """
-    Returns sum of all loss functions defined in loss_funcs for given a_in
-    Inputs:
-      a_in [tf.Variable] containing the sparse coding activity values
-      loss_funcs [dict] containing keys that correspond to names of loss functions and values that
-        point to the functions themselves
-    """
-    total_loss = tf.add_n([func(a_in) for func in loss_funcs.values()], name="total_loss")
-    return total_loss
-
-  def get_loss_funcs(self):
-    return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
   def build_graph(self):
     with tf.name_scope("constants") as scope:
@@ -156,10 +121,9 @@ class LcaModule(object):
       self.a = tf.identity(a_list[-1], name="activity")
 
     with tf.name_scope("output") as scope:
-      self.reconstruction = self.compute_recon(self.a)
+      self.reconstruction = self.build_decoder(self.a, name="reconstruction")
 
     with tf.name_scope("loss") as scope:
-      loss_funcs = self.get_loss_funcs()
-      self.loss_dict = dict(zip(
-        [key for key in loss_funcs.keys()], [func(self.a) for func in loss_funcs.values()]))
-      self.total_loss = self.compute_total_loss(self.a, loss_funcs)
+      self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+        "sparse_loss":self.compute_sparse_loss(self.a)}
+      self.total_loss = tf.add_n([val for val in self.loss_dict.values()], name="total_loss")
