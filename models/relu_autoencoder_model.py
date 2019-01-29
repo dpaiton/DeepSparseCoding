@@ -194,7 +194,6 @@ class ReluAutoencoderModel(Model):
     Inputs:
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
-    TODO: Format entropy output title better
     """
     super(ReluAutoencoderModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
@@ -224,11 +223,11 @@ class ReluAutoencoderModel(Model):
     entropy_sort_indices = np.argsort(entropies)[::-1] # ascending
     for fig_id, neuron_id in enumerate(entropy_sort_indices[0:2]):
       fig = pf.plot_activity_hist(activity[:, neuron_id],
-        title=("Actvity Histogram (pre-noise) for Neuron "+str(neuron_id)+"\nwith entropy = "
+        title=("Pre-noise Actvity Histogram for Neuron "+str(neuron_id)+"\nwith entropy = "
         +str(np.round(entropies[neuron_id]))),
         save_filename=(self.params.disp_dir+"indv_act_hist_v"+self.params.version+"-"
         +current_step.zfill(5)+"_"+str(fig_id).zfill(3)+".png"))
-    fig = pf.plot_activity_hist(activity, title="Activity Histogram (pre-noise)",
+    fig = pf.plot_activity_hist(activity, title="Pre-noise Activity Histogram",
       save_filename=(self.params.disp_dir+"act_hist_v"+self.params.version+"-"
       +current_step.zfill(5)+".png"))
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
