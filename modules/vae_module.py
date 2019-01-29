@@ -6,16 +6,19 @@ from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, kld_mult,
-    act_funcs, dropout, tie_decoder_weights, noise_level=0, recon_loss_type="mse", name="VAE"):
+    act_funcs, dropout, tie_decoder_weights, noise_level=0, recon_loss_type="mse"):
     """
     Variational Autoencoder module
     Inputs:
       data_tensor
-      params
-      output_channels: A list of channels to make, also defines number of layers
-      act_funcs - activation functions
-      dropout - specifies the keep probability or None
-      name
+      output_channels [list of ints] A list of channels to make, also defines number of layers
+      sparse_mult [float] tradeoff multiplier for latent sparsity loss
+      decay_mult [float] tradeoff multiplier for weight decay loss
+      kld_mult [float] tradeoff multiplier for latent variational kld loss
+      act_funcs [list of functions] activation functions
+      dropout [list of floats] specifies the keep probability or None
+      noise_level [float] stddev of noise to be added to the input (for denoising VAE)
+      recon_loss_type [str] either "mse" or the cross entropy loss used in Kingma & Welling
     Outputs:
       dictionary
     """
@@ -30,7 +33,7 @@ class VaeModule(AeModule):
     self.sparse_mult = sparse_mult
     self.kld_mult = kld_mult
     super(VaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
-      dropout, tie_decoder_weights, name)
+      dropout, tie_decoder_weights)
 
   def compute_recon_loss(self, reconstruction):
     if self.recon_loss_type == "mse":

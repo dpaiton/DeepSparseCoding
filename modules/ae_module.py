@@ -4,16 +4,15 @@ from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
   def __init__(self, data_tensor, output_channels, decay_mult, act_funcs, dropout,
-    tie_decoder_weights, name="AE"):
+    tie_decoder_weights):
     """
     Autoencoder module
     Inputs:
       data_tensor
-      output_channels - a list of channels to make, also defines number of layers
-      decay_mult - weight decay multiplier
-      act_funcs - activation functions
-      dropout - specifies the keep probability or None
-      name
+      output_channels: a list of channels to make, also defines number of layers
+      decay_mult: weight decay multiplier
+      act_funcs: activation functions
+      dropout: specifies the keep probability or None
     Outputs:
       dictionary
     """
@@ -24,7 +23,6 @@ class AeModule(object):
     self.data_tensor = data_tensor
     self.batch_size, self.num_pixels = self.data_tensor.get_shape()
 
-    self.name = str(name)
     self.output_channels = output_channels
     self.act_funcs = act_funcs
     self.dropout = dropout

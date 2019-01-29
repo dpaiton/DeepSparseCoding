@@ -7,7 +7,7 @@ from modules.activations import sigmoid
 
 class SaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, target_act,
-    act_funcs, dropout, tie_decoder_weights, name="SAE"):
+    act_funcs, dropout, tie_decoder_weights):
     """
     Implementation of sparse autoencoder described in Andrew Ng's 2011 Stanford CS294A lecture notes
     Sigmoidal activation function
@@ -19,14 +19,13 @@ class SaeModule(AeModule):
       decay_mult - weight decay multiplier
       act_funcs - activation functions
       dropout - specifies the keep probability or None
-      name
     Outputs:
       dictionary
     """
     self.sparse_mult = sparse_mult
     self.target_act = target_act
     super(SaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
-      dropout, tie_decoder_weights, name)
+      dropout, tie_decoder_weights)
 
   def compute_sparse_loss(self, a_in):
     with tf.name_scope("unsupervised"):
