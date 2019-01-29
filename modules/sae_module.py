@@ -58,9 +58,8 @@ class SaeModule(AeModule):
     with tf.variable_scope("inference") as scope:
       self.a = tf.identity(enc_u_list[-1], name="activity")
 
-    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers,
-      enc_u_list[-1], self.act_funcs[self.num_encoder_layers:],
-      self.w_shapes[self.num_encoder_layers:])
+    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(enc_u_list[-1],
+      self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
     self.u_list += dec_u_list
     self.w_list += dec_w_list
     self.b_list += dec_b_list

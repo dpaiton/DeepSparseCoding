@@ -36,7 +36,7 @@ class MlpSaeModel(Model):
   def build_sae_module(self, input_node):
     module = SaeModule(input_node, self.params.sae_output_channels, self.sparse_mult,
       self.decay_mult, self.target_act, self.act_funcs, self.ae_dropout_keep_probs,
-      self.params.tie_decoder_weights, name="SAE")
+      self.params.tie_decoder_weights)
     return module
 
   def build_mlp_module(self, input_node):

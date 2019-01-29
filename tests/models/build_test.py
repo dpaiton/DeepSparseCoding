@@ -10,6 +10,7 @@ import sys
 Test for building models
 NOTE: Should be executed from the repository's root directory
 loads every model
+TODO: allow test_params to hvae multiple entries & test each entry
 """
 
 #Base method each dynamically generated class requires

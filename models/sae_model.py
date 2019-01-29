@@ -12,7 +12,7 @@ class SaeModel(AeModel):
 
   def build_module(self, input_node):
     module = SaeModule(input_node, self.params.output_channels, self.sparse_mult, self.decay_mult,
-      self.target_act, self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights, name="SAE")
+      self.target_act, self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights)
     return module
 
   def build_graph_from_input(self, input_node):

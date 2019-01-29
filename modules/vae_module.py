@@ -105,9 +105,8 @@ class VaeModule(AeModule):
     self.u_list.append(act)
     self.a = self.u_list[-1]
 
-    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers,
-      self.u_list[-1], self.act_funcs[self.num_encoder_layers:],
-      self.w_shapes[self.num_encoder_layers:])
+    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
+      self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
     self.u_list += dec_u_list
     self.w_list += dec_w_list
     self.b_list += dec_b_list

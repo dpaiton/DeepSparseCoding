@@ -31,7 +31,7 @@ class AeModel(Model):
 
   def build_module(self, input_node):
     module = AeModule(input_node, self.params.output_channels, self.decay_mult, self.act_funcs,
-      self.dropout_keep_probs, self.params.tie_decoder_weights, name="AE")
+      self.dropout_keep_probs, self.params.tie_decoder_weights)
     return module
 
   def build_graph_from_input(self, input_node):
@@ -59,9 +59,8 @@ class AeModel(Model):
           self.reconstruction = tf.identity(self.module.reconstruction, name="reconstruction")
 
         # first index grabs u_list, second index grabs recon
-        #TODO when tie weights is set, w_shapes
-        self.decoder_recon = self.module.build_decoder(self.module.num_encoder_layers,
-          self.latent_input, self.act_funcs[self.module.num_encoder_layers:],
+        self.decoder_recon = self.module.build_decoder(self.latent_input,
+          self.act_funcs[self.module.num_encoder_layers:],
           self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
 
         with tf.name_scope("performance_metrics") as scope:
@@ -76,8 +75,7 @@ class AeModel(Model):
     return self.decoder_recon
 
   def compute_recon_from_encoding(self, a_in):
-    recon = self.module.build_decoder(self.module.num_encoder_layers,
-      a_in, self.act_funcs[self.module.num_encoder_layers:],
+    recon = self.module.build_decoder(a_in, self.act_funcs[self.module.num_encoder_layers:],
       self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
     return recon
 

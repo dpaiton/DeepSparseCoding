@@ -34,7 +34,7 @@ class AeModule(object):
     self.num_encoder_layers = len(self.output_channels)
     self.num_decoder_layers = self.num_encoder_layers
     self.num_layers = self.num_encoder_layers + self.num_decoder_layers
-    self.tie_decoder_weights=tie_decoder_weights
+    self.tie_decoder_weights = tie_decoder_weights
 
     assert len(self.act_funcs) == self.num_layers, \
       ("act_funcs parameter must have the same length as output_channels")
@@ -64,23 +64,26 @@ class AeModule(object):
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
-  #If input_weight is None, create the weight, otherwise use the provided weight
-  #Same with input_bias
-  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape,
-    input_weight=None):
+  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape):
     """
     Make layer that does act(u*w+b)
+    Example case for w_read_id logic:
+      layer_id: [0 1 2 3 4] [5 6 7 8 9]
+
+                              10-6  10-7  10-8 10-9  10-10
+      weight_id: [0 1 2 3 4] [ 4     3     2     1     0 ]
+      num_layers: 10
+      weight_id = num_layers - (layer_id + 1)
     """
     with tf.variable_scope("layer"+str(layer_id), reuse=tf.AUTO_REUSE) as scope:
-      if(input_weight is None):
-        w_name = "w_"+str(layer_id)
-        w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-          initializer=self.w_init, trainable=True)
+      if self.tie_decoder_weights:
+        w_read_id = self.num_layers - (layer_id+1)
       else:
-        assert np.all(np.array(w_shape) == \
-          np.array(input_weight.get_shape().as_list())), \
-          ("Layer " + str(layer_id) + " has mismatched weight shapes")
-        w = input_weight
+        w_read_id = layer_id
+
+      w_name = "w_"+str(w_read_id)
+      w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+        initializer=self.w_init, trainable=True)
 
       b_name = "b_"+str(layer_id)
       b = tf.get_variable(name=b_name, shape=w_shape[1],
@@ -104,29 +107,19 @@ class AeModule(object):
       enc_b_list.append(b)
     return enc_u_list, enc_w_list, enc_b_list
 
-  def build_decoder(self, start_layer_id, input_tensor, activation_functions, w_shapes):
+  def build_decoder(self, input_tensor, activation_functions, w_shapes):
     assert len(activation_functions) == len(w_shapes), (
       "activation_functions & w_shapes must be the same length")
     dec_u_list = [input_tensor]
     dec_w_list = []
     dec_b_list = []
-    layer_id = start_layer_id
+    layer_id = self.num_encoder_layers
     for dec_layer_id in range(len(w_shapes)):
-      if(self.tie_decoder_weights):
-        #Get encoder weights in reverse
-        #these weights must be 2d for this to work
-        input_weight = tf.transpose(self.w_list[-(dec_layer_id) - 1])
-      else:
-        input_weight = None
-
       u_out, w, b = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
-        activation_functions[dec_layer_id], w_shapes[dec_layer_id],
-        input_weight)
+        activation_functions[dec_layer_id], w_shapes[dec_layer_id])
       dec_u_list.append(u_out)
 
-      if(not self.tie_decoder_weights):
-        dec_w_list.append(w)
-
+      dec_w_list.append(w)
       dec_b_list.append(b)
       layer_id += 1
     return dec_u_list, dec_w_list, dec_b_list
@@ -148,11 +141,11 @@ class AeModule(object):
     with tf.variable_scope("inference") as scope:
       self.a = tf.identity(enc_u_list[-1], name="activity")
 
-    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers,
-      self.u_list[-1], self.act_funcs[self.num_encoder_layers:],
-      self.w_shapes[self.num_encoder_layers:])
+    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
+      self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
     self.u_list += dec_u_list
-    self.w_list += dec_w_list
+    if not self.tie_decoder_weights:
+      self.w_list += dec_w_list
     self.b_list += dec_b_list
 
     for w,b in zip(self.w_list, self.b_list):
