@@ -1010,9 +1010,34 @@ def norm_weights(weights):
     return norm_weights
 
 def dense_to_one_hot(labels_dense, num_classes):
+  """
+  converts a (np.ndarray) vector of dense labels to a (np.ndarray) matrix of one-hot labels
+  e.g. [0, 1, 1, 3] -> [00, 01, 01, 11]
+  """
   num_labels = labels_dense.shape[0]
   index_offset = np.arange(num_labels, dtype=np.int32) * num_classes
   labels_one_hot = np.zeros((num_labels, num_classes))
   labels_one_hot.flat[index_offset + labels_dense.ravel()] = 1
   return labels_one_hot
 
+def mse(x, y):
+  """
+  Compute Mean Squared Error for all dims except batch dim
+  x and y are np.ndarray with first dim indicating batch
+  """
+  reduc_dims = tuple(range(1, x.ndim))
+  return np.mean(np.square(x-y), axis=reduc_dims)
+
+def cos_similarity(x, y):
+  """
+  similarity = cos(theta) = <x,y> / (||x||*||y||)
+  x and y are np.ndarray with first dim indicating batch
+  similarity is computed elementwise across the batch dimension
+  """
+  l2_norm = lambda x : np.sqrt(np.sum(np.square(x)))
+  batch_similarity = []
+  for batch_idx in range(x.shape[0]):
+    x_vect = x[batch_idx, ...]
+    y_vect = y[batch_idx, ...]
+    batch_similarity.append(np.dot(x_vect, y_vect.T) / (l2_norm(x_vect) * l2_norm(y_vect)))
+  return np.stack(batch_similarity, axis=0)

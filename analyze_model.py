@@ -15,7 +15,7 @@ class params(object):
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
-    self.do_run_analysis = True
+    self.do_run_analysis = False
     # Evaluate model variables (specified in analysis class) on images
     self.do_evals = False
     # Dictionary fitting
@@ -53,18 +53,19 @@ class params(object):
     self.num_inference_steps = None
     # Which dataset images to use for inference (None uses random)
     self.inference_img_indices = None
+
     # Number of adversarial image updates
     self.adversarial_num_steps = 10000 # Step size for adversarial attacks
 
     #Kurakin params
     #Attack method for adversarial attack, kurakin (iterative fsg) or carlini
     #TODO: attack method should modify output filenames; both should be able to be run
-    self.adversarial_attack_method = "kurakin"; self.save_info += "_kurakin" #FIXME
-    self.adversarial_step_size = 0.0001 #Step size for kurakin
+    #self.adversarial_attack_method = "kurakin"; self.save_info += "_kurakin" #FIXME
+    #self.adversarial_step_size = 0.0001 #Step size for kurakin
 
     #Carlini params
-    #self.adversarial_attack_method = "carlini"; self.save_info += "_carlini" #FIXME
-    #self.adversarial_step_size = 0.001 #Step size for carlini
+    self.adversarial_attack_method = "carlini"; self.save_info += "_carlini" #FIXME
+    self.adversarial_step_size = 0.001 #Step size for carlini
 
     #How to pick Target class for class adversary analysis
     #Options are "random", "untargeted", or "specified" for class attack
@@ -79,7 +80,9 @@ class params(object):
     self.recon_mult = [1]#list(np.arange(.01, 1, 10))
     #self.recon_mult = [.5]
     #Batch size for adversarial examples
-    self.adversarial_batch_size = 500
+    self.adversarial_batch_size = 800
+    self.adversarial_clip_min = 0.0
+    self.adversarial_clip_max = 1.0
 
     #Parameter for "specified" target_method
     #Only for class attack
@@ -89,7 +92,10 @@ class params(object):
     # Will vary depending on preprocessing
     #Interval at which to save adversarial examples to the npy file
     self.adversarial_save_int = 50
+
+    # Rescale inputs to match dataset scales used during training
     self.input_scale = 1.0
+
     # Which neurons to run tuning experiments on (None to do all)
     self.neuron_indices = None
     # Contrasts for orientation experiments

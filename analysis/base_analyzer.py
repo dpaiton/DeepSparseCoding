@@ -158,10 +158,9 @@ class Analyzer(object):
           reshape_adv_var = tf.reshape(self.adv_var, [-1,] + input_shape[1:])
           #If clipping, use bounds for useful gradients
           if self.analysis_params.adversarial_clip:
-            self.min_img_val = tf.placeholder(tf.float32, shape=(), name="min_img_val")
-            self.max_img_val = tf.placeholder(tf.float32, shape=(), name="max_img_val")
             self.adv_image = tfc.upper_bound(tfc.lower_bound(
-              reshape_adv_var, self.min_img_val), self.max_img_val)
+              reshape_adv_var, self.analysis_params.adversarial_clip_min),
+              self.analysis_params.adversarial_clip_max)
           else:
             self.adv_image = reshape_adv_var
       self.model.build_graph_from_input(self.adv_image)
@@ -268,6 +267,7 @@ class Analyzer(object):
       self.adversarial_target_recon_mses = data["target_recon_mses"]
       self.adversarial_target_adv_mses = data["target_adv_mses"]
       self.adversarial_adv_recon_mses = data["adv_recon_mses"]
+      self.adversarial_target_adv_cos_similarities = data["target_adv_cos_similarities"]
 
     #Class adversarial analysis
     class_adversarial_file_loc = self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
@@ -313,6 +313,8 @@ class Analyzer(object):
     Inputs:
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
       var_names [list of str] list of strings containing the tf variable names to be evaluated
+    TODO: Rewrite to not take in images, use for evaluating non-batch variables (e.g. weights)
+    evaluate_model_batch will take in images and evaluate batch variables
     """
     feed_dict = self.model.get_feed_dict(images, is_test=True)
     config = tf.ConfigProto()
@@ -819,15 +821,10 @@ class Analyzer(object):
           else:
             assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
-  #Compute mse for all dims except batch dim
-  def mse(self, x, y):
-    reduc_dims = tuple(range(1, x.ndim))
-    return np.mean(np.square(x-y), axis=reduc_dims)
-
   def construct_recon_adversarial_stimulus(self, input_images, target_images,
-    min_img_val, max_img_val, step_size=0.01, num_steps=10):
+    step_size=0.01, num_steps=10):
 
-    input_target_mse = self.mse(input_images, target_images)
+    input_target_mse = dp.mse(input_images, target_images)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
 
@@ -840,9 +837,9 @@ class Analyzer(object):
     else:
       assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
-    mses = {"input_target_mse":[], "input_recon_mses":[],
+    distances = {"input_target_mse":[], "input_recon_mses":[],
     "input_adv_mses":[], "target_recon_mses":[],
-    "target_adv_mses":[], "adv_recon_mses":[]}
+    "target_adv_mses":[], "adv_recon_mses":[], "target_adv_cos_similarities":[]}
     all_adversarial_images = []
     all_recons = []
     for r_mult in self.analysis_params.recon_mult:
@@ -853,14 +850,13 @@ class Analyzer(object):
       target_recon_mses = []
       target_adv_mses = []
       adv_recon_mses = []
+      target_adv_angles = []
 
       with tf.Session(config=config, graph=self.model.graph) as sess:
         feed_dict = self.model.get_feed_dict(input_images, is_test=True)
         feed_dict[self.model.input_placeholder] = input_images
         feed_dict[self.adv_target] = target_images
         feed_dict[self.recon_mult] = r_mult
-        feed_dict[self.min_img_val] = min_img_val
-        feed_dict[self.max_img_val] = max_img_val
         sess.run(self.model.init_op, feed_dict)
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
         for step in range(num_steps):
@@ -869,33 +865,30 @@ class Analyzer(object):
             recon_eval, adv_image_eval = sess.run([self.recon, self.adv_image], feed_dict)
             adversarial_images.append(adv_image_eval)
             recons.append(recon_eval)
-            input_recon_mses.append(self.mse(input_images, recon_eval))
-            input_adv_mses.append(self.mse(input_images, adv_image_eval))
-            target_recon_mses.append(self.mse(target_images, recon_eval))
-            target_adv_mses.append(self.mse(target_images, adv_image_eval))
-            adv_recon_mses.append(self.mse(adv_image_eval, recon_eval))
+            input_recon_mses.append(dp.mse(input_images, recon_eval))
+            input_adv_mses.append(dp.mse(input_images, adv_image_eval))
+            target_recon_mses.append(dp.mse(target_images, recon_eval))
+            target_adv_mses.append(dp.mse(target_images, adv_image_eval))
+            adv_recon_mses.append(dp.mse(adv_image_eval, recon_eval))
+            target_adv_angles.append(dp.cos_similarity(input_images, adv_image_eval))
 
           self.analysis_logger.log_info("Recon Adversarial analysis, step "+str(step))
           #Run update op
           sess.run(self.adv_update_op, feed_dict)
 
-      mses["input_target_mse"].append(input_target_mse)
-      mses["input_recon_mses"].append(input_recon_mses)
-      mses["input_adv_mses"].append(input_adv_mses)
-      mses["target_recon_mses"].append(target_recon_mses)
-      mses["target_adv_mses"].append(target_adv_mses)
-      mses["adv_recon_mses"].append(adv_recon_mses)
+      distances["input_target_mse"].append(input_target_mse)
+      distances["input_recon_mses"].append(input_recon_mses)
+      distances["input_adv_mses"].append(input_adv_mses)
+      distances["target_recon_mses"].append(target_recon_mses)
+      distances["target_adv_mses"].append(target_adv_mses)
+      distances["adv_recon_mses"].append(adv_recon_mses)
+      distances["target_adv_cos_similarities"].append(target_adv_angles)
       all_adversarial_images.append(adversarial_images)
       all_recons.append(recons)
-    return all_adversarial_images, all_recons, mses
+    return all_adversarial_images, all_recons, distances
 
   def recon_adversary_analysis(self, images, labels=None, batch_size=1, input_id=None,
-    target_method="random", target_id=None, step_size=0.01, num_steps=100,
-    save_info=""):
-
-    #Get max/min of all images passed in
-    max_img_val = np.max(np.array(images))
-    min_img_val = np.min(np.array(images))
+    target_method="random", target_id=None, step_size=0.01, num_steps=100, save_info=""):
 
     #Default parameters
     if input_id is None:
@@ -936,28 +929,26 @@ class Analyzer(object):
         "\"random\", \"random_different_labels\", or \"specified\"")
 
     #Define target label based on target method
-
     target_images = images[target_id, ...].astype(np.float32)
+    stims = self.construct_recon_adversarial_stimulus(input_images,
+      target_images, step_size, num_steps)
+    self.adversarial_images, self.adversarial_recons, distances = stims
 
-    self.adversarial_images, self.adversarial_recons, mses = self.construct_recon_adversarial_stimulus(input_images,
-      target_images, min_img_val, max_img_val, step_size, num_steps)
-
-    # TODO: Get cosyne separation between self.adversarial_images (perturbations) and target_images
-    self.adversarial_input_target_mses = mses["input_target_mse"]
-    self.adversarial_input_recon_mses = mses["input_recon_mses"]
-    self.adversarial_input_adv_mses = mses["input_adv_mses"]
-    self.adversarial_target_recon_mses = mses["target_recon_mses"]
-    self.adversarial_target_adv_mses = mses["target_adv_mses"]
-    self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
+    self.adversarial_input_target_mses = distances["input_target_mse"]
+    self.adversarial_input_recon_mses = distances["input_recon_mses"]
+    self.adversarial_input_adv_mses = distances["input_adv_mses"]
+    self.adversarial_target_recon_mses = distances["target_recon_mses"]
+    self.adversarial_target_adv_mses = distances["target_adv_mses"]
+    self.adversarial_adv_recon_mses = distances["adv_recon_mses"]
     self.recon_adversarial_input_images = input_images
     self.adversarial_target_images = target_images
     out_dict = {"input_images": input_images, "target_images":target_images,
       "adversarial_images":self.adversarial_images, "adversarial_recons":self.adversarial_recons,
       "step_size":step_size, "num_steps":num_steps, "input_id":input_id, "target_id":target_id}
-    out_dict.update(mses)
+    out_dict.update(distances)
     np.savez(self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz", data=out_dict)
     self.analysis_logger.log_info("Adversary analysis is complete.")
-    return self.adversarial_images, self.adversarial_recons, mses
+    return self.adversarial_images, self.adversarial_recons, distances
 
   def add_class_adversarial_ops_to_graph(self):
     """
@@ -1030,7 +1021,7 @@ class Analyzer(object):
             self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grads)
 
   def construct_class_adversarial_stimulus(self, input_images, input_labels, target_labels,
-    min_img_val, max_img_val, step_size=0.01, num_steps=10):
+    step_size=0.01, num_steps=10):
 
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
@@ -1045,9 +1036,7 @@ class Analyzer(object):
     else:
       assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
-    mses = {
-      "input_adv_mses":[], "target_output_losses":[],
-      }
+    mses = {"input_adv_mses":[], "target_output_losses":[],}
     all_adversarial_images = []
     all_outputs = []
     for r_mult in self.analysis_params.recon_mult:
@@ -1062,8 +1051,6 @@ class Analyzer(object):
         if(target_labels is not None):
           feed_dict[self.adv_target] = target_labels
         feed_dict[self.recon_mult] = r_mult
-        feed_dict[self.min_img_val] = min_img_val
-        feed_dict[self.max_img_val] = max_img_val
         sess.run(self.model.init_op, feed_dict)
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
         for step in range(num_steps):
@@ -1073,7 +1060,7 @@ class Analyzer(object):
               sess.run([self.adv_image, self.output, self.adv_loss], feed_dict)
             adversarial_images.append(adv_image_eval)
             outputs.append(output)
-            input_adv_mses.append(self.mse(input_images, adv_image_eval))
+            input_adv_mses.append(dp.mse(input_images, adv_image_eval))
             target_output_losses.append(target_output_loss)
 
           self.analysis_logger.log_info("Class Adversarial analysis, step "+str(step))
@@ -1088,10 +1075,6 @@ class Analyzer(object):
 
   def class_adversary_analysis(self, images, labels, batch_size=1, input_id=None,
       target_method="untargeted", target_labels=None, step_size=0.01, num_steps=100, save_info=""):
-
-    #Get max/min of all images passed in
-    max_img_val = np.max(np.array(images))
-    min_img_val = np.min(np.array(images))
 
     #Default parameters
     #TODO need to make sure these are getting correct classifications
@@ -1134,7 +1117,7 @@ class Analyzer(object):
 
     self.adversarial_images, self.adversarial_outputs, mses =  \
       self.construct_class_adversarial_stimulus(input_images, input_labels,
-      target_labels, min_img_val, max_img_val, step_size, num_steps)
+      target_labels, step_size, num_steps)
 
     self.adversarial_input_adv_mses = mses["input_adv_mses"]
     self.adversarial_target_output_losses = mses["target_output_losses"]
