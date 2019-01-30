@@ -9,7 +9,7 @@ class MlpAnalyzer(Analyzer):
     if self.analysis_params.do_class_adversaries:
       #TODO generate target labels based on options here
       #For now, defined in analysis_params
-      self.adversarial_images, self.adversarial_output, mses = self.class_adversary_analysis(images,
+      self.class_adversary_analysis(images,
         labels, batch_size=self.analysis_params.adversarial_batch_size,
         input_id=self.analysis_params.adversarial_input_id,
         target_method = self.analysis_params.adversarial_target_method,
@@ -17,6 +17,3 @@ class MlpAnalyzer(Analyzer):
         step_size=self.analysis_params.adversarial_step_size,
         num_steps=self.analysis_params.adversarial_num_steps,
         save_info=save_info)
-
-      self.adversarial_input_adv_mses = mses["input_adv_mses"]
-      self.adversarial_target_output_losses = mses["target_output_losses"]

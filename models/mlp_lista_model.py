@@ -89,7 +89,8 @@ class MlpListaModel(Model):
         with tf.name_scope("loss") as scope:
           self.total_loss =  self.mlp_module.total_loss
 
-        self.label_est = self.mlp_module.label_est
+        #Give this var a name
+        self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
         with tf.name_scope("performance_metrics") as scope:
           #LISTA metrics

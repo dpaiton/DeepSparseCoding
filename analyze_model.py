@@ -10,8 +10,11 @@ import analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
-    self.save_info = "analysis"
     self.device = "/gpu:0"
+    #Which dataset to run analysis on, options are "train", "val", or "test"
+    self.analysis_dataset = "test"
+    #Output directory file
+    self.save_info = "analysis_" + self.analysis_dataset
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
@@ -25,9 +28,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = True # TODO: Broken for mlp_lca_mnist
+    self.do_recon_adversaries = False # TODO: Broken for mlp_lca_mnist
     #Classification adversarial image analysis
-    self.do_class_adversaries = False
+    self.do_class_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -83,6 +86,10 @@ class params(object):
     self.adversarial_batch_size = 800
     self.adversarial_clip_min = 0.0
     self.adversarial_clip_max = 1.0
+
+    #Specify which adv to use here
+    #If none, use all
+    self.adversarial_input_id = None
 
     #Parameter for "specified" target_method
     #Only for class attack
@@ -150,7 +157,8 @@ analyzer.setup_model(analyzer.model_params)
 #analyzer.model_params.input_shape = [
 #  data["train"].num_rows*data["train"].num_cols*data["train"].num_channels]
 
-analyzer.run_analysis(data["train"].images, data["train"].labels,
+analyzer.run_analysis(data[analysis_params.analysis_dataset].images,
+  data[analysis_params.analysis_dataset].labels,
   save_info=analysis_params.save_info)
 
 if analysis_params.do_full_recon:

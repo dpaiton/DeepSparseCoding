@@ -283,6 +283,9 @@ class Analyzer(object):
       self.analysis_params.adversarial_input_id = data["input_id"]
       self.adversarial_input_adv_mses = data["input_adv_mses"]
       self.adversarial_target_output_losses = data["target_output_losses"]
+      self.adversarial_clean_accuracy = data["clean_accuracy"]
+      self.adversarial_adv_accuracy = data["adv_accuracy"]
+      self.adversarial_success_rate = data["attack_success_rate"]
 
   def load_basis_stats(self, save_info):
     bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
@@ -303,6 +306,44 @@ class Analyzer(object):
     evals = self.evaluate_model(images, var_names)
     np.savez(self.analysis_out_dir+"savefiles/evals_"+save_info+".npz", data={"evals":evals})
     self.analysis_logger.log_info("Image analysis is complete.")
+    return evals
+
+  def evaluate_model_batch(self, batch_size, images, var_names):
+    """
+    Creates a session with the loaded model graph to run all tensors specified by var_names
+    Runs in batches
+    Outputs:
+      evals [dict] containing keys that match var_names and the values computed from the session run
+      Note that all var_names must have batch dimension in first dimension
+    Inputs:
+      batch_size scalar that defines the batch size to split images up into
+      images [np.ndarray] of shape (num_imgs, num_img_pixels)
+      var_names [list of str] list of strings containing the tf variable names to be evaluated
+    """
+    num_data = images.shape[0]
+    num_iterations = int(np.ceil(num_data / batch_size))
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    evals = {}
+    for name in var_names:
+      evals[name] = []
+
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      sess.run(self.model.init_op)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
+      tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
+      for it in range(num_iterations):
+        batch_start_idx = int(it * batch_size)
+        batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))
+        batch_images = images[batch_start_idx:batch_end_idx, ...]
+        feed_dict = self.model.get_feed_dict(batch_images, is_test=True)
+        eval_list = sess.run(tensors, feed_dict)
+        for name, ev in zip(var_names, eval_list):
+          evals[name].append(ev)
+    #Concatenate all evals in batch dim
+    for key, val in evals.items():
+      evals[key] = np.concatenate(val, axis=0)
     return evals
 
   def evaluate_model(self, images, var_names):
@@ -1053,7 +1094,9 @@ class Analyzer(object):
         feed_dict[self.recon_mult] = r_mult
         sess.run(self.model.init_op, feed_dict)
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
-        for step in range(num_steps):
+        #+1 to make sure we save the last iteration such that
+        #first element of output is on clean, and last element is on final adv
+        for step in range(num_steps+1):
           #Stats
           if(step%self.analysis_params.adversarial_save_int == 0):
             adv_image_eval, output, target_output_loss = \
@@ -1076,12 +1119,20 @@ class Analyzer(object):
   def class_adversary_analysis(self, images, labels, batch_size=1, input_id=None,
       target_method="untargeted", target_labels=None, step_size=0.01, num_steps=100, save_info=""):
 
+    assert(images.shape[0] == labels.shape[0])
+
     #Default parameters
     #TODO need to make sure these are getting correct classifications
+    #if input_id is None, use all avaliable data
     if input_id is None:
-      input_id = np.arange(batch_size).astype(np.int32)
+      input_id = np.arange(images.shape[0]).astype(np.int32)
     else:
       input_id = np.array(input_id)
+
+    num_data = input_id.shape[0]
+    #If batch_size is None, do all in one batch
+    if batch_size is None:
+      batch_size = num_data
 
     input_images = images[input_id, ...].astype(np.float32)
     input_labels = labels[input_id, ...].astype(np.float32)
@@ -1098,7 +1149,7 @@ class Analyzer(object):
     elif(target_method == "specified"):
       assert(target_labels is not None)
       target_labels = np.array(target_labels)
-      assert(target_labels.shape[0] == batch_size)
+      assert(target_labels.shape[0] == num_data)
     elif(target_method == "untargeted"):
       target_labels = None
     else:
@@ -1109,26 +1160,100 @@ class Analyzer(object):
     #If class, convert to one hot
     if(target_labels is not None):
       if(target_labels.ndim == 1):
-        out = np.zeros((batch_size, num_classes))
+        num_labels = target_labels.shape[0]
+        out = np.zeros((num_labels, num_classes))
         #Convert target_labels into idx
-        target_labels_idx = (np.arange(batch_size).astype(np.int32), target_labels)
+        target_labels_idx = (np.arange(num_labels).astype(np.int32), target_labels)
         out[target_labels_idx] = 1
         target_labels = out
 
-    self.adversarial_images, self.adversarial_outputs, mses =  \
-      self.construct_class_adversarial_stimulus(input_images, input_labels,
-      target_labels, step_size, num_steps)
+    if(self.analysis_params.adversarial_attack_method == "kurakin"):
+      num_recon_mults = 1
+    elif(self.analysis_params.adversarial_attack_method == "carlini"):
+      num_recon_mults = len(self.analysis_params.recon_mult)
+    else:
+      assert False
 
-    self.adversarial_input_adv_mses = mses["input_adv_mses"]
-    self.adversarial_target_output_losses = mses["target_output_losses"]
-    self.class_adversarial_input_images = input_images
-    self.adversarial_input_labels = input_labels
-    self.adversarial_target_labels = target_labels
+    #Make sure that the save interval is less than num steps, otherwise
+    #it won't store the adv exmaples
+    assert self.analysis_params.adversarial_save_int <= num_steps,  \
+      ("Save interval must be <= adversarial_num_steps")
 
-    out_dict = {"input_images": input_images, "input_labels":input_labels, "target_labels":target_labels,
-      "adversarial_images":self.adversarial_images, "adversarial_outputs":self.adversarial_outputs,
-      "step_size":step_size, "num_steps":num_steps, "input_id":input_id}
-    out_dict.update(mses)
+    num_stored_steps = (num_steps + 1)//self.analysis_params.adversarial_save_int
+
+    #TODO abstract this out into a "evaluate with batches" function
+    #since vis_class_adv needs this as well
+
+    #Output variables to store
+    #In [num_recon_mults, num_steps, num_data]
+    self.adversarial_input_adv_mses = np.zeros((num_recon_mults, num_stored_steps, num_data))
+    #In [num_recon_mults, num_steps], summed over batches
+    self.adversarial_target_output_losses = np.zeros((num_recon_mults, num_stored_steps))
+    #In [num_recon_mults, num_steps, num_data, ny, nx, nf]
+    self.adversarial_images = np.zeros((num_recon_mults, num_stored_steps,) + input_images.shape)
+    #In [num_recon_mults, num_steps, num_data, num_classes]
+    self.adversarial_outputs = np.zeros((num_recon_mults, num_stored_steps,) + input_labels.shape)
+
+    #Split data into batches
+    num_iterations = int(np.ceil(num_data / batch_size))
+
+    for it in range(num_iterations):
+      batch_start_idx = int(it * batch_size)
+      batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))
+      batch_input_images = input_images[batch_start_idx:batch_end_idx, ...]
+      batch_input_labels = input_labels[batch_start_idx:batch_end_idx, ...]
+      if(target_labels is not None):
+        batch_target_labels = target_labels[batch_start_idx:batch_end_idx, ...]
+      else:
+        batch_target_labels = None
+
+      batch_adv_images, batch_adv_outputs, mses =  \
+        self.construct_class_adversarial_stimulus(batch_input_images, batch_input_labels,
+        batch_target_labels, step_size, num_steps)
+
+      #Store output variables
+      self.adversarial_input_adv_mses[:, :, batch_start_idx:batch_end_idx] = \
+        np.array(mses["input_adv_mses"])
+      self.adversarial_target_output_losses[:, :] += np.array(mses["target_output_losses"])
+      self.adversarial_images[:, :, batch_start_idx:batch_end_idx, ...] = \
+        np.array(batch_adv_images)
+      self.adversarial_outputs[:, :, batch_start_idx:batch_end_idx, ...] = \
+        np.array(batch_adv_outputs)
+
+    #Calculate total accuracies
+    clean_est_classes = np.argmax(self.adversarial_outputs[:, 0, :, :], axis=-1)
+    adv_est_classes = np.argmax(self.adversarial_outputs[:, -1, :, :], axis=-1)
+    input_classes = np.argmax(input_labels, axis=-1)
+    target_classes = np.argmax(target_labels, axis=-1)
+
+    self.adversarial_clean_accuracy = np.mean(clean_est_classes == input_classes[None, ...], axis=-1)
+    self.adversarial_adv_accuracy = np.mean(adv_est_classes == input_classes[None, ...], axis=-1)
+    if(target_labels is not None):
+      #Success rate is number of classifications targeted at target label
+      self.adversarial_success_rate = np.mean(adv_est_classes == target_classes[None, ...], axis=-1)
+    else:
+      #Success rate is number of misclassifications (for untargeted attack)
+      #TODO should this take into account clean accuracy?
+      self.adversarial_success_rate = 1.0 - self.adversarial_adv_accuracy
+
+    #Store everything in out dictionaries
+    out_dict = {}
+    out_dict["input_images"] = input_images
+    out_dict["input_labels"] = input_labels
+    out_dict["target_labels"] = target_labels
+    out_dict["adversarial_images"] = self.adversarial_images
+    out_dict["adversarial_outputs"] = self.adversarial_outputs
+    out_dict["step_size"] = step_size
+    out_dict["num_steps"] = num_steps
+    out_dict["input_id"] = input_id
+    out_dict["input_adv_mses"] = self.adversarial_input_adv_mses
+    out_dict["target_output_losses"] = self.adversarial_target_output_losses
+    out_dict["clean_accuracy"] = self.adversarial_clean_accuracy
+    out_dict["adv_accuracy"] = self.adversarial_adv_accuracy
+    out_dict["attack_success_rate"] = self.adversarial_success_rate
+
     np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz", data=out_dict)
     self.analysis_logger.log_info("Adversary analysis is complete.")
-    return self.adversarial_images, self.adversarial_outputs, mses
+
+
+

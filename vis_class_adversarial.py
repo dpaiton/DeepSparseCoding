@@ -15,16 +15,16 @@ import pdb
 
 #List of models for analysis
 analysis_list = [
-    #  #MLP on latent
-    #  ("mlp_lca", "mlp_lca_latent_mnist"),
-    #  ("mlp_sae", "mlp_sae_latent_mnist"),
-    #  ("mlp_lista", "mlp_lista_5_mnist"),
-    #  ("mlp_lista", "mlp_lista_20_mnist"),
-    #MLP on pixels
-    ("mlp_lca", "mlp_lca_recon_mnist"),
-    #("mlp_sae", "mlp_sae_recon_mnist"),
-    ("mlp", "mlp_mnist"),
-  ]
+    ##MLP on latent
+    #("mlp_lca", "mlp_lca_latent_mnist"),
+    #("mlp_sae", "mlp_sae_latent_mnist"),
+    #("mlp_lista", "mlp_lista_5_mnist"),
+    #("mlp_lista", "mlp_lista_20_mnist"),
+    #    #MLP on pixels
+        ("mlp_lca", "mlp_lca_recon_mnist"),
+        ("mlp_sae", "mlp_sae_recon_mnist"),
+        ("mlp", "mlp_mnist"),
+    ]
 
 #colors for analysis_list
 #colors = [
@@ -60,8 +60,9 @@ class params(object):
     self.model_name = ""
     self.plot_title_name = self.model_name.replace("_", " ").title()
     self.version = "0.0"
-    self.save_info = "analysis_carlini"
-    #self.save_info = "analysis_kurakin"
+    #TODO can we pull this save_info from somewhere?
+    #self.save_info = "analysis_carlini"
+    self.save_info = "analysis_test_kurakin"
     self.overwrite_analysis_log = False
 
 def makedir(name):
@@ -79,6 +80,59 @@ def setup(params):
 
 makedir(outdir)
 
+#Use this index in the table
+#TODO pick best recon mult for here
+recon_mult_idx = 0
+eval_batch_size = 100
+
+#Store csv file with corresponding accuracy
+#Here, x axis of table is target network
+#y axis is source network
+header_y = [a[1] for a in analysis_list]
+header_x = ["clean",] + header_y
+output_table = np.zeros((len(header_y), len(header_x)))
+#Loop thorugh source network
+for source_model_idx, (model_type, model_name) in enumerate(analysis_list):
+  analysis_params = params()
+  analysis_params.model_type = model_type
+  analysis_params.model_name = model_name
+  analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
+  source_analyzer = setup(analysis_params)
+  #Fill in clean accuracy
+  output_table[source_model_idx, 0] = source_analyzer.adversarial_clean_accuracy
+
+  #Calculate true classes of provided images
+  input_classes = np.argmax(source_analyzer.adversarial_input_labels, axis=-1)
+
+  #Loop through target networks
+  for target_model_idx, (model_type, model_name) in enumerate(analysis_list):
+    #If source == target, just grab accuracy from analysis
+    if(source_model_idx == target_model_idx):
+      output_table[source_model_idx, target_model_idx + 1] = source_analyzer.adversarial_adv_accuracy
+    else:
+      analysis_params = params()
+      analysis_params.model_type = model_type
+      analysis_params.model_name = model_name
+      analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
+      target_analyzer = setup(analysis_params)
+
+      #Get adv examples from source
+      source_adv_examples = source_analyzer.adversarial_images[recon_mult_idx, -1, ...]
+      source_adv_examples = dp.reshape_data(source_adv_examples, target_analyzer.model_params.vectorize_data)[0]
+
+      #Evaluate on target model
+      label_est = target_analyzer.evaluate_model_batch(eval_batch_size,
+          source_adv_examples, ["label_est:0"])["label_est:0"]
+      classes_est = np.argmax(label_est, axis=-1)
+      output_table[source_model_idx, target_model_idx + 1] = np.mean(classes_est == input_classes)
+
+#Construct big numpy array to convert to csv
+csv_out_array = np.concatenate((np.array(header_y)[:, None], output_table), axis=1)
+header_x = ["",] + header_x
+csv_out_array = np.concatenate((np.array(header_x)[None, :], csv_out_array), axis=0)
+np.savetxt(outdir + "transfer_accuracy.csv", csv_out_array, fmt="%s", delimiter=",")
+pdb.set_trace()
+
 fig, ax = plt.subplots()
 
 #TODO only do this analysis if we're sweeping
@@ -95,11 +149,8 @@ for model_idx, (model_type, model_name) in enumerate(analysis_list):
   #Grab final mses
   #These mses are in shape [num_recon_mults, num_iterations, num_batch]
   input_adv_vals = np.array(analyzer.adversarial_input_adv_mses)[:, -1, :]
-  #Grab true labels
-  #These are in shape [batch, num_classes]
-  input_classes = np.argmax(np.array(analyzer.adversarial_input_labels), axis=-1)
-  clean_output_classes = np.argmax(np.array(analyzer.adversarial_outputs)[:, 0, :, :], axis=-1)
-  clean_accuracy = (input_classes[None, :] == clean_output_classes).astype(np.float32)
+
+  clean_accuracy = analyzer.adversarial_clean_accuracy
 
   #TODO this isn't working for mlp_vae
   ##accuracy should be within threshold no matter the recon val being tested

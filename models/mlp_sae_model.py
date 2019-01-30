@@ -94,7 +94,7 @@ class MlpSaeModel(Model):
           self.total_loss = self.train_sae * self.sae_module.total_loss + \
             (1-self.train_sae) * self.mlp_module.total_loss
 
-        self.label_est = self.mlp_module.label_est
+        self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
         with tf.name_scope("performance_metrics") as scope:
           #VAE metrics

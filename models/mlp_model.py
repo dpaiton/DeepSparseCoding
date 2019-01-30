@@ -46,7 +46,9 @@ class MlpModel(Model):
           self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
           self.params.eps, name="MLP")
         self.trainable_variables.update(self.mlp_module.trainable_variables)
-        self.label_est = self.mlp_module.label_est
+
+        #TODO analysis depends on this name for label ests. Can we abstract this?
+        self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("prediction_bools"):

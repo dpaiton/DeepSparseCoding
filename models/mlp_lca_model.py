@@ -91,7 +91,7 @@ class MlpLcaModel(Model):
         with tf.name_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.lca_module.norm_w, name="l2_normalization")
 
-        self.label_est = self.mlp_module.label_est
+        self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
         with tf.name_scope("performance_metrics") as scope:
           #LCA metrics
