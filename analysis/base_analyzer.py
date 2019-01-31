@@ -796,7 +796,7 @@ class Analyzer(object):
     Inputs:
       bf_stats [dict] returned from utils/data_processing.get_dictionary_stats()
     """
-    num_pixels = self.model_params.patch_edge_size**2
+    num_pixels = bf_stats["patch_edge_size"]**2
     neuron_angles = np.zeros((bf_stats["num_outputs"], bf_stats["num_outputs"]))
     for neuron1 in range(bf_stats["num_outputs"]):
       for neuron2 in range(bf_stats["num_outputs"]):

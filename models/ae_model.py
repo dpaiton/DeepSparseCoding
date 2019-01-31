@@ -21,8 +21,7 @@ class AeModel(Model):
      params: [obj] model parameters
     """
     super(AeModel, self).load_params(params)
-    self.num_pixels = int(np.prod(self.params.data_shape))
-    self.input_shape = [None, self.num_pixels]
+    self.input_shape = [None, self.params.num_pixels]
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.activation_functions]
 

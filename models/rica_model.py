@@ -20,9 +20,8 @@ class RicaModel(Model):
 
   def load_params(self, params):
     super(RicaModel, self).load_params(params)
-    self.num_pixels = int(np.prod(self.params.data_shape))
-    self.input_shape = [None, self.num_pixels]
-    self.w_shape = [self.num_pixels, self.params.num_neurons]
+    self.input_shape = [None, self.params.num_pixels]
+    self.w_shape = [self.params.num_pixels, self.params.num_neurons]
 
   def compute_recon_from_encoding(self, a_in):
     return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")

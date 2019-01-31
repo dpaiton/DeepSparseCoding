@@ -10,7 +10,7 @@ class LcaConvAnalyzer(LcaAnalyzer):
 
   def eval_analysis(self, images, var_names, save_info):
     evals = self.evaluate_model(images, var_names)
-    evals["weights/phi:0"] = evals["weights/phi:0"].reshape(self.model.num_pixels,
+    evals["weights/phi:0"] = evals["weights/phi:0"].reshape(self.model_params.num_pixels,
       self.model.num_neurons)
     np.savez(self.analysis_out_dir+"savefiles/evals_"+save_info+".npz", data={"evals":evals})
     self.analysis_logger.log_info("Image analysis is complete.")

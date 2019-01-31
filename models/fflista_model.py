@@ -19,8 +19,7 @@ class FfListaModel(Model):
     """
     super(FfListaModel, self).load_params(params)
     # Network Size
-    self.num_pixels = int(np.prod(self.params.data_shape))
-    self.input_shape = [None, self.num_pixels]
+    self.input_shape = [None, self.params.num_pixels]
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 

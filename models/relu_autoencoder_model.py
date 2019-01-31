@@ -20,11 +20,10 @@ class ReluAutoencoderModel(Model):
     """
     super(ReluAutoencoderModel, self).load_params(params)
     # Network Size
-    self.num_pixels = int(np.prod(self.data_shape))
-    self.x_shape = [None, self.num_pixels]
-    self.w_enc_shape = [self.num_pixels, self.num_neurons]
+    self.x_shape = [None, self.params.num_pixels]
+    self.w_enc_shape = [self.params.num_pixels, self.num_neurons]
     self.b_enc_shape = [self.num_neurons]
-    self.b_dec_shape = [self.num_pixels]
+    self.b_dec_shape = [self.params.num_pixels]
 
   def sigmoid(self, a_in, beta=1):
     """Hyperbolic tangent non-linearity"""

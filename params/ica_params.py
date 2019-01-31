@@ -7,7 +7,6 @@ class params(BaseParams):
     Additional modifiable parameters:
       prior      [str] Prior for ICA - can be "laplacian" or "cauchy"
       batch_size [int] Number of images in a training batch
-      num_pixels [int] Number of pixels
     """
     super(params, self).__init__()
     self.model_type = "ica"

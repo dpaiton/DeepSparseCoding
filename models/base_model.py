@@ -82,6 +82,7 @@ class Model(object):
     params.log_dir = params.model_out_dir + "/logfiles/"
     params.save_dir = params.model_out_dir + "/savefiles/"
     params.disp_dir = params.model_out_dir + "/vis/"
+    params.num_pixels = int(np.prod(params.data_shape))
     self.params = params
     self.params_loaded = True
 

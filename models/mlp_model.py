@@ -16,7 +16,6 @@ class MlpModel(Model):
      params: [obj] model parameters
     """
     super(MlpModel, self).load_params(params)
-    self.num_pixels = int(np.prod(self.params.data_shape))
     self.input_shape = [None,] + self.params.data_shape
     self.label_shape = [None, self.params.num_classes]
 

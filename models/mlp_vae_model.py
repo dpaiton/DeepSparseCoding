@@ -24,8 +24,7 @@ class MlpVaeModel(Model):
     super(MlpVaeModel, self).load_params(params)
     # Network Size
     self.vector_inputs = True
-    self.num_pixels = int(np.prod(self.params.data_shape))
-    self.input_shape = [None, self.num_pixels]
+    self.input_shape = [None, self.params.num_pixels]
     self.label_shape = [None, self.params.num_classes]
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.activation_functions]

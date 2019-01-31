@@ -23,9 +23,8 @@ class MlpListaModel(Model):
     """
     super(MlpListaModel, self).load_params(params)
     # Network Size
-    self.num_pixels = int(np.prod(self.params.data_shape))
-    self.input_shape = [None, self.num_pixels]
-    self.w_shape = [self.num_pixels, self.params.num_neurons]
+    self.input_shape = [None, self.params.num_pixels]
+    self.w_shape = [self.params.num_pixels, self.params.num_neurons]
     self.s_shape = [self.params.num_neurons, self.params.num_neurons]
     self.label_shape = [None, self.params.num_classes]
     # Hyper Parameters

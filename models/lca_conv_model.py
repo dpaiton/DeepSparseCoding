@@ -27,7 +27,6 @@ class LcaConvModel(LcaModel):
     super(LcaConvModel, self).load_params(params)
     if len(self.params.data_shape) == 2:
       self.params.data_shape += [1]
-    self.num_pixels = int(self.params.patch_size_y * self.params.patch_size_x * self.params.data_shape[2])
     self.input_shape = [None,] + self.params.data_shape
 
   def build_module(self, input_node):

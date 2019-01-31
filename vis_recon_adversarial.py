@@ -84,12 +84,12 @@ for model_idx, (model_type, model_name) in enumerate(analysis_list):
   batch_size = analyzer.analysis_params.adversarial_batch_size
   orig_img = analyzer.recon_adversarial_input_images.reshape(
     int(batch_size),
-    int(np.sqrt(analyzer.model.num_pixels)),
-    int(np.sqrt(analyzer.model.num_pixels)))
+    int(np.sqrt(analyzer.model.params.num_pixels)),
+    int(np.sqrt(analyzer.model.params.num_pixels)))
   target_img = analyzer.adversarial_target_images.reshape(
     int(batch_size),
-    int(np.sqrt(analyzer.model.num_pixels)),
-    int(np.sqrt(analyzer.model.num_pixels)))
+    int(np.sqrt(analyzer.model.params.num_pixels)),
+    int(np.sqrt(analyzer.model.params.num_pixels)))
 
   #Grab final mses
   #These mses are in shape [num_recon_mults, num_iterations, num_batch]
@@ -159,12 +159,12 @@ if(plot_over_time):
     batch_size = analyzer.analysis_params.adversarial_batch_size
     orig_imgs = analyzer.recon_adversarial_input_images.reshape(
       int(batch_size),
-      int(np.sqrt(analyzer.model.num_pixels)),
-      int(np.sqrt(analyzer.model.num_pixels)))
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
     target_imgs = analyzer.adversarial_target_images.reshape(
       int(batch_size),
-      int(np.sqrt(analyzer.model.num_pixels)),
-      int(np.sqrt(analyzer.model.num_pixels)))
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
 
     for batch_idx in range(batch_size):
       pf.plot_image(orig_imgs[batch_idx], title="Input Image",
@@ -192,8 +192,8 @@ if(plot_over_time):
         if(step % plot_int == 0):
           adv_recon = recon.reshape(
             int(batch_size),
-            int(np.sqrt(analyzer.model.num_pixels)),
-            int(np.sqrt(analyzer.model.num_pixels)))
+            int(np.sqrt(analyzer.model.params.num_pixels)),
+            int(np.sqrt(analyzer.model.params.num_pixels)))
 
           for batch_idx in range(batch_size):
             pf.plot_image(adv_recon[batch_idx], title="step_"+str(step),
@@ -205,8 +205,8 @@ if(plot_over_time):
         if(step % plot_int == 0):
           adv_img = stim.reshape(
             int(batch_size),
-            int(np.sqrt(analyzer.model.num_pixels)),
-            int(np.sqrt(analyzer.model.num_pixels)))
+            int(np.sqrt(analyzer.model.params.num_pixels)),
+            int(np.sqrt(analyzer.model.params.num_pixels)))
           for batch_idx in range(batch_size):
             pf.plot_image(adv_img[batch_idx], title="step_"+str(step),
               save_filename=analyzer.analysis_out_dir+"/vis/"+\
@@ -216,18 +216,18 @@ if(plot_over_time):
     for i_rm, rm in rm_list:
       orig_recon = np.array(analyzer.adversarial_recons)[i_rm, 0, ...].reshape(
         int(batch_size),
-        int(np.sqrt(analyzer.model.num_pixels)),
-        int(np.sqrt(analyzer.model.num_pixels)))
+        int(np.sqrt(analyzer.model.params.num_pixels)),
+        int(np.sqrt(analyzer.model.params.num_pixels)))
 
       adv_recon = np.array(analyzer.adversarial_recons)[i_rm, -1, ...].reshape(
         int(batch_size),
-        int(np.sqrt(analyzer.model.num_pixels)),
-        int(np.sqrt(analyzer.model.num_pixels)))
+        int(np.sqrt(analyzer.model.params.num_pixels)),
+        int(np.sqrt(analyzer.model.params.num_pixels)))
 
       adv_img = np.array(analyzer.adversarial_images)[i_rm, -1, ...].reshape(
         int(batch_size),
-        int(np.sqrt(analyzer.model.num_pixels)),
-        int(np.sqrt(analyzer.model.num_pixels)))
+        int(np.sqrt(analyzer.model.params.num_pixels)),
+        int(np.sqrt(analyzer.model.params.num_pixels)))
 
       input_adv_mses = np.array(analyzer.adversarial_input_adv_mses)[i_rm]
       target_recon_mses = np.array(analyzer.adversarial_target_recon_mses)[i_rm]

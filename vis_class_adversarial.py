@@ -215,8 +215,8 @@ assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+"
 batch_size = analyzer.analysis_params.adversarial_batch_size
 orig_imgs = analyzer.class_adversarial_input_images.reshape(
   int(batch_size),
-  int(np.sqrt(analyzer.model.num_pixels)),
-  int(np.sqrt(analyzer.model.num_pixels)))
+  int(np.sqrt(analyzer.model.params.num_pixels)),
+  int(np.sqrt(analyzer.model.params.num_pixels)))
 for idx in range(batch_size):
   pf.plot_image(orig_imgs[idx], title="Input Image",
     save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+\
@@ -229,8 +229,8 @@ for step, (stim, output) in enumerate(zip(analyzer.adversarial_images[0], analyz
   if(step % plot_int == 0):
     adv_imgs = stim.reshape(
       int(batch_size),
-      int(np.sqrt(analyzer.model.num_pixels)),
-      int(np.sqrt(analyzer.model.num_pixels)))
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
     for idx in range(batch_size):
       f, axarr = plt.subplots(2, 1)
       axarr[0].imshow(adv_imgs[idx], cmap='gray')
@@ -246,10 +246,10 @@ for step, (stim, output) in enumerate(zip(analyzer.adversarial_images[0], analyz
       plt.close('all')
 
 #orig_recon = analyzer.adversarial_recons[0].reshape(
-#  int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
+#  int(np.sqrt(analyzer.model.params.num_pixels)),int(np.sqrt(analyzer.model.params.num_pixels)))
 #adv_recon = analyzer.adversarial_recons[-1].reshape(
-#  int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
-#adv_img = analyzer.adversarial_images[-1].reshape(int(np.sqrt(analyzer.model.num_pixels)),int(np.sqrt(analyzer.model.num_pixels)))
+#  int(np.sqrt(analyzer.model.params.num_pixels)),int(np.sqrt(analyzer.model.params.num_pixels)))
+#adv_img = analyzer.adversarial_images[-1].reshape(int(np.sqrt(analyzer.model.params.num_pixels)),int(np.sqrt(analyzer.model.params.num_pixels)))
 #
 ##rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 ### for Palatino and other serif fonts use:
