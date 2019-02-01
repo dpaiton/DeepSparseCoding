@@ -38,6 +38,8 @@ class params(BaseParams):
     self.tie_decoder_weights = False
     self.optimizer = "adam"
     # MLP Params
+    self.num_val = 10000
+    self.num_labeled = 50000
     self.num_classes = 10
     self.layer_types = ["fc", "fc", "fc"]
     self.mlp_output_channels = [300, 500, self.num_classes]

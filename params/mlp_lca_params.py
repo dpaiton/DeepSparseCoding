@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_lca"
-    self.model_name = "mlp_lca_latent"
+    self.model_name = "mlp_lca_768_recon"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -47,6 +47,8 @@ class params(BaseParams):
     self.optimizer = "annealed_sgd"
     # MLP Params
     self.train_on_recon = True # if False, train on LCA latent activations
+    self.num_val = 10000
+    self.num_labeled = 50000
     self.num_classes = 10
     self.layer_types = ["fc", "fc", "fc"]
     self.output_channels = [300, 500, self.num_classes]
@@ -63,7 +65,7 @@ class params(BaseParams):
     self.val_on_cp = True
     self.max_cp_to_keep = None
     self.cp_load = True
-    self.cp_load_name = "lca_mnist"
+    self.cp_load_name = "lca_768_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["weights/w:0"]
@@ -102,10 +104,12 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
+      self.cp_int = 5e4
+      self.gen_plot_int = 5e4
       # LCA params
       self.num_neurons = 768
+      self.train_on_recon = True # if False, train on LCA latent activations
       # MLP params
-      self.train_on_recon = False # if False, train on activations
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
         self.num_classes = 10
@@ -136,22 +140,22 @@ class params(BaseParams):
         self.schedule[0]["decay_steps"] = int(0.5*self.schedule[0]["num_batches"])
         self.schedule[0]["decay_rate"] = 0.50
       else:
-        self.output_channels = [1536, 1200, self.num_classes]
+        self.output_channels = [1200, 1200, self.num_classes]
         self.layer_types = ["fc"]*3
         self.optimizer = "adam"
         self.patch_size_y = [None]*3
         self.patch_size_x = [None]*3
         self.conv_strides = [None]*3
         self.batch_norm = [None]*3
-        self.dropout = [0.5, 0.4, 1.0]
+        self.dropout = [0.5, 0.5, 1.0]
         self.max_pool = [False]*3
         self.max_pool_ksize = [None]*3
         self.max_pool_strides = [None]*3
-        self.schedule[0]["num_batches"] = int(4e4)
-        self.schedule[0]["sparse_mult"] = 0.19
-        self.schedule[0]["weight_lr"] = 1e-4
-        self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
-        self.schedule[0]["decay_rate"] = 0.90
+        self.schedule[0]["num_batches"] = int(2e5)
+        self.schedule[0]["sparse_mult"] = 0.25
+        self.schedule[0]["weight_lr"] = 1e-5
+        self.schedule[0]["decay_steps"] = int(0.4*self.schedule[0]["num_batches"])
+        self.schedule[0]["decay_rate"] = 0.50
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

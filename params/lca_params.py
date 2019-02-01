@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "lca"
-    self.model_name = "lca"
+    self.model_name = "lca_1568"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -72,12 +72,15 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.num_neurons = 768
+      self.rectify_a = True
+      self.num_neurons = 1568#768
       self.thresh_type = "soft"
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e5)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.25
+        self.schedule[sched_idx]["sparse_mult"] = 0.3#0.25
         self.schedule[sched_idx]["weight_lr"] = 0.1
-        self.schedule[sched_idx]["num_batches"] = int(2e5)
+        self.schedule[sched_idx]["num_batches"] = int(5e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
