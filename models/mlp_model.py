@@ -4,6 +4,7 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.base_model import Model
 from modules.mlp_module import MlpModule
+from modules.class_adversarial_module import ClassAdversarialModule
 
 class MlpModel(Model):
   def __init__(self):
@@ -21,6 +22,37 @@ class MlpModel(Model):
 
   def get_input_shape(self):
     return self.input_shape
+
+  def build_adv_module(self, input_node):
+    #Placeholder for adversarial targets
+    with tf.name_scope("adv_target_placeholder"):
+      self.adv_target_placeholder = tf.placeholder(tf.float32, shape=self.label_shape,
+        name="adversarial_target")
+
+    self.adv_module = ClassAdversarialModule(input_node, self.params.num_classes,
+      self.params.adversarial_num_steps, self.params.adversarial_step_size,
+      max_step=self.params.adversarial_max_change,
+      clip_adv = self.params.adversarial_clip, clip_range=self.params.adversarial_clip_range,
+      attack_method = self.params.adversarial_attack_method,
+      eps=self.params.eps, name="class_adversarial")
+
+    return self.adv_module.get_adv_input()
+
+  def build_graph(self):
+    input_node = self.build_input_placeholder()
+    if(self.params.train_on_adversarial == True):
+      with tf.device(self.params.device):
+        with self.graph.as_default():
+          input_node = self.build_adv_module(input_node)
+    self.build_graph_from_input(input_node)
+    if(self.params.train_on_adversarial == True):
+      with tf.device(self.params.device):
+        with self.graph.as_default():
+          #Build the rest of the ops here since we need nodes from this graph
+          self.adv_module.build_adversarial_ops(self.label_est,
+            label_tensor=self.label_placeholder, model_logits=self.get_encodings())
+    else:
+      self.adv_module = None
 
   def build_graph_from_input(self, input_node):
     """
@@ -63,12 +95,28 @@ class MlpModel(Model):
   def get_total_loss(self):
     return self.mlp_module.total_loss
 
+  def modify_input(self, feed_dict):
+    #If adversarial module is built, construct adversarial examples here
+
+    if(self.params.train_on_adversarial == True):
+      #TODO add in rand_state and target_generation_method here
+      adv_feed_dict = self.adv_module.gen_feed_dict(feed_dict, use_adv_input=True,
+        labels = feed_dict[self.label_placeholder],
+        recon_mult=self.params.carlini_recon_mult,
+        rand_state=None, target_generation_method="random")
+      #Generate adversarial examples to store within internal variable
+      self.adv_module.construct_adversarial_examples(adv_feed_dict)
+      return adv_feed_dict
+    else:
+      return feed_dict
+
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(MlpModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
     if(is_test): # Turn off dropout when not training
       feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
     else:
       feed_dict[self.dropout_keep_probs] = self.params.dropout
+
     return feed_dict
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
@@ -81,6 +129,12 @@ class MlpModel(Model):
     """
     update_dict = super(MlpModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
+    if(self.params.train_on_adversarial == True):
+      #TODO add in rand_state and target_generation_method here
+      feed_dict = self.adv_module.gen_feed_dict(feed_dict, use_adv_input=True,
+        labels = feed_dict[self.label_placeholder],
+        recon_mult=self.params.carlini_recon_mult,
+        rand_state=None, target_generation_method="random")
 
     current_step = np.array(self.global_step.eval())
     total_loss = np.array(self.get_total_loss().eval(feed_dict))
@@ -107,6 +161,13 @@ class MlpModel(Model):
     super(MlpModel, self).generate_plots(input_data, input_labels)
     # TODO: there is a lot of variability in the MLP - which plots are general?
     feed_dict = self.get_feed_dict(input_data, input_labels)
+    if(self.params.train_on_adversarial == True):
+      #TODO add in rand_state and target_generation_method here
+      feed_dict = self.adv_module.gen_feed_dict(feed_dict, use_adv_input=True,
+        labels = feed_dict[self.label_placeholder],
+        recon_mult=self.params.carlini_recon_mult,
+        rand_state=None, target_generation_method="random")
+
     eval_list = [self.global_step, self.get_encodings()] # how to get first layer weights?
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])

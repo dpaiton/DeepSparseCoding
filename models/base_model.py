@@ -544,3 +544,6 @@ class Model(object):
   def get_encodings(self):
     raise NotImplementedError
 
+  def modify_input(self, feed_dict):
+    return feed_dict
+

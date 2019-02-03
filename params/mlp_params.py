@@ -12,7 +12,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp"
-    self.model_name = "mlp"
+    self.model_name = "mlp_adv"
     self.version = "0.0"
     self.optimizer = "annealed_sgd"
     self.vectorize_data = False
@@ -33,6 +33,7 @@ class params(BaseParams):
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.val_on_cp = True
+    self.modify_on_val = False
     self.cp_load = False
     self.cp_load_name = "pretrain"
     self.cp_load_step = None
@@ -42,6 +43,19 @@ class params(BaseParams):
     self.log_to_file = True
     self.gen_plot_int = 1e4
     self.save_plots = True
+    #Adversarial params
+    self.train_on_adversarial = True
+    self.adversarial_num_steps = 40
+    self.adversarial_attack_method = "kurakin_untargeted"
+    self.adversarial_step_size = 0.01
+    self.adversarial_max_change = 0.3
+    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
+    self.adversarial_clip = True
+    #TODO get these params from other params
+    self.adversarial_clip_range = [0.0, 1.0]
+    #Tradeoff in carlini attack between input pert and target
+    self.carlini_recon_mult = 1
+
 
     # If a scalar is provided then this value is broadcast to all trainable variables
     self.schedule = [
