@@ -25,6 +25,7 @@ class LcaModule(object):
     self.data_tensor = data_tensor
     self.check_data()
 
+    #TODO unused name variable - take it out?
     self.name = str(name)
     self.num_neurons = num_neurons
     self.sparse_mult = sparse_mult

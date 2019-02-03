@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "lista"
-    self.model_name = "lista"
+    self.model_name = "lista_5"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -52,7 +52,7 @@ class params(BaseParams):
     self.val_on_cp = False
     self.max_cp_to_keep = None
     self.cp_load = True
-    self.cp_load_name = "lca_mnist"
+    self.cp_load_name = "lca_768_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["weights/w:0"]
