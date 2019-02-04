@@ -55,6 +55,8 @@ class params(BaseParams):
     self.adversarial_clip_range = [0.0, 1.0]
     #Tradeoff in carlini attack between input pert and target
     self.carlini_recon_mult = 1
+    #Determines if we modify the input during validation
+    self.modify_on_val = False
 
 
     # If a scalar is provided then this value is broadcast to all trainable variables
