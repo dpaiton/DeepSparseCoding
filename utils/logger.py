@@ -6,6 +6,7 @@ import os
 
 class Logger(object):
   def __init__(self, filename=None, overwrite=True):
+    self.filename = filename
     if filename is None:
       self.log_to_file = False
     else:

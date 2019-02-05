@@ -346,12 +346,10 @@ class Model(object):
       and "input_data" not in op.name
       and "input_label" not in op.name)
       ]
-
     if input_labels is not None and hasattr(self, "label_placeholder"):
       feed_dict = {self.input_placeholder:input_data, self.label_placeholder:input_labels}
     else:
       feed_dict = {self.input_placeholder:input_data}
-
     for placeholder in placeholders:
       feed_dict[self.graph.get_tensor_by_name(placeholder+":0")] = (
         self.get_schedule(placeholder.split("/")[1]))
@@ -360,6 +358,8 @@ class Model(object):
     return feed_dict
 
   #subclass must overwrite this class, or overwrite build_graph
+  # TODO: Why can't this be done here?
+  #  if dependency is on having self.input_shape then that could also be done here.
   def get_input_shape(self):
     return NotImplementedError
 
@@ -374,6 +374,10 @@ class Model(object):
   #will build placeholder first, then call build_graph_from_input
   #Subclasses can overwrite this function to ignore this functionality
   def build_graph(self):
+    with tf.device(self.params.device):
+      with self.graph.as_default():
+        with tf.name_scope("step_counter") as scope:
+          self.global_step = tf.Variable(0, trainable=False, name="global_step")
     self.build_graph_from_input(self.build_input_placeholder())
 
   def build_graph_from_input(self, input_node):

@@ -118,7 +118,6 @@ class AeModule(object):
       u_out, w, b = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
         activation_functions[dec_layer_id], w_shapes[dec_layer_id])
       dec_u_list.append(u_out)
-
       dec_w_list.append(w)
       dec_b_list.append(b)
       layer_id += 1

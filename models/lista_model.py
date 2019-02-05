@@ -45,9 +45,6 @@ class ListaModel(Model):
 
         self.train_lca = tf.cast(self.train_lca, tf.float32)
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         self.lca_module = self.build_lca_module(input_node)
         self.trainable_variables.update(self.lca_module.trainable_variables)
 

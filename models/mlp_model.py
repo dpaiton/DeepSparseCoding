@@ -34,10 +34,6 @@ class MlpModel(Model):
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False,
-            name="global_step")
-
         #TODO: with tf.name_scope("mlp_module"):
         self.mlp_module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
           self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,

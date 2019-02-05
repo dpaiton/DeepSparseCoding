@@ -32,9 +32,6 @@ class IcaModel(Model):
           self.input_placeholder = tf.placeholder(
             tf.float32, shape=self.input_shape, name="input_data")
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         with tf.variable_scope("weights") as scope:
           ## Q matrix from QR decomp is guaranteed to be orthonormal and
           ## non-singular, which prevents a gradient explosion from inverting

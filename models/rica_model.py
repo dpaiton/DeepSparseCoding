@@ -53,13 +53,11 @@ class RicaModel(Model):
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.input_placeholder = tf.placeholder(tf.float32,
-            shape=self.input_shape, name="input_data")
           self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult") # lambda
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
@@ -77,7 +75,7 @@ class RicaModel(Model):
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
         with tf.name_scope("inference") as scope:
-          self.a = tf.matmul(self.input_placeholder, self.w, name="activity")
+          self.a = tf.matmul(input_node, self.w, name="activity")
 
         with tf.name_scope("output") as scope:
           self.reconstruction = self.compute_recon_from_encoding(self.a)
@@ -90,9 +88,9 @@ class RicaModel(Model):
 
         with tf.name_scope("performance_metrics") as scope:
           with tf.name_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(self.input_placeholder, self.reconstruction)), axis=[1, 0],
+            MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
-            pixel_var = tf.nn.moments(self.input_placeholder, axes=[1])[1]
+            pixel_var = tf.nn.moments(input_node, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
