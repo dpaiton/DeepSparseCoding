@@ -53,6 +53,9 @@ class RicaModel(Model):
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
+  def get_input_shape(self):
+    return self.input_shape
+
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
