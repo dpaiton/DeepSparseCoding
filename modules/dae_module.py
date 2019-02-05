@@ -1,13 +1,13 @@
 import numpy as np
 import tensorflow as tf
 import utils.entropy_functions as ef
-from utils.trainable_variable_dict import TrainableVariableDict
 from modules.ae_module import AeModule
 from ops.init_ops import GDNGammaInitializer 
 
 class DaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, ent_mult, decay_mult, bounds_slope, latent_min,
-    latent_max, num_quant_bins, gdn_w_init_const, gdn_eps, gdn_b_init_const, act_funcs, dropout):
+    latent_max, num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
+    gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout):
     """
     Divisive Autoencoder module
     Inputs:
@@ -18,27 +18,41 @@ class DaeModule(AeModule):
       bounds_slope: slope for out of bounds loss (two relus back to back) 
       latent_min: min value you want for latent variable (max value for left relu)
       latent_max: max value you want for latent variable (max value for right relu)
+      num_triangles: number of triangle kernals to use for the entropy estimator 
+      mle_step_size: size of maximimum likelihood estimator steps 
+      num_mle_steps: number of max likelihood estimation steps for the entropy estimator
       num_quant_bins: number of bins you want for quantization
         e.g. if min is -50 and max is 50 and num_quant_bins is 100, will qauntize on integers
         formula: quant noise drawn from
         U(-(latent_max-latent_min)/(2*num_quant_bins), (latent_max-latent_min)/(2*num_quant_bins))
+      noise_var_mult: multiplier to scale noise bounds that is added to the latent code
       gdn_w_init_const: diagonal of gdn gamma initializer 
-      gdn_eps: off diagonal of gdn gamma initializer 
       gdn_b_init_const: diagonal of gdn beta initializer 
+      gdn_w_thresh_min: minimum allowable value for gdn_w
+      gdn_b_thresh_min: minimum allowable value for gdn_b
+      gdn_eps: off diagonal of gdn gamma initializer 
       act_funcs: activation functions
       dropout: specifies the keep probability or None
     Outputs:
       dictionary
     """
+    super(DaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
+      dropout)
     self.ent_mult = ent_mult
     self.bounds_slope = bounds_slope
     self.latent_min = latent_min
     self.latent_max = latent_max
+    self.num_triangles = num_triangles
+    self.triangle_centers = np.linspace(self.latent_min, self.latent_max, self.num_triangles)
+    self.mle_step_size = mle_step_size
+    self.num_mle_steps = num_mle_steps
     self.num_quant_bins = num_quant_bins
+    self.noise_var_mult = noise_var_mult
     self.gdn_w_init_const = gdn_w_init_const
+    self.gdn_b_init_const = gdn_b_init_const
+    self.gdn_w_thresh_min = gdn_w_thresh_min
+    self.gdn_b_thresh_min = gdn_b_thresh_min
     self.gdn_eps = gdn_eps
-    super(DaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
-      dropout)
 
   def compute_entropy_loss(self, a_in):
     with tf.name_scope("latent"):
@@ -52,6 +66,50 @@ class DaeModule(AeModule):
       * (tf.nn.relu(a_in - self.latent_max)
       + tf.nn.relu(self.latent_min - a_in)), axis=reduc_dim
 
+  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape):
+    """
+    Make layer that does act(u*w+b)
+    Example case for w_read_id logic:
+      layer_id: [0 1 2 3 4] [5 6 7 8 9]
+
+                              10-6  10-7  10-8 10-9  10-10
+      weight_id: [0 1 2 3 4] [ 4     3     2     1     0 ]
+      num_layers: 10
+      weight_id = num_layers - (layer_id + 1)
+    """
+    trainable_variables = []
+    with tf.variable_scope("layer"+str(layer_id), reuse=tf.AUTO_REUSE) as scope:
+      if self.tie_decoder_weights:
+        w_read_id = self.num_layers - (layer_id+1)
+      else:
+        w_read_id = layer_id
+
+      w_name = "w_"+str(w_read_id)
+      w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+        initializer=self.w_init, trainable=True)
+      trainable_variables.append(w)
+
+      b_name = "b_"+str(layer_id)
+      b = tf.get_variable(name=b_name, shape=w_shape[1],
+        dtype=tf.float32, initializer=self.b_init, trainable=True)
+      trainable_variables.append(b)
+
+      pre_act = tf.add(tf.matmul(input_tensor, w), b)
+      if activation_function == activations.gdn:
+        w_gdn = tf.get_variable(name="w_gdn_"+str(layer_id), shape=[w_shape[1], w_shape[1]], 
+          dtype=tf.float32, initializer=self.w_gdn_init, trainable=True)
+        trainable_variables.append(w_gdn)
+        b_gdn = tf.get_variable(name="b_gdn_"+str(layer_id), shape=w_shape[1], 
+          dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
+        trainable_variables.append(b_gdn)
+        gdn_inverse = True if layer_id >= self.num_encoder_layers else False
+        output_tensor, gdn_mult = activation_function(pre_act, w_gdn, b_gdn, self.w_thresh_min,
+          self.b_thresh_min, self.gdn_eps, gdn_inverse, conv=False) 
+      else: 
+        output_tensor == activation_function(pre_act)
+      output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
+    return output_tensor, trainable_variables
+
   def build_encoder(self, input_tensor, activation_functions, w_shapes):
     assert len(activation_functions) == len(w_shapes), (
       "activation_functions & w_shapes must be the same length")
@@ -61,78 +119,98 @@ class DaeModule(AeModule):
     w_gdn_list = []
     b_gdn_list = []
     for layer_id in range(len(w_shapes)):
-      u_out, w, b, w_gdn, b_gdn = self.layer_maker(layer_id, u_list[layer_id],
+      u_out, trainable_variables = self.layer_maker(layer_id, u_list[layer_id],
         activation_functions[layer_id], w_shapes[layer_id])
+      if activation_functions[layer_id] == activations.gdn:
+        w, b, w_gdn, b_gdn = trainable_variables
+        w_gdn_list.append(w_gdn)
+        b_gdn_list.append(b_gdn)
+      else:
+        w, b = trainable_variables
       u_list.append(u_out)
       w_list.append(w)
       b_list.append(b)
-      w_gdn_list.append(w_gdn)
-      b_gdn_list.append(b_gdn)
     return u_list, w_list, b_list, w_gdn_list, b_gdn_list
+
+  def build_decoder(self, input_tensor, activation_functions, w_shapes):
+    assert len(activation_functions) == len(w_shapes), (
+      "activation_functions & w_shapes must be the same length")
+    dec_u_list = [input_tensor]
+    dec_w_list = []
+    dec_b_list = []
+    dec_w_gdn_list = []
+    dec_b_gdn_list = []
+    for dec_layer_id in range(len(w_shapes)):
+      layer_id = self.num_encoder_layers + dec_layer_id
+      u_out, trainable_variables = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
+        activation_functions[dec_layer_id], w_shapes[dec_layer_id])
+      if activation_functions[layer_id] == activations.gdn:
+        w, b, w_gdn, b_gdn = trainable_variables
+        w_gdn_list.append(w_gdn)
+        b_gdn_list.append(b_gdn)
+      else:
+        w, b = trainable_variables
+      dec_u_list.append(u_out)
+      dec_w_list.append(w)
+      dec_b_list.append(b)
+    return dec_u_list, dec_w_list, dec_b_list, w_gdn_list, b_gdn_list
 
   def build_graph(self):
     with tf.name_scope("weight_inits") as scope:
       self.w_init = tf.initializers.random_normal(mean=0.0, stddev = 1e-2, dtype=tf.float32)
       selt.b_init = tf.initializers.zeros(dtype=tf.float32)
-    self.w_gdn_init = GDNGammaInitializer(diagonal_gain = self.gdn_w_init_const,
-      off_diagonal_gain = self.gdn_eps, dtype = tf.float32)
-    self.w_igdn_init = self.w_gdn_init
-    b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
-    self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
-    self.b_igdn_init = self.b_gdn_init
+
+    with tf.name_scope("gdn_weight_inits") as scope:
+      self.w_gdn_init = GDNGammaInitializer(diagonal_gain = self.gdn_w_init_const,
+        off_diagonal_gain = self.gdn_eps, dtype = tf.float32)
+      self.w_igdn_init = self.w_gdn_init
+      b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
+      self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
+      self.b_igdn_init = self.b_gdn_init
 
     self.u_list = [self.data_tensor]
     self.w_list = []
     self.b_list = []
     self.w_gdn = []
     self.b_gdn = []
-    enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list =\ 
-      self.build_encoder(self.u_list[0],
-      self.act_funcs[:self.num_encoder_layers], self.w_shapes[:self.num_encoder_layers])
-    self.u_list += enc_u_list[:-1] # don't store the mean value in u_list
+    enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list = \
+      self.build_encoder(self.u_list[0], self.act_funcs[:self.num_encoder_layers],
+      self.w_shapes[:self.num_encoder_layers])
+    self.u_list += enc_u_list
     self.w_list += enc_w_list
     self.b_list += enc_b_list
     self.w_gdn_list += enc_w_gdn_list
     self.b_gdn_list += enc_b_gdn_list 
 
-    #Std weights
-    self.w_enc_std = tf.get_variable(name="w_enc_"+str(self.num_encoder_layers)+"_std",
-      shape=self.w_shapes[self.num_encoder_layers-1], dtype=tf.float32,
-      initializer=self.w_init, trainable=True)
-    self.b_enc_std = tf.get_variable(name="b_enc_"+str(self.num_encoder_layers)+"_std",
-      shape=self.w_shapes[self.num_encoder_layers-1][1], dtype=tf.float32,
-      initializer=self.b_init, trainable=True)
-    self.trainable_variables[self.w_enc_std.name] = self.w_enc_std
-    self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
+    with tf.name_scope("inference") as scope:
+      self.a = tf.identity(self.u_list[-1], name="activity")
 
-    self.latent_mean_activation = enc_u_list[-1]
+    with tf.variable_scope("probability_estimate") as scope:
+      self.mle_thetas, self.theta_init = ef.construct_thetas(self.a.get_shape()[-1],
+        self.num_triangles)
 
-    self.latent_std_activation = tf.add(tf.matmul(enc_u_list[-2], self.w_enc_std),
-      self.b_enc_std)
-    #self.latent_std_activation = 1e-8 + tf.nn.softplus(tf.matmul(enc_u_list[-2],
-    #  self.w_enc_std) + self.b_enc_std) # std must be positive
+      ll = ef.log_likelihood(tf.nn.sigmoid(self.a), self.mle_thetas, self.triangle_centers)
+      self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
+        for _ in range(self.num_mle_steps)]
 
-    noise = tf.random_normal(tf.shape(self.latent_std_activation))
+    noise_var = self.noise_var_mult*(self.latent_max-self.latent_min)/(2*self.num_quant_bins)
+    noise = tf.random_uniform(shape=tf.stack(tf.shape(self.u_list[-1])),minval=-noise_var,
+      maxval=noise_var)
+    a_noise = tf.add(noise,self.u_list[-1])
 
-    #act = self.latent_mean_activation + self.latent_std_activation * noise
-    #Calculate latent - std is in log(std**2) space
-    #act = self.latent_mean_activation + tf.sqrt(tf.exp(self.latent_std_activation)) * noise
-    #act = self.latent_mean_activation + tf.exp(0.5 * self.latent_std_activation) * noise
-    act = self.latent_mean_activation + tf.exp(self.latent_std_activation) * noise
-
-    act = tf.identity(act, name="activity")
-
-    self.u_list.append(act)
-    self.a = self.u_list[-1]
-
-    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.num_encoder_layers,
-      self.u_list[-1], self.act_funcs[self.num_encoder_layers:],
-      self.w_shapes[self.num_encoder_layers:])
+    dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \
+      self.build_decoder(self.num_encoder_layers, a_noise,
+      self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
     self.u_list += dec_u_list
     self.w_list += dec_w_list
     self.b_list += dec_b_list
+    self.w_gdn_list += dec_w_gdn_list
+    self.b_gdn_list += dec_b_gdn_list
 
-    for w,b in zip(self.w_list, self.b_list):
+    for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
+      self.trainable_variables[w_gdn.name] = w_gdn
+      self.trainable_variables[b_gdn.name] = b_gdn
+    for w, b in zip(self.w_list, self.b_list):
       self.trainable_variables[w.name] = w
       self.trainable_variables[b.name] = b
 
@@ -142,5 +220,6 @@ class DaeModule(AeModule):
     with tf.name_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "weight_decay_loss":self.compute_weight_decay_loss(),
-        "latent_loss":self.compute_latent_loss(self.a, self.latent_std_activation)}
+        "entropy_loss":self.compute_entropy_loss(self.a),
+        "ramp_loss":self.compute_ramp_loss(self.a))
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
