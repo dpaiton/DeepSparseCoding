@@ -24,17 +24,13 @@ class IcaModel(Model):
     self.w_synth_shape = [self.num_neurons, self.params.num_pixels]
     self.w_analysis_shape = [self.params.num_pixels, self.num_neurons]
 
-  def build_graph(self):
+  def get_input_shape(self):
+    return self.input_shape
+
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
-          self.input_placeholder = tf.placeholder(
-            tf.float32, shape=self.input_shape, name="input_data")
-
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         with tf.variable_scope("weights") as scope:
           ## Q matrix from QR decomp is guaranteed to be orthonormal and
           ## non-singular, which prevents a gradient explosion from inverting
@@ -62,7 +58,7 @@ class IcaModel(Model):
           #self.trainable_variables[self.w_analysis.name] = self.w_analysis
 
         with tf.name_scope("inference") as scope:
-          self.a = tf.matmul(self.input_placeholder, self.w_analysis, name="activity")
+          self.a = tf.matmul(input_node, self.w_analysis, name="activity")
           if self.params.prior.lower() == "laplacian":
             self.z = tf.sign(self.a)
           else: #It must be laplacian or cauchy

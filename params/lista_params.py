@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "lista"
-    self.model_name = "lista_5"
+    self.model_name = "lista_20"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -61,15 +61,6 @@ class params(BaseParams):
     self.gen_plot_int = 10000
     self.save_plots = True
     self.schedule = [
-      #Training LCA
-      #{"weights": None,
-      #"train_lca": True,
-      #"num_batches": int(1e4),
-      #"sparse_mult": 0.1,
-      #"weight_lr": 0.01,
-      #"decay_steps": int(1e4*0.5),
-      #"decay_rate": 0.8,
-      #"staircase": True},
       #Training LISTA on LCA activations
       {"weights": None,
       "train_lca": False,
@@ -90,11 +81,15 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.num_neurons = 768
-      self.num_layers = 5
+      self.num_layers = 20
+      self.cp_int = 1e5
+      self.gen_plot_int = 1e5
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.25
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
-        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["num_batches"] = int(3e5)
+        self.schedule[sched_idx]["weight_lr"] = 0.01
+        self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.5
         self.schedule[sched_idx]["weight_lr"] = 0.01
 
     elif data_type.lower() == "vanhateren":

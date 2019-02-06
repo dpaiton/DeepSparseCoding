@@ -45,9 +45,6 @@ class AeModel(Model):
             name="dropout_keep_probs")
           self.latent_input = tf.placeholder(tf.float32, name="latent_input")
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 

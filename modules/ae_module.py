@@ -113,15 +113,13 @@ class AeModule(object):
     dec_u_list = [input_tensor]
     dec_w_list = []
     dec_b_list = []
-    layer_id = self.num_encoder_layers
     for dec_layer_id in range(len(w_shapes)):
+      layer_id = self.num_encoder_layers + dec_layer_id
       u_out, w, b = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
         activation_functions[dec_layer_id], w_shapes[dec_layer_id])
       dec_u_list.append(u_out)
-
       dec_w_list.append(w)
       dec_b_list.append(b)
-      layer_id += 1
     return dec_u_list, dec_w_list, dec_b_list
 
   def build_graph(self):
