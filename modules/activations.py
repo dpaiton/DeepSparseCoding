@@ -10,6 +10,8 @@ def activation_picker(activation_function):
       return tf.nn.elu
     if activation_function == "tanh":
       return tf.nn.tanh
+    if activation_function == "lrelu" or activation_function == "leaky_relu":
+      return tf.nn.leaky_relu
     if activation_function == "gdn":
       return gdn
     if activation_function == "sigmoid":
@@ -46,7 +48,7 @@ def compute_gdn_mult(u_in, w_gdn, b_gdn, w_min, b_min, conv, eps=1e-6):
 
 def gdn(u_in, w, b, w_thresh_min, b_thresh_min, eps, inverse, conv, name=""):
   assert w_thresh_min >= 0, ("Error, w_thresh_min must be >= 0")
-  assert b_thresh_min >= 0, ("Error, w_thresh_min must be >= 0")
+  assert b_thresh_min >= 0, ("Error, b_thresh_min must be >= 0")
   gdn_mult = compute_gdn_mult(u_in, w, b, w_thresh_min, b_thresh_min, conv, eps)
   if inverse:
     u_out = tf.multiply(u_in, gdn_mult, name=name)
