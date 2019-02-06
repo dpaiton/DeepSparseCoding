@@ -44,7 +44,7 @@ def compute_gdn_mult(u_in, w_gdn, b_gdn, w_min, b_min, conv, eps=1e-6):
   gdn_mult = tf.sqrt(tf.add(weighted_norm, tf.square(b_threshold)))
   return gdn_mult
 
-def gdn(u_in, w, b, w_thresh_min, b_thresh_min, eps, inverse, conv, name=""):
+def gdn(u_in, w, b, w_thresh_min, b_thresh_min, eps, inverse, conv, name=None):
   assert w_thresh_min >= 0, ("Error, w_thresh_min must be >= 0")
   assert b_thresh_min >= 0, ("Error, w_thresh_min must be >= 0")
   gdn_mult = compute_gdn_mult(u_in, w, b, w_thresh_min, b_thresh_min, conv, eps)
