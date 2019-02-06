@@ -93,6 +93,10 @@ with tf.Session(config=config, graph=model.graph) as sess:
         model.generate_plots(input_data=input_data, input_labels=input_labels)
         init = False
 
+      ## Update MLE estimate
+      if hasattr(model, "mle_update"):
+        sess.run(model.mle_update, feed_dict)
+
       ## Update model weights
       sess_run_list = []
       for w_idx in range(len(model.get_schedule("weights"))):

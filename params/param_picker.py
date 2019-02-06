@@ -13,11 +13,12 @@ import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
 import params.lista_params as lista
 import params.fflista_params as fflista
-import params.gdn_autoencoder_params as ga
-import params.gdn_conv_autoencoder_params as cga
-import params.gdn_conv_decoder_params as cgd
+#import params.gdn_autoencoder_params as ga
+#import params.gdn_conv_autoencoder_params as cga
+#import params.gdn_conv_decoder_params as cgd
 import params.relu_autoencoder_params as ra
 import params.ae_params as ae
+import params.dae_params as dae
 import params.sae_params as sae
 import params.vae_params as vae
 
@@ -62,16 +63,18 @@ def get_params(model_type):
     return fflista.params()
   if model_type.lower() == "ae":
     return ae.params()
+  if model_type.lower() == "dae":
+    return dae.params()
   if model_type.lower() == "sae":
     return sae.params()
   if model_type.lower() == "vae":
     return vae.params()
-  if model_type.lower() == "gdn_autoencoder":
-    return ga.params()
-  if model_type.lower() == "gdn_conv_autoencoder":
-    return cga.params()
-  if model_type.lower() == "gdn_conv_decoder":
-    return cgd.params()
+  #if model_type.lower() == "gdn_autoencoder":
+  #  return ga.params()
+  #if model_type.lower() == "gdn_conv_autoencoder":
+  #  return cga.params()
+  #if model_type.lower() == "gdn_conv_decoder":
+  #  return cgd.params()
   if model_type.lower() == "relu_autoencoder":
     return ra.params()
   assert False, (model_type+" is not a supported model_type")
