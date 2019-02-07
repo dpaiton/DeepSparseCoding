@@ -309,6 +309,7 @@ class Analyzer(object):
     return evals
 
   def evaluate_model_batch(self, batch_size, images, var_names):
+    #TODO have this function call model's evaluate_model_batch
     """
     Creates a session with the loaded model graph to run all tensors specified by var_names
     Runs in batches
@@ -1009,8 +1010,8 @@ class Analyzer(object):
               self.adv_loss = tf.negative(self.model.mlp_module.mean_loss)
             else:
               #Targeted attack
-              self.adv_loss = -tf.reduce_sum(tf.multiply(self.model.label_est,
-                tf.log(tf.clip_by_value(self.adv_target, self.model_params.eps, 1.0))))
+              self.adv_loss = -tf.reduce_sum(tf.multiply(self.model.adv_target,
+                tf.log(tf.clip_by_value(self.label_est, self.model_params.eps, 1.0))))
           elif(self.analysis_params.adversarial_attack_method == "carlini"):
             self.input_pert_loss = 0.5 * tf.reduce_sum(
               tf.square(tf.subtract(self.model.input_placeholder, self.adv_image)),
