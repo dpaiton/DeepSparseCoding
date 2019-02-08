@@ -21,6 +21,7 @@ class Model(object):
     self.make_dirs()
     self.init_logging()
     self.log_params()
+    self.add_step_counter_to_graph()
     self.build_graph()
     self.log_trainable_variables()
     self.load_schedule(params.schedule)
@@ -370,14 +371,16 @@ class Model(object):
           shape=self.get_input_shape(), name="input_data")
     return self.input_placeholder
 
-  #If build_graph gets called without parameters,
-  #will build placeholder first, then call build_graph_from_input
-  #Subclasses can overwrite this function to ignore this functionality
-  def build_graph(self):
+  def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
+
+  #If build_graph gets called without parameters,
+  #will build placeholder first, then call build_graph_from_input
+  #Subclasses can overwrite this function to ignore this functionality
+  def build_graph(self):
     self.build_graph_from_input(self.build_input_placeholder())
 
   def build_graph_from_input(self, input_node):
@@ -540,6 +543,57 @@ class Model(object):
     """
     pass
 
+  def evaluate_model_batch(self, batch_size, images, var_names=None, var_nodes=None):
+    """
+    Creates a session with the loaded model graph to run all tensors specified by var_names
+    Runs in batches
+    Outputs:
+      evals [dict] containing keys that match var_names and the values computed from the session run
+      Note that all var_names must have batch dimension in first dimension
+    Inputs:
+      batch_size scalar that defines the batch size to split images up into
+      images [np.ndarray] of shape (num_imgs, num_img_pixels)
+      var_names [list of str] list of strings containing the tf variable names to be evaluated
+    """
+    num_data = images.shape[0]
+    num_iterations = int(np.ceil(num_data / batch_size))
+
+    evals = {}
+
+    #^ is xor
+    assert (var_names is None) ^ (var_nodes is None),  \
+      ("Only one of var_names or var_nodes can be specified")
+
+    if(var_names is not None):
+      dict_keys = var_names
+      tensors = [self.graph.get_tensor_by_name(name) for name in var_names]
+    elif(var_nodes is not None):
+      dict_keys = var_nodes
+      tensors = var_nodes
+
+    for key in dict_keys:
+      evals[key] = []
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+
+    sess = tf.get_default_session()
+    for it in range(num_iterations):
+      batch_start_idx = int(it * batch_size)
+      batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))
+      batch_images = images[batch_start_idx:batch_end_idx, ...]
+      feed_dict = self.get_feed_dict(batch_images, is_test=True)
+      feed_dict = self.modify_input(feed_dict)
+      eval_list = sess.run(tensors, feed_dict)
+
+      for key, ev in zip(dict_keys, eval_list):
+        evals[key].append(ev)
+
+    #Concatenate all evals in batch dim
+    for key, val in evals.items():
+      evals[key] = np.concatenate(val, axis=0)
+    return evals
+
   #Functions that expose specific variables to outer classes
   #Defaults to raising not implemented error
   def get_total_loss(self):
@@ -550,4 +604,6 @@ class Model(object):
 
   def modify_input(self, feed_dict):
     return feed_dict
+
+
 

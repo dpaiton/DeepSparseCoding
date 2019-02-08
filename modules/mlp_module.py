@@ -207,15 +207,17 @@ class MlpModule(object):
               pred_fn_pairs = {
                 tf.equal(label_count, tf.constant(0.0)): f1, # all labels are 'ignore'
                 tf.greater(label_count, tf.constant(0.0)): f2} # mean over non-ignore labels
+              self.sum_loss = self.cross_entropy_loss
               self.mean_loss = tf.case(pred_fn_pairs,
                 default=f2, exclusive=True, name="mean_cross_entropy_loss")
             elif(self.loss_type == "l2"):
+              #TODO allow for semi-supervised learning with l2 loss
               # Want to avg over batch, sum over the rest
               reduc_dim = list(range(1, len(self.label_tensor.shape)))
               # Label_tensor sometimes can depend on trainable variables
               labels = tf.stop_gradient(self.label_tensor)
-              self.mean_loss = tf.reduce_mean(
-                tf.reduce_sum(tf.square(labels - self.layer_list[-1]),
-                axis=reduc_dim))
+              self.l2_loss = tf.reduce_sum(tf.square(labels - self.layer_list[-1]), axis=reduc_dim)
+              self.sum_loss = tf.reduce_sum(self.l2_loss)
+              self.mean_loss = tf.reduce_mean(self.l2_loss)
           self.supervised_loss = self.mean_loss
         self.total_loss = self.supervised_loss

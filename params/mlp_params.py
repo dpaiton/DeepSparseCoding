@@ -33,6 +33,7 @@ class params(BaseParams):
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.val_on_cp = True
+    self.eval_batch_size = 1000
     self.modify_on_val = False
     self.cp_load = False
     self.cp_load_name = "pretrain"
@@ -44,7 +45,6 @@ class params(BaseParams):
     self.gen_plot_int = 1e4
     self.save_plots = True
     #Adversarial params
-    self.train_on_adversarial = True
     self.adversarial_num_steps = 40
     self.adversarial_attack_method = "kurakin_untargeted"
     self.adversarial_step_size = 0.01
@@ -85,12 +85,20 @@ class params(BaseParams):
       self.patch_size_x = self.patch_size_y
       self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
       self.batch_norm = [None, None, None, None]
-      self.dropout = [1.0, 1.0, 0.4, 1.0] # TODO: Set dropout defaults somewhere
+      self.dropout = [1.0, 1.0, 1.0, 1.0] # TODO: Set dropout defaults somewhere
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
+
+      self.schedule.append(self.schedule[0].copy())
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        #Train on clean examples for 100 timesteps first
+        if(sched_idx == 0):
+          self.schedule[sched_idx]["num_batches"] = int(1000)
+          self.schedule[sched_idx]["train_on_adversarial"] = False
+        else:
+          self.schedule[sched_idx]["num_batches"] = int(1e5)
+          self.schedule[sched_idx]["train_on_adversarial"] = True
         self.schedule[sched_idx]["weight_lr"] = 1e-4
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.90
