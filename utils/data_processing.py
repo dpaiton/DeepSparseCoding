@@ -1009,6 +1009,23 @@ def norm_weights(weights):
     norm_weights = (weights - weights_mean) / (weights_max - weights_min)
     return norm_weights
 
+def one_hot_to_dense(one_hot_labels):
+  """
+  converts a matrix of one-hot labels to a list of dense labels
+  Parameters:
+      one_hot_labels: one-hot numpy array of shape [num_labels, num_classes]
+  Returns:
+      dense_labels: 1D numpy array of labels
+          The integer value indicates the class and 0 is assumed to be a class.
+          The integer class also indicates the index for the corresponding one-hot representation
+  """
+  one_hot_labels = np.asarray(one_hot_labels)
+  num_labels, num_classes = one_hot_labels.shape
+  dense_labels = np.zeros(num_labels)
+  dense_labels = np.squeeze(np.asarray([np.argwhere(one_hot_labels[label_id,:]==1).item()
+    for label_id in range(num_labels)]))
+  return dense_labels
+
 def dense_to_one_hot(labels_dense, num_classes):
   """
   converts a (np.ndarray) vector of dense labels to a (np.ndarray) matrix of one-hot labels
