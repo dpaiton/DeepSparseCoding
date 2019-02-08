@@ -543,7 +543,9 @@ class Model(object):
     """
     pass
 
-  def evaluate_model_batch(self, batch_size, images, var_names=None, var_nodes=None):
+  #Labels are needed by adv examples
+  def evaluate_model_batch(self, batch_size, images, labels=None,
+    var_names=None, var_nodes=None):
     """
     Creates a session with the loaded model graph to run all tensors specified by var_names
     Runs in batches
@@ -582,7 +584,12 @@ class Model(object):
       batch_start_idx = int(it * batch_size)
       batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))
       batch_images = images[batch_start_idx:batch_end_idx, ...]
-      feed_dict = self.get_feed_dict(batch_images, is_test=True)
+      if(labels is not None):
+        batch_labels = labels[batch_start_idx:batch_end_idx, ...]
+      else:
+        batch_labels = None
+
+      feed_dict = self.get_feed_dict(batch_images, input_labels=batch_labels, is_test=True)
       feed_dict = self.modify_input(feed_dict)
       eval_list = sess.run(tensors, feed_dict)
 

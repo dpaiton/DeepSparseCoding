@@ -130,7 +130,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
           val_labels = data["val"].labels
 
           est_labels = model.evaluate_model_batch(params.eval_batch_size,
-            val_images, var_nodes=[model.label_est])[model.label_est]
+            val_images, labels = val_labels, var_nodes=[model.label_est])[model.label_est]
 
           val_accuracy = np.mean(np.argmax(val_labels, -1) == np.argmax(est_labels, -1))
           stat_dict = {"validation_accuracy":val_accuracy}
