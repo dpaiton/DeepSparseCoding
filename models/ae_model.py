@@ -22,6 +22,7 @@ class AeModel(Model):
     """
     super(AeModel, self).load_params(params)
     self.input_shape = [None, self.params.num_pixels]
+    self.num_latent = self.params.output_channels[-1]
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.activation_functions]
 
