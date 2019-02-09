@@ -34,7 +34,6 @@ class params(BaseParams):
     self.max_cp_to_keep = 1
     self.val_on_cp = True
     self.eval_batch_size = 1000
-    self.modify_on_val = False
     self.cp_load = False
     self.cp_load_name = "pretrain"
     self.cp_load_step = None
@@ -55,8 +54,6 @@ class params(BaseParams):
     self.adversarial_clip_range = [0.0, 1.0]
     #Tradeoff in carlini attack between input pert and target
     self.carlini_recon_mult = 1
-    #Determines if we modify the input during validation
-    self.modify_on_val = False
 
 
     # If a scalar is provided then this value is broadcast to all trainable variables
