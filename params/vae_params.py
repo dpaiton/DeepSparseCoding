@@ -9,8 +9,8 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "vae"
-    self.model_name = "deep_vae_test"
-    self.version = "4.0"
+    self.model_name = "deep_vae"
+    self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = True
@@ -55,6 +55,7 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.optimizer = "adam"#"annealed_sgd"#"adam"
       self.batch_size = 100
       self.log_int = 100
       self.cp_int = 5e5
@@ -63,13 +64,13 @@ class params(BaseParams):
       self.output_channels = [768, 512, 50]
       self.recon_loss_type = "mse" # "mse" or "crossentropy"
       self.activation_functions = ["lrelu", "lrelu", "identity", "lrelu", "lrelu", "sigmoid"]
-      self.dropout = [0.8, 0.8, 1.0, 0.8, 0.8, 1.0]
+      self.dropout = [0.8, 0.8, 1.0, 1.0, 0.8, 0.8]
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["num_batches"] = int(1e6)
+        self.schedule[schedule_idx]["weight_lr"] = 1e-4
         self.schedule[schedule_idx]["kld_mult"] = 1.0
         self.schedule[schedule_idx]["sparse_mult"] = 0.0
         self.schedule[schedule_idx]["decay_mult"] = 3e-4
-        self.schedule[schedule_idx]["weight_lr"] = 1e-4
         self.schedule[schedule_idx]["decay_steps"] = int(0.5*self.schedule[schedule_idx]["num_batches"])
         self.schedule[schedule_idx]["decay_rate"] = 0.9
 

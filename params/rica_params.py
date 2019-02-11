@@ -56,7 +56,7 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.version = "1.0"
+      self.version = "0.0"
       self.batch_size = 50000
       self.vectorize_data = True
       self.rescale_data = True

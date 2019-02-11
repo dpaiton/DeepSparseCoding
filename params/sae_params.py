@@ -11,7 +11,7 @@ class params(BaseParams):
     super(params, self).__init__()
     self.model_type = "sae"
     self.model_name = "sae_768"
-    self.version = "13.0"
+    self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
@@ -42,14 +42,14 @@ class params(BaseParams):
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = None
-    self.log_int = 100
+    self.log_int = 500
     self.log_to_file = True
     self.gen_plot_int = int(1e5)
     self.save_plots = True
     self.schedule = [
       {"weights": None,
       "num_batches": int(1e5),
-      "decay_mult": 0.08,
+      "decay_mult": 0.01,
       "sparse_mult": 5.0, # How important is the sparse loss (tradeoff parameter)
       "target_act": 0.05, # Target firing rate for neurons
       "weight_lr": 0.002,
@@ -61,8 +61,8 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.cp_int = int(1e5)
-      self.gen_plot_int = int(1e5)
+      self.cp_int = int(5e5)
+      self.gen_plot_int = int(5e5)
       self.batch_size = 100
       self.vectorize_data = True
       self.rescale_data = True
@@ -73,13 +73,13 @@ class params(BaseParams):
       self.activation_functions = ["sigmoid", "identity"]
       self.dropout = [1.0]*2*len(self.output_channels)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(3e5)
-        self.schedule[sched_idx]["weight_lr"] = 0.001
-        self.schedule[sched_idx]["decay_mult"] = 0.06
-        self.schedule[sched_idx]["target_act"] = 0.10
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["weight_lr"] = 0.0001
+        self.schedule[sched_idx]["decay_mult"] = 0.02
+        self.schedule[sched_idx]["target_act"] = 0.15
         self.schedule[sched_idx]["sparse_mult"] = 0.10
-        self.schedule[sched_idx]["decay_steps"] = int(0.3*self.schedule[sched_idx]["num_batches"])
-        self.schedule[sched_idx]["decay_rate"] = 0.70
+        self.schedule[sched_idx]["decay_steps"] = int(0.6*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.50
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"

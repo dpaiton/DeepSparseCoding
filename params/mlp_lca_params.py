@@ -63,7 +63,7 @@ class params(BaseParams):
     # Others
     self.cp_int = 10000
     self.val_on_cp = True
-    self.max_cp_to_keep = None
+    self.max_cp_to_keep = 1
     self.cp_load = True
     self.cp_load_name = "lca_768_mnist"
     self.cp_load_step = None # latest checkpoint
@@ -104,8 +104,8 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
-      self.cp_int = 5e4
-      self.gen_plot_int = 5e4
+      self.cp_int = 1e3
+      self.gen_plot_int = 1e5
       # LCA params
       self.num_neurons = 768
       self.train_on_recon = True # if False, train on LCA latent activations
@@ -151,6 +151,13 @@ class params(BaseParams):
         self.max_pool = [False]*3
         self.max_pool_ksize = [None]*3
         self.max_pool_strides = [None]*3
+        self.schedule[0]["weights"] = [
+          "layer0/fc_w_0:0",
+          "layer0/fc_b_0:0",
+          "layer1/fc_w_1:0",
+          "layer1/fc_b_1:0",
+          "layer2/fc_w_2:0",
+          "layer2/fc_b_2:0"]
         self.schedule[0]["num_batches"] = int(2e5)
         self.schedule[0]["sparse_mult"] = 0.25
         self.schedule[0]["weight_lr"] = 1e-5
