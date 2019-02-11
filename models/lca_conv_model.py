@@ -33,7 +33,7 @@ class LcaConvModel(LcaModel):
     module = LcaConvModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
       self.params.num_steps, self.params.patch_size_y, self.params.patch_size_x,
-      self.params.stride_y, self.params.stride_x, self.params.eps, name="lca_conv")
+      self.params.stride_y, self.params.stride_x, self.params.eps, name_scope="lca_conv")
     return module
 
   def generate_plots(self, input_data, input_labels=None):

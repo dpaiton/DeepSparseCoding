@@ -40,7 +40,7 @@ class MlpListaModel(Model):
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
+      self.params.eps, loss_type="softmax_cross_entropy", name_scope="MLP")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -81,9 +81,8 @@ class MlpListaModel(Model):
           self.a = self.a_list[-1]
 
         # MLP module
-        with tf.name_scope("mlp_module") as scope:
-          self.mlp_module = self.build_mlp_module(self.a)
-          self.trainable_variables.update(self.mlp_module.trainable_variables)
+        self.mlp_module = self.build_mlp_module(self.a)
+        self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.name_scope("loss") as scope:
           self.total_loss =  self.mlp_module.total_loss

@@ -35,7 +35,7 @@ class MlpVaeModel(Model):
   def build_vae_module(self, input_node):
     module = VaeModule(input_node, self.params.vae_output_channels, self.sparse_mult,
       self.decay_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
-      self.params.noise_level)
+      self.params.noise_level, name_scope="VAE")
     return module
 
   def build_mlp_module(self, input_node):
@@ -43,7 +43,7 @@ class MlpVaeModel(Model):
       self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
+      self.params.eps, loss_type="softmax_cross_entropy", name_scope="MLP")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -69,24 +69,23 @@ class MlpVaeModel(Model):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        with tf.name_scope("vae_module"):
-          self.vae_module = self.build_vae_module(input_node)
-          self.trainable_variables.update(self.vae_module.trainable_variables)
-        with tf.name_scope("mlp_module"):
-          if self.params.train_on_recon:
-            if self.params.layer_types[0] == "conv":
-              data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
-              mlp_input = tf.reshape(self.vae_module.reconstruction, shape=data_shape)
-            elif self.params.layer_types[0] == "fc":
-              mlp_input = self.vae_module.reconstruction
-            else:
-              assert False, ("params.layer_types must be 'fc' or 'conv'")
-          else: # train on VAE latent encoding
-            assert self.params.layer_types[0] == "fc", (
-              "MLP must have FC layers to train on VAE activity")
-            mlp_input = self.vae_module.a
-          self.mlp_module = self.build_mlp_module(mlp_input)
-          self.trainable_variables.update(self.mlp_module.trainable_variables)
+        self.vae_module = self.build_vae_module(input_node)
+        self.trainable_variables.update(self.vae_module.trainable_variables)
+
+        if self.params.train_on_recon:
+          if self.params.layer_types[0] == "conv":
+            data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
+            mlp_input = tf.reshape(self.vae_module.reconstruction, shape=data_shape)
+          elif self.params.layer_types[0] == "fc":
+            mlp_input = self.vae_module.reconstruction
+          else:
+            assert False, ("params.layer_types must be 'fc' or 'conv'")
+        else: # train on VAE latent encoding
+          assert self.params.layer_types[0] == "fc", (
+            "MLP must have FC layers to train on VAE activity")
+          mlp_input = self.vae_module.a
+        self.mlp_module = self.build_mlp_module(mlp_input)
+        self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.name_scope("loss") as scope:
           #Loss switches based on train_vae flag

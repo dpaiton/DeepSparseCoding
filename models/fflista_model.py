@@ -29,7 +29,7 @@ class FfListaModel(Model):
   def build_lca_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name="lca")
+      self.params.num_steps, self.params.eps, name_scope="LCA")
     return module
 
   def build_mlp_module(self, input_node):
@@ -37,7 +37,7 @@ class FfListaModel(Model):
       self.params.output_channels, self.params.batch_norm, self.params.dropout,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="l2", name="mlp")
+      self.params.eps, loss_type="l2", name_scope="LCA")
     return module
 
   def build_graph_from_input(self, input_node):

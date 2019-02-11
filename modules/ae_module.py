@@ -4,7 +4,7 @@ from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
   def __init__(self, data_tensor, output_channels, decay_mult, act_funcs, dropout,
-    tie_decoder_weights):
+    tie_decoder_weights, name_scope="AE"):
     """
     Autoencoder module
     Inputs:
@@ -13,9 +13,12 @@ class AeModule(object):
       decay_mult: weight decay multiplier
       act_funcs: activation functions
       dropout: specifies the keep probability or None
+      name_scope: specifies the name_scope for the module
     Outputs:
       dictionary
     """
+    self.name_scope = name_scope
+
     data_ndim = len(data_tensor.get_shape().as_list())
     assert data_ndim == 2, (
       "Module requires datal_tensor to have shape [batch, num_pixels]")
@@ -123,37 +126,38 @@ class AeModule(object):
     return dec_u_list, dec_w_list, dec_b_list
 
   def build_graph(self):
-    with tf.name_scope("weight_inits") as scope:
-      self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
-      self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
+    with tf.name_scope(self.name_scope) as scope:
+      with tf.name_scope("weight_inits") as scope:
+        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
+        self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
 
-    self.u_list = [self.data_tensor]
-    self.w_list = []
-    self.b_list = []
-    enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
-      self.act_funcs[:self.num_encoder_layers], self.w_shapes[:self.num_encoder_layers])
-    self.u_list += enc_u_list
-    self.w_list += enc_w_list
-    self.b_list += enc_b_list
+      self.u_list = [self.data_tensor]
+      self.w_list = []
+      self.b_list = []
+      enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
+        self.act_funcs[:self.num_encoder_layers], self.w_shapes[:self.num_encoder_layers])
+      self.u_list += enc_u_list
+      self.w_list += enc_w_list
+      self.b_list += enc_b_list
 
-    with tf.variable_scope("inference") as scope:
-      self.a = tf.identity(enc_u_list[-1], name="activity")
+      with tf.variable_scope("inference") as scope:
+        self.a = tf.identity(enc_u_list[-1], name="activity")
 
-    dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
-      self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
-    self.u_list += dec_u_list
-    if not self.tie_decoder_weights:
-      self.w_list += dec_w_list
-    self.b_list += dec_b_list
+      dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
+        self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
+      self.u_list += dec_u_list
+      if not self.tie_decoder_weights:
+        self.w_list += dec_w_list
+      self.b_list += dec_b_list
 
-    for w,b in zip(self.w_list, self.b_list):
-      self.trainable_variables[w.name] = w
-      self.trainable_variables[b.name] = b
+      for w,b in zip(self.w_list, self.b_list):
+        self.trainable_variables[w.name] = w
+        self.trainable_variables[b.name] = b
 
-    with tf.name_scope("output") as scope:
-      self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
+      with tf.name_scope("output") as scope:
+        self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
-    with tf.name_scope("loss") as scope:
-      self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
-        "weight_decay_loss":self.compute_weight_decay_loss()}
-      self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
+      with tf.name_scope("loss") as scope:
+        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+          "weight_decay_loss":self.compute_weight_decay_loss()}
+        self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")

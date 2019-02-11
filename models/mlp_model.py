@@ -34,12 +34,11 @@ class MlpModel(Model):
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
 
-        #TODO: with tf.name_scope("mlp_module"):
         self.mlp_module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
           self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
           self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
           self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-          self.params.eps, name="MLP")
+          self.params.eps, name_scope="MLP")
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         #TODO analysis depends on this name for label ests. Can we abstract this?

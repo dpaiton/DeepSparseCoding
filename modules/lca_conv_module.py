@@ -7,7 +7,7 @@ import pdb
 class LcaConvModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,
     rectify_a, num_steps, patch_size_y, patch_size_x,
-    stride_y, stride_x, eps, name="LCA_Conv"):
+    stride_y, stride_x, eps, name_scope="LCA_Conv"):
 
     #Set these before calling init
     self.patch_size_y = patch_size_y
@@ -16,7 +16,7 @@ class LcaConvModule(LcaModule):
     self.stride_x = stride_x
 
     super(LcaConvModule, self).__init__(data_tensor, num_neurons, sparse_mult, step_size,
-        thresh_type, rectify_a, num_steps, eps, name)
+        thresh_type, rectify_a, num_steps, eps, name_scope)
 
   def calc_shapes(self):
     assert (self.num_pixels_y % self.stride_y == 0), (
