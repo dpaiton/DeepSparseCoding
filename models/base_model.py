@@ -29,7 +29,6 @@ class Model(object):
     self.log_schedule()
     self.add_optimizers_to_graph()
     self.add_initializer_to_graph()
-
     self.construct_savers()
 
   def check_schedule_type(self, val, target_type, target_len):
