@@ -56,6 +56,8 @@ class MlpModel(Model):
         self.adv_module.build_adversarial_ops(self.label_est,
           label_tensor=self.label_placeholder, model_logits=self.get_encodings(),
           loss=self.mlp_module.sum_loss)
+    #Add adv module ignore list to model ignore list
+    self.full_model_load_ignore.extend(self.adv_module.ignore_load_var_list)
 
   def build_mlp_module(self, input_node):
     module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
@@ -98,9 +100,9 @@ class MlpModel(Model):
     return self.mlp_module.total_loss
 
   def modify_input(self, feed_dict):
-    #Always reset adv variable here to allow for different shapes of inputs
     sess = tf.get_default_session()
-    sess.run(self.adv_module.reset_adv_var, feed_dict=feed_dict)
+    #Always reset adv variable here to allow for different shapes of inputs
+    #sess.run(self.adv_module.reset, feed_dict=feed_dict)
 
     #If adversarial module is built, construct adversarial examples here
     if(feed_dict[self.train_on_adversarial]):
@@ -110,6 +112,7 @@ class MlpModel(Model):
         labels = feed_dict[self.label_placeholder],
         recon_mult = self.params.carlini_recon_mult,
         rand_state=None, target_generation_method="random")
+      #TODO This might be redundent
       feed_dict[self.use_adv_input] = True
     else:
       feed_dict[self.use_adv_input] = False
@@ -121,6 +124,13 @@ class MlpModel(Model):
       feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
     else:
       feed_dict[self.dropout_keep_probs] = self.params.dropout
+
+    #train_on_adversarial is not built in analyzers, so only set this var if this exists
+    if(hasattr(self, 'train_on_adversarial')):
+      if(feed_dict[self.train_on_adversarial]):
+        feed_dict[self.use_adv_input] = True
+      else:
+        feed_dict[self.use_adv_input] = False
 
     return feed_dict
 
@@ -142,9 +152,6 @@ class MlpModel(Model):
       adv_feed_dict[self.use_adv_input] = True
       nadv_feed_dict = feed_dict.copy()
       nadv_feed_dict[self.use_adv_input] = False
-      feed_dict = adv_feed_dict
-    else:
-      feed_dict[self.use_adv_input] = False
 
     current_step = np.array(self.global_step.eval())
     logits_vals = sess.run(self.get_encodings(), feed_dict)
@@ -206,14 +213,11 @@ class MlpModel(Model):
     super(MlpModel, self).generate_plots(input_data, input_labels)
     # TODO: there is a lot of variability in the MLP - which plots are general?
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    train_on_adversarial = feed_dict[self.train_on_adversarial]
-    if(train_on_adversarial):
-      feed_dict[self.use_adv_input] = True
-    else:
-      feed_dict[self.use_adv_input] = False
 
     eval_list = [self.global_step, self.get_encodings()] # how to get first layer weights?
-    if(train_on_adversarial == True):
+
+    train_on_adversarial = feed_dict[self.train_on_adversarial]
+    if(train_on_adversarial):
       eval_list += [self.adv_module.get_adv_input()]
 
     eval_out = tf.get_default_session().run(eval_list, feed_dict)

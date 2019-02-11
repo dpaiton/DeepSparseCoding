@@ -5,14 +5,13 @@ from utils.trainable_variable_dict import TrainableVariableDict
 from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
-  def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, kld_mult,
+  def __init__(self, data_tensor, output_channels, decay_mult, kld_mult,
     act_funcs, dropout, tie_decoder_weights, noise_level=0, recon_loss_type="mse"):
     """
     Variational Autoencoder module
     Inputs:
       data_tensor
       output_channels [list of ints] A list of channels to make, also defines number of layers
-      sparse_mult [float] tradeoff multiplier for latent sparsity loss
       decay_mult [float] tradeoff multiplier for weight decay loss
       kld_mult [float] tradeoff multiplier for latent variational kld loss
       act_funcs [list of functions] activation functions
@@ -30,7 +29,6 @@ class VaeModule(AeModule):
     else:
       self.corrupt_data = data_tensor
     self.recon_loss_type = recon_loss_type
-    self.sparse_mult = sparse_mult
     self.kld_mult = kld_mult
     super(VaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
       dropout, tie_decoder_weights)
@@ -52,13 +50,6 @@ class VaeModule(AeModule):
       latent_loss = self.kld_mult * tf.reduce_mean(-0.5 * tf.reduce_sum(1.0 + 2.0 * a_log_std_sq
         - tf.square(a_mean) - tf.exp(2.0 * a_log_std_sq), reduc_dim))
     return latent_loss
-
-  def compute_sparse_loss(self, a_in):
-    with tf.name_scope("unsupervised"): # TODO: change to loss from sae? look into this
-      reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
-      act_l1 = tf.reduce_mean(tf.reduce_sum(tf.abs(a_in), axis=reduc_dim))
-      sparse_loss = self.sparse_mult * act_l1
-    return sparse_loss
 
   def build_graph(self):
     with tf.name_scope("weight_inits") as scope:

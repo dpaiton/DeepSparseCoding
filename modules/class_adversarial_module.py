@@ -44,7 +44,7 @@ class ClassAdversarialModule(object):
     with tf.name_scope("input_var"):
       #Adversarial pertubation
       self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
-        dtype=tf.float32, trainable=True, validate_shape=False)
+        dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
 
       self.ignore_load_var_list.append(self.adv_var)
       self.reset = self.adv_var.initializer

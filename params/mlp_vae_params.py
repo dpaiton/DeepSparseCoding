@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_vae"
-    self.model_name = "mlp_vae"
+    self.model_name = "mlp_vae_adv"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -31,10 +31,11 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     # VAE Params
-    self.vae_output_channels = [768, 50]
-    self.activation_functions = ["relu", "identity", "relu", "identity"]
+    self.vae_output_channels = [768]
+    self.activation_functions = ["lrelu", "sigmoid"]
     self.ae_dropout = [1.0]*2*len(self.vae_output_channels)
     self.noise_level = 0.01 # variance of noise added to the input data
+    self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_decoder_weights = False
     self.optimizer = "adam"
     # MLP Params
@@ -52,25 +53,32 @@ class params(BaseParams):
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
+    #Adversarial params
+    self.adversarial_num_steps = 40
+    self.adversarial_attack_method = "kurakin_untargeted"
+    self.adversarial_step_size = 0.01
+    self.adversarial_max_change = 0.3
+    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
+    self.adversarial_clip = True
+    #TODO get these params from other params
+    self.adversarial_clip_range = [0.0, 1.0]
+    #Tradeoff in carlini attack between input pert and target
+    self.carlini_recon_mult = 1
     # Others
     self.cp_int = 10000
     self.val_on_cp = True
     self.max_cp_to_keep = None
-    self.cp_load = False
+    self.cp_load = True
     self.cp_load_name = "vae_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = [
-        "w_enc_2_std:0",
-        "b_enc_2_std:0",
+        "w_enc_1_std:0",
+        "b_enc_1_std:0",
         "layer0/w_0:0",
         "layer0/b_0:0",
         "layer1/w_1:0",
         "layer1/b_1:0",
-        "layer3/w_3:0",
-        "layer3/b_3:0",
-        "layer4/w_4:0",
-        "layer4/b_4:0",
         ]
     self.log_int = 100
     self.log_to_file = True
@@ -81,7 +89,6 @@ class params(BaseParams):
       #{"weights": None,
       #"train_vae": True,
       #"num_batches": int(3e5),
-      #"sparse_mult": 0.0,
       #"decay_mult": 0.0,
       #"kld_mult": 1/self.batch_size,
       #"weight_lr": 0.001,
@@ -92,10 +99,36 @@ class params(BaseParams):
       #Only training MLP weights, not VAE
       #TODO change weight names
       #TODO make option to train only mlp weights in schedule
-      {"weights": None,
+      {"weights": [
+        "layer0/conv_w_0:0",
+        "layer0/conv_b_0:0",
+        "layer1/conv_w_1:0",
+        "layer1/conv_b_1:0",
+        "layer2/fc_w_2:0",
+        "layer2/fc_b_2:0",
+        "layer3/fc_w_3:0",
+        "layer3/fc_b_3:0"],
+      "train_on_adversarial": False,
+      "train_vae": False,
+      "num_batches": int(1000),
+      "decay_mult": 0.0,
+      "kld_mult": 1/self.batch_size,
+      "weight_lr": 0.01,
+      "decay_steps": int(1e4*0.8),
+      "decay_rate": 0.8,
+      "staircase": True},
+      {"weights": [
+        "layer0/conv_w_0:0",
+        "layer0/conv_b_0:0",
+        "layer1/conv_w_1:0",
+        "layer1/conv_b_1:0",
+        "layer2/fc_w_2:0",
+        "layer2/fc_b_2:0",
+        "layer3/fc_w_3:0",
+        "layer3/fc_b_3:0"],
+      "train_on_adversarial": True,
       "train_vae": False,
       "num_batches": int(1e4),
-      "sparse_mult": 0.01,
       "decay_mult": 0.0,
       "kld_mult": 1/self.batch_size,
       "weight_lr": 0.01,
@@ -130,11 +163,11 @@ class params(BaseParams):
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
       # NOTE schedule index will change if vae training is happening
-      self.schedule[0]["num_batches"] = int(2e4)
-      self.schedule[0]["sparse_mult"] = 0.21
-      self.schedule[0]["weight_lr"] = 1e-4
-      self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
-      self.schedule[0]["decay_rate"] = 0.90
+      self.schedule[1]["num_batches"] = int(2e4)
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["weight_lr"] = 1e-4
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.90
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -160,7 +193,6 @@ class params(BaseParams):
       self.max_pool_ksize = [(1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), None, None]
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.21
         self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
@@ -178,6 +210,5 @@ class params(BaseParams):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["kld_mult"] = 1.0
       self.schedule[sched_idx]["decay_mult"] = 0.0
-      self.schedule[sched_idx]["sparse_mult"] = 0.0
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4

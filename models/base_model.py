@@ -235,7 +235,7 @@ class Model(object):
     """Get variables for loading"""
     all_vars = tf.global_variables()
     if self.params.cp_load_var is None:
-      load_v = all_vars
+      load_v = [v for v in all_vars if v not in self.full_model_load_ignore]
     else:
       load_v = []
       for weight in self.params.cp_load_var:

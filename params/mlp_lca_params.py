@@ -97,7 +97,15 @@ class params(BaseParams):
       #"staircase": True},
       #Training MLP on LCA recons
       #Only training MLP weights, not VAE
-      {"weights": None,
+      {"weights": [
+        "layer0/conv_w_0:0",
+        "layer0/conv_b_0:0",
+        "layer1/conv_w_1:0",
+        "layer1/conv_b_1:0",
+        "layer2/fc_w_2:0",
+        "layer2/fc_b_2:0",
+        "layer3/fc_w_3:0",
+        "layer3/fc_b_3:0"],
       "train_lca": False,
       "train_on_adversarial": False,
       "num_batches": int(1000),
@@ -106,7 +114,15 @@ class params(BaseParams):
       "decay_steps": int(1e4*0.8),
       "decay_rate": 0.8,
       "staircase": True},
-      {"weights": None,
+      {"weights": [
+        "layer0/conv_w_0:0",
+        "layer0/conv_b_0:0",
+        "layer1/conv_w_1:0",
+        "layer1/conv_b_1:0",
+        "layer2/fc_w_2:0",
+        "layer2/fc_b_2:0",
+        "layer3/fc_w_3:0",
+        "layer3/fc_b_3:0"],
       "train_lca": False,
       "train_on_adversarial": True,
       "num_batches": int(1e4),
@@ -148,15 +164,6 @@ class params(BaseParams):
         self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
         # NOTE schedule index will change if lca training is happening
         for sched_idx in range(len(self.schedule)):
-          self.schedule[sched_idx]["weights"] = [
-            "layer0/conv_w_0:0",
-            "layer0/conv_b_0:0",
-            "layer1/conv_w_1:0",
-            "layer1/conv_b_1:0",
-            "layer2/fc_w_2:0",
-            "layer2/fc_b_2:0",
-            "layer3/fc_w_3:0",
-            "layer3/fc_b_3:0"]
           self.schedule[sched_idx]["sparse_mult"] = 0.19
           self.schedule[sched_idx]["weight_lr"] = 1e-4
           self.schedule[sched_idx]["decay_steps"] = int(0.5*self.schedule[0]["num_batches"])

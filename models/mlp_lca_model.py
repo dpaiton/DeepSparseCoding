@@ -110,12 +110,6 @@ class MlpLcaModel(MlpModel):
 
     feed_dict = self.get_feed_dict(input_data, input_labels)
 
-    train_on_adversarial = feed_dict[self.train_on_adversarial]
-    if(train_on_adversarial):
-      feed_dict[self.use_adv_input] = True
-    else:
-      feed_dict[self.use_adv_input] = False
-
     eval_list = [self.lca_module.loss_dict["recon_loss"],
       self.lca_module.loss_dict["sparse_loss"],
       self.lca_module.a,
@@ -160,11 +154,6 @@ class MlpLcaModel(MlpModel):
     super(MlpLcaModel, self).generate_plots(input_data, input_labels)
 
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    train_on_adversarial = feed_dict[self.train_on_adversarial]
-    if(train_on_adversarial):
-      feed_dict[self.use_adv_input] = True
-    else:
-      feed_dict[self.use_adv_input] = False
 
     eval_list = [self.global_step, self.lca_module.w,
       self.lca_module.reconstruction, self.lca_module.a]

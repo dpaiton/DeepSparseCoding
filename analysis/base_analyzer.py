@@ -143,7 +143,7 @@ class Analyzer(object):
         with self.model.graph.as_default():
           input_node = self.model.build_input_placeholder()
           with tf.name_scope("placeholders") as scope:
-            #This is a swith used internally to use clean or adv examples
+            #This is a switch used internally to use clean or adv examples
             self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
           #Building adv module here with adv_params
           self.class_adv_module = ClassAdversarialModule(input_node, self.use_adv_input,
@@ -154,6 +154,7 @@ class Analyzer(object):
             clip_range=self.analysis_params.adversarial_clip_range,
             attack_method = self.analysis_params.adversarial_attack_method,
             eps=self.model_params.eps, name="class_adversarial")
+
       self.model.build_graph_from_input(self.class_adv_module.adv_image)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():

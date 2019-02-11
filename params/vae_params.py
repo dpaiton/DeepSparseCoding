@@ -44,7 +44,6 @@ class params(BaseParams):
       {"num_batches": int(3e5),
       "weights": None,
       "decay_mult": 0.0,
-      "sparse_mult": 0.0,
       "kld_mult": 1.0,
       "weight_lr": 0.0005,
       "decay_steps": int(3e5*0.8),
@@ -69,7 +68,6 @@ class params(BaseParams):
         self.schedule[schedule_idx]["num_batches"] = int(1e6)
         self.schedule[schedule_idx]["weight_lr"] = 1e-4
         self.schedule[schedule_idx]["kld_mult"] = 1.0
-        self.schedule[schedule_idx]["sparse_mult"] = 0.0
         self.schedule[schedule_idx]["decay_mult"] = 3e-4
         self.schedule[schedule_idx]["decay_steps"] = int(0.5*self.schedule[schedule_idx]["num_batches"])
         self.schedule[schedule_idx]["decay_rate"] = 0.9
