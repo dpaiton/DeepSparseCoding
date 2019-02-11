@@ -10,8 +10,8 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "sae"
-    self.model_name = "sae"
-    self.version = "0.0"
+    self.model_name = "sae_768"
+    self.version = "13.0"
     self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
@@ -49,7 +49,7 @@ class params(BaseParams):
     self.schedule = [
       {"weights": None,
       "num_batches": int(1e5),
-      "decay_mult": 0.008,
+      "decay_mult": 0.08,
       "sparse_mult": 5.0, # How important is the sparse loss (tradeoff parameter)
       "target_act": 0.05, # Target firing rate for neurons
       "weight_lr": 0.002,
@@ -74,10 +74,10 @@ class params(BaseParams):
       self.dropout = [1.0]*2*len(self.output_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(3e5)
-        self.schedule[sched_idx]["decay_mult"] = 0.03
-        self.schedule[sched_idx]["sparse_mult"] = 0.15
-        self.schedule[sched_idx]["target_act"] = 0.3
         self.schedule[sched_idx]["weight_lr"] = 0.001
+        self.schedule[sched_idx]["decay_mult"] = 0.06
+        self.schedule[sched_idx]["target_act"] = 0.10
+        self.schedule[sched_idx]["sparse_mult"] = 0.10
         self.schedule[sched_idx]["decay_steps"] = int(0.3*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.70
 

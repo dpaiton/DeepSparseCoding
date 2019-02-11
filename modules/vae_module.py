@@ -49,14 +49,14 @@ class VaeModule(AeModule):
   def compute_latent_loss(self, a_mean, a_log_std_sq):
     with tf.name_scope("latent"):
       reduc_dim = list(range(1, len(a_mean.shape))) # Want to avg over batch, sum over the rest
-      latent_loss = self.kld_mult * -0.5 * tf.reduce_mean(tf.reduce_sum(1 + a_log_std_sq
-        - tf.square(a_mean) - tf.exp(a_log_std_sq), reduc_dim))
+      latent_loss = self.kld_mult * tf.reduce_mean(-0.5 * tf.reduce_sum(1.0 + 2.0 * a_log_std_sq
+        - tf.square(a_mean) - tf.exp(2.0 * a_log_std_sq), reduc_dim))
     return latent_loss
 
   def compute_sparse_loss(self, a_in):
     with tf.name_scope("unsupervised"): # TODO: change to loss from sae? look into this
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
-      act_l1 = tf.reduce_mean(tf.reduce_sum(tf.square(a_in), axis=reduc_dim))
+      act_l1 = tf.reduce_mean(tf.reduce_sum(tf.abs(a_in), axis=reduc_dim))
       sparse_loss = self.sparse_mult * act_l1
     return sparse_loss
 
@@ -86,6 +86,7 @@ class VaeModule(AeModule):
     self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
 
     self.latent_mean_activation = enc_u_list[-1]
+    self.a = self.latent_mean_activation # alias for AE model
 
     self.latent_std_activation = tf.add(tf.matmul(enc_u_list[-2], self.w_enc_std),
       self.b_enc_std)
@@ -103,7 +104,6 @@ class VaeModule(AeModule):
     act = tf.identity(act, name="activity")
 
     self.u_list.append(act)
-    self.a = self.u_list[-1]
 
     dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
       self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
@@ -121,5 +121,5 @@ class VaeModule(AeModule):
     with tf.name_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "weight_decay_loss":self.compute_weight_decay_loss(),
-        "latent_loss":self.compute_latent_loss(self.a, self.latent_std_activation)}
+        "latent_loss":self.compute_latent_loss(self.latent_mean_activation, self.latent_std_activation)}
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")

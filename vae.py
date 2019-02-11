@@ -26,7 +26,6 @@ class VAE(Model):
     return [None]+self.input_shape
 
   def encoder(self, X_in):
-    activation = activation_picker(self.params.activation_functions[0])
     with tf.variable_scope("encoder", reuse=None):
       X = tf.reshape(X_in, shape=[-1, 28, 28, 1])
       x = tf.layers.conv2d(X, filters=64, kernel_size=4, strides=2, padding='same',
@@ -128,7 +127,8 @@ class VAE(Model):
     super(VAE, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels, is_test=True)
     feed_dict[self.Y] = input_data
-    eval_list = [self.global_step, self.dec]
+    w_enc = self.graph.get_tensor_by_name("inference/encoder/conv2d/kernel:0")
+    eval_list = [self.global_step, self.dec, w_enc]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
@@ -144,6 +144,11 @@ class VAE(Model):
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=(self.params.disp_dir+"recons"+filename_suffix))
+    weights = eval_out[2].transpose((3,0,1,2))
+    fig = pf.plot_data_tiled(weights, normalize=False,
+      title="Dictionary at step "+current_step, vmin=None, vmax=None,
+      save_filename=(self.params.disp_dir+"enc_weights_v"+self.params.version+"-"
+      +current_step.zfill(5)+".png"))
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(VAE, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
@@ -167,6 +172,7 @@ class params(BaseParams):
     self.num_samples = 1000
     self.input_max = 100
     self.output_channels = [64, 64, 64, 8]
+    self.optimizer = "adam"#"annealed_sgd"
     self.activation_functions = ["lrelu", "lrelu", "lrelu", "lrelu", "lrelu", "relu", "relu", "relu", "sigmoid"]
     self.dropout = [0.8]*5
 
@@ -176,7 +182,7 @@ class params(BaseParams):
     self.schedule = [
       {"num_batches": int(3e4),
        "weights": None,
-       "weight_lr": 1e-3,
+       "weight_lr": 5e-4,
        "decay_steps": int(3e4*0.8),
        "decay_rate": 0.5,
        "staircase": True}]
@@ -227,26 +233,26 @@ with tf.Session(config=config, graph=vae_model.graph) as sess:
   # Generate images
   randoms = [np.random.normal(0, 1, vae_model.n_latent) for _ in range(10)]
   feed_dict = {vae_model.sampled: randoms}
-  feed_dict[vae_model.dropout_keep_probs] = [1.0,] * len(vae_model.params.dropout)
-  imgs = sess.run(dec, feed_dict)
+  feed_dict[vae_model.dropout_keep_probs] = [1.0] * len(vae_model.params.dropout)
+  imgs = sess.run(vae_model.dec, feed_dict)
   imgs = np.stack([np.reshape(imgs[i], [28, 28]) for i in range(len(imgs))], axis=0)
   imgs = (imgs - np.min(imgs)) / (np.max(imgs) - np.min(imgs))
-  gen_imgs_fig = pf.plot_data_tiled(imgs, normalize=False,
+  gen_imgs_fig = pf.plot_data_tiled(imgs[..., None], normalize=False,
     title="Generated images", vmin=0, vmax=1,
     save_filename=(vae_model.params.disp_dir+"generated_images"
-    +"_v"+self.params.version+"_"+current_step.zfill(5)+".png"))
+    +"_v"+vae_model.params.version+"_"+str(current_step).zfill(5)+".png"))
 
 log_file = vae_model.logger.filename
 logger = Logger(filename=None)
 log_text = logger.load_file(log_file)
 model_stats = logger.read_stats(log_text)
 keys = [
-  "w0_lr",
-  "w0_grad_max_mean_min",
+  "recon_loss",
+  "latent_loss",
   "total_loss"]
 labels = [
-  "Learning Rate",
-  "Weight Grads",
+  "Latent Loss",
+  "Recon Loss",
   "Total Loss"]
 stats_fig = pf.plot_stats(model_stats, keys=keys, labels=labels, figsize=(8,8),
   save_filename=vae_model.params.disp_dir+vae_model.params.model_name+"_train_stats.png")
