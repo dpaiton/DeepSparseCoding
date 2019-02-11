@@ -21,6 +21,7 @@ class Model(object):
     self.make_dirs()
     self.init_logging()
     self.log_params()
+    self.add_step_counter_to_graph()
     self.build_graph()
     self.log_trainable_variables()
     self.load_schedule(params.schedule)
@@ -370,14 +371,16 @@ class Model(object):
           shape=self.get_input_shape(), name="input_data")
     return self.input_placeholder
 
-  #If build_graph gets called without parameters,
-  #will build placeholder first, then call build_graph_from_input
-  #Subclasses can overwrite this function to ignore this functionality
-  def build_graph(self):
+  def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
+
+  #If build_graph gets called without parameters,
+  #will build placeholder first, then call build_graph_from_input
+  #Subclasses can overwrite this function to ignore this functionality
+  def build_graph(self):
     self.build_graph_from_input(self.build_input_placeholder())
 
   def build_graph_from_input(self, input_node):

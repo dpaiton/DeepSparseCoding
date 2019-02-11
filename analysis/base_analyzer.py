@@ -179,6 +179,7 @@ class Analyzer(object):
     self.model.make_dirs()
     self.model.init_logging()
     self.model.log_params()
+    self.model.add_step_counter_to_graph()
     #Call own build graph to call model's build graph
     self.build_graph()
     self.model.load_schedule(params.schedule)
