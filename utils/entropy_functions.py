@@ -52,9 +52,16 @@ def prob_est(latent_vals, thetas, tri_locs):
         1e-9+tf.expand_dims(zeta(thetas), axis=0, name="expanded_zeta"), name="prob_est")
     return prob_est
 
-def safe_log(probs, eps=1e-9):
-  logprob = tf.where(tf.less_equal(probs, tf.zeros_like(probs)+eps, name="prob_le_zero"),
-    tf.zeros_like(probs), tf.log(probs, name="log_prob"), name="safelog_where")
+def safe_log(probs, eps=1e-9, units="nats"):
+  if units == "nats":
+    logprob = tf.where(tf.less_equal(probs, tf.zeros_like(probs)+eps, name="prob_le_zero"),
+      tf.zeros_like(probs), tf.log(probs, name="log_prob"), name="safelog_where")
+  elif units == "bits":
+    tf_log_2 = tf.divide(tf.log(probs), tf.log(tf.constant(2.0)), name="log_2")
+    logprob = tf.where(tf.less_equal(probs, tf.zeros_like(probs)+eps, name="prob_le_zero"),
+      tf.zeros_like(probs), tf_log_2, name="safelog_where")
+  else:
+    assert False, ("units param must be 'nats' or 'bits'.")
   return logprob
 
 def log_likelihood(latent_vals, thetas, tri_locs):
