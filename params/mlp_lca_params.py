@@ -74,6 +74,7 @@ class params(BaseParams):
     # Others
     self.cp_int = 10000
     self.val_on_cp = True
+    self.eval_batch_size = 100
     self.max_cp_to_keep = None
     self.cp_load = True
     self.cp_load_name = "lca_768_mnist"
@@ -159,8 +160,10 @@ class params(BaseParams):
           self.schedule[sched_idx]["sparse_mult"] = 0.19
           self.schedule[sched_idx]["weight_lr"] = 1e-4
           self.schedule[sched_idx]["decay_steps"] = int(0.5*self.schedule[0]["num_batches"])
-          self.schedule[sched_idx]["decay_rate"] = 0.50
-        self.schedule[-1]["num_batches"] = int(4e4)
+          #self.schedule[sched_idx]["decay_rate"] = 0.50
+          self.schedule[sched_idx]["decay_rate"] = 0.9
+        #self.schedule[-1]["num_batches"] = int(4e4)
+        self.schedule[-1]["num_batches"] = int(1e5)
       else:
         self.output_channels = [1200, 1200, self.num_classes]
         self.layer_types = ["fc"]*3
@@ -177,7 +180,8 @@ class params(BaseParams):
           self.schedule[sched_idx]["sparse_mult"] = 0.25
           self.schedule[sched_idx]["weight_lr"] = 1e-5
           self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[0]["num_batches"])
-          self.schedule[sched_idx]["decay_rate"] = 0.50
+          #self.schedule[sched_idx]["decay_rate"] = 0.50
+          self.schedule[sched_idx]["decay_rate"] = 0.9
         self.schedule[-1]["num_batches"] = int(2e5)
 
     elif data_type.lower() == "synthetic":
