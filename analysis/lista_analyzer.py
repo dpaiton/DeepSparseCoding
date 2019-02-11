@@ -8,7 +8,6 @@ class ListaAnalyzer(Analyzer):
   def __init__(self):
     super(ListaAnalyzer, self).__init__()
     self.var_names = [
-      "weights/w_0:0",
       "weights/w_enc:0",
       "weights/lateral_connectivity:0"]
 
@@ -17,7 +16,7 @@ class ListaAnalyzer(Analyzer):
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.analysis_params.do_basis_analysis:
-      self.bf_stats = self.basis_analysis(self.evals["weights/w_enc_mean:0"], save_info)
+      self.bf_stats = self.basis_analysis(self.evals["weights/w_enc:0"], save_info)
     if self.analysis_params.do_atas:
       self.atas, self.atcs = self.ata_analysis(images, self.evals["inference/activity:0"],
         save_info)

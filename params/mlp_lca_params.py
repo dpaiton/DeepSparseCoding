@@ -126,8 +126,8 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
-      self.cp_int = 5e4
-      self.gen_plot_int = 5e4
+      self.cp_int = 1e3
+      self.gen_plot_int = 1e5
       # LCA params
       self.num_neurons = 768
       self.train_on_recon = True # if False, train on LCA latent activations
