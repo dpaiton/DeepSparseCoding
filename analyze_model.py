@@ -57,48 +57,37 @@ class params(object):
     # Which dataset images to use for inference (None uses random)
     self.inference_img_indices = None
 
-    # Number of adversarial image updates
-    self.adversarial_num_steps = 10000 # Step size for adversarial attacks
+    #Adversarial params
+    self.adversarial_num_steps = 5000 # Step size for adversarial attacks
+    #self.adversarial_attack_method = "kurakin_untargeted"
+    #self.adversarial_attack_method = "kurakin_targeted"
+    self.adversarial_attack_method = "carlini_targeted"
 
-    #Kurakin params
-    #Attack method for adversarial attack, kurakin (iterative fsg) or carlini
-    #TODO: attack method should modify output filenames; both should be able to be run
-    #self.adversarial_attack_method = "kurakin"; self.save_info += "_kurakin" #FIXME
-    #self.adversarial_step_size = 0.0001 #Step size for kurakin
+    #To avoid overwriting
+    self.save_info += "_"+self.adversarial_attack_method
 
-    #Carlini params
-    self.adversarial_attack_method = "carlini"; self.save_info += "_carlini" #FIXME
-    self.adversarial_step_size = 0.001 #Step size for carlini
-
-    #How to pick Target class for class adversary analysis
-    #Options are "random", "untargeted", or "specified" for class attack
-    #Options are "random" or "specified" for recon attack
-    self.adversarial_target_method = "random"
-
-    #Flag to define if adversarial example can go beyond image range
+    self.adversarial_step_size = 0.001
+    self.adversarial_max_change = 0.3
+    #TODO support specified
+    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
     self.adversarial_clip = True
-    #Recon_mult tradeoff for carlini attack method
-    #Can be a list to sweep
-    #0 means ignore adv_recon loss, 1 means ignore input_pert loss
-    self.recon_mult = [1]#list(np.arange(.01, 1, 10))
-    #self.recon_mult = [.5]
-    #Batch size for adversarial examples
-    self.adversarial_batch_size = 800
-    self.adversarial_clip_min = 0.0
-    self.adversarial_clip_max = 1.0
+    self.adversarial_clip_range = [0.0, 1.0]
+    self.carlini_recon_mult = list(np.arange(.1, 1, .1))
+    #Interval at which to save adversarial examples to the npy file
+    self.adversarial_save_int = 100
+
+    self.eval_batch_size = 100
 
     #Specify which adv to use here
     #If none, use all
     self.adversarial_input_id = None
 
+    #TODO
     #Parameter for "specified" target_method
     #Only for class attack
     #Need to be a list or numpy array of size [adv_batch_size]
     self.adversarial_target_labels = None
 
-    # Will vary depending on preprocessing
-    #Interval at which to save adversarial examples to the npy file
-    self.adversarial_save_int = 50
 
     # Rescale inputs to match dataset scales used during training
     self.input_scale = 1.0

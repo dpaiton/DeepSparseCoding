@@ -28,11 +28,11 @@ class ClassAdversarialModule(object):
     self.attack_method = attack_method
     self.clip_range = clip_range
     self.eps = eps
+    #List of vars to ignore in savers/loaders
+    self.ignore_load_var_list = []
 
     self.name = str(name)
     self.build_init_graph()
-
-    #Define session to use for finding
 
   def build_init_graph(self):
     #These placeholders are here since they're only needed for construct adv examples
@@ -45,7 +45,10 @@ class ClassAdversarialModule(object):
       #Adversarial pertubation
       self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
         dtype=tf.float32, trainable=True, validate_shape=False)
-      self.reset_adv_var = self.adv_var.initializer
+
+      self.ignore_load_var_list.append(self.adv_var)
+      self.reset = self.adv_var.initializer
+
       #Here, adv_var has a fully dynamic shape. We reshape it to give the variable
       #a semi-dymaic shape (i.e., only batch dimension unknown)
       self.adv_var.set_shape([None,] + self.input_shape[1:])
@@ -68,12 +71,11 @@ class ClassAdversarialModule(object):
 
     with tf.name_scope("input_switch"):
       ##Switch between adv_image and input placeholder
-      self.adv_switch_input = tf.cond(self.use_adv_input,
-        true_fn = lambda: self.adv_image, false_fn = lambda: self.data_tensor,
-        strict=True)
-      #tiled_bool = self.use_adv_input * tf.ones(self.input_shape)
-      #self.adv_switch_input = tf.where(tiled_bool,
-      #  self.adv_image, self.data_tensor)
+      #Option to not use switch input if use_adv_input is None
+      if(self.use_adv_input is not None):
+        self.adv_switch_input = tf.cond(self.use_adv_input,
+          true_fn = lambda: self.adv_image, false_fn = lambda: self.data_tensor,
+          strict=True)
 
   def get_adv_input(self):
     return self.adv_switch_input
@@ -124,12 +126,18 @@ class ClassAdversarialModule(object):
         self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
         self.adv_update_op = self.adv_var.assign_add(
           self.step_size * self.adv_grad)
-      elif(self.attack_method == "carlini_untargeted"):
-        adv_opt = tf.train.AdamOptimizer(
+      elif(self.attack_method == "carlini_targeted"):
+        self.adv_opt = tf.train.AdamOptimizer(
           learning_rate = self.step_size)
-        self.adv_grad = adv_opt.compute_gradients(
+        self.adv_grad = self.adv_opt.compute_gradients(
           self.adv_loss, var_list=[self.adv_var])
-        self.adv_update_op = adv_opt.apply_gradients(self.adv_grad)
+        self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grad)
+        #Add adam vars to reset variable
+        initializer_ops = [v.initializer for v in self.adv_opt.variables()]
+        self.reset = tf.group(initializer_ops + [self.reset])
+        #Add adam vars to list of ignore vars
+        self.ignore_load_var_list.extend(self.adv_opt.variables())
+
 
   def generate_random_target_labels(self, input_labels, rand_state=None):
     input_classes = np.argmax(input_labels, axis=-1)
@@ -156,6 +164,7 @@ class ClassAdversarialModule(object):
     recon_mult=None, #For carlini attack
     rand_state=None,
     target_generation_method="random",
+    target_labels=None,
     save_int=None): #Will not save if None
 
     feed_dict = feed_dict.copy()
@@ -164,10 +173,15 @@ class ClassAdversarialModule(object):
       pass
     elif(self.attack_method == "kurakin_targeted"):
       #TODO allow for specified targets
-      assert(target_generation_method == "random")
-      feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)
+      if(target_generation_method == "random"):
+        feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)
+      else:
+        feed_dict[self.adv_target] = target_labels
     elif(self.attack_method == "carlini_targeted"):
-      feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)
+      if(target_generation_method == "random"):
+        feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)
+      else:
+        feed_dict[self.adv_target] = target_labels
       feed_dict[self.recon_mult] = recon_mult
     else:
       assert(False)
@@ -176,22 +190,34 @@ class ClassAdversarialModule(object):
     if(save_int is None):
       save_int = self.num_steps + 1
 
-    adversarial_images = []
-    adversarial_output = []
-
     #Reset input to orig image
     sess = tf.get_default_session()
-    sess.run(self.reset_adv_var, feed_dict=feed_dict)
+    sess.run(self.reset, feed_dict=feed_dict)
     #Always store orig image
-    [img, output] = sess.run([self.adv_image, self.label_est], feed_dict)
-    adversarial_images.append(img)
-    adversarial_output.append(output)
+    [orig_img, output, loss] = sess.run([self.adv_image, self.label_est, self.adv_loss],
+      feed_dict)
+    #Init vals
+    out_dict = {}
+    out_dict["step"] = [0]
+    out_dict["adv_images"] = [orig_img]
+    out_dict["adv_outputs"] = [output]
+    out_dict["adv_losses"] = [loss]
+
+    reduc_dim = tuple(range(1, len(orig_img.shape)))
+    out_dict["input_adv_mses"]= [np.mean((orig_img-orig_img)**2, axis=reduc_dim)]
+
     #calculate adversarial examples
     for step in range(self.num_steps):
       sess.run(self.adv_update_op, feed_dict)
-      if(step+1 % save_int == 0):
-        [img, output] = sess.run([self.adv_image, self.label_est], feed_dict)
-        adversarial_images.append(img)
-        adversarial_output.append(output)
+      if((step+1) % save_int == 0):
+        [adv_img, output, loss] = sess.run([self.adv_image, self.label_est, self.adv_loss], feed_dict)
+        #+1 since this is post update
+        #We do this here since we want to store the last step
+        out_dict["step"].append(step+1)
+        out_dict["adv_images"].append(adv_img)
+        out_dict["adv_outputs"].append(output)
+        out_dict["adv_losses"].append(loss)
+        #Everything but batch dim
+        out_dict["input_adv_mses"].append(np.mean((orig_img-adv_img)**2, axis=reduc_dim))
 
-    return adversarial_images, adversarial_output
+    return out_dict
