@@ -6,7 +6,7 @@ import pdb
 
 class LcaSubspaceModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size,
-    num_steps, num_groups, group_orth_mult, eps, name="LCA_Subspace"):
+    num_steps, num_groups, group_orth_mult, eps, name_scope="LCA_Subspace"):
 
     self.num_groups = num_groups
     self.group_orth_mult = group_orth_mult
@@ -28,17 +28,7 @@ class LcaSubspaceModule(LcaModule):
         self.group_assignments[neuron_id] = group_index
 
     super(LcaSubspaceModule, self).__init__(data_tensor, num_neurons, sparse_mult, step_size,
-        None, None, num_steps, eps, name)
-
-    with tf.variable_scope(self.inference_scope):
-      self.group_activity = tf.identity(self.group_amplitudes(self.u),
-        name="group_activity")
-      self.group_angles = tf.identity(self.group_directions(self.u,
-        self.reshape_groups_per_neuron(self.group_activity)), name="group_directions")
-    with tf.variable_scope(self.weight_scope):
-      self.group_weights = tf.reshape(self.w,
-        shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group],
-        name="group_weights")
+        None, None, num_steps, eps, name_scope)
 
   def reshape_groups_per_neuron(self, sigmas, name=None):
     """
@@ -111,3 +101,16 @@ class LcaSubspaceModule(LcaModule):
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss,
       "orthogonalization_loss":self.compute_group_orthogonalization_loss}
+
+  def build_graph(self):
+    super(LcaSubspaceModule, self).build_graph()
+    with tf.name_scope(self.name_scope) as scope:
+      with tf.variable_scope(self.inference_scope):
+        self.group_activity = tf.identity(self.group_amplitudes(self.u),
+          name="group_activity")
+        self.group_angles = tf.identity(self.group_directions(self.u,
+          self.reshape_groups_per_neuron(self.group_activity)), name="group_directions")
+      with tf.variable_scope(self.weight_scope):
+        self.group_weights = tf.reshape(self.w,
+          shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group],
+          name="group_weights")

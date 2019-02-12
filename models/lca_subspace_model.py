@@ -25,7 +25,7 @@ class LcaSubspaceModel(LcaModel):
   def build_module(self, input_node):
     module = LcaSubspaceModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.num_steps, self.params.num_groups, self.group_orth_mult,
-      self.params.eps, name="lca_subspace")
+      self.params.eps, name_scope="lca_subspace")
     return module
 
   def generate_plots(self, input_data, input_labels=None):

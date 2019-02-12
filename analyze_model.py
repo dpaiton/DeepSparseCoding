@@ -18,19 +18,19 @@ class params(object):
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
-    self.do_run_analysis = False
+    self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = False
+    self.do_evals = True
     # Dictionary fitting
-    self.do_basis_analysis = False
+    self.do_basis_analysis = True
     # LCA Inference analysis
     self.do_inference = False
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False # TODO: Broken for mlp_lca_mnist
+    self.do_recon_adversaries = False # TODO: broken for rica
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis

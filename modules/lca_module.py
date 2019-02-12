@@ -5,7 +5,7 @@ from modules.activations import lca_threshold
 
 class LcaModule(object):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,
-      rectify_a, num_steps, eps, name="LCA"):
+      rectify_a, num_steps, eps, name_scope="LCA"):
     """
     Locally Competitive Algorithm module
     Inputs:
@@ -17,7 +17,7 @@ class LcaModule(object):
       rectify_a
       num_steps
       eps
-      name
+      name_scope: specifies the name_scope for the module
     Outputs:
       dictionary
     """
@@ -25,8 +25,7 @@ class LcaModule(object):
     self.data_tensor = data_tensor
     self.check_data()
 
-    #TODO unused name variable - take it out?
-    self.name = str(name)
+    self.name_scope = name_scope
     self.num_neurons = num_neurons
     self.sparse_mult = sparse_mult
     self.step_size = step_size
@@ -96,35 +95,36 @@ class LcaModule(object):
     return sparse_loss
 
   def build_graph(self):
-    with tf.name_scope("constants") as scope:
-      u_full_shape = tf.stack([tf.shape(self.data_tensor)[0]]+self.u_shape)
-      self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
-      self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
-        dtype=tf.float32, name="u_noise")
+    with tf.name_scope(self.name_scope) as scope:
+      with tf.name_scope("constants") as scope:
+        u_full_shape = tf.stack([tf.shape(self.data_tensor)[0]]+self.u_shape)
+        self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
+        self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
+          dtype=tf.float32, name="u_noise")
 
-    w_norm_dim = list(range(len(self.w_shape)-1)) # normalize across input dim(s)
-    with tf.variable_scope("weights") as scope:
-      self.weight_scope = tf.get_variable_scope()
-      w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0,
-        stddev=0.5, dtype=tf.float32), axis=w_norm_dim, epsilon=self.eps, name="w_init")
-      self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
-        trainable=True)
-      self.trainable_variables[self.w.name] = self.w
+      w_norm_dim = list(range(len(self.w_shape)-1)) # normalize across input dim(s)
+      with tf.variable_scope("weights") as scope:
+        self.weight_scope = tf.get_variable_scope()
+        w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0,
+          stddev=0.5, dtype=tf.float32), axis=w_norm_dim, epsilon=self.eps, name="w_init")
+        self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
+          trainable=True)
+        self.trainable_variables[self.w.name] = self.w
 
-    with tf.name_scope("norm_weights") as scope:
-      self.norm_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=w_norm_dim,
-        epsilon=self.eps, name="row_l2_norm"))
+      with tf.name_scope("norm_weights") as scope:
+        self.norm_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=w_norm_dim,
+          epsilon=self.eps, name="row_l2_norm"))
 
-    with tf.variable_scope("inference") as scope:
-      self.inference_scope = tf.get_variable_scope()
-      u_list, a_list = self.infer_coefficients()
-      self.u = tf.identity(u_list[-1], name="u")
-      self.a = tf.identity(a_list[-1], name="activity")
+      with tf.variable_scope("inference") as scope:
+        self.inference_scope = tf.get_variable_scope()
+        u_list, a_list = self.infer_coefficients()
+        self.u = tf.identity(u_list[-1], name="u")
+        self.a = tf.identity(a_list[-1], name="activity")
 
-    with tf.name_scope("output") as scope:
-      self.reconstruction = self.build_decoder(self.a, name="reconstruction")
+      with tf.name_scope("output") as scope:
+        self.reconstruction = self.build_decoder(self.a, name="reconstruction")
 
-    with tf.name_scope("loss") as scope:
-      self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
-        "sparse_loss":self.compute_sparse_loss(self.a)}
-      self.total_loss = tf.add_n([val for val in self.loss_dict.values()], name="total_loss")
+      with tf.name_scope("loss") as scope:
+        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+          "sparse_loss":self.compute_sparse_loss(self.a)}
+        self.total_loss = tf.add_n([val for val in self.loss_dict.values()], name="total_loss")

@@ -195,9 +195,6 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
           self.memristor_std_eps = tf.placeholder(tf.float32, shape=self.memristor_noise_shape,
             name="memristor_std_eps")
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         with tf.variable_scope("probability_estimate") as scope:
           self.mle_thetas, self.theta_init = ef.construct_thetas(self.params.n_mem, self.params.num_triangles)
 

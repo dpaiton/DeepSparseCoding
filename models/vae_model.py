@@ -21,7 +21,7 @@ class VaeModel(AeModel):
     module = VaeModule(input_node, self.params.output_channels,
       self.decay_mult, self.kld_mult, self.act_funcs, self.dropout_keep_probs,
       self.params.tie_decoder_weights, self.params.noise_level,
-      self.params.recon_loss_type)
+      self.params.recon_loss_type, name_scope="VAE")
     return module
 
   def build_graph_from_input(self, input_node):

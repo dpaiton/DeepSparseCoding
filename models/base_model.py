@@ -12,7 +12,6 @@ class Model(object):
     self.params_loaded = False
     self.trainable_variables = TrainableVariableDict()
     self.graph = tf.Graph()
-
     self.full_model_load_ignore = []
 
   def setup(self, params):
@@ -29,7 +28,6 @@ class Model(object):
     self.log_schedule()
     self.add_optimizers_to_graph()
     self.add_initializer_to_graph()
-
     self.construct_savers()
 
   def check_schedule_type(self, val, target_type, target_len):

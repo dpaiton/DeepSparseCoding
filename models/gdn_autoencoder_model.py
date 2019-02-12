@@ -112,9 +112,6 @@ class GdnAutoencoderModel(Model):
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
           self.noise_var_mult = tf.placeholder(tf.float32, shape=(), name="noise_var_mult")
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         with tf.variable_scope("probability_estimate") as scope:
           self.mle_thetas, self.theta_init = ef.construct_thetas(self.params.num_neurons,
             self.params.num_triangles)

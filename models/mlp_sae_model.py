@@ -26,7 +26,7 @@ class MlpSaeModel(MlpModel):
   def build_sae_module(self, input_node):
     module = SaeModule(input_node, self.params.sae_output_channels, self.sparse_mult,
       self.decay_mult, self.target_act, self.act_funcs, self.ae_dropout_keep_probs,
-      self.params.tie_decoder_weights)
+      self.params.tie_decoder_weights, name_scope="SAE")
     return module
 
   def build_mlp_module(self, input_node):
@@ -36,7 +36,7 @@ class MlpSaeModel(MlpModel):
       self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="softmax_cross_entropy", name="MLP")
+      self.params.eps, loss_type="softmax_cross_entropy", name_scope="MLP")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -59,27 +59,23 @@ class MlpSaeModel(MlpModel):
 
         self.train_sae = tf.cast(self.train_sae, tf.float32)
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
+        self.sae_module = self.build_sae_module(input_node)
+        self.trainable_variables.update(self.sae_module.trainable_variables)
 
-        with tf.name_scope("sae_module"):
-          self.sae_module = self.build_sae_module(input_node)
-          self.trainable_variables.update(self.sae_module.trainable_variables)
-        with tf.name_scope("mlp_module"):
-          if self.params.train_on_recon:
-            if self.params.layer_types[0] == "conv":
-              data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
-              mlp_input = tf.reshape(self.sae_module.reconstruction, shape=data_shape)
-            elif self.params.layer_types[0] == "fc":
-              mlp_input = self.sae_module.reconstruction
-            else:
-              assert False, ("params.layer_types must be 'fc' or 'conv'")
-          else: # train on VAE latent encoding
-            assert self.params.layer_types[0] == "fc", (
-              "MLP must have FC layers to train on SAE activity")
-            mlp_input = self.sae_module.a
-          self.mlp_module = self.build_mlp_module(mlp_input)
-          self.trainable_variables.update(self.mlp_module.trainable_variables)
+        if self.params.train_on_recon:
+          if self.params.layer_types[0] == "conv":
+            data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
+            mlp_input = tf.reshape(self.sae_module.reconstruction, shape=data_shape)
+          elif self.params.layer_types[0] == "fc":
+            mlp_input = self.sae_module.reconstruction
+          else:
+            assert False, ("params.layer_types must be 'fc' or 'conv'")
+        else: # train on VAE latent encoding
+          assert self.params.layer_types[0] == "fc", (
+            "MLP must have FC layers to train on SAE activity")
+          mlp_input = self.sae_module.a
+        self.mlp_module = self.build_mlp_module(mlp_input)
+        self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.name_scope("loss") as scope:
           #Loss switches based on train_sae flag

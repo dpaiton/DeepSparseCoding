@@ -31,7 +31,7 @@ class AeModel(Model):
 
   def build_module(self, input_node):
     module = AeModule(input_node, self.params.output_channels, self.decay_mult, self.act_funcs,
-      self.dropout_keep_probs, self.params.tie_decoder_weights)
+      self.dropout_keep_probs, self.params.tie_decoder_weights, name_scope="AE")
     return module
 
   def build_graph_from_input(self, input_node):

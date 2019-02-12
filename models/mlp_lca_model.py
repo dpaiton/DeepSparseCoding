@@ -25,7 +25,7 @@ class MlpLcaModel(MlpModel):
   def build_lca_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name="LCA")
+      self.params.num_steps, self.params.eps, name_scope="LCA")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -47,22 +47,21 @@ class MlpLcaModel(MlpModel):
         with tf.name_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-        with tf.name_scope("lca_module"):
-          self.lca_module = self.build_lca_module(input_node)
-          self.trainable_variables.update(self.lca_module.trainable_variables)
-        with tf.name_scope("mlp_module"):
-          if self.params.train_on_recon:
-            if self.params.layer_types[0] == "conv":
-              data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
-              mlp_input = tf.reshape(self.lca_module.reconstruction, shape=data_shape)
-            elif self.params.layer_types[0] == "fc":
-              mlp_input = self.lca_module.reconstruction
-            else:
-              assert False, ("params.layer_types must be 'fc' or 'conv'")
-          else: # train on LCA latent encoding
-            assert self.params.layer_types[0] == "fc", (
-              "MLP must have FC layers to train on LCA activity")
-            mlp_input = self.lca_module.a
+        self.lca_module = self.build_lca_module(input_node)
+        self.trainable_variables.update(self.lca_module.trainable_variables)
+
+        if self.params.train_on_recon:
+          if self.params.layer_types[0] == "conv":
+            data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
+            mlp_input = tf.reshape(self.lca_module.reconstruction, shape=data_shape)
+          elif self.params.layer_types[0] == "fc":
+            mlp_input = self.lca_module.reconstruction
+          else:
+            assert False, ("params.layer_types must be 'fc' or 'conv'")
+        else: # train on LCA latent encoding
+          assert self.params.layer_types[0] == "fc", (
+            "MLP must have FC layers to train on LCA activity")
+          mlp_input = self.lca_module.a
 
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)

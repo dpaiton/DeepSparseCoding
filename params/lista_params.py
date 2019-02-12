@@ -90,7 +90,6 @@ class params(BaseParams):
         self.schedule[sched_idx]["weight_lr"] = 0.01
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
-        self.schedule[sched_idx]["weight_lr"] = 0.01
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"

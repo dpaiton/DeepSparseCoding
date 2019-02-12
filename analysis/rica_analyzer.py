@@ -16,9 +16,9 @@ class RicaAnalyzer(Analyzer):
     super(RicaAnalyzer, self).run_analysis(images, labels, save_info=save_info)
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
-    if self.do_basis_analysis:
+    if self.analysis_params.do_basis_analysis:
       self.bf_stats = self.basis_analysis(self.evals["weights/w:0"], save_info)
-    if self.do_atas:
+    if self.analysis_params.do_atas:
       self.atas, self.atcs = self.ata_analysis(images, self.evals["inference/activity:0"],
         save_info)
       self.noise_activity, self.noise_atas, self.noise_atcs = self.run_noise_analysis(save_info)

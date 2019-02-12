@@ -6,7 +6,7 @@ from modules.batch_normalization_module import BatchNormalizationModule
 class MlpModule(object):
   def __init__(self, data_tensor, label_tensor, layer_types, output_channels, batch_norm,
       dropout, max_pool, max_pool_ksize, max_pool_strides, patch_size_y, patch_size_x,
-      conv_strides, eps, loss_type="softmax_cross_entropy", name="MLP"):
+      conv_strides, eps, loss_type="softmax_cross_entropy", name_scope="MLP"):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
@@ -21,7 +21,7 @@ class MlpModule(object):
       batch_norm is a list of decay multipliers or None
       eps is a float
       loss_type is a string specifying the type of loss ("softmax_cross_entropy" or "l2")
-      name is a string
+      name_scope is a string
     Outputs:
       dictionary
     TODO: relu is hard coded, but should be a parameter that is passed to an activation module
@@ -67,7 +67,7 @@ class MlpModule(object):
     self.patch_size_x = patch_size_x
     self.conv_strides = conv_strides
     self.eps = eps
-    self.name = str(name)
+    self.name_scope = name_scope
 
     # computed params
     self.num_fc_layers = layer_types.count("fc")
@@ -180,7 +180,7 @@ class MlpModule(object):
     """
     Build an MLP TensorFlow Graph.
     """
-    with tf.name_scope(self.name) as scope:
+    with tf.name_scope(self.name_scope) as scope:
       with tf.name_scope("weight_inits") as scope:
         self.w_init = tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32)
         self.b_init = tf.initializers.constant(0.1, dtype=tf.float32)

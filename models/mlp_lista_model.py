@@ -23,6 +23,11 @@ class MlpListaModel(MlpModel):
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
+  def build_mlp_module(self, input_node):
+    assert self.params.layer_types[0] == "fc", (
+      "MLP must have FC layers to train on LISTA activity")
+    return super(MlpListaModel, self).build_mlp_module(input_node)
+
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
@@ -34,9 +39,6 @@ class MlpListaModel(MlpModel):
         with tf.name_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
-
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         # LISTA module
         with tf.name_scope("weight_inits") as scope:
@@ -62,9 +64,8 @@ class MlpListaModel(MlpModel):
           self.a = self.a_list[-1]
 
         # MLP module
-        with tf.name_scope("mlp_module") as scope:
-          self.mlp_module = self.build_mlp_module(self.a)
-          self.trainable_variables.update(self.mlp_module.trainable_variables)
+        self.mlp_module = self.build_mlp_module(self.a)
+        self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.name_scope("loss") as scope:
           self.total_loss =  self.mlp_module.total_loss
