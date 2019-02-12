@@ -67,6 +67,7 @@ class params(BaseParams):
     # Others
     self.cp_int = 10000
     self.val_on_cp = True
+    self.eval_batch_size = 100
     self.max_cp_to_keep = None
     self.cp_load = True
     self.cp_load_name = "vae_mnist"
