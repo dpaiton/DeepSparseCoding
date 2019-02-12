@@ -71,6 +71,7 @@ class DaeModule(AeModule):
     ramp_loss = tf.reduce_mean(tf.reduce_sum(self.bounds_slope
       * (tf.nn.relu(a_in - self.latent_max)
       + tf.nn.relu(self.latent_min - a_in)), axis=reduc_dim))
+    return ramp_loss
 
   def layer_maker(self, layer_id, input_tensor, activation_function, w_shape):
     """
@@ -225,7 +226,7 @@ class DaeModule(AeModule):
     with tf.name_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "weight_decay_loss":self.compute_weight_decay_loss(),
-        "entropy_loss":self.compute_entropy_loss(self.a)}
-        #"ramp_loss":self.compute_ramp_loss(a_noise)} SOMETHING WRONG WITH SHAPE FOR a_noise (or self.a) 
+        "entropy_loss":self.compute_entropy_loss(self.a),
+        "ramp_loss":self.compute_ramp_loss(self.a)} #SOMETHING WRONG WITH SHAPE FOR a_noise (or self.a) 
         # output of compute_ramp_loss is no longer same shape as other losses 
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")

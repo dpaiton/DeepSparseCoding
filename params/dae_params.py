@@ -75,9 +75,9 @@ class params(BaseParams):
     self.schedule = [
       {"num_batches": int(1e6),
       "weights": None,
-      "ent_mult": 0.1,
+      "entropy_mult": 0.1,
       "decay_mult": 0.03,
-      "noise_var_mult": 0.08,
+      "noise_variance_mult": 0.08,
       "weight_lr": 1e-5,
       "decay_steps": int(1e6*0.4),
       "decay_rate": 0.8,
