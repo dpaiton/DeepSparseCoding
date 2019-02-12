@@ -12,7 +12,6 @@ class Model(object):
     self.params_loaded = False
     self.trainable_variables = TrainableVariableDict()
     self.graph = tf.Graph()
-
     self.full_model_load_ignore = []
 
   def setup(self, params):

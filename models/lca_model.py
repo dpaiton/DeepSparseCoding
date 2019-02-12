@@ -44,11 +44,16 @@ class LcaModel(Model):
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
+        with tf.name_scope("inference") as scope:
+          self.a = tf.identity(self.get_encodings(), name="activity")
+
         with tf.name_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
 
         with tf.name_scope("output") as scope:
           self.decoder_recon = self.module.build_decoder(self.latent_input, name="latent_recon")
+          self.reconstruction = tf.identity(self.compute_recon_from_encoding(self.a),
+            name="reconstruction")
 
         with tf.name_scope("performance_metrics") as scope:
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.module.reconstruction)),

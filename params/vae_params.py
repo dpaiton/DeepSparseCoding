@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "vae"
-    self.model_name = "deep_vae"
+    self.model_name = "vae"#"deep_vae"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -61,10 +61,10 @@ class params(BaseParams):
       self.cp_int = 5e5
       self.gen_plot_int = 5e5
       self.noise_level = 0.00
-      self.output_channels = [768, 512, 50]
+      self.output_channels = [768]#[768, 512, 50]
       self.recon_loss_type = "mse" # "mse" or "crossentropy"
-      self.activation_functions = ["lrelu", "lrelu", "identity", "lrelu", "lrelu", "sigmoid"]
-      self.dropout = [0.8, 0.8, 1.0, 1.0, 0.8, 0.8]
+      self.activation_functions = ["relu", "sigmoid"]#["lrelu", "lrelu", "identity", "lrelu", "lrelu", "sigmoid"]
+      self.dropout = [1.0, 1.0]#[0.8, 0.8, 1.0, 1.0, 0.8, 0.8]
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["num_batches"] = int(1e6)
         self.schedule[schedule_idx]["weight_lr"] = 1e-4
