@@ -9,6 +9,7 @@ import tensorflow as tf
 import tensorflow_compression as tfc
 import pdb
 from modules.class_adversarial_module import ClassAdversarialModule
+from modules.recon_adversarial_module import ReconAdversarialModule
 
 class Analyzer(object):
   """
@@ -213,8 +214,12 @@ class Analyzer(object):
     self.model.sched_idx = 0
     self.model.log_schedule()
     self.model.construct_savers()
+    self.add_pre_init_ops_to_graph()
     self.model.add_optimizers_to_graph()
     self.model.add_initializer_to_graph()
+
+  def add_pre_init_ops_to_graph(self):
+    pass
 
   def run_analysis(self, images, labels=None, save_info=""):
     """
@@ -274,12 +279,14 @@ class Analyzer(object):
     recon_adversarial_file_loc = self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz"
     if os.path.exists(recon_adversarial_file_loc):
       data = np.load(recon_adversarial_file_loc)["data"].item()
+      self.steps_idx = data["steps_idx"]
       self.recon_adversarial_input_images = data["input_images"]
       self.adversarial_target_images = data["target_images"]
       self.adversarial_images = data["adversarial_images"]
       self.adversarial_recons = data["adversarial_recons"]
       self.analysis_params.adversarial_step_size = data["step_size"]
       self.analysis_params.adversarial_num_steps = data["num_steps"]
+      self.num_data = data["num_data"]
       self.analysis_params.adversarial_input_id = data["input_id"]
       self.analysis_params.adversarial_target_id = data["target_id"]
       self.adversarial_input_target_mses = data["input_target_mse"]
@@ -294,6 +301,7 @@ class Analyzer(object):
     class_adversarial_file_loc = self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
+      self.steps_idx = data["steps_idx"]
       self.class_adversarial_input_images = data["input_images"]
       self.adversarial_input_labels = data["input_labels"]
       self.adversarial_target_labels = data["target_labels"]
@@ -301,6 +309,7 @@ class Analyzer(object):
       self.adversarial_outputs = data["adversarial_outputs"]
       self.analysis_params.adversarial_step_size = data["step_size"]
       self.analysis_params.adversarial_num_steps = data["num_steps"]
+      self.num_data = data["num_data"]
       self.analysis_params.adversarial_input_id = data["input_id"]
       self.adversarial_input_adv_mses = data["input_adv_mses"]
       self.adversarial_target_output_losses = data["target_output_losses"]
@@ -850,10 +859,10 @@ class Analyzer(object):
 
     if(self.analysis_params.adversarial_attack_method == "kurakin_targeted"):
       #Not using recon_mult here, so set arb value
-      self.analysis_params.recon_mult = [0]
+      self.analysis_params.carlini_recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini_targeted"):
-      if(type(self.analysis_params.recon_mult) is not list):
-        self.analysis_params.recon_mult = [self.analysis_params.recon_mult]
+      if(type(self.analysis_params.carlini_recon_mult) is not list):
+        self.analysis_params.carlini_recon_mult = [self.analysis_params.carlini_recon_mult]
     else:
       assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
 
@@ -873,31 +882,37 @@ class Analyzer(object):
       feed_dict = self.model.get_feed_dict(input_images, is_test=True)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
-      for r_mult in self.analysis_params.recon_mult:
+      for r_mult in self.analysis_params.carlini_recon_mult:
         out_dict = self.recon_adv_module.construct_adversarial_examples(
           feed_dict, recon_mult=r_mult, target_generation_method="specified",
-          target_image=target_images,
+          target_images=target_images,
           save_int=self.analysis_params.adversarial_save_int)
 
+        steps = out_dict["step"]
         distances["input_recon_mses"].append(out_dict["input_recon_mses"])
         distances["input_adv_mses"].append(out_dict["input_adv_mses"])
-        distances["target_recon_mses"].append(out_dict["target_recon_mses")
+        distances["target_recon_mses"].append(out_dict["target_recon_mses"])
         distances["target_adv_mses"].append(out_dict["target_adv_mses"])
         distances["adv_recon_mses"].append(out_dict["adv_recon_mses"])
-        distances["target_adv_cos_similarities"].append(out_dict["target_adv_angles")
-        distances["input_adv_cos_similarities"].append(out_dict["input_adv_angles")
+        distances["target_adv_cos_similarities"].append(out_dict["target_adv_angles"])
+        distances["input_adv_cos_similarities"].append(out_dict["input_adv_angles"])
         all_adversarial_images.append(out_dict["adv_images"])
-        all_recons.append(out_dict["adv_recon")
-    return all_adversarial_images, all_recons, distances
+        all_recons.append(out_dict["adv_recon"])
+    return steps, all_adversarial_images, all_recons, distances
 
   def recon_adversary_analysis(self, images, labels=None, batch_size=1, input_id=None,
     target_method="random", target_id=None, save_info=""):
 
     #Default parameters
     if input_id is None:
-      input_id = np.arange(batch_size).astype(np.int32)
+      input_id = np.arange(images.shape[0]).astype(np.int32)
     else:
       input_id = np.array(input_id)
+
+    self.num_data = input_id.shape[0]
+    #If batch_size is None, do all in one batch
+    if batch_size is None:
+      batch_size = self.num_data
 
     input_images = images[input_id, ...].astype(np.float32)
     num_images = images.shape[0]
@@ -926,30 +941,84 @@ class Analyzer(object):
     elif(target_method == "specified"):
       assert(target_id is not None)
       target_id = np.array(target_id)
-      assert(target_id.shape[0] == batch_size)
+      assert(target_id.shape[0] == self.num_data)
     else:
       assert False, ("Allowed target methods for recon adversary are " +
         "\"random\" or \"specified\"")
 
-    #Define target label based on target method
-    target_images = images[target_id, ...].astype(np.float32)
-    stims = self.construct_recon_adversarial_stimulus(input_images,
-      target_images, step_size, num_steps)
-    self.adversarial_images, self.adversarial_recons, distances = stims
 
-    self.adversarial_input_target_mses = distances["input_target_mse"]
-    self.adversarial_input_recon_mses = distances["input_recon_mses"]
-    self.adversarial_input_adv_mses = distances["input_adv_mses"]
-    self.adversarial_target_recon_mses = distances["target_recon_mses"]
-    self.adversarial_target_adv_mses = distances["target_adv_mses"]
-    self.adversarial_adv_recon_mses = distances["adv_recon_mses"]
+    if(self.analysis_params.adversarial_attack_method == "kurakin_targeted"):
+      num_recon_mults = 1
+    elif(self.analysis_params.adversarial_attack_method == "carlini_targeted"):
+      num_recon_mults = len(self.analysis_params.carlini_recon_mult)
+    else:
+      assert False
+
+
+    #Make sure that the save interval is less than num steps, otherwise
+    #it won't store the adv exmaples
+    assert self.analysis_params.adversarial_save_int <= self.analysis_params.adversarial_num_steps,  \
+      ("Save interval must be <= adversarial_num_steps")
+
+    num_stored_steps = ((self.analysis_params.adversarial_num_steps)//self.analysis_params.adversarial_save_int) + 1
+
+    self.adversarial_input_target_mses = np.zeros((self.num_data))
+    self.adversarial_input_recon_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
+    self.adversarial_input_adv_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
+    self.adversarial_target_recon_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
+    self.adversarial_target_adv_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
+    self.adversarial_adv_recon_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
+    self.adversarial_images = np.zeros((num_recon_mults, num_stored_steps,) + input_images.shape)
+    self.adversarial_recons = np.zeros((num_recon_mults, num_stored_steps,) + input_images.shape)
+
+    num_iterations = int(np.ceil(self.num_data / batch_size))
+
+    target_images = images[target_id, ...].astype(np.float32)
+
+    for it in range(num_iterations):
+      batch_start_idx = int(it * batch_size)
+      batch_end_idx = int(np.min([batch_start_idx + batch_size, self.num_data]))
+      batch_input_images = input_images[batch_start_idx:batch_end_idx, ...]
+      batch_target_images = target_images[batch_start_idx:batch_end_idx, ...]
+
+      self.steps_idx, batch_adv_images, batch_adv_recons, distances = \
+        self.construct_recon_adversarial_stimulus(batch_input_images, batch_target_images)
+
+      #Store output variables
+      self.adversarial_input_target_mses[batch_start_idx:batch_end_idx] = \
+        np.array(distances["input_target_mse"])
+      self.adversarial_input_recon_mses[:, :, batch_start_idx:batch_end_idx] = \
+        np.array(distances["input_recon_mses"])
+      self.adversarial_input_adv_mses[:, :, batch_start_idx:batch_end_idx] = \
+        np.array(distances["input_adv_mses"])
+      self.adversarial_target_recon_mses[:, :, batch_start_idx:batch_end_idx] = \
+        np.array(distances["target_recon_mses"])
+      self.adversarial_target_adv_mses[:, :, batch_start_idx:batch_end_idx] = \
+        np.array(distances["target_adv_mses"])
+      self.adversarial_adv_recon_mses[:, :, batch_start_idx:batch_end_idx] = \
+        np.array(distances["adv_recon_mses"])
+      self.adversarial_images[:, :, batch_start_idx:batch_end_idx, ...] = \
+        np.array(batch_adv_images)
+      self.adversarial_recons[:, :, batch_start_idx:batch_end_idx, ...] = \
+        np.array(batch_adv_recons)
+
     self.recon_adversarial_input_images = input_images
     self.adversarial_target_images = target_images
-    out_dict = {"input_images": input_images, "target_images":target_images,
-      "adversarial_images":self.adversarial_images, "adversarial_recons":self.adversarial_recons,
-      "step_size":self.analysis_params.adversarial_step_size,
-      "num_steps":self.analysis_params.adversarial_step_size, "input_id":input_id, "target_id":target_id}
+
+    #Store everything in out dictionaries
+    out_dict = {}
+    out_dict["steps_idx"] = self.steps_idx
+    out_dict["input_images"] = input_images
+    out_dict["target_images"] = target_images
+    out_dict["adversarial_images"] = self.adversarial_images
+    out_dict["adversarial_recons"] = self.adversarial_recons
+    out_dict["num_data"] = self.num_data
+    out_dict["step_size"] = self.analysis_params.adversarial_step_size
+    out_dict["num_steps"] = self.analysis_params.adversarial_step_size
+    out_dict["input_id"] = input_id
+    out_dict["target_id"] = target_id
     out_dict.update(distances)
+
     np.savez(self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz", data=out_dict)
     self.analysis_logger.log_info("Adversary analysis is complete.")
     return self.adversarial_images, self.adversarial_recons, distances
@@ -997,7 +1066,7 @@ class Analyzer(object):
         mses["input_adv_mses"].append(out_dict["input_adv_mses"])
         mses["target_output_losses"].append(out_dict["adv_losses"])
 
-    return all_adv_images, all_adv_outputs, mses
+    return steps, all_adv_images, all_adv_outputs, mses
 
   def class_adversary_analysis(self, images, labels, batch_size=1, input_id=None,
       target_method="random", target_labels=None, save_info=""):
@@ -1012,10 +1081,10 @@ class Analyzer(object):
     else:
       input_id = np.array(input_id)
 
-    num_data = input_id.shape[0]
+    self.num_data = input_id.shape[0]
     #If batch_size is None, do all in one batch
     if batch_size is None:
-      batch_size = num_data
+      batch_size = self.num_data
 
     input_images = images[input_id, ...].astype(np.float32)
     input_labels = labels[input_id, ...].astype(np.float32)
@@ -1033,7 +1102,7 @@ class Analyzer(object):
     elif(target_method == "specified"):
       assert(target_labels is not None)
       target_labels = np.array(target_labels)
-      assert(target_labels.shape[0] == num_data)
+      assert(target_labels.shape[0] == self.num_data)
     else:
       assert False, ("Allowed target methods for classification adversary are " +
         "\"random\" or \"specified\"")
@@ -1059,18 +1128,18 @@ class Analyzer(object):
 
     #Make sure that the save interval is less than num steps, otherwise
     #it won't store the adv exmaples
-    assert self.analysis_params.adversarial_save_int <= num_steps,  \
+    assert self.analysis_params.adversarial_save_int <= self.analysis_params.adversarial_num_steps,  \
       ("Save interval must be <= adversarial_num_steps")
 
     #+1 since we always save the initial step
-    num_stored_steps = ((num_steps)//self.analysis_params.adversarial_save_int) + 1
+    num_stored_steps = ((self.analysis_params.adversarial_num_steps)//self.analysis_params.adversarial_save_int) + 1
 
     #TODO abstract this out into a "evaluate with batches" function
     #since vis_class_adv needs this as well
 
     #Output variables to store
     #In [num_recon_mults, num_steps, num_data]
-    self.adversarial_input_adv_mses = np.zeros((num_recon_mults, num_stored_steps, num_data))
+    self.adversarial_input_adv_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
     #In [num_recon_mults, num_steps], summed over batches
     self.adversarial_target_output_losses = np.zeros((num_recon_mults, num_stored_steps))
     #In [num_recon_mults, num_steps, num_data, ny, nx, nf]
@@ -1079,11 +1148,11 @@ class Analyzer(object):
     self.adversarial_outputs = np.zeros((num_recon_mults, num_stored_steps,) + input_labels.shape)
 
     #Split data into batches
-    num_iterations = int(np.ceil(num_data / batch_size))
+    num_iterations = int(np.ceil(self.num_data / batch_size))
 
     for it in range(num_iterations):
       batch_start_idx = int(it * batch_size)
-      batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))
+      batch_end_idx = int(np.min([batch_start_idx + batch_size, self.num_data]))
       batch_input_images = input_images[batch_start_idx:batch_end_idx, ...]
       batch_input_labels = input_labels[batch_start_idx:batch_end_idx, ...]
       if(target_labels is not None):
@@ -1091,7 +1160,7 @@ class Analyzer(object):
       else:
         batch_target_labels = None
 
-      batch_adv_images, batch_adv_outputs, mses =  \
+      self.steps_idx, batch_adv_images, batch_adv_outputs, mses =  \
         self.construct_class_adversarial_stimulus(batch_input_images, batch_input_labels,
         batch_target_labels)
 
@@ -1122,6 +1191,7 @@ class Analyzer(object):
 
     #Store everything in out dictionaries
     out_dict = {}
+    out_dict["steps_idx"] = self.steps_idx
     out_dict["input_images"] = input_images
     out_dict["input_labels"] = input_labels
     out_dict["target_labels"] = target_labels

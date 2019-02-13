@@ -155,7 +155,7 @@ class ReconAdversarialModule(object):
     out_dict["target_recon_mses"] = [dp.mse(target_images, recon)]
     out_dict["target_adv_mses"] = [dp.mse(target_images, orig_img)]
     out_dict["adv_recon_mses"] = [dp.mse(orig_img, recon)]
-    out_dict["target_adv_angles"] = [dp.cos_similarity(target_images, orig_img)
+    out_dict["target_adv_angles"] = [dp.cos_similarity(target_images, orig_img)]
     out_dict["input_adv_angles"] = [dp.cos_similarity(orig_img, orig_img)]
 
     #calculate adversarial examples
@@ -170,12 +170,12 @@ class ReconAdversarialModule(object):
         out_dict["adv_recon"].append(recon)
         out_dict["adv_losses"].append(loss)
 
-        out_dict["input_recon_mses"] = [dp.mse(orig_img, recon)]
-        out_dict["input_adv_mses"] = [dp.mse(orig_img, adv_img)]
-        out_dict["target_recon_mses"] = [dp.mse(target_images, recon)]
-        out_dict["target_adv_mses"] = [dp.mse(target_images, adv_img)]
-        out_dict["adv_recon_mses"] = [dp.mse(adv_img, recon)]
-        out_dict["target_adv_angles"] = [dp.cos_similarity(target_images, adv_img)
-        out_dict["input_adv_angles"] = [dp.cos_similarity(orig_img, adv_img)]
+        out_dict["input_recon_mses"].append(dp.mse(orig_img, recon))
+        out_dict["input_adv_mses"].append(dp.mse(orig_img, adv_img))
+        out_dict["target_recon_mses"].append(dp.mse(target_images, recon))
+        out_dict["target_adv_mses"].append(dp.mse(target_images, adv_img))
+        out_dict["adv_recon_mses"].append(dp.mse(adv_img, recon))
+        out_dict["target_adv_angles"].append(dp.cos_similarity(target_images, adv_img))
+        out_dict["input_adv_angles"].append(dp.cos_similarity(orig_img, adv_img))
 
     return out_dict

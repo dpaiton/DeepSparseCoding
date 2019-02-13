@@ -20,9 +20,9 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = True
+    self.do_evals = False
     # Dictionary fitting
-    self.do_basis_analysis = True
+    self.do_basis_analysis = False
     # LCA Inference analysis
     self.do_inference = False
     # Activity triggered averages
@@ -80,7 +80,7 @@ class params(object):
 
     #Specify which adv to use here
     #If none, use all
-    self.adversarial_input_id = None
+    self.adversarial_input_id = list(range(100))
 
     #TODO
     #Parameter for "specified" target_method
