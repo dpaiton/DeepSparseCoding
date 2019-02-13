@@ -8,6 +8,7 @@ class ClassAdversarialModule(object):
   def __init__(self, data_tensor, use_adv_input, num_classes, num_steps, step_size, max_step=None, clip_adv=True,
     clip_range = [0.0, 1.0], attack_method="kurakin_untargeted", eps=1e-8, variable_scope="class_adversarial"):
     """
+    TODO:
     Adversarial module
     Inputs:
       data_tensor
@@ -49,6 +50,8 @@ class ClassAdversarialModule(object):
           dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
 
         self.ignore_load_var_list.append(self.adv_var)
+        #TODO:
+        #NOTE: This will get overwritten in build_adersarialv_ops
         self.reset = self.adv_var.initializer
 
         #Here, adv_var has a fully dynamic shape. We reshape it to give the variable
@@ -87,7 +90,7 @@ class ClassAdversarialModule(object):
           self.adv_loss = -loss
         elif(self.attack_method == "kurakin_targeted"):
           self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
-            tf.log(tf.clip_by_value(label_est, self.eps, 1.0))))
+            tf.log(tf.clip_by_value(self.label_est, self.eps, 1.0))))
         elif(self.attack_method == "carlini_targeted"):
           self.input_pert_loss = 0.5 * tf.reduce_sum(
             tf.square(self.adv_var), name="input_perturbed_loss")
@@ -124,8 +127,7 @@ class ClassAdversarialModule(object):
       with tf.variable_scope("optimizer") as scope:
         if(self.attack_method == "kurakin_untargeted" or self.attack_method == "kurakin_targeted"):
           self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
-          self.adv_update_op = self.adv_var.assign_add(
-            self.step_size * self.adv_grad)
+          self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
         elif(self.attack_method == "carlini_targeted"):
           self.adv_opt = tf.train.AdamOptimizer(
             learning_rate = self.step_size)

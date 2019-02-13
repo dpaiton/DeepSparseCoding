@@ -563,6 +563,8 @@ class Model(object):
 
     evals = {}
 
+    assert images.shape[0] == labels.shape[0], (
+      "Images and labels must be the same shape, not %g and %g"%(images.shape[0], labels.shape[0]))
     #^ is xor
     assert (var_names is None) ^ (var_nodes is None),  \
       ("Only one of var_names or var_nodes can be specified")
@@ -592,9 +594,13 @@ class Model(object):
 
       feed_dict = self.get_feed_dict(batch_images, input_labels=batch_labels, is_test=True)
       sch = self.get_schedule()
-      if("train_on_adversarial" in sch):
-        if(sch["train_on_adversarial"]):
-          self.modify_input(feed_dict)
+      #TODO: (see train_model.py)
+      #if("train_on_adversarial" in sch):
+      #  if(sch["train_on_adversarial"]):
+      #    self.modify_input(feed_dict)
+      if("train_on_adversarial" not in sch):
+        sch["train_on_adversarial"] = False
+      self.modify_input(feed_dict, sch["train_on_adversarial"])
       eval_list = sess.run(tensors, feed_dict)
 
       for key, ev in zip(dict_keys, eval_list):
@@ -615,6 +621,3 @@ class Model(object):
 
   def modify_input(self, feed_dict):
     return feed_dict
-
-
-

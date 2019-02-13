@@ -12,7 +12,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp"
-    self.model_name = "mlp_adv"
+    self.model_name = "mlp"#"mlp_adv"
     self.version = "0.0"
     self.optimizer = "annealed_sgd"
     self.vectorize_data = False
@@ -39,7 +39,6 @@ class params(BaseParams):
     self.cp_load_step = None
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["w1"] #None means load everything
-    self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 1e4
     self.save_plots = True
@@ -59,16 +58,16 @@ class params(BaseParams):
     # If a scalar is provided then this value is broadcast to all trainable variables
     self.schedule = [
       {"num_batches": int(1e4),
-      "train_on_adversarial": True,
+      "train_on_adversarial": False,#True,
       "weights": None,
       "weight_lr": 0.01,
       "decay_steps": int(1e4*0.5),
       "decay_rate": 0.8,
       "staircase": True}]
 
-    self.schedule = [self.schedule[0].copy()] + self.schedule
-    self.schedule[0]["train_on_adversarial"] = False
-    self.schedule[0]["num_batches"] = 1000
+    #self.schedule = [self.schedule[0].copy()] + self.schedule
+    #self.schedule[0]["train_on_adversarial"] = False
+    #self.schedule[0]["num_batches"] = 1000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -79,6 +78,9 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
+      self.log_int = 100
+      self.cp_int = 500
+      self.gen_plot_int = 1e3
       self.num_classes = 10
       self.optimizer = "adam"
       self.layer_types = ["conv", "conv", "fc", "fc"]
@@ -91,11 +93,11 @@ class params(BaseParams):
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
-
-      self.schedule[1]["num_batches"] = int(1e5)
+      #self.schedule[1]["num_batches"] = int(1e5)
       for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(1e4)
         self.schedule[sched_idx]["weight_lr"] = 1e-4
-        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.90
 
     elif data_type.lower() == "synthetic":
