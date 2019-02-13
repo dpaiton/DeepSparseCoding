@@ -2,37 +2,37 @@ import numpy as np
 import tensorflow as tf
 import utils.entropy_functions as ef
 from modules.ae_module import AeModule
-from ops.init_ops import GDNGammaInitializer 
+from ops.init_ops import GDNGammaInitializer
 from modules.activations import activation_picker
 
 class DaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, ent_mult, decay_mult, bounds_slope, latent_min,
     latent_max, num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
     gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights, conv=False, 
-    conv_strides=None, patch_y=None, patch_x=None, name_scope="DAE"):
+    conv_strides=None, patch_y=None, patch_x=None, name_scope="dae"):
     """
     Divisive Autoencoder module
     Inputs:
       data_tensor
       output_channels: A list of channels to make, also defines number of layers
-      ent_mult: tradeoff multiplier for latent entropy loss 
+      ent_mult: tradeoff multiplier for latent entropy loss
       decay_mult: tradeoff multiplier for weight decay loss
-      bounds_slope: slope for out of bounds loss (two relus back to back) 
+      bounds_slope: slope for out of bounds loss (two relus back to back)
       latent_min: min value you want for latent variable (max value for left relu)
       latent_max: max value you want for latent variable (max value for right relu)
-      num_triangles: number of triangle kernals to use for the entropy estimator 
-      mle_step_size: size of maximimum likelihood estimator steps 
+      num_triangles: number of triangle kernals to use for the entropy estimator
+      mle_step_size: size of maximimum likelihood estimator steps
       num_mle_steps: number of max likelihood estimation steps for the entropy estimator
       num_quant_bins: number of bins you want for quantization
         e.g. if min is -50 and max is 50 and num_quant_bins is 100, will qauntize on integers
         formula: quant noise drawn from
         U(-(latent_max-latent_min)/(2*num_quant_bins), (latent_max-latent_min)/(2*num_quant_bins))
       noise_var_mult: multiplier to scale noise bounds that is added to the latent code
-      gdn_w_init_const: diagonal of gdn gamma initializer 
-      gdn_b_init_const: diagonal of gdn beta initializer 
+      gdn_w_init_const: diagonal of gdn gamma initializer
+      gdn_b_init_const: diagonal of gdn beta initializer
       gdn_w_thresh_min: minimum allowable value for gdn_w
       gdn_b_thresh_min: minimum allowable value for gdn_b
-      gdn_eps: off diagonal of gdn gamma initializer 
+      gdn_eps: off diagonal of gdn gamma initializer
       act_funcs: activation functions
       dropout: specifies the keep probability or None
       conv: if True, do convolution
@@ -68,7 +68,7 @@ class DaeModule(AeModule):
 
   def compute_entropy_loss(self, a_in):
     with tf.name_scope("latent"):
-      a_entropies = self.compute_entropies(a_in)
+      a_entropies = self.compute_entropies(tf.reshape(a_in, [tf.shape(a_in)[0], -1]))
       entropy_loss = tf.multiply(self.ent_mult, tf.reduce_sum(a_entropies), name="entropy_loss")
     return entropy_loss
 
@@ -103,8 +103,12 @@ class DaeModule(AeModule):
       trainable_variables.append(w)
 
       b_name = "b_"+str(layer_id)
-      b = tf.get_variable(name=b_name, shape=w_shape[-1],
-        dtype=tf.float32, initializer=self.b_init, trainable=True)
+      if self.conv and decode:
+        b_shape = w_shape[-2]
+      else:
+        b_shape = w_shape[-1]
+      b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
+        initializer=self.b_init, trainable=True)
       trainable_variables.append(b)
 
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, decode)
@@ -112,13 +116,13 @@ class DaeModule(AeModule):
         w_gdn = tf.get_variable(name="w_gdn_"+str(layer_id), shape=[w_shape[-1], w_shape[-1]],
           dtype=tf.float32, initializer=self.w_gdn_init, trainable=True)
         trainable_variables.append(w_gdn)
-        b_gdn = tf.get_variable(name="b_gdn_"+str(layer_id), shape=w_shape[-1],
+        b_gdn = tf.get_variable(name="b_gdn_"+str(layer_id), shape=b_shape,
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
         trainable_variables.append(b_gdn)
         gdn_inverse = True if layer_id >= self.num_encoder_layers else False
         output_tensor, gdn_mult = activation_function(pre_act, w_gdn, b_gdn, self.gdn_w_thresh_min,
           self.gdn_b_thresh_min, self.gdn_eps, gdn_inverse, conv=self.conv)
-      else: 
+      else:
         output_tensor = activation_function(pre_act)
       output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, trainable_variables
@@ -214,7 +218,8 @@ class DaeModule(AeModule):
       a_noise = tf.add(noise,self.u_list[-1])
 
       dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \
-        self.build_decoder(a_noise, self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
+        self.build_decoder(a_noise, self.act_funcs[self.num_encoder_layers:],
+        self.w_shapes[self.num_encoder_layers:])
       self.u_list += dec_u_list
       self.w_list += dec_w_list
       self.b_list += dec_b_list

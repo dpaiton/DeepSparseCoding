@@ -127,7 +127,7 @@ class AeModule(object):
         initializer=self.w_init, trainable=True)
 
       b_name = "b_"+str(layer_id)
-      if decode:
+      if self.conv and decode:
         b_shape = w_shape[-2]
       else:
         b_shape = w_shape[-1]

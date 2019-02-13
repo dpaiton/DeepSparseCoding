@@ -9,10 +9,10 @@ class params(BaseParams):
       mle_step_size       [float] size of maximum likelihood estimator steps
       num_mle_steps       [int] number of maximum likelihood estimation steps for the entropy estimator
       num_triangles       [int] number of triangle kernels to use for the entropy estimator
-      bounds_slope        [float] slope for out of bounds loss (two relus back to back) 
+      bounds_slope        [float] slope for out of bounds loss (two relus back to back)
       latent_min          [float] minimum allowable value for latent variables where ramp loss = 0
       latent_max          [float] maximum allowable value for latent variables where ramp loss = 0
-      mle_step_size       [float] size of maximimum likelihood estimator steps 
+      mle_step_size       [float] size of maximimum likelihood estimator steps
       num_mle_steps       [int] number of max likelihood estimation steps for the entropy estimator
       num_quant_bins      [int] number of bins you want for quantization
       gdn_w_init_const    [float] initial value for the GDN weights
@@ -114,7 +114,6 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.output_channels = [20, 10]
-<<<<<<< HEAD
     self.conv = True
     self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
     self.patch_size_y = [3.0, 3.0]
@@ -122,7 +121,3 @@ class params(BaseParams):
     self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
     self.dropout = [1.0]*4
     self.vectorize_data = False
-=======
-    self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
-    self.dropout = [1.0]*4
->>>>>>> 77d7a85d4ea09e81b4bd8e0f2a510c41e1cc0402
