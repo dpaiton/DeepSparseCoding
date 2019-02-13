@@ -114,6 +114,7 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.output_channels = [20, 10]
+<<<<<<< HEAD
     self.conv = True
     self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
     self.patch_size_y = [3.0, 3.0]
@@ -121,3 +122,7 @@ class params(BaseParams):
     self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
     self.dropout = [1.0]*4
     self.vectorize_data = False
+=======
+    self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
+    self.dropout = [1.0]*4
+>>>>>>> 77d7a85d4ea09e81b4bd8e0f2a510c41e1cc0402
