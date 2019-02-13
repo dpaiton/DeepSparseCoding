@@ -4,9 +4,9 @@ import tensorflow_compression as tfc
 import utils.data_processing as dp
 import pdb
 
-class ClassAdversarialModule(object):
-  def __init__(self, data_tensor, use_adv_input, num_classes, num_steps, step_size, max_step=None, clip_adv=True,
-    clip_range = [0.0, 1.0], attack_method="kurakin_untargeted", eps=1e-8, variable_scope="class_adversarial"):
+class ReconAdversarialModule(object):
+  def __init__(self, data_tensor, use_adv_input, num_steps, step_size, max_step=None, clip_adv=True,
+    clip_range = [0.0, 1.0], attack_method="kurakin_targeted", eps=1e-8, variable_scope="recon_adversarial"):
     """
     TODO:
     Adversarial module
@@ -22,7 +22,6 @@ class ClassAdversarialModule(object):
 
     self.input_shape = self.data_tensor.get_shape().as_list()
 
-    self.num_classes = num_classes
     self.num_steps = num_steps
     self.step_size = step_size
     self.max_step = max_step
@@ -40,7 +39,7 @@ class ClassAdversarialModule(object):
     with tf.variable_scope(self.variable_scope) as scope:
       #These placeholders are here since they're only needed for construct adv examples
       with tf.variable_scope("placeholders") as scope:
-        self.adv_target = tf.placeholder(tf.float32, shape=[None, self.num_classes],
+        self.adv_target = tf.placeholder(tf.float32, shape=self.input_shape,
           name="adversarial_target_data")
         self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
 
@@ -51,7 +50,7 @@ class ClassAdversarialModule(object):
 
         self.ignore_load_var_list.append(self.adv_var)
         #TODO:
-        #NOTE: This will get overwritten in build_adersarialv_ops
+        #NOTE: This will get overwritten in build_adversarial_ops
         self.reset = self.adv_var.initializer
 
         #Here, adv_var has a fully dynamic shape. We reshape it to give the variable
@@ -82,50 +81,22 @@ class ClassAdversarialModule(object):
   def get_adv_input(self):
     return self.adv_switch_input
 
-  def build_adversarial_ops(self, label_est, label_tensor=None, model_logits=None, loss=None):
+  def build_adversarial_ops(self, recon):
     with tf.variable_scope(self.variable_scope) as scope:
-      self.label_est = label_est
+      self.recon = recon
       with tf.variable_scope("loss") as scope:
-        if(self.attack_method == "kurakin_untargeted"):
-          self.adv_loss = -loss
-        elif(self.attack_method == "kurakin_targeted"):
-          self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
-            tf.log(tf.clip_by_value(self.label_est, self.eps, 1.0))))
+        if(self.attack_method == "kurakin_targeted"):
+          self.adv_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recon))
         elif(self.attack_method == "carlini_targeted"):
-          self.input_pert_loss = 0.5 * tf.reduce_sum(
-            tf.square(self.adv_var), name="input_perturbed_loss")
-
-          #Assuming adv_target is one hot
-          with tf.control_dependencies([
-            tf.assert_equal(tf.reduce_sum(self.adv_target, axis=-1), 1.0)]):
-            self.adv_target = self.adv_target
-
-          #Construct two boolean masks, one with only target class as true
-          #and one with everything not target class
-          target_mask = self.adv_target > .5
-          not_target_mask = self.adv_target < .5
-
-          #Z(x)_t
-          #boolean_mask returns a flattened array, so need to reshape back
-          logits_target_val = tf.boolean_mask(model_logits, target_mask)[:, None]
-          #max_{i!=t} Z(x)_i
-          logits_not_target_val = tf.boolean_mask(model_logits, not_target_mask)
-          logits_not_target_val = tf.reshape(logits_not_target_val,
-            [-1, self.num_classes-1])
-
-          max_logits_not_target_val = tf.reduce_max(logits_not_target_val, axis=-1)
-
-          self.target_class_loss = tf.reduce_sum(tf.nn.relu(
-            max_logits_not_target_val - logits_target_val))
-
-          self.adv_loss = self.input_pert_loss + \
-            self.recon_mult * self.target_class_loss
+          adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recon))
+          input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_var))
+          self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
         else:
           assert False, ("attack_method " + self.attack_method +" not recognized. "+
-            "Options are \"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
+            "Options are \"kurakin_targeted\" or \"carlini_targeted\"")
 
       with tf.variable_scope("optimizer") as scope:
-        if(self.attack_method == "kurakin_untargeted" or self.attack_method == "kurakin_targeted"):
+        if(self.attack_method == "kurakin_targeted"):
           self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
           self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
         elif(self.attack_method == "carlini_targeted"):
@@ -140,43 +111,25 @@ class ClassAdversarialModule(object):
           #Add adam vars to list of ignore vars
           self.ignore_load_var_list.extend(self.adv_opt.variables())
 
-  def generate_random_target_labels(self, input_labels, rand_state=None):
-    input_classes = np.argmax(input_labels, axis=-1)
-    target_classes = input_classes.copy()
-    while(np.any(target_classes == input_classes)):
-      resample_idx = np.nonzero(target_classes == input_classes)
-      if(rand_state is not None):
-        target_classes[resample_idx] = rand_state.randint(0, self.num_classes,
-          size=resample_idx[0].shape)
-      else:
-        target_classes[resample_idx] = np.random.randint(0, self.num_classes,
-          size=resample_idx[0].shape)
-    #Convert to one hot
-    return dp.dense_to_one_hot(target_classes, self.num_classes)
-
   def construct_adversarial_examples(self, feed_dict,
     #Optional parameters
-    labels=None,  #For untargeted attacks
     recon_mult=None, #For carlini attack
-    rand_state=None,
-    target_generation_method="random",
-    target_labels=None,
+    target_generation_method="specified",
+    target_images=None,
     save_int=None): #Will not save if None
 
     feed_dict = feed_dict.copy()
     feed_dict[self.use_adv_input] = True
-    if(self.attack_method == "kurakin_untargeted"):
-      pass
-    elif(self.attack_method == "kurakin_targeted"):
+    if(self.attack_method == "kurakin_targeted"):
       if(target_generation_method == "random"):
-        feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)
+        assert False, ("target_generation_method must be specified")
       else:
-        feed_dict[self.adv_target] = target_labels
+        feed_dict[self.adv_target] = target_images
     elif(self.attack_method == "carlini_targeted"):
       if(target_generation_method == "random"):
-        feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)
+        assert False, ("target_generation_method must be specified")
       else:
-        feed_dict[self.adv_target] = target_labels
+        feed_dict[self.adv_target] = target_images
       feed_dict[self.recon_mult] = recon_mult
     else:
       assert(False)
@@ -189,30 +142,40 @@ class ClassAdversarialModule(object):
     sess = tf.get_default_session()
     sess.run(self.reset, feed_dict=feed_dict)
     #Always store orig image
-    [orig_img, output, loss] = sess.run([self.adv_image, self.label_est, self.adv_loss],
+    [orig_img, recon, loss] = sess.run([self.adv_image, self.recon, self.adv_loss],
       feed_dict)
     #Init vals
     out_dict = {}
     out_dict["step"] = [0]
     out_dict["adv_images"] = [orig_img]
-    out_dict["adv_outputs"] = [output]
+    out_dict["adv_recon"] = [recon]
     out_dict["adv_losses"] = [loss]
-
-    reduc_dim = tuple(range(1, len(orig_img.shape)))
-    out_dict["input_adv_mses"]= [np.mean((orig_img-orig_img)**2, axis=reduc_dim)]
+    out_dict["input_recon_mses"] = [dp.mse(orig_img, recon)]
+    out_dict["input_adv_mses"] = [dp.mse(orig_img, orig_img)]
+    out_dict["target_recon_mses"] = [dp.mse(target_images, recon)]
+    out_dict["target_adv_mses"] = [dp.mse(target_images, orig_img)]
+    out_dict["adv_recon_mses"] = [dp.mse(orig_img, recon)]
+    out_dict["target_adv_angles"] = [dp.cos_similarity(target_images, orig_img)
+    out_dict["input_adv_angles"] = [dp.cos_similarity(orig_img, orig_img)]
 
     #calculate adversarial examples
     for step in range(self.num_steps):
       sess.run(self.adv_update_op, feed_dict)
       if((step+1) % save_int == 0):
-        [adv_img, output, loss] = sess.run([self.adv_image, self.label_est, self.adv_loss], feed_dict)
+        [adv_img, recon, loss] = sess.run([self.adv_image, self.recon, self.adv_loss], feed_dict)
         #+1 since this is post update
         #We do this here since we want to store the last step
         out_dict["step"].append(step+1)
         out_dict["adv_images"].append(adv_img)
-        out_dict["adv_outputs"].append(output)
+        out_dict["adv_recon"].append(recon)
         out_dict["adv_losses"].append(loss)
-        #Everything but batch dim
-        out_dict["input_adv_mses"].append(np.mean((orig_img-adv_img)**2, axis=reduc_dim))
+
+        out_dict["input_recon_mses"] = [dp.mse(orig_img, recon)]
+        out_dict["input_adv_mses"] = [dp.mse(orig_img, adv_img)]
+        out_dict["target_recon_mses"] = [dp.mse(target_images, recon)]
+        out_dict["target_adv_mses"] = [dp.mse(target_images, adv_img)]
+        out_dict["adv_recon_mses"] = [dp.mse(adv_img, recon)]
+        out_dict["target_adv_angles"] = [dp.cos_similarity(target_images, adv_img)
+        out_dict["input_adv_angles"] = [dp.cos_similarity(orig_img, adv_img)]
 
     return out_dict

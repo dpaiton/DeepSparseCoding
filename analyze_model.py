@@ -28,9 +28,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False # TODO: broken for rica
+    self.do_recon_adversaries = True # TODO: broken for rica
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
