@@ -619,5 +619,5 @@ class Model(object):
   def get_encodings(self):
     raise NotImplementedError
 
-  def modify_input(self, feed_dict):
+  def modify_input(self, feed_dict, train_on_adversarial):
     return feed_dict
