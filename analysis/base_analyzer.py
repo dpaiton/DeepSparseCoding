@@ -142,7 +142,7 @@ class Analyzer(object):
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           input_node = self.model.build_input_placeholder()
-          with tf.name_scope("placeholders") as scope:
+          with tf.variable_scope("placeholders") as scope:
             #This is a switch used internally to use clean or adv examples
             self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
           #Building adv module here with adv_params
@@ -836,12 +836,12 @@ class Analyzer(object):
     """
     with tf.device(self.analysis_params.device):
       with self.model.graph.as_default():
-        with tf.name_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as scope:
           self.adv_target = tf.placeholder(tf.float32, shape=self.model.get_input_shape(),
             name="adversarial_target_data")
           self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           self.recon = self.model.compute_recon_from_encoding(self.model.get_encodings())
           self.adv_recon_loss = 0.5 * tf.reduce_sum(
             tf.square(tf.subtract(self.adv_target, self.recon)),
@@ -853,7 +853,7 @@ class Analyzer(object):
             self.adv_carlini_loss = (1 - self.recon_mult) * self.input_pert_loss \
               + self.recon_mult * self.adv_recon_loss
 
-        with tf.name_scope("optimizer") as scope:
+        with tf.variable_scope("optimizer") as scope:
           if(self.analysis_params.adversarial_attack_method == "kurakin"):
             self.adv_grad = -tf.sign(tf.gradients(self.adv_recon_loss, self.adv_var)[0])
             self.adv_update_op = self.adv_var.assign_add(

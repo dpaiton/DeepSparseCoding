@@ -32,23 +32,22 @@ class ListaModel(Model):
   def build_lca_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name_scope="LCA")
+      self.params.num_steps, self.params.eps)
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
 
         self.train_lca = tf.cast(self.train_lca, tf.float32)
 
-        with tf.name_scope("LCA") as scope:
-          self.lca_module = self.build_lca_module(input_node)
+        self.lca_module = self.build_lca_module(input_node)
 
-        with tf.name_scope("weight_inits") as scope:
+        with tf.variable_scope("weight_inits") as scope:
           self.w_init = tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32)
           self.s_init = init_ops.GDNGammaInitializer(diagonal_gain=0.0, off_diagonal_gain=0.001,
             dtype=tf.float32)
@@ -60,7 +59,7 @@ class ListaModel(Model):
             dtype=tf.float32, initializer=self.s_init, trainable=True)
         self.trainable_variables.update({self.w.name:self.w, self.s.name:self.s})
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
           feedforward_drive = tf.matmul(input_node, self.w, name="feedforward_drive")
           self.a_list = [self.lca_module.threshold_units(feedforward_drive, name="a_init")]
           for layer_id in range(self.params.num_layers):
@@ -68,7 +67,7 @@ class ListaModel(Model):
               + tf.matmul(self.a_list[layer_id], self.s)))
           self.a = self.a_list[-1]
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           reduc_dim = list(range(1, len(self.lca_module.a.shape)))
           labels = tf.stop_gradient(self.lca_module.a)
           self.lista_loss = tf.reduce_mean(tf.reduce_sum(tf.square(labels - self.a),
@@ -77,12 +76,12 @@ class ListaModel(Model):
           self.total_loss = self.train_lca * self.lca_module.total_loss + \
             (1-self.train_lca) * self.lista_loss
 
-        with tf.name_scope("norm_weights") as scope:
+        with tf.variable_scope("norm_weights") as scope:
           self.norm_lista_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=0, epsilon=self.params.eps,
             name="row_l2_norm"))
           self.norm_weights = tf.group(self.norm_lista_w, name="l2_normalization")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           #LCA metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")

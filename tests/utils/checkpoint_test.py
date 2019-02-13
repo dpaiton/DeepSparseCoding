@@ -33,7 +33,7 @@ class CheckpointTest(tf.test.TestCase):
       params.cp_load_name = "test_checkpoints_mlp_synthetic"
       params.cp_load_step = 1
       params.cp_load_ver = "0.0"
-      params.cp_load_var = ["layer0/conv_w_0:0", "layer0/conv_b_0:0"]
+      params.cp_load_var = ["mlp/layer0/conv_w_0:0", "mlp/layer0/conv_b_0:0"]
     elif(load_style=="none"):
       pass
     else:

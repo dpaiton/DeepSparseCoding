@@ -43,7 +43,7 @@ class params(BaseParams):
     self.gen_plot_int = 5000
     self.save_plots = True
     self.schedule = [
-      {"weights": ["weights/w:0"],
+      {"weights": ["lca_subspace/weights/w:0"],
       "num_batches": int(1e5),
       "sparse_mult": 5.0,
       "group_orth_mult": 0.1,

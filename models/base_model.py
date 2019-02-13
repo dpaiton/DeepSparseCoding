@@ -166,7 +166,7 @@ class Model(object):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("optimizers") as scope:
+        with tf.variable_scope("optimizers") as scope:
           self.grads_and_vars = list() # [sch_idx][weight_idx]
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
@@ -225,7 +225,7 @@ class Model(object):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("initialization") as scope:
+        with tf.variable_scope("initialization") as scope:
           self.init_op = tf.group(tf.global_variables_initializer(),
             tf.local_variables_initializer())
 
@@ -372,7 +372,7 @@ class Model(object):
   def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("step_counter") as scope:
+        with tf.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
   #If build_graph gets called without parameters,

@@ -9,7 +9,7 @@ class LcaPcaModel(LcaModel):
 
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("pooling_filters") as scope:
+        with tf.variable_scope("pooling_filters") as scope:
           self.full_cov = tf.placeholder(tf.float32,
             shape=(self.params.num_neurons, self.params.num_neurons),
             name="full_covariance_matrix")
@@ -23,7 +23,7 @@ class LcaPcaModel(LcaModel):
 
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("covariance") as scope:
+        with tf.variable_scope("covariance") as scope:
           act_centered = self.get_encodings() - tf.reduce_mean(self.get_encodings(),
             axis=[1], keepdims=True)
           self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),

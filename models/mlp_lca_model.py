@@ -25,26 +25,26 @@ class MlpLcaModel(MlpModel):
   def build_lca_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name_scope="LCA")
+      self.params.num_steps, self.params.eps)
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.label_placeholder = tf.placeholder(
             tf.float32, shape=self.label_shape, name="input_labels")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
 
-        with tf.name_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
 
         self.train_lca = tf.cast(self.train_lca, tf.float32)
 
-        with tf.name_scope("step_counter") as scope:
+        with tf.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         self.lca_module = self.build_lca_module(input_node)
@@ -66,27 +66,27 @@ class MlpLcaModel(MlpModel):
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           #Loss switches based on train_lca flag
           self.total_loss = self.train_lca * self.lca_module.total_loss + \
             (1-self.train_lca) * self.mlp_module.total_loss
 
-        with tf.name_scope("norm_weights") as scope:
+        with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.lca_module.norm_w, name="l2_normalization")
 
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           #LCA metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
-          with tf.name_scope("prediction_bools"):
+          with tf.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.name_scope("accuracy"):
+          with tf.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 

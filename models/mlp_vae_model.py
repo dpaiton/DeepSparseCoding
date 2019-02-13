@@ -27,7 +27,7 @@ class MlpVaeModel(MlpModel):
     module = VaeModule(input_node, self.params.vae_output_channels,
       self.decay_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
       self.params.tie_decoder_weights, self.params.noise_level,
-      self.params.recon_loss_type, name_scope="VAE")
+      self.params.recon_loss_type)
     return module
 
   def build_mlp_module(self, input_node):
@@ -37,21 +37,21 @@ class MlpVaeModel(MlpModel):
       self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="softmax_cross_entropy", name_scope="MLP")
+      self.params.eps, loss_type="softmax_cross_entropy")
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.label_placeholder = tf.placeholder(tf.float32,
             shape=self.label_shape, name="input_labels")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
           self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
           self.train_vae = tf.placeholder(tf.bool, shape=(), name="train_vae")
 
-        with tf.name_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
           self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
@@ -77,24 +77,24 @@ class MlpVaeModel(MlpModel):
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           #Loss switches based on train_vae flag
           self.total_loss = self.train_vae * self.vae_module.total_loss + \
             (1-self.train_vae) * self.mlp_module.total_loss
 
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           #VAE metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.vae_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
-          with tf.name_scope("prediction_bools"):
+          with tf.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.name_scope("accuracy"):
+          with tf.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 

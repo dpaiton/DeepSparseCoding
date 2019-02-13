@@ -95,7 +95,7 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
     return u_out
 
   def compute_entropies(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       #TODO: Verify n_mem = prod(shape(a_in)[1:])
       num_units = self.params.n_mem#tf.reduce_prod(tf.shape(a_in)[1:])
       a_resh = tf.reshape(a_in, [self.params.batch_size, num_units])
@@ -181,7 +181,7 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.triangle_centers = tf.placeholder(tf.float32, shape=[self.params.num_triangles],
             name="triangle_centers")
@@ -191,14 +191,14 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
           self.noise_var_mult = tf.placeholder(tf.float32, shape=(), name="noise_var_mult")
           self.mem_error_rate = tf.placeholder(tf.float32, shape=(), name="mem_error_rate")
 
-        with tf.name_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as scope:
           self.memristor_std_eps = tf.placeholder(tf.float32, shape=self.memristor_noise_shape,
             name="memristor_std_eps")
 
         with tf.variable_scope("probability_estimate") as scope:
           self.mle_thetas, self.theta_init = ef.construct_thetas(self.params.n_mem, self.params.num_triangles)
 
-        with tf.name_scope("weight_inits") as scope:
+        with tf.variable_scope("weight_inits") as scope:
           self.w_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False,
             seed=self.rand_seed, dtype=tf.float32)
           self.b_init = tf.initializers.zeros(dtype=tf.float32)
@@ -252,7 +252,7 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
           if b_gdn is not None:
             self.b_gdn_list.append(b_gdn)
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
           self.a = tf.identity(self.u_list[int(self.num_layers/2-1)], name="activity")
 
         with tf.variable_scope("probability_estimate") as scope:
@@ -261,15 +261,15 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.params.mle_step_size)
             for _ in range(self.params.num_mle_steps)]
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.u_list[-1]),
             "entropy_loss":self.compute_entropy_loss(self.a_sig),
             "weight_decay_loss":self.compute_weight_decay_loss(),
             "ramp_loss":self.compute_ramp_loss(self.a)}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
-        with tf.name_scope("performance_metrics") as scope:
-            with tf.name_scope("reconstruction_quality"):
+        with tf.variable_scope("performance_metrics") as scope:
+            with tf.variable_scope("reconstruction_quality"):
               self.MSE = tf.reduce_mean(tf.square(tf.subtract(tf.multiply(self.u_list[0], 255.0),
                 tf.multiply(tf.clip_by_value(self.u_list[-1], clip_value_min=-1.0,
                 clip_value_max=1.0), 255.0))), reduction_indices=[1,2,3], name="mean_squared_error")
@@ -277,7 +277,7 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
               self.SNRdB = tf.multiply(10.0, tf.log(tf.div(tf.square(tf.nn.moments(self.u_list[0],
                 axes=[0,1,2,3])[1]), self.batch_MSE)), name="recon_quality")
 
-        with tf.name_scope("summaries") as scope:
+        with tf.variable_scope("summaries") as scope:
           tf.summary.image("input", self.u_list[0])
           tf.summary.image("reconstruction",self.u_list[-1])
           [tf.summary.histogram("u"+str(idx),u) for idx,u in enumerate(self.u_list)]

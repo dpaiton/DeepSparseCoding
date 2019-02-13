@@ -99,10 +99,10 @@ class GdnConvDecoderModel(GdnAutoencoderModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
 
-        with tf.name_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as scope:
           self.w_init_list = [tf.placeholder(tf.float32, shape=w_shape, name="w"+str(w_id))
             for w_id, w_shape in enumerate(self.w_shapes)]
           self.b_init_list = [tf.placeholder(tf.float32, shape=b_shape, name="b"+str(b_id))
@@ -133,7 +133,7 @@ class GdnConvDecoderModel(GdnAutoencoderModel):
           self.b_list.append(b)
           self.b_gdn_list.append(b_gdn)
 
-        with tf.name_scope("summaries") as scope:
+        with tf.variable_scope("summaries") as scope:
           tf.summary.image("reconstruction",self.u_list[-1])
           [tf.summary.histogram("u"+str(idx),u) for idx,u in enumerate(self.u_list) if u is not None]
           [tf.summary.histogram("w"+str(idx),w) for idx,w in enumerate(self.w_list) if w is not None]

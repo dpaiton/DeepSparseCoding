@@ -29,7 +29,7 @@ class FfListaModel(Model):
   def build_lca_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name_scope="LCA")
+      self.params.num_steps, self.params.eps)
     return module
 
   def build_mlp_module(self, input_node):
@@ -37,14 +37,14 @@ class FfListaModel(Model):
       self.params.output_channels, self.params.batch_norm, self.params.dropout,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="l2", name_scope="LCA")
+      self.params.eps, loss_type="l2")
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
 
@@ -55,15 +55,15 @@ class FfListaModel(Model):
         self.mlp_module = self.build_mlp_module(input_node)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           #Loss switches based on train_lca flag
           self.total_loss = self.train_lca * self.lca_module.total_loss + \
             (1-self.train_lca) * self.mlp_module.total_loss
 
-        with tf.name_scope("norm_weights") as scope:
+        with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.lca_module.norm_w, name="l2_normalization")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           #LCA metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")

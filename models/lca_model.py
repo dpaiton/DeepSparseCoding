@@ -28,34 +28,34 @@ class LcaModel(Model):
   def build_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name_scope="LCA")
+      self.params.num_steps, self.params.eps)
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-        with tf.name_scope("placeholders") as sess:
+        with tf.variable_scope("placeholders") as sess:
           self.latent_input = tf.placeholder(tf.float32, name="latent_input")
 
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
           self.a = tf.identity(self.get_encodings(), name="activity")
 
-        with tf.name_scope("norm_weights") as scope:
+        with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
 
-        with tf.name_scope("output") as scope:
+        with tf.variable_scope("output") as scope:
           self.decoder_recon = self.module.build_decoder(self.latent_input, name="latent_recon")
           self.reconstruction = tf.identity(self.compute_recon_from_encoding(self.a),
             name="reconstruction")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.module.reconstruction)),
             name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]

@@ -32,16 +32,16 @@ class MlpListaModel(MlpModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-        with tf.name_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
 
         # LISTA module
-        with tf.name_scope("weight_inits") as scope:
+        with tf.variable_scope("weight_inits") as scope:
           self.w_init = tf.truncated_normal_initializer(mean=0, stddev=0.05, dtype=tf.float32)
           self.s_init = init_ops.GDNGammaInitializer(diagonal_gain=0.0, off_diagonal_gain=0.001,
             dtype=tf.float32)
@@ -53,7 +53,7 @@ class MlpListaModel(MlpModel):
           self.s = tf.get_variable(name="lateral_connectivity", shape=self.s_shape,
             dtype=tf.float32, initializer=self.s_init, trainable=True)
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
           feedforward_drive = tf.matmul(input_node, self.w, name="feedforward_drive")
           self.a_list = [lca_threshold(feedforward_drive, self.params.thresh_type,
             self.params.rectify_a, self.sparse_mult, name="a_init")]
@@ -67,18 +67,18 @@ class MlpListaModel(MlpModel):
         self.mlp_module = self.build_mlp_module(self.a)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           self.total_loss =  self.mlp_module.total_loss
 
         #Give this var a name
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           #LISTA metrics
-          with tf.name_scope("prediction_bools"):
+          with tf.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.name_scope("accuracy"):
+          with tf.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 

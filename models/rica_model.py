@@ -27,14 +27,14 @@ class RicaModel(Model):
     return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")
 
   def compute_recon_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       recon_loss = tf.multiply(self.recon_mult,
         tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon_from_encoding(a_in),
         self.input_placeholder)), axis=[1])), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       sparse_loss = tf.multiply(self.sparse_mult,
         tf.reduce_mean(tf.reduce_sum(tf.log(tf.cosh(a_in)), axis=[1])), name="sparse_loss")
     return sparse_loss
@@ -60,7 +60,7 @@ class RicaModel(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult") # lambda
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
@@ -74,20 +74,20 @@ class RicaModel(Model):
             keepdims=True), self.params.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
           self.a = tf.matmul(input_node, self.w, name="activity")
 
-        with tf.name_scope("output") as scope:
+        with tf.variable_scope("output") as scope:
           self.reconstruction = self.compute_recon_from_encoding(self.a)
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           loss_funcs = self.get_loss_funcs()
           self.loss_dict = dict(zip(
             [key for key in loss_funcs.keys()], [func(self.a) for func in loss_funcs.values()]))
           self.total_loss = self.compute_total_loss(self.a, loss_funcs)
 
-        with tf.name_scope("performance_metrics") as scope:
-          with tf.name_scope("reconstruction_quality"):
+        with tf.variable_scope("performance_metrics") as scope:
+          with tf.variable_scope("reconstruction_quality"):
             MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(input_node, axes=[1])[1]

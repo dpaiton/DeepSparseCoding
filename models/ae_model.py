@@ -31,17 +31,17 @@ class AeModel(Model):
 
   def build_module(self, input_node):
     module = AeModule(input_node, self.params.output_channels, self.decay_mult, self.act_funcs,
-      self.dropout_keep_probs, self.params.tie_decoder_weights, name_scope="AE")
+      self.dropout_keep_probs, self.params.tie_decoder_weights)
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
 
-        with tf.name_scope("placeholders") as sess:
+        with tf.variable_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
           self.latent_input = tf.placeholder(tf.float32, name="latent_input")
@@ -49,10 +49,10 @@ class AeModel(Model):
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
           self.a = tf.identity(self.module.a, name="activity")
 
-        with tf.name_scope("output") as scope:
+        with tf.variable_scope("output") as scope:
           self.reconstruction = tf.identity(self.module.reconstruction, name="reconstruction")
 
         # first index grabs u_list, second index grabs recon
@@ -60,8 +60,8 @@ class AeModel(Model):
           self.act_funcs[self.module.num_encoder_layers:],
           self.module.w_shapes[self.module.num_encoder_layers:])[0][-1]
 
-        with tf.name_scope("performance_metrics") as scope:
-          with tf.name_scope("reconstruction_quality"):
+        with tf.variable_scope("performance_metrics") as scope:
+          with tf.variable_scope("reconstruction_quality"):
             self.MSE = tf.reduce_mean(tf.square(tf.subtract(input_node,
               self.module.reconstruction)), axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(input_node, axes=[1])[1]

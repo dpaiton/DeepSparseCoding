@@ -32,26 +32,26 @@ class ReluAutoencoderModel(Model):
     return a_out
 
   def compute_entropies(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       a_sig = self.sigmoid(a_in, self.sigmoid_beta)
       a_probs = ef.prob_est(a_sig, self.mle_thetas, self.triangle_centers)
       a_entropies = tf.identity(ef.calc_entropy(a_probs), name="a_entropies")
     return a_entropies
 
   def compute_weight_decay_loss(self):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       decay_loss = tf.multiply(0.5*self.decay_mult,
         tf.add_n([tf.nn.l2_loss(self.w_enc), tf.nn.l2_loss(self.w_dec)]), name="weight_decay_loss")
     return decay_loss
 
   def compute_entropy_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       a_entropies = self.compute_entropies(a_in)
       entropy_loss = tf.multiply(self.ent_mult, tf.reduce_sum(a_entropies), name="entropy_loss")
     return entropy_loss
 
   def compute_recon_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       reconstruction = self.compute_recon_from_encoding(a_in)
       recon_loss = tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(tf.subtract(self.input_placeholder,
@@ -69,7 +69,7 @@ class ReluAutoencoderModel(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.triangle_centers = tf.placeholder(tf.float32, shape=[self.num_triangles],
             name="triangle_centers")
           self.ent_mult = tf.placeholder(tf.float32, shape=(), name="ent_mult")
@@ -80,7 +80,7 @@ class ReluAutoencoderModel(Model):
           self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_neurons,
             self.num_triangles)
 
-        with tf.name_scope("weight_inits") as scope:
+        with tf.variable_scope("weight_inits") as scope:
           w_init = tf.truncated_normal(self.w_enc_shape, mean=0.0, stddev=0.5,
             dtype=tf.float32, name="w_init")
           b_enc_init = tf.truncated_normal(self.b_enc_shape, mean=0.0, stddev=0.1,
@@ -119,17 +119,17 @@ class ReluAutoencoderModel(Model):
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
             for _ in range(self.num_mle_steps)]
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.a),
             "entropy_loss":self.compute_entropy_loss(self.a),
             "weight_decay_loss":self.compute_weight_decay_loss()}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
-        with tf.name_scope("output") as scope:
+        with tf.variable_scope("output") as scope:
           self.reconstruction = self.compute_recon_from_encoding(self.a)
 
-        with tf.name_scope("performance_metrics") as scope:
-          with tf.name_scope("reconstruction_quality"):
+        with tf.variable_scope("performance_metrics") as scope:
+          with tf.variable_scope("reconstruction_quality"):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.input_placeholder,
               self.reconstruction)), axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(self.input_placeholder, axes=[1])[1]

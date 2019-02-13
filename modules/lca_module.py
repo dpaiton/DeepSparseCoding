@@ -5,7 +5,7 @@ from modules.activations import lca_threshold
 
 class LcaModule(object):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,
-      rectify_a, num_steps, eps, name_scope="LCA"):
+      rectify_a, num_steps, eps, variable_scope="lca"):
     """
     Locally Competitive Algorithm module
     Inputs:
@@ -17,7 +17,7 @@ class LcaModule(object):
       rectify_a
       num_steps
       eps
-      name_scope: specifies the name_scope for the module
+      variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
     """
@@ -25,7 +25,7 @@ class LcaModule(object):
     self.data_tensor = data_tensor
     self.check_data()
 
-    self.name_scope = name_scope
+    self.variable_scope = variable_scope
     self.num_neurons = num_neurons
     self.sparse_mult = sparse_mult
     self.step_size = step_size
@@ -59,7 +59,7 @@ class LcaModule(object):
     return lca_threshold(u_in, self.thresh_type, self.rectify_a, self.sparse_mult, name)
 
   def step_inference(self, u_in, a_in, b, g, step):
-    with tf.name_scope("update_u"+str(step)) as scope:
+    with tf.variable_scope("update_u"+str(step)) as scope:
       lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
       du = tf.subtract(tf.subtract(b, lca_explain_away), u_in, name="du")
       u_out = tf.add(u_in, tf.multiply(self.step_size, du))
@@ -80,7 +80,7 @@ class LcaModule(object):
     return tf.matmul(input_tensor, tf.transpose(self.w), name=name)
 
   def compute_recon_loss(self, recon):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(recon.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.reduce_mean(0.5 *
         tf.reduce_sum(tf.square(tf.subtract(self.data_tensor, recon)),
@@ -88,15 +88,15 @@ class LcaModule(object):
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(tf.abs(a_in),
         axis=reduc_dim), name="sparse_loss")
     return sparse_loss
 
   def build_graph(self):
-    with tf.name_scope(self.name_scope) as scope:
-      with tf.name_scope("constants") as scope:
+    with tf.variable_scope(self.variable_scope) as scope:
+      with tf.variable_scope("constants") as scope:
         u_full_shape = tf.stack([tf.shape(self.data_tensor)[0]]+self.u_shape)
         self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
         self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
@@ -111,7 +111,7 @@ class LcaModule(object):
           trainable=True)
         self.trainable_variables[self.w.name] = self.w
 
-      with tf.name_scope("norm_weights") as scope:
+      with tf.variable_scope("norm_weights") as scope:
         self.norm_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=w_norm_dim,
           epsilon=self.eps, name="row_l2_norm"))
 
@@ -121,10 +121,10 @@ class LcaModule(object):
         self.u = tf.identity(u_list[-1], name="u")
         self.a = tf.identity(a_list[-1], name="activity")
 
-      with tf.name_scope("output") as scope:
+      with tf.variable_scope("output") as scope:
         self.reconstruction = self.build_decoder(self.a, name="reconstruction")
 
-      with tf.name_scope("loss") as scope:
+      with tf.variable_scope("loss") as scope:
         self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
           "sparse_loss":self.compute_sparse_loss(self.a)}
         self.total_loss = tf.add_n([val for val in self.loss_dict.values()], name="total_loss")
