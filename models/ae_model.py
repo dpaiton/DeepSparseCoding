@@ -31,8 +31,8 @@ class AeModel(Model):
       for act_func_str in self.params.activation_functions]
     if self.params.conv:
       self.conv_strides = self.params.conv_strides + self.params.conv_strides[::-1]
-      self.patch_y = self.params.patch_size_y
-      self.patch_x = self.params.patch_size_x
+      self.patch_y = self.params.patch_size_y + self.params.patch_size_y[::-1]
+      self.patch_x = self.params.patch_size_x + self.params.patch_size_x[::-1]
     else:
       self.conv_strides = None
       self.patch_y = None

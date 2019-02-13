@@ -68,7 +68,12 @@ class DaeModule(AeModule):
 
   def compute_entropy_loss(self, a_in):
     with tf.name_scope("latent"):
-      a_entropies = self.compute_entropies(tf.reshape(a_in, [tf.shape(a_in)[0], -1]))
+      #a_flat = tf.reshape(a_in, [tf.shape(a_in)[0], -1])
+      #a_flat = tf.layers.Flatten()(a_in)#tf.reshape(a_in, [tf.shape(a_in)[0], -1])
+      dim = tf.reduce_prod(tf.shape(a_in)[1:])
+      a_flat = tf.reshape(a_in, [tf.shape(a_in)[0], dim])
+      a_flat_sig = activation_picker("sigmoid")(a_flat)
+      a_entropies = self.compute_entropies(a_flat_sig)
       entropy_loss = tf.multiply(self.ent_mult, tf.reduce_sum(a_entropies), name="entropy_loss")
     return entropy_loss
 

@@ -88,14 +88,14 @@ class AeModule(object):
   def compute_pre_activation(self, layer_id, input_tensor, w, b, decode):
     if self.conv:
       if decode:
-        height_const = 0 if tf.shape(input_tensor)[1] % self.conv_strides[layer_id][1] == 0 else 1
+        height_const = tf.shape(input_tensor)[1] % self.conv_strides[layer_id][1]
         out_height = (tf.shape(input_tensor)[1] * self.conv_strides[layer_id][1]) - height_const
-        width_const = 0 if tf.shape(input_tensor)[2] % self.conv_strides[layer_id][2] == 0 else 1
+        width_const = tf.shape(input_tensor)[2] % self.conv_strides[layer_id][2]
         out_width = (tf.shape(input_tensor)[2] * self.conv_strides[layer_id][2]) - width_const
         out_shape = tf.stack([tf.shape(input_tensor)[0], # Batch
           out_height, # Height
           out_width, # Width
-          tf.constant(w.get_shape()[2], dtype=tf.int32)]) # Channels
+          tf.shape(w)[2]]) # Channels
         pre_act =  tf.add(tf.nn.conv2d_transpose(input_tensor, w, out_shape,
           strides=self.conv_strides[layer_id], padding="SAME"), b)
       else:
