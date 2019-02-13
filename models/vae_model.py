@@ -74,12 +74,10 @@ class VaeModel(AeModel):
     latent_layer = self.module.num_encoder_layers-1
     fig = pf.plot_activity_hist(w_enc_std,
       title="Activity Encoder "+str(latent_layer)+" Std Histogram",
-      save_filename=(self.params.disp_dir+"act_enc_"+str(latent_layer)
-      +"_std_hist"+filename_suffix))
+      save_filename=self.params.disp_dir+"act_enc_"+str(latent_layer)+"_std_hist"+filename_suffix)
     fig = pf.plot_bar(w_enc_std_norm, num_xticks=5,
       title="w_enc_"+str(latent_layer)+"_std l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.params.disp_dir+"w_enc_"+str(latent_layer)+"_std_norm"
-      +filename_suffix))
+      save_filename=self.params.disp_dir+"w_enc_"+str(latent_layer)+"_std_norm"+filename_suffix)
     # Plot generated digits
     randoms = [np.random.normal(0, 1, self.num_latent) for _ in range(self.params.batch_size)]
     feed_dict[self.latent_input] = np.stack(randoms, axis=0)

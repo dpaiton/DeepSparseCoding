@@ -164,31 +164,27 @@ class RicaModel(Model):
     eval_list = [self.global_step, self.w, self.reconstruction,  self.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, activity = eval_out[1:]
     #w_lengths = np.sqrt(np.sum(np.square(weights), axis=0))
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [units, pixels]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Images at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"images_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
-      save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"w_v"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"w"+filename_suffix)
     #fig = pf.plot_bar(w_lengths, title="Weight L2 Norms", xlabel="Weight Index", ylabel="L2 Norm",
-    #  save_filename=(self.params.disp_dir+"w_norms_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+    #  save_filename=self.params.disp_dir+"w_norms"+filename_suffix)
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"recons"+filename_suffix)
     if self.params.optimizer != "lbfgsb":
       for weight_grad_var in self.grads_and_vars[self.sched_idx]:
         grad = weight_grad_var[0][0].eval(feed_dict)
@@ -197,5 +193,4 @@ class RicaModel(Model):
         grad = dp.reshape_data(grad.T, flatten=False)[0]
         fig = pf.plot_data_tiled(grad, normalize=True,
           title="Gradient for w at step "+current_step, vmin=None, vmax=None,
-          save_filename=(self.params.disp_dir+"dw_v"+self.params.version+"_"
-          +current_step.zfill(5)+".png"))
+          save_filename=self.params.disp_dir+"dw"+filename_suffix)

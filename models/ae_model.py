@@ -173,40 +173,40 @@ class AeModel(Model):
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     fig = pf.plot_data_tiled(w_enc_img, normalize=False,
       title="Encoding weights at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"w_enc" + filename_suffix))
+      save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
     fig = pf.plot_bar(w_enc_norm, num_xticks=5,
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.params.disp_dir+"w_enc_norm"+filename_suffix))
+      save_filename=self.params.disp_dir+"w_enc_norm"+filename_suffix)
     if(not self.params.tie_decoder_weights):
       fig = pf.plot_data_tiled(w_dec_img, normalize=False,
         title="Decoding weights at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.params.disp_dir+"w_dec" + filename_suffix))
+        save_filename=self.params.disp_dir+"w_dec"+filename_suffix)
       fig = pf.plot_bar(w_dec_norm, num_xticks=5,
         title="w_dec l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-        save_filename=(self.params.disp_dir+"w_dec_norm"+filename_suffix))
+        save_filename=self.params.disp_dir+"w_dec_norm"+filename_suffix)
 
     for layer_id, activity in enumerate(activations[:-1]):
       fig = pf.plot_activity_hist(activity,
         title="Activity Encoder " + str(layer_id) + " Histogram",
-        save_filename=(self.params.disp_dir+"act_enc_"+str(layer_id)+"_hist" + filename_suffix))
+        save_filename=self.params.disp_dir+"act_enc_"+str(layer_id)+"_hist"+filename_suffix)
     for layer_id, bias in enumerate(b_list):
       fig = pf.plot_activity_hist(np.squeeze(bias),
         title="Bias " + str(layer_id) + " Histogram",
-        save_filename=(self.params.disp_dir+"bias_"+str(layer_id)+"_hist" + filename_suffix))
+        save_filename=self.params.disp_dir+"bias_"+str(layer_id)+"_hist"+filename_suffix)
     if eval_out[0]*10 % self.params.cp_int == 0:
       #Scale image by max and min of images and/or recon
       r_max = np.max([np.max(input_data), np.max(recon)])
       r_min = np.min([np.min(input_data), np.min(recon)])
       fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-        save_filename=(self.params.disp_dir+"img_hist" + filename_suffix))
+        save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
       input_data = dp.reshape_data(input_data, flatten=False)[0]
       fig = pf.plot_data_tiled(input_data, normalize=False,
         title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
-        save_filename=(self.params.disp_dir+"images"+filename_suffix))
+        save_filename=self.params.disp_dir+"images"+filename_suffix)
       #TODO: This plot hangs sometimes?
       #fig = pf.plot_activity_hist(recon, title="Recon Histogram",
-        #save_filename=(self.params.disp_dir+"recon_hist" + filename_suffix))
+        #save_filename=self.params.disp_dir+"recon_hist"+filename_suffix)
       recon = dp.reshape_data(recon, flatten=False)[0]
       fig = pf.plot_data_tiled(recon, normalize=False,
         title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
-        save_filename=(self.params.disp_dir+"recons"+filename_suffix))
+        save_filename=self.params.disp_dir+"recons"+filename_suffix)

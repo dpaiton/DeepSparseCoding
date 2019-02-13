@@ -55,20 +55,21 @@ class LcaConvModel(LcaModel):
     recon = dp.rescale_data_to_one(recon)[0]
     weights = np.transpose(dp.rescale_data_to_one(weights.T)[0].T, axes=(3,0,1,2))
     current_step = str(self.global_step.eval())
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     input_data = dp.rescale_data_to_one(input_data)[0]
     pf.plot_data_tiled(input_data[0,...], normalize=False,
       title="Images at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-      save_filename=(self.params.disp_dir+"images_"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"images"+filename_suffix)
     pf.plot_data_tiled(recon[0,...], normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-      save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"recons"+filename_suffix)
     pf.plot_data_tiled(weights, normalize=False, title="Dictionary at step "+current_step,
       vmin=np.min(weights), vmax=np.max(weights), cmap=cmap,
-      save_filename=(self.params.disp_dir+"phi_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"phi"+filename_suffix)
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
       pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
         title="Gradient for phi at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-        save_filename=(self.params.disp_dir+"dphi_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+        save_filename=self.params.disp_dir+"dphi"+filename_suffix)

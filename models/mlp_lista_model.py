@@ -116,22 +116,21 @@ class MlpListaModel(MlpModel):
     eval_list = [self.global_step, self.w, self.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, lista_activity = eval_out[1:]
 
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     #Scale image by max and min of images and/or recon
     r_max = np.max(input_data)
     r_min = np.min(input_data)
-    name_suffix = "_v"+self.params.version+"-"+current_step.zfill(5)+".png"
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"images" + name_suffix))
+      save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_activity_hist(lista_activity, title="LISTA Activity Histogram",
-      save_filename=(self.params.disp_dir+"lista_act_hist" + name_suffix))
+      save_filename=self.params.disp_dir+"lista_act_hist"+filename_suffix)
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"w_lista" + name_suffix))
+      save_filename=self.params.disp_dir+"w_lista"+filename_suffix)

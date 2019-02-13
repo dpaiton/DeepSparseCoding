@@ -136,14 +136,14 @@ class VAE(Model):
     r_max = np.max([np.max(input_data), np.max(recon)])
     r_min = np.min([np.min(input_data), np.min(recon)])
     fig = pf.plot_activity_hist(input_data.reshape(-1, 28*28), title="Image Histogram",
-      save_filename=(self.params.disp_dir+"img_hist" + filename_suffix))
+      save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"images"+filename_suffix))
+      save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"recons"+filename_suffix))
+      save_filename=self.params.disp_dir+"recons"+filename_suffix)
     weights = eval_out[2].transpose((3,0,1,2))
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,

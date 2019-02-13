@@ -214,11 +214,11 @@ class MlpModel(Model):
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
 
     current_step = str(eval_out[0])
-    filename_suffix = "_v"+self.params.version+"-"+current_step.zfill(5)+".png"
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
 
     activity = eval_out[1]
     fig = pf.plot_activity_hist(activity, title="Logit Histogram",
-      save_filename=(self.params.disp_dir+"act_hist" + filename_suffix))
+      save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
 
     w_enc = eval_out[2]
     if self.params.layer_types[0] == "fc":
@@ -226,18 +226,18 @@ class MlpModel(Model):
       w_enc = dp.reshape_data(w_enc.T, flatten=False)[0] # [num_neurons, height, width]
       fig = pf.plot_data_tiled(w_enc, normalize=False,
         title="Weights at step "+current_step, vmin=None, vmax=None,
-        save_filename=self.params.disp_dir+"w_enc_"+filename_suffix)
+        save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
       fig = pf.plot_bar(w_enc_norm, num_xticks=5,
         title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
         save_filename=self.params.disp_dir+"w_enc_norm"+filename_suffix)
     else: # conv
       w_enc = np.transpose(dp.rescale_data_to_one(w_enc.T)[0].T, axes=(3,0,1,2))
       pf.plot_data_tiled(w_enc, normalize=False, title="Weights at step "+current_step,
-        save_filename=self.params.disp_dir+"w_enc_"+filename_suffix)
+        save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
 
     if(train_on_adversarial):
       adv_input = eval_out[3]
       adv_input = dp.reshape_data(adv_input, flatten=False)[0]
       fig = pf.plot_data_tiled(adv_input, normalize=False,
         title="Adv inputs at "+current_step,
-        save_filename=(self.params.disp_dir+"adv_input"+filename_suffix))
+        save_filename=self.params.disp_dir+"adv_input"+filename_suffix)
