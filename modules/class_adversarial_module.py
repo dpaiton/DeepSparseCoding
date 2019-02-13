@@ -72,7 +72,7 @@ class ClassAdversarialModule(object):
       #Option to not use switch input if use_adv_input is None
       if(self.use_adv_input is not None):
         self.adv_switch_input = tf.cond(self.use_adv_input,
-          true_fn = lambda: self.adv_image, false_fn = lambda: self.data_tensor,
+          true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
           strict=True)
 
   def get_adv_input(self):

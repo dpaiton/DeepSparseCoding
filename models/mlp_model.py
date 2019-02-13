@@ -27,7 +27,7 @@ class MlpModel(Model):
     #Placeholders for using adv or clean examples
     with tf.name_scope("placeholders") as scope:
       #This is a swith used internally to use clean or adv examples
-      self.use_adv_input=tf.placeholder(tf.bool, shape=(), name="use_adv_input")
+      self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
     with tf.name_scope("auto_placeholders") as scope:
       #This is a schedule flag to determine if we're training on adv examples
       self.train_on_adversarial=tf.placeholder(tf.bool, shape=(), name="train_on_adversarial")
@@ -35,8 +35,8 @@ class MlpModel(Model):
     self.adv_module = ClassAdversarialModule(input_node, self.use_adv_input,
       self.params.num_classes, self.params.adversarial_num_steps, self.params.adversarial_step_size,
       max_step=self.params.adversarial_max_change,
-      clip_adv = self.params.adversarial_clip, clip_range=self.params.adversarial_clip_range,
-      attack_method = self.params.adversarial_attack_method,
+      clip_adv=self.params.adversarial_clip, clip_range=self.params.adversarial_clip_range,
+      attack_method=self.params.adversarial_attack_method,
       eps=self.params.eps, name="class_adversarial")
 
     return self.adv_module.get_adv_input()

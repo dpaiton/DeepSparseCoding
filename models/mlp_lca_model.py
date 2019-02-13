@@ -185,4 +185,3 @@ class MlpLcaModel(MlpModel):
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=(self.params.disp_dir+"phi" + name_suffix))
-
