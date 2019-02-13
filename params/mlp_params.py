@@ -12,7 +12,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp"
-    self.model_name = "mlp"
+    self.model_name = "mlp_adv"
     self.version = "0.0"
     self.optimizer = "annealed_sgd"
     self.vectorize_data = False
@@ -33,6 +33,7 @@ class params(BaseParams):
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.val_on_cp = True
+    self.eval_batch_size = 1000
     self.cp_load = False
     self.cp_load_name = "pretrain"
     self.cp_load_step = None
@@ -42,15 +43,32 @@ class params(BaseParams):
     self.log_to_file = True
     self.gen_plot_int = 1e4
     self.save_plots = True
+    #Adversarial params
+    self.adversarial_num_steps = 40
+    self.adversarial_attack_method = "kurakin_untargeted"
+    self.adversarial_step_size = 0.01
+    self.adversarial_max_change = 0.3
+    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
+    self.adversarial_clip = True
+    #TODO get these params from other params
+    self.adversarial_clip_range = [0.0, 1.0]
+    #Tradeoff in carlini attack between input pert and target
+    self.carlini_recon_mult = 1
+
 
     # If a scalar is provided then this value is broadcast to all trainable variables
     self.schedule = [
-      {"num_batches": 1e4,
+      {"num_batches": int(1e4),
+      "train_on_adversarial": True,
       "weights": None,
       "weight_lr": 0.01,
       "decay_steps": int(1e4*0.5),
       "decay_rate": 0.8,
       "staircase": True}]
+
+    self.schedule = [self.schedule[0].copy()] + self.schedule
+    self.schedule[0]["train_on_adversarial"] = False
+    self.schedule[0]["num_batches"] = 1000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -69,14 +87,15 @@ class params(BaseParams):
       self.patch_size_x = self.patch_size_y
       self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
       self.batch_norm = [None, None, None, None]
-      self.dropout = [1.0, 1.0, 0.4, 1.0] # TODO: Set dropout defaults somewhere
+      self.dropout = [1.0, 1.0, 1.0, 1.0] # TODO: Set dropout defaults somewhere
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
+
+      self.schedule[1]["num_batches"] = int(1e5)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["weight_lr"] = 1e-4
-        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.90
 
     elif data_type.lower() == "synthetic":

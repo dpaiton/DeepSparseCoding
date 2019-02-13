@@ -112,9 +112,6 @@ class GdnConvDecoderModel(GdnAutoencoderModel):
           self.b_igdn_init_list = [tf.placeholder(tf.float32, shape=b_igdn_shape, name="b_idgn"+str(b_igdn_id))
             for b_igdn_id, b_igdn_shape in enumerate(self.b_igdn_shapes)]
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         with tf.variable_scope("weights") as scope:
           self.weight_scope = tf.get_variable_scope()
 

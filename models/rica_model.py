@@ -64,9 +64,6 @@ class RicaModel(Model):
           self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult") # lambda
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         with tf.variable_scope("weights") as scope:
           w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
             dtype=tf.float32), axis=[0], name="w_init")
