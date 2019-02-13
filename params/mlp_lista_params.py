@@ -88,14 +88,6 @@ class params(BaseParams):
     self.save_plots = True
     self.schedule = [
       {"weights": None,
-      "train_on_adversarial":False,
-      "num_batches": int(1000),
-      "sparse_mult": 0.01,
-      "weight_lr": 0.01,
-      "decay_steps": int(1e4*0.8),
-      "decay_rate": 0.8,
-      "staircase": True},
-      {"weights": None,
       "train_on_adversarial":True,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
@@ -104,6 +96,9 @@ class params(BaseParams):
       "decay_rate": 0.8,
       "staircase": True},
       ]
+    self.schedule = [self.schedule[0].copy()] + self.schedule
+    self.schedule[0]["train_on_adversarial"] = False
+    self.schedule[0]["num_batches"] = 1000
 
   def set_data_params(self, data_type):
     self.data_type = data_type

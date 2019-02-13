@@ -105,25 +105,6 @@ class params(BaseParams):
         "layer2/fc_b_2:0",
         "layer3/fc_w_3:0",
         "layer3/fc_b_3:0"],
-      "train_on_adversarial": False,
-      "train_sae": False,
-      "num_batches": int(1000),
-      "decay_mult": 0.0,
-      "sparse_mult": 0.01,
-      "target_act": 0.1,
-      "weight_lr": 0.01,
-      "decay_steps": int(1e4*0.8),
-      "decay_rate": 0.8,
-      "staircase": True},
-      {"weights": [
-        "layer0/conv_w_0:0",
-        "layer0/conv_b_0:0",
-        "layer1/conv_w_1:0",
-        "layer1/conv_b_1:0",
-        "layer2/fc_w_2:0",
-        "layer2/fc_b_2:0",
-        "layer3/fc_w_3:0",
-        "layer3/fc_b_3:0"],
       "train_on_adversarial": True,
       "train_sae": False,
       "num_batches": int(1e4),
@@ -135,6 +116,9 @@ class params(BaseParams):
       "decay_rate": 0.8,
       "staircase": True},
       ]
+    self.schedule = [self.schedule[0].copy()] + self.schedule
+    self.schedule[0]["train_on_adversarial"] = False
+    self.schedule[0]["num_batches"] = 1000
 
   def set_data_params(self, data_type):
     self.data_type = data_type

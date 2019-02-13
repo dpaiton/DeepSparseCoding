@@ -548,12 +548,15 @@ class Model(object):
     Creates a session with the loaded model graph to run all tensors specified by var_names
     Runs in batches
     Outputs:
-      evals [dict] containing keys that match var_names and the values computed from the session run
-      Note that all var_names must have batch dimension in first dimension
+      evals [dict] containing keys that match var_names or var_node (depending on which
+        gets specified) and the values computed from the session run
+      Note that all var_names/var_nodes must have batch dimension in first dimension
     Inputs:
       batch_size scalar that defines the batch size to split images up into
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
       var_names [list of str] list of strings containing the tf variable names to be evaluated
+      var_nodes [list of tf nodes] list of tensorflow node references containing the
+        variables to be evaluated
     """
     num_data = images.shape[0]
     num_iterations = int(np.ceil(num_data / batch_size))
@@ -588,7 +591,10 @@ class Model(object):
         batch_labels = None
 
       feed_dict = self.get_feed_dict(batch_images, input_labels=batch_labels, is_test=True)
-      feed_dict = self.modify_input(feed_dict)
+      sch = self.get_schedule()
+      if("train_on_adversarial" in sch):
+        if(sch["train_on_adversarial"]):
+          self.modify_input(feed_dict)
       eval_list = sess.run(tensors, feed_dict)
 
       for key, ev in zip(dict_keys, eval_list):

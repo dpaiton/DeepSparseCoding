@@ -86,7 +86,9 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Get feed dictionary for placeholders
       feed_dict = model.get_feed_dict(input_data, input_labels)
-      feed_dict = model.modify_input(feed_dict)
+      if("train_on_adversarial" in sch):
+        if(sch["train_on_adversarial"]):
+          model.modify_input(feed_dict)
 
       batch_t0 = ti.time()
 
@@ -142,7 +144,9 @@ with tf.Session(config=config, graph=model.graph) as sess:
   #TODO is there a better way to do this?
   if(current_step % params.cp_int == 0
     and params.cp_int > 0):
-    feed_dict = model.modify_input(feed_dict)
+    if("train_on_adversarial" in sch):
+      if(sch["train_on_adversarial"]):
+        model.modify_input(feed_dict)
 
   model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
   model.generate_plots(input_data=input_data, input_labels=input_labels)

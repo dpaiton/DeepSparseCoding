@@ -58,13 +58,17 @@ class params(BaseParams):
 
     # If a scalar is provided then this value is broadcast to all trainable variables
     self.schedule = [
-      {"num_batches": 1e4,
-      "train_on_adversarial": False,
+      {"num_batches": int(1e4),
+      "train_on_adversarial": True,
       "weights": None,
       "weight_lr": 0.01,
       "decay_steps": int(1e4*0.5),
       "decay_rate": 0.8,
       "staircase": True}]
+
+    self.schedule = [self.schedule[0].copy()] + self.schedule
+    self.schedule[0]["train_on_adversarial"] = False
+    self.schedule[0]["num_batches"] = 1000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -88,17 +92,10 @@ class params(BaseParams):
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
 
-      self.schedule.append(self.schedule[0].copy())
+      self.schedule[1]["num_batches"] = int(1e5)
       for sched_idx in range(len(self.schedule)):
-        #Train on clean examples for 100 timesteps first
-        if(sched_idx == 0):
-          self.schedule[sched_idx]["num_batches"] = int(1000)
-          self.schedule[sched_idx]["train_on_adversarial"] = False
-        else:
-          self.schedule[sched_idx]["num_batches"] = int(1e5)
-          self.schedule[sched_idx]["train_on_adversarial"] = True
         self.schedule[sched_idx]["weight_lr"] = 1e-4
-        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.90
 
     elif data_type.lower() == "synthetic":

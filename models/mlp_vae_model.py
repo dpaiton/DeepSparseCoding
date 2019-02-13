@@ -166,11 +166,6 @@ class MlpVaeModel(MlpModel):
     super(MlpVaeModel, self).generate_plots(input_data, input_labels)
 
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    train_on_adversarial = feed_dict[self.train_on_adversarial]
-    if(train_on_adversarial):
-      feed_dict[self.use_adv_input] = True
-    else:
-      feed_dict[self.use_adv_input] = False
 
     eval_list = [self.global_step, self.vae_module.w_list[0],
       self.vae_module.reconstruction, self.vae_module.a]

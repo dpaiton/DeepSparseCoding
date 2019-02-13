@@ -27,10 +27,10 @@ class MlpModel(Model):
     #Placeholders for using adv or clean examples
     with tf.name_scope("placeholders") as scope:
       #This is a swith used internally to use clean or adv examples
-      self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
+      self.use_adv_input=tf.placeholder(tf.bool, shape=(), name="use_adv_input")
     with tf.name_scope("auto_placeholders") as scope:
       #This is a schedule flag to determine if we're training on adv examples
-      self.train_on_adversarial = tf.placeholder(tf.bool, shape=(), name="train_on_adversarial")
+      self.train_on_adversarial=tf.placeholder(tf.bool, shape=(), name="train_on_adversarial")
 
     self.adv_module = ClassAdversarialModule(input_node, self.use_adv_input,
       self.params.num_classes, self.params.adversarial_num_steps, self.params.adversarial_step_size,
@@ -101,22 +101,13 @@ class MlpModel(Model):
 
   def modify_input(self, feed_dict):
     sess = tf.get_default_session()
-    #Always reset adv variable here to allow for different shapes of inputs
-    #sess.run(self.adv_module.reset, feed_dict=feed_dict)
 
-    #If adversarial module is built, construct adversarial examples here
-    if(feed_dict[self.train_on_adversarial]):
-      #TODO add in rand_state and target_generation_method here
-      #Generate adversarial examples to store within internal variable
-      self.adv_module.construct_adversarial_examples(feed_dict,
-        labels = feed_dict[self.label_placeholder],
-        recon_mult = self.params.carlini_recon_mult,
-        rand_state=None, target_generation_method="random")
-      #TODO This might be redundent
-      feed_dict[self.use_adv_input] = True
-    else:
-      feed_dict[self.use_adv_input] = False
-    return feed_dict
+    #TODO add in rand_state and target_generation_method here
+    #Generate adversarial examples to store within internal variable
+    self.adv_module.construct_adversarial_examples(feed_dict,
+      labels=feed_dict[self.label_placeholder],
+      recon_mult=self.params.carlini_recon_mult,
+      rand_state=None, target_generation_method="random")
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(MlpModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)

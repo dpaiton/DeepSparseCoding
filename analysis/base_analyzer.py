@@ -150,9 +150,9 @@ class Analyzer(object):
             self.model_params.num_classes, self.analysis_params.adversarial_num_steps,
             self.analysis_params.adversarial_step_size,
             max_step=self.analysis_params.adversarial_max_change,
-            clip_adv = self.analysis_params.adversarial_clip,
+            clip_adv=self.analysis_params.adversarial_clip,
             clip_range=self.analysis_params.adversarial_clip_range,
-            attack_method = self.analysis_params.adversarial_attack_method,
+            attack_method=self.analysis_params.adversarial_attack_method,
             eps=self.model_params.eps, name="class_adversarial")
 
       self.model.build_graph_from_input(self.class_adv_module.adv_image)
@@ -196,10 +196,9 @@ class Analyzer(object):
     self.model.add_initializer_to_graph()
 
   def add_pre_init_ops_to_graph(self):
+    #TODO rework recon adversarial
     if self.analysis_params.do_recon_adversaries:
       self.add_recon_adversarial_ops_to_graph()
-    #if self.analysis_params.do_class_adversaries:
-    #  self.add_class_adversarial_ops_to_graph()
 
   def run_analysis(self, images, labels=None, save_info=""):
     """
@@ -1036,7 +1035,7 @@ class Analyzer(object):
           feed_dict, labels=input_labels, recon_mult=r_mult,
           rand_state=self.rand_state, target_generation_method="specified",
           target_labels=target_labels,
-          save_int = self.analysis_params.adversarial_save_int)
+          save_int=self.analysis_params.adversarial_save_int)
 
         steps = out_dict["step"]
         all_adv_images.append(out_dict["adv_images"])

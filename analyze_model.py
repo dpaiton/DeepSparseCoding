@@ -30,7 +30,7 @@ class params(object):
     # Recon adversarial image analysis
     self.do_recon_adversaries = False # TODO: broken for rica
     #Classification adversarial image analysis
-    self.do_class_adversaries = False
+    self.do_class_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
