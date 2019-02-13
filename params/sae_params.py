@@ -32,6 +32,7 @@ class params(BaseParams):
     self.batch_size = 100
     self.output_channels = [768]
     self.tie_decoder_weights = False
+    self.conv = False
     self.activation_functions = ["sigmoid", "identity"]
     self.dropout = [1.0]*2
     self.optimizer = "annealed_sgd"#"adam"
@@ -160,6 +161,11 @@ class params(BaseParams):
       self.schedule[sched_idx]["sparse_mult"] = 0.15
       self.schedule[sched_idx]["target_act"] = 0.2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.output_channels = [100]
+    self.output_channels = [20]
+    self.conv = True
+    self.conv_strides = [(1, 1, 1, 1)]
+    self.patch_size_y = [3.0]
+    self.patch_size_x = self.patch_size_y
     self.activation_functions = ["sigmoid", "identity"]
     self.dropout = [1.0]*2
+    self.vectorize_data = False

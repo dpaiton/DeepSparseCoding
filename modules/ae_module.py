@@ -4,7 +4,7 @@ from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
   def __init__(self, data_tensor, output_channels, decay_mult, act_funcs, dropout,
-    tie_decoder_weights, name_scope="AE"):
+    tie_decoder_weights, conv=False, conv_strides=None, patch_y=None, patch_x=None, name_scope="AE"):
     """
     Autoencoder module
     Inputs:
@@ -13,18 +13,30 @@ class AeModule(object):
       decay_mult: weight decay multiplier
       act_funcs: activation functions
       dropout: specifies the keep probability or None
+      conv: if True, do convolution
+      conv_strides: list of strides for convolution [batch, y, x, channels]
+      patch_y: number of y inputs for convolutional patches
+      patch_x: number of x inputs for convolutional patches
       name_scope: specifies the name_scope for the module
     Outputs:
       dictionary
     """
+    self.conv = conv
+    self.conv_strides = conv_strides
+    self.patch_y = patch_y
+    self.patch_x = patch_x
     self.name_scope = name_scope
 
     data_ndim = len(data_tensor.get_shape().as_list())
-    assert data_ndim == 2, (
-      "Module requires datal_tensor to have shape [batch, num_pixels]")
+    assert data_ndim == 2 or data_ndim == 4, (
+      "Module requires datal_tensor to have shape [batch, num_pixels] or [batch, y, x, c]")
 
     self.data_tensor = data_tensor
-    self.batch_size, self.num_pixels = self.data_tensor.get_shape()
+    if data_ndim == 2:
+      self.batch_size, self.num_pixels = self.data_tensor.get_shape()
+    else:
+      self.batch_size, self.num_pixels_y, self.num_pixels_x, self.num_channels = self.data_tensor.get_shape()
+      self.num_pixels = self.num_pixels_y * self.num_pixels_x * self.num_channels
 
     self.output_channels = output_channels
     self.act_funcs = act_funcs
@@ -42,14 +54,20 @@ class AeModule(object):
     assert len(self.act_funcs) == self.num_layers, \
       ("act_funcs parameter must have the same length as output_channels")
 
-    w_enc_shape = []
-    w_dec_shape = []
-    prev_input_features = self.num_pixels
-    for l in range(self.num_encoder_layers):
-      w_enc_shape.append([int(prev_input_features), int(self.output_channels[l])])
-      prev_input_features = self.output_channels[l]
-    w_dec_shape = [shape[::-1] for shape in w_enc_shape[::-1]]
-    self.w_shapes = w_enc_shape + w_dec_shape
+    if self.conv:# Convoluational AE
+      in_channels = [data_tensor.shape[-1]] + self.output_channels[:-1]
+      self.w_shapes = [shape
+        for shape in zip(self.patch_y, self.patch_x, in_channels, self.output_channels)]
+      self.w_shapes += self.w_shapes[::-1] # decoder mirrors the encoder
+    else:
+      w_enc_shape = []
+      w_dec_shape = []
+      prev_input_features = self.num_pixels
+      for l in range(self.num_encoder_layers):
+        w_enc_shape.append([int(prev_input_features), int(self.output_channels[l])])
+        prev_input_features = self.output_channels[l]
+      w_dec_shape = [shape[::-1] for shape in w_enc_shape[::-1]]
+      self.w_shapes = w_enc_shape + w_dec_shape
 
     self.build_graph()
 
@@ -67,7 +85,27 @@ class AeModule(object):
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
-  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape):
+  def compute_pre_activation(self, layer_id, input_tensor, w, b, decode):
+    if self.conv:
+      if decode:
+        height_const = 0 if tf.shape(input_tensor)[1] % self.conv_strides[layer_id][1] == 0 else 1
+        out_height = (tf.shape(input_tensor)[1] * self.conv_strides[layer_id][1]) - height_const
+        width_const = 0 if tf.shape(input_tensor)[2] % self.conv_strides[layer_id][2] == 0 else 1
+        out_width = (tf.shape(input_tensor)[2] * self.conv_strides[layer_id][2]) - width_const
+        out_shape = tf.stack([tf.shape(input_tensor)[0], # Batch
+          out_height, # Height
+          out_width, # Width
+          tf.constant(w.get_shape()[2], dtype=tf.int32)]) # Channels
+        pre_act =  tf.add(tf.nn.conv2d_transpose(input_tensor, w, out_shape,
+          strides=self.conv_strides[layer_id], padding="SAME"), b)
+      else:
+        pre_act = tf.add(tf.nn.conv2d(input_tensor, w, self.conv_strides[layer_id],
+          padding="SAME"), b)
+    else:
+      pre_act = tf.add(tf.matmul(input_tensor, w), b)
+    return pre_act
+
+  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape, decode):
     """
     Make layer that does act(u*w+b)
     Example case for w_read_id logic:
@@ -89,10 +127,15 @@ class AeModule(object):
         initializer=self.w_init, trainable=True)
 
       b_name = "b_"+str(layer_id)
-      b = tf.get_variable(name=b_name, shape=w_shape[1],
+      if decode:
+        b_shape = w_shape[-2]
+      else:
+        b_shape = w_shape[-1]
+      b = tf.get_variable(name=b_name, shape=b_shape,
         dtype=tf.float32, initializer=self.b_init, trainable=True)
 
-      output_tensor = activation_function(tf.add(tf.matmul(input_tensor, w), b))
+      pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, decode)
+      output_tensor = activation_function(pre_act)
       output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, w, b
 
@@ -104,7 +147,7 @@ class AeModule(object):
     enc_b_list = []
     for layer_id in range(len(w_shapes)):
       u_out, w, b = self.layer_maker(layer_id, enc_u_list[layer_id], activation_functions[layer_id],
-        w_shapes[layer_id])
+        w_shapes[layer_id], decode=False)
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
@@ -119,7 +162,7 @@ class AeModule(object):
     for dec_layer_id in range(len(w_shapes)):
       layer_id = self.num_encoder_layers + dec_layer_id
       u_out, w, b = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
-        activation_functions[dec_layer_id], w_shapes[dec_layer_id])
+        activation_functions[dec_layer_id], w_shapes[dec_layer_id], decode=True)
       dec_u_list.append(u_out)
       dec_w_list.append(w)
       dec_b_list.append(b)

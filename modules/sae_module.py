@@ -7,7 +7,7 @@ from modules.activations import sigmoid
 
 class SaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, sparse_mult, decay_mult, target_act,
-    act_funcs, dropout, tie_decoder_weights, name_scope="SAE"):
+    act_funcs, dropout, tie_decoder_weights, conv=False, conv_strides=None, patch_y=None, patch_x=None, name_scope="SAE"):
     """
     Implementation of sparse autoencoder described in Andrew Ng's 2011 Stanford CS294A lecture notes
     Sigmoidal activation function
@@ -15,18 +15,22 @@ class SaeModule(AeModule):
     Linear reconstructions - input images do not have 0-1 range
     Inputs:
       data_tensor
-      output_channels - a list of channels to make, also defines number of layers
-      decay_mult - weight decay multiplier
-      act_funcs - activation functions
-      dropout - specifies the keep probability or None
-      name_scope - specifies the name_scope for the module
+      output_channels: a list of channels to make, also defines number of layers
+      decay_mult: weight decay multiplier
+      act_funcs: activation functions
+      dropout: specifies the keep probability or None
+      conv: if True, do convolution
+      conv_strides: list of strides for convolution [batch, y, x, channels]
+      patch_y: number of y inputs for convolutional patches
+      patch_x: number of x inputs for convolutional patches
+      name_scope: specifies the name_scope for the module
     Outputs:
       dictionary
     """
     self.sparse_mult = sparse_mult
     self.target_act = target_act
     super(SaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
-      dropout, tie_decoder_weights, name_scope)
+      dropout, tie_decoder_weights, conv, conv_strides, patch_y, patch_x, name_scope)
 
   def compute_sparse_loss(self, a_in):
     with tf.name_scope("unsupervised"):

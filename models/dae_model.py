@@ -12,7 +12,6 @@ class DaeModel(AeModel):
     Divisive Autoencoder 
     """
     super(DaeModel, self).__init__()
-    self.vector_inputs = True
 
   def build_module(self, input_node):
     module = DaeModule(input_node, self.params.output_channels, self.ent_mult, self.decay_mult,
@@ -20,7 +19,7 @@ class DaeModel(AeModel):
       self.params.mle_step_size, self.params.num_mle_steps, self.params.num_quant_bins, self.noise_var_mult,
       self.params.gdn_w_init_const, self.params.gdn_b_init_const, self.params.gdn_w_thresh_min,
       self.params.gdn_b_thresh_min, self.params.gdn_eps, self.act_funcs, self.dropout_keep_probs,
-      self.params.tie_decoder_weights)
+      self.params.tie_decoder_weights, self.params.conv, self.conv_strides, self.patch_y, self.patch_x, name_scope="DAE")
     return module
 
   def build_graph_from_input(self, input_node):

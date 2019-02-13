@@ -21,17 +21,30 @@ class AeModel(Model):
      params: [obj] model parameters
     """
     super(AeModel, self).load_params(params)
-    self.input_shape = [None, self.params.num_pixels]
+    self.vectorize_data = self.params.vectorize_data
+    if self.vectorize_data:
+      self.input_shape = [None, self.params.num_pixels]
+    else:
+      self.input_shape = [None]+self.params.data_shape
     self.num_latent = self.params.output_channels[-1]
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.activation_functions]
+    if self.params.conv:
+      self.conv_strides = self.params.conv_strides + self.params.conv_strides[::-1]
+      self.patch_y = self.params.patch_size_y
+      self.patch_x = self.params.patch_size_x
+    else:
+      self.conv_strides = None
+      self.patch_y = None
+      self.patch_x = None
 
   def get_input_shape(self):
     return self.input_shape
 
   def build_module(self, input_node):
     module = AeModule(input_node, self.params.output_channels, self.decay_mult, self.act_funcs,
-      self.dropout_keep_probs, self.params.tie_decoder_weights, name_scope="AE")
+      self.dropout_keep_probs, self.params.tie_decoder_weights, self.params.conv,
+      self.conv_strides, self.patch_y, self.patch_x, name_scope="AE")
     return module
 
   def build_graph_from_input(self, input_node):

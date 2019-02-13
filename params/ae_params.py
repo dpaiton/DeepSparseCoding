@@ -27,6 +27,7 @@ class params(BaseParams):
     #Decoder will automatically build the transpose of the encoder
     self.output_channels = [512, 50]
     self.tie_decoder_weights = False
+    self.conv = False
     self.activation_functions = ["relu", "relu", "relu", "identity"]
     self.dropout = [1.0]*4
     self.optimizer = "annealed_sgd"
@@ -74,5 +75,10 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.output_channels = [20, 10]
+    self.conv = True
+    self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
+    self.patch_size_y = [3.0, 3.0]
+    self.patch_size_x = self.patch_size_y
     self.activation_functions = ["relu", "relu", "relu", "identity"]
     self.dropout = [1.0]*4
+    self.vectorize_data = False

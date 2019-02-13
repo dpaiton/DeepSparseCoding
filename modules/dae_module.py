@@ -8,7 +8,8 @@ from modules.activations import activation_picker
 class DaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, ent_mult, decay_mult, bounds_slope, latent_min,
     latent_max, num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
-    gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights):
+    gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights, conv=False, 
+    conv_strides=None, patch_y=None, patch_x=None, name_scope="DAE"):
     """
     Divisive Autoencoder module
     Inputs:
@@ -34,6 +35,11 @@ class DaeModule(AeModule):
       gdn_eps: off diagonal of gdn gamma initializer 
       act_funcs: activation functions
       dropout: specifies the keep probability or None
+      conv: if True, do convolution
+      conv_strides: list of strides for convolution [batch, y, x, channels]
+      patch_y: number of y inputs for convolutional patches
+      patch_x: number of x inputs for convolutional patches
+      name_scope: specifies the name_scope for the module
     Outputs:
       dictionary
     """
@@ -53,7 +59,7 @@ class DaeModule(AeModule):
     self.gdn_b_thresh_min = gdn_b_thresh_min
     self.gdn_eps = gdn_eps
     super(DaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
-      dropout, tie_decoder_weights)
+      dropout, tie_decoder_weights, conv, conv_strides, patch_y, patch_x, name_scope)
 
   def compute_entropies(self, a_in):
     a_probs = ef.prob_est(a_in, self.mle_thetas, self.triangle_centers)
@@ -73,7 +79,7 @@ class DaeModule(AeModule):
       + tf.nn.relu(self.latent_min - a_in)), axis=reduc_dim))
     return ramp_loss
 
-  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape):
+  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape, decode):
     """
     Make layer that does act(u*w+b)
     Example case for w_read_id logic:
@@ -97,21 +103,21 @@ class DaeModule(AeModule):
       trainable_variables.append(w)
 
       b_name = "b_"+str(layer_id)
-      b = tf.get_variable(name=b_name, shape=w_shape[1],
+      b = tf.get_variable(name=b_name, shape=w_shape[-1],
         dtype=tf.float32, initializer=self.b_init, trainable=True)
       trainable_variables.append(b)
 
-      pre_act = tf.add(tf.matmul(input_tensor, w), b)
+      pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, decode)
       if activation_function == activation_picker("gdn"):
-        w_gdn = tf.get_variable(name="w_gdn_"+str(layer_id), shape=[w_shape[1], w_shape[1]], 
+        w_gdn = tf.get_variable(name="w_gdn_"+str(layer_id), shape=[w_shape[-1], w_shape[-1]],
           dtype=tf.float32, initializer=self.w_gdn_init, trainable=True)
         trainable_variables.append(w_gdn)
-        b_gdn = tf.get_variable(name="b_gdn_"+str(layer_id), shape=w_shape[1], 
+        b_gdn = tf.get_variable(name="b_gdn_"+str(layer_id), shape=w_shape[-1],
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
         trainable_variables.append(b_gdn)
         gdn_inverse = True if layer_id >= self.num_encoder_layers else False
         output_tensor, gdn_mult = activation_function(pre_act, w_gdn, b_gdn, self.gdn_w_thresh_min,
-          self.gdn_b_thresh_min, self.gdn_eps, gdn_inverse, conv=False) 
+          self.gdn_b_thresh_min, self.gdn_eps, gdn_inverse, conv=self.conv)
       else: 
         output_tensor = activation_function(pre_act)
       output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
@@ -127,7 +133,7 @@ class DaeModule(AeModule):
     b_gdn_list = []
     for layer_id in range(len(w_shapes)):
       u_out, trainable_variables = self.layer_maker(layer_id, u_list[layer_id],
-        activation_functions[layer_id], w_shapes[layer_id])
+        activation_functions[layer_id], w_shapes[layer_id], decode=False)
       if activation_functions[layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
         w_gdn_list.append(w_gdn)
@@ -150,7 +156,7 @@ class DaeModule(AeModule):
     for dec_layer_id in range(len(w_shapes)):
       layer_id = self.num_encoder_layers + dec_layer_id
       u_out, trainable_variables = self.layer_maker(layer_id, u_list[dec_layer_id],
-        activation_functions[dec_layer_id], w_shapes[dec_layer_id])
+        activation_functions[dec_layer_id], w_shapes[dec_layer_id], decode=True)
       if activation_functions[dec_layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
         w_gdn_list.append(w_gdn)
@@ -163,70 +169,71 @@ class DaeModule(AeModule):
     return u_list, w_list, b_list, w_gdn_list, b_gdn_list
 
   def build_graph(self):
-    with tf.name_scope("weight_inits") as scope:
-      self.w_init = tf.initializers.random_normal(mean=0.0, stddev = 1e-2, dtype=tf.float32)
-      self.b_init = tf.initializers.zeros(dtype=tf.float32)
+    with tf.name_scope(self.name_scope) as scope:
+      with tf.name_scope("weight_inits") as scope:
+        self.w_init = tf.initializers.random_normal(mean=0.0, stddev = 1e-2, dtype=tf.float32)
+        self.b_init = tf.initializers.zeros(dtype=tf.float32)
 
-    with tf.name_scope("gdn_weight_inits") as scope:
-      self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
-        off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
-      self.w_igdn_init = self.w_gdn_init
-      b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
-      self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
-      self.b_igdn_init = self.b_gdn_init
+      with tf.name_scope("gdn_weight_inits") as scope:
+        self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
+          off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
+        self.w_igdn_init = self.w_gdn_init
+        b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
+        self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
+        self.b_igdn_init = self.b_gdn_init
 
-    self.u_list = [self.data_tensor]
-    self.w_list = []
-    self.b_list = []
-    self.w_gdn_list = []
-    self.b_gdn_list = []
-    enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list = \
-      self.build_encoder(self.u_list[0], self.act_funcs[:self.num_encoder_layers],
-      self.w_shapes[:self.num_encoder_layers])
-    self.u_list += enc_u_list
-    self.w_list += enc_w_list
-    self.b_list += enc_b_list
-    self.w_gdn_list += enc_w_gdn_list
-    self.b_gdn_list += enc_b_gdn_list 
+      self.u_list = [self.data_tensor]
+      self.w_list = []
+      self.b_list = []
+      self.w_gdn_list = []
+      self.b_gdn_list = []
+      enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list = \
+        self.build_encoder(self.u_list[0], self.act_funcs[:self.num_encoder_layers],
+        self.w_shapes[:self.num_encoder_layers])
+      self.u_list += enc_u_list
+      self.w_list += enc_w_list
+      self.b_list += enc_b_list
+      self.w_gdn_list += enc_w_gdn_list
+      self.b_gdn_list += enc_b_gdn_list
 
-    with tf.name_scope("inference") as scope:
-      self.a = tf.identity(self.u_list[-1], name="activity")
+      with tf.name_scope("inference") as scope:
+        self.a = tf.identity(self.u_list[-1], name="activity")
 
-    with tf.variable_scope("probability_estimate") as scope:
-      self.mle_thetas, self.theta_init = ef.construct_thetas(self.output_channels[-1],
-        self.num_triangles)
+      with tf.variable_scope("probability_estimate") as scope:
+        self.mle_thetas, self.theta_init = ef.construct_thetas(self.output_channels[-1],
+          self.num_triangles)
 
-      ll = ef.log_likelihood(tf.nn.sigmoid(self.a), self.mle_thetas, self.triangle_centers)
-      self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
-        for _ in range(self.num_mle_steps)]
+        ll = ef.log_likelihood(tf.nn.sigmoid(tf.reshape(self.a, [tf.shape(self.a)[0], -1])),
+          self.mle_thetas, self.triangle_centers)
+        self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
+          for _ in range(self.num_mle_steps)]
 
-    noise_var = self.noise_var_mult*(self.latent_max-self.latent_min)/(2*self.num_quant_bins)
-    noise = tf.random_uniform(shape=tf.stack(tf.shape(self.u_list[-1])),minval=-noise_var,
-      maxval=noise_var)
-    a_noise = tf.add(noise,self.u_list[-1])
+      noise_var = self.noise_var_mult*(self.latent_max-self.latent_min)/(2*self.num_quant_bins)
+      noise = tf.random_uniform(shape=tf.stack(tf.shape(self.u_list[-1])),minval=-noise_var,
+        maxval=noise_var)
+      a_noise = tf.add(noise,self.u_list[-1])
 
-    dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \
-      self.build_decoder(a_noise, self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
-    self.u_list += dec_u_list
-    self.w_list += dec_w_list
-    self.b_list += dec_b_list
-    self.w_gdn_list += dec_w_gdn_list
-    self.b_gdn_list += dec_b_gdn_list
+      dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \
+        self.build_decoder(a_noise, self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
+      self.u_list += dec_u_list
+      self.w_list += dec_w_list
+      self.b_list += dec_b_list
+      self.w_gdn_list += dec_w_gdn_list
+      self.b_gdn_list += dec_b_gdn_list
 
-    for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
-      self.trainable_variables[w_gdn.name] = w_gdn
-      self.trainable_variables[b_gdn.name] = b_gdn
-    for w, b in zip(self.w_list, self.b_list):
-      self.trainable_variables[w.name] = w
-      self.trainable_variables[b.name] = b
+      for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
+        self.trainable_variables[w_gdn.name] = w_gdn
+        self.trainable_variables[b_gdn.name] = b_gdn
+      for w, b in zip(self.w_list, self.b_list):
+        self.trainable_variables[w.name] = w
+        self.trainable_variables[b.name] = b
 
-    with tf.name_scope("output") as scope:
-      self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
+      with tf.name_scope("output") as scope:
+        self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
-    with tf.name_scope("loss") as scope:
-      self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
-        "weight_decay_loss":self.compute_weight_decay_loss(),
-        "entropy_loss":self.compute_entropy_loss(self.a),
-        "ramp_loss":self.compute_ramp_loss(self.a)} #SOMETHING WRONG WITH SHAPE FOR a_noise (or self.a) 
-        # output of compute_ramp_loss is no longer same shape as other losses 
-      self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
+      with tf.name_scope("loss") as scope:
+        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+          "weight_decay_loss":self.compute_weight_decay_loss(),
+          "entropy_loss":self.compute_entropy_loss(self.a),
+          "ramp_loss":self.compute_ramp_loss(self.a)}
+        self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
