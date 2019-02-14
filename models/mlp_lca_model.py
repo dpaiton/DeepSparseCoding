@@ -115,10 +115,32 @@ class MlpLcaModel(MlpModel):
       self.lca_module.reconstruction,
       self.pSNRdB]
 
+
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
 
     recon_loss, sparse_loss, lca_a_vals, recon, pSNRdB\
       = out_vals[0:5]
+
+    train_on_adversarial = feed_dict[self.train_on_adversarial]
+    if(train_on_adversarial):
+      orig_img = feed_dict[self.input_placeholder]
+      adv_feed_dict = feed_dict.copy()
+      adv_feed_dict[self.use_adv_input] = True
+      adv_img = tf.get_default_session().run(self.adv_module.get_adv_input())
+
+      reduc_dims = list(range(1, len(orig_img.shape)))
+      orig_adv_linf = np.max(np.abs(orig_img - adv_im), axis=reduc_dims)
+      orig_recon_linf = np.max(np.abs(orig_img - recon), axis=reduc_dims)
+
+      orig_adv_linf_max = np.max(orig_adv_l_inf)
+      orig_adv_linf_mean = np.mean(orig_adv_l_inf)
+      orig_adv_linf_min = np.min(orig_adv_l_inf)
+
+      orig_recon_linf_max = np.max(orig_recon_l_inf)
+      orig_recon_linf_mean = np.mean(orig_recon_l_inf)
+      orig_recon_linf_min = np.min(orig_recon_l_inf)
+
+
     input_max = np.max(input_data)
     input_mean = np.mean(input_data)
     input_min = np.min(input_data)
@@ -139,6 +161,14 @@ class MlpLcaModel(MlpModel):
       "lca_a_max_mean_min":[lca_a_vals_max, lca_a_vals_mean, lca_a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
+
+    if(train_on_adversarial):
+      stat_dict["orig_adv_linf_max_mean_min"] = [orig_adv_linf_max,
+        orig_adv_linf_mean, orig_adv_linf_min]
+
+      stat_dict["orig_recon_linf_max_mean_min"] = [orig_recon_linf_max,
+        orig_recon_linf_mean, orig_recon_linf_min]
+
     update_dict.update(stat_dict) #stat_dict overwrites for same keys
 
     return update_dict
