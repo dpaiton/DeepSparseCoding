@@ -223,10 +223,13 @@ class MlpModel(Model):
     w_enc = eval_out[2]
     if self.params.layer_types[0] == "fc":
       w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
-      w_enc = dp.reshape_data(w_enc.T, flatten=False)[0] # [num_neurons, height, width]
-      fig = pf.plot_data_tiled(w_enc, normalize=False,
-        title="Weights at step "+current_step, vmin=None, vmax=None,
-        save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
+      # Don't plot weights as images if input is not square
+      w_input_sqrt = np.sqrt(w_enc.shape[0])
+      if(np.floor(w_input_sqrt) == np.ceil(w_input_sqrt)):
+        w_enc = dp.reshape_data(w_enc.T, flatten=False)[0] # [num_neurons, height, width]
+        fig = pf.plot_data_tiled(w_enc, normalize=False,
+          title="Weights at step "+current_step, vmin=None, vmax=None,
+          save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
       fig = pf.plot_bar(w_enc_norm, num_xticks=5,
         title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
         save_filename=self.params.disp_dir+"w_enc_norm"+filename_suffix)

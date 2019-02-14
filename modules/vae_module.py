@@ -27,10 +27,10 @@ class VaeModule(AeModule):
     with tf.variable_scope(variable_scope) as scope:
       if self.noise_level > 0.0:
           self.corrupt_data = tf.add(tf.random.normal(shape=tf.shape(data_tensor),
-            mean=tf.reduce_mean(data_tensor), stddev=noise_level, dtype=tf.float32, name="data_noise"),
-            data_tensor)
+            mean=tf.reduce_mean(data_tensor), stddev=noise_level, dtype=tf.float32),
+            data_tensor, name="noisy_data")
       else:
-        self.corrupt_data = data_tensor
+        self.corrupt_data = tf.identity(data_tensor, name="clean_data")
     self.recon_loss_type = recon_loss_type
     self.kld_mult = kld_mult
     super(VaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
