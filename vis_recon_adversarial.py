@@ -15,12 +15,12 @@ import pdb
 
 #List of models for analysis
 analysis_list = [
-    #("lca", "lca_1568_mnist"),
-    #("lca", "lca_768_mnist"),
+  ("lca", "lca_1568_mnist"),
+  ("lca", "lca_768_mnist"),
   ("vae", "vae_mnist"),
-  #("sae", "deep_sae_mnist"),
-  #("sae", "sae_1568_mnist"),
-  #("sae", "sae_768_mnist"),
+  ("vae", "deep_vae_mnist"),
+  ("vae", "deep_denoising_vae_mnist"),
+  ("sae", "sae_768_mnist"),
   ]
 
 #colors for analysis_list

@@ -1021,7 +1021,6 @@ class Analyzer(object):
 
     np.savez(self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz", data=out_dict)
     self.analysis_logger.log_info("Adversary analysis is complete.")
-    return self.adversarial_images, self.adversarial_recons, distances
 
   def construct_class_adversarial_stimulus(self, input_images, input_labels,
     target_labels):
