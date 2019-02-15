@@ -200,46 +200,49 @@ fig.savefig(outdir + "/class_mult_tradeoff.png")
 plt.close('all')
 
 
-#pdb.set_trace()
-#
-#analysis_params = params()
-#analyzer = setup(analysis_params)
-#
-#class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversary_"+analysis_params.save_info+".npz"
-#assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
-#
-#num_data = analyzer.num_data
-#orig_imgs = analyzer.class_adversarial_input_images.reshape(
-#  int(num_data),
-#  int(np.sqrt(analyzer.model.params.num_pixels)),
-#  int(np.sqrt(analyzer.model.params.num_pixels)))
-#for idx in range(num_data):
-#  pf.plot_image(orig_imgs[idx], title="Input Image",
-#    save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+\
-#    "_adversarial_input_batch_"+str(idx)+".png")
-#
-#target_classes = np.argmax(analyzer.adversarial_target_labels, axis=-1)
-#
-#plot_int = 100
-#for step, (stim, output) in enumerate(zip(analyzer.adversarial_images[0], analyzer.adversarial_outputs[0])):
-#  if(step % plot_int == 0):
-#    adv_imgs = stim.reshape(
-#      int(num_data),
-#      int(np.sqrt(analyzer.model.params.num_pixels)),
-#      int(np.sqrt(analyzer.model.params.num_pixels)))
-#    for idx in range(num_data):
-#      f, axarr = plt.subplots(2, 1)
-#      axarr[0].imshow(adv_imgs[idx], cmap='gray')
-#      axarr[0] = pf.clear_axis(axarr[0])
-#      axarr[1].bar(list(range(analyzer.model.params.num_classes)), output[idx])
-#      axarr[1].set_ylim([0, 1])
-#      mse_val = np.mean((adv_imgs[idx] - orig_imgs[idx]) ** 2)
-#      output_class = np.argmax(output[idx])
-#      target_class = target_classes[idx]
-#      axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_val))
-#      f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
-#        +"stim_batch_"+str(idx)+"_step_"+str(step)+".png")
-#      plt.close('all')
+#Loop thorugh source network
+for (model_type, model_name) in analysis_list:
+  analysis_params = params()
+  analysis_params.model_type = model_type
+  analysis_params.model_name = model_name
+  analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
+
+  analyzer = setup(analysis_params)
+
+  class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversary_"+analysis_params.save_info+".npz"
+  assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
+
+  num_data = analyzer.num_data
+  orig_imgs = analyzer.class_adversarial_input_images.reshape(
+    int(num_data),
+    int(np.sqrt(analyzer.model.params.num_pixels)),
+    int(np.sqrt(analyzer.model.params.num_pixels)))
+  for idx in range(num_data):
+    pf.plot_image(orig_imgs[idx], title="Input Image",
+      save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+\
+      "_adversarial_input_batch_"+str(idx)+".png")
+
+  target_classes = np.argmax(analyzer.adversarial_target_labels, axis=-1)
+  steps = analyzer.steps_idx
+
+  for (step, stim, output) in zip(steps, analyzer.adversarial_images[0], analyzer.adversarial_outputs[0]):
+    adv_imgs = stim.reshape(
+      int(num_data),
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
+    for idx in range(num_data):
+      f, axarr = plt.subplots(2, 1)
+      axarr[0].imshow(adv_imgs[idx], cmap='gray')
+      axarr[0] = pf.clear_axis(axarr[0])
+      axarr[1].bar(list(range(analyzer.model.params.num_classes)), output[idx])
+      axarr[1].set_ylim([0, 1])
+      mse_val = np.mean((adv_imgs[idx] - orig_imgs[idx]) ** 2)
+      output_class = np.argmax(output[idx])
+      target_class = target_classes[idx]
+      axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_val))
+      f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
+        +"stim_batch_"+str(idx)+"_step_"+str(step)+".png")
+      plt.close('all')
 
 #orig_recon = analyzer.adversarial_recons[0].reshape(
 #  int(np.sqrt(analyzer.model.params.num_pixels)),int(np.sqrt(analyzer.model.params.num_pixels)))
