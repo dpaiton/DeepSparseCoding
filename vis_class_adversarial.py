@@ -21,8 +21,9 @@ analysis_list = [
     #("mlp_lista", "mlp_lista_5_mnist"),
     #("mlp_lista", "mlp_lista_20_mnist"),
     #    #MLP on pixels
-        ("mlp_lca", "mlp_lca_recon_mnist"),
-        ("mlp_sae", "mlp_sae_recon_mnist"),
+        ("mlp_lca", "mlp_lca_768_recon_mnist"),
+        ("mlp_sae", "mlp_sae_768_recon_mnist"),
+        ("mlp", "mlp_adv_mnist"),
         ("mlp", "mlp_mnist"),
     ]
 
@@ -61,8 +62,7 @@ class params(object):
     self.plot_title_name = self.model_name.replace("_", " ").title()
     self.version = "0.0"
     #TODO can we pull this save_info from somewhere?
-    #self.save_info = "analysis_carlini"
-    self.save_info = "analysis_test_kurakin"
+    self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
 
 def makedir(name):
@@ -82,7 +82,7 @@ makedir(outdir)
 
 #Use this index in the table
 #TODO pick best recon mult for here
-recon_mult_idx = 0
+recon_mult_idx = 4
 eval_batch_size = 100
 
 #Store csv file with corresponding accuracy
@@ -99,7 +99,7 @@ for source_model_idx, (model_type, model_name) in enumerate(analysis_list):
   analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
   source_analyzer = setup(analysis_params)
   #Fill in clean accuracy
-  output_table[source_model_idx, 0] = source_analyzer.adversarial_clean_accuracy
+  output_table[source_model_idx, 0] = source_analyzer.adversarial_clean_accuracy[recon_mult_idx]
 
   #Calculate true classes of provided images
   input_classes = np.argmax(source_analyzer.adversarial_input_labels, axis=-1)
@@ -108,7 +108,8 @@ for source_model_idx, (model_type, model_name) in enumerate(analysis_list):
   for target_model_idx, (model_type, model_name) in enumerate(analysis_list):
     #If source == target, just grab accuracy from analysis
     if(source_model_idx == target_model_idx):
-      output_table[source_model_idx, target_model_idx + 1] = source_analyzer.adversarial_adv_accuracy
+      output_table[source_model_idx, target_model_idx + 1] = \
+        source_analyzer.adversarial_adv_accuracy[recon_mult_idx]
     else:
       analysis_params = params()
       analysis_params.model_type = model_type
@@ -131,7 +132,6 @@ csv_out_array = np.concatenate((np.array(header_y)[:, None], output_table), axis
 header_x = ["",] + header_x
 csv_out_array = np.concatenate((np.array(header_x)[None, :], csv_out_array), axis=0)
 np.savetxt(outdir + "transfer_accuracy.csv", csv_out_array, fmt="%s", delimiter=",")
-pdb.set_trace()
 
 fig, ax = plt.subplots()
 
@@ -143,8 +143,6 @@ for model_idx, (model_type, model_name) in enumerate(analysis_list):
   analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
 
   analyzer = setup(analysis_params)
-
-  batch_size = analyzer.analysis_params.adversarial_batch_size
 
   #Grab final mses
   #These mses are in shape [num_recon_mults, num_iterations, num_batch]
@@ -165,7 +163,7 @@ for model_idx, (model_type, model_name) in enumerate(analysis_list):
   #These are in shape [num_recon_mults, num_iterations, num_batch, num_classes]
   adv_output_classes = np.argmax(np.array(analyzer.adversarial_outputs)[:, -1, :, :], axis=-1)
   attack_accuracy = np.mean((target_classes[None, :] == adv_output_classes).astype(np.float32), axis=-1)
-  recon_mult = np.array(analyzer.analysis_params.recon_mult)
+  recon_mult = np.array(analyzer.analysis_params.carlini_recon_mult)
   label_str = model_name + " model_accuracy:"+str(np.mean(clean_accuracy))
 
   color = colors[model_idx]
@@ -202,48 +200,46 @@ fig.savefig(outdir + "/class_mult_tradeoff.png")
 plt.close('all')
 
 
-pdb.set_trace()
-
-
-
-analysis_params = params()
-analyzer = setup(analysis_params)
-
-class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversary_"+analysis_params.save_info+".npz"
-assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
-
-batch_size = analyzer.analysis_params.adversarial_batch_size
-orig_imgs = analyzer.class_adversarial_input_images.reshape(
-  int(batch_size),
-  int(np.sqrt(analyzer.model.params.num_pixels)),
-  int(np.sqrt(analyzer.model.params.num_pixels)))
-for idx in range(batch_size):
-  pf.plot_image(orig_imgs[idx], title="Input Image",
-    save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+\
-    "_adversarial_input_batch_"+str(idx)+".png")
-
-target_classes = np.argmax(analyzer.adversarial_target_labels, axis=-1)
-
-plot_int = 100
-for step, (stim, output) in enumerate(zip(analyzer.adversarial_images[0], analyzer.adversarial_outputs[0])):
-  if(step % plot_int == 0):
-    adv_imgs = stim.reshape(
-      int(batch_size),
-      int(np.sqrt(analyzer.model.params.num_pixels)),
-      int(np.sqrt(analyzer.model.params.num_pixels)))
-    for idx in range(batch_size):
-      f, axarr = plt.subplots(2, 1)
-      axarr[0].imshow(adv_imgs[idx], cmap='gray')
-      axarr[0] = pf.clear_axis(axarr[0])
-      axarr[1].bar(list(range(analyzer.model.params.num_classes)), output[idx])
-      axarr[1].set_ylim([0, 1])
-      mse_val = np.mean((adv_imgs[idx] - orig_imgs[idx]) ** 2)
-      output_class = np.argmax(output[idx])
-      target_class = target_classes[idx]
-      axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_val))
-      f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
-        +"stim_batch_"+str(idx)+"_step_"+str(step)+".png")
-      plt.close('all')
+#pdb.set_trace()
+#
+#analysis_params = params()
+#analyzer = setup(analysis_params)
+#
+#class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversary_"+analysis_params.save_info+".npz"
+#assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
+#
+#num_data = analyzer.num_data
+#orig_imgs = analyzer.class_adversarial_input_images.reshape(
+#  int(num_data),
+#  int(np.sqrt(analyzer.model.params.num_pixels)),
+#  int(np.sqrt(analyzer.model.params.num_pixels)))
+#for idx in range(num_data):
+#  pf.plot_image(orig_imgs[idx], title="Input Image",
+#    save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+\
+#    "_adversarial_input_batch_"+str(idx)+".png")
+#
+#target_classes = np.argmax(analyzer.adversarial_target_labels, axis=-1)
+#
+#plot_int = 100
+#for step, (stim, output) in enumerate(zip(analyzer.adversarial_images[0], analyzer.adversarial_outputs[0])):
+#  if(step % plot_int == 0):
+#    adv_imgs = stim.reshape(
+#      int(num_data),
+#      int(np.sqrt(analyzer.model.params.num_pixels)),
+#      int(np.sqrt(analyzer.model.params.num_pixels)))
+#    for idx in range(num_data):
+#      f, axarr = plt.subplots(2, 1)
+#      axarr[0].imshow(adv_imgs[idx], cmap='gray')
+#      axarr[0] = pf.clear_axis(axarr[0])
+#      axarr[1].bar(list(range(analyzer.model.params.num_classes)), output[idx])
+#      axarr[1].set_ylim([0, 1])
+#      mse_val = np.mean((adv_imgs[idx] - orig_imgs[idx]) ** 2)
+#      output_class = np.argmax(output[idx])
+#      target_class = target_classes[idx]
+#      axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_val))
+#      f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
+#        +"stim_batch_"+str(idx)+"_step_"+str(step)+".png")
+#      plt.close('all')
 
 #orig_recon = analyzer.adversarial_recons[0].reshape(
 #  int(np.sqrt(analyzer.model.params.num_pixels)),int(np.sqrt(analyzer.model.params.num_pixels)))
