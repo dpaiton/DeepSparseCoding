@@ -31,7 +31,7 @@ class IcaSubspaceModel(IcaModel):
   def build_graph_from_input(self):
     """Build the Tensorflow graph object. 
 
-    Placehodlers:
+    Placeholders:
       input_img: (float[]) input image patch
 
     Variables:
@@ -69,18 +69,23 @@ class IcaSubspaceModel(IcaModel):
     def nonlinearity(u):
       return u**(-0.5)
 
+    if(type(weight_op) is not list):
+      weight_op = [weight_op]
+
+    assert len(weight_op) == 1, ("IcaModel should only have one weight matrix")
+
     nonlinear_term = tf.matmul(self.sum_arr, 
                                tf.transpose(tf.matmul(tf.math.pow(tf.matmul(tf.transpose(I), 
-                                                                            self.w_analy
+                                                                            weight_op[0] 
                                                                             ), 2), 
                                                       self.sum_arr
                                                       )
                                             )
                                )
-    scalars = tf.math.multiply(tf.matmul(self.w_analy, self.input_img), nonlinear_term)
+    scalars = tf.math.multiply(tf.matmul(weight_op[0], self.input_img), nonlinear_term)
     gradient = tf.transpose(tf.math.multiply(tf.transpose(tf.tile(self.input_img, [1, self.num_pixels])), scalars), name="gradient")
 
-    return None
+    return [(gradient, weight_op[0])]
     
   def construct_group_sizes():
       """Construct respective group sizes. If group_size initialzed as None, then group sizes are uniformally
