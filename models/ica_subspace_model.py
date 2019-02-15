@@ -16,14 +16,17 @@ class IcaSubspaceModel(IcaModel):
     Variables:
       num_groups: (int) number of groups/subspaces
       group_sizes: (int[]) number of vectors at each subspace. ith index for ith group.
+      group_index: (int[]) index of vectors for each subspace
     
+
     """
     super(IcaSubspaceModel, self).load_params(params)
 
     # new params for subspace ica
     self.num_groups = self.params.num_groups
     self.group_sizes = self.construct_group_sizes()
-    
+    self.group_index = [sum(self.group_sizes[:i])-1 for i in range(self.num_groups)]
+
 
   def build_graph_from_input(self):
     """Build the Tensorflow graph object. 
@@ -77,5 +80,11 @@ class IcaSubspaceModel(IcaModel):
 
   def get_subspace(g):
     """Return the vectors in the g-th subspace. """
+    num_vec = self.group_sizes[g]
+    subspace_index = self.group_index[g]
+    return self.w_synth[subspace_index: subspace_index+num_vec]
+    
+
+    
 
     
