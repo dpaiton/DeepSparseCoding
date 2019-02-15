@@ -1,5 +1,5 @@
 import os 
-import numpyas np 
+import numpy as np 
 
 class params(BaseParams):
   def __init__(self):
@@ -7,5 +7,8 @@ class params(BaseParams):
     self.model_type = "ica_subspace"
     self.model_name = "ica_subspace"
     self.version = "0.0"
+
+    self.num_groups = 5
+    self.group_sizes = None
 
 
