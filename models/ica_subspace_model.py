@@ -26,7 +26,7 @@ class IcaSubspaceModel(IcaModel):
     self.num_groups = self.params.num_groups
     self.group_sizes = self.construct_group_sizes()
     self.group_index = [sum(self.group_sizes[:i])-1 for i in range(self.num_groups)]
-
+    self.sum_arr = self.construct_sum_arr() 
 
   def build_graph_from_input(self):
     """Build the Tensorflow graph object. 
@@ -66,6 +66,20 @@ class IcaSubspaceModel(IcaModel):
     self.graph_built = True
 
   def compute_weight_gradient(self, optimizer, weight_op=None):
+    def nonlinearity(u):
+      return u**(-0.5)
+
+    nonlinear_term = tf.matmul(self.sum_arr, 
+                               tf.transpose(tf.matmul(tf.math.pow(tf.matmul(tf.transpose(I), 
+                                                                            self.w_analy
+                                                                            ), 2), 
+                                                      self.sum_arr
+                                                      )
+                                            )
+                               )
+    scalars = tf.math.multiply(tf.matmul(self.w_analy, self.input_img), nonlinear_term)
+    gradient = tf.transpose(tf.math.multiply(tf.transpose(tf.tile(self.input_img, [1, self.num_pixels])), scalars), name="gradient")
+
     return None
     
   def construct_group_sizes():
@@ -78,11 +92,20 @@ class IcaSubspaceModel(IcaModel):
       print("construct_group_sizes: {}".format(self.group_sizes))
       return self.group_sizes
 
+  def construct_sum_arr():
+    sum_arr = []
+    for s, i in zip(self.group_size, self.group_index):
+      col_index = np.zeros(num_pixels)
+      col_index[i:i+s] = 1
+      sum_arr.append(col_index)
+    sum_arr = np.stack(sum_arr, axis=1)
+    return sum_arr
+
   def get_subspace(g):
-    """Return the vectors in the g-th subspace. """
+    """Return the column vectors in the g-th subspace. """
     num_vec = self.group_sizes[g]
     subspace_index = self.group_index[g]
-    return self.w_synth[subspace_index: subspace_index+num_vec]
+    return self.w_synth[:, subspace_index:subspace_index+num_vec]
     
 
     
