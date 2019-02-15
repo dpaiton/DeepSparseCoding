@@ -361,7 +361,9 @@ class Analyzer(object):
       evals[name] = []
 
     with tf.Session(config=config, graph=self.model.graph) as sess:
-      sess.run(self.model.init_op)
+      image_shape = (batch_size,) + images.shape[1:]
+      sess.run(self.model.init_op, {self.model.input_placeholder:np.zeros(image_shape)})
+
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
       for it in range(num_iterations):
@@ -1196,6 +1198,7 @@ class Analyzer(object):
     out_dict["target_labels"] = target_labels
     out_dict["adversarial_images"] = self.adversarial_images
     out_dict["adversarial_outputs"] = self.adversarial_outputs
+    out_dict["num_data"] = self.num_data
     out_dict["step_size"] = self.analysis_params.adversarial_step_size
     out_dict["num_steps"] = self.analysis_params.adversarial_num_steps
     out_dict["input_id"] = input_id
