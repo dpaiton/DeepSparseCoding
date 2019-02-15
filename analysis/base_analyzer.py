@@ -167,7 +167,6 @@ class Analyzer(object):
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
 
     elif(self.analysis_params.do_recon_adversaries):
-      #TODO redo this with recon adv module
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           input_node = self.model.build_input_placeholder()
