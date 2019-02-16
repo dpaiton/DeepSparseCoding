@@ -947,14 +947,12 @@ class Analyzer(object):
       assert False, ("Allowed target methods for recon adversary are " +
         "\"random\" or \"specified\"")
 
-
     if(self.analysis_params.adversarial_attack_method == "kurakin_targeted"):
       num_recon_mults = 1
     elif(self.analysis_params.adversarial_attack_method == "carlini_targeted"):
       num_recon_mults = len(self.analysis_params.carlini_recon_mult)
     else:
       assert False
-
 
     #Make sure that the save interval is less than num steps, otherwise
     #it won't store the adv exmaples
