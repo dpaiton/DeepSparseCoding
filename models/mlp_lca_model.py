@@ -126,7 +126,7 @@ class MlpLcaModel(MlpModel):
       orig_img = feed_dict[self.input_placeholder]
       adv_feed_dict = feed_dict.copy()
       adv_feed_dict[self.use_adv_input] = True
-      adv_img = tf.get_default_session().run(self.adv_module.get_adv_input())
+      adv_img = tf.get_default_session().run(self.adv_module.get_adv_input(), adv_feed_dict)
 
       reduc_dims = list(range(1, len(orig_img.shape)))
       orig_adv_linf = np.max(np.abs(orig_img - adv_im), axis=reduc_dims)
