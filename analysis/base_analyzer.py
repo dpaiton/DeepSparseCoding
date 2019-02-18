@@ -272,16 +272,16 @@ class Analyzer(object):
       self.full_recon = recon_analysis["full_recon"]
       self.recon_frac_act = recon_analysis["recon_frac_act"]
 
-    #TODO: Assign unique variable names to recon & adv analysis output attributes
+    #TODO: Smarter naming scheme for save_info (e.g. how it is done for models)
     # Recon Adversarial analysis
-    recon_adversarial_file_loc = self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz"
-    if os.path.exists(recon_adversarial_file_loc):
-      data = np.load(recon_adversarial_file_loc)["data"].item()
+    recon_adversarial_stats_file_loc = \
+      self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz"
+    if os.path.exists(recon_adversarial_stats_file_loc):
+      data = np.load(recon_adversarial_stats_file_loc)["data"].item()
       self.steps_idx = data["steps_idx"]
       self.recon_adversarial_input_images = data["input_images"]
       self.adversarial_target_images = data["target_images"]
       self.adversarial_images = data["adversarial_images"]
-      self.adversarial_recons = data["adversarial_recons"]
       self.analysis_params.adversarial_step_size = data["step_size"]
       self.analysis_params.adversarial_num_steps = data["num_steps"]
       self.num_data = data["num_data"]
@@ -294,6 +294,10 @@ class Analyzer(object):
       self.adversarial_target_adv_mses = data["target_adv_mses"]
       self.adversarial_adv_recon_mses = data["adv_recon_mses"]
       self.adversarial_target_adv_cos_similarities = data["target_adv_cos_similarities"]
+    recon_adversarial_file_loc = \
+      self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz"
+    if os.path.exists(recon_adversarial_file_loc):
+      self.adversarial_recons = data["adversarial_recons"]
 
     #Class adversarial analysis
     class_adversarial_file_loc = self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
@@ -1004,20 +1008,24 @@ class Analyzer(object):
     self.adversarial_target_images = target_images
 
     #Store everything in out dictionaries
-    out_dict = {}
-    out_dict["steps_idx"] = self.steps_idx
-    out_dict["input_images"] = input_images
-    out_dict["target_images"] = target_images
-    out_dict["adversarial_images"] = self.adversarial_images
-    out_dict["adversarial_recons"] = self.adversarial_recons
-    out_dict["num_data"] = self.num_data
-    out_dict["step_size"] = self.analysis_params.adversarial_step_size
-    out_dict["num_steps"] = self.analysis_params.adversarial_step_size
-    out_dict["input_id"] = input_id
-    out_dict["target_id"] = target_id
-    out_dict.update(distances)
+    out_dicts = [{}, {}]
+    out_dicts[0]["steps_idx"] = self.steps_idx
+    out_dicts[0]["input_images"] = input_images
+    out_dicts[0]["target_images"] = target_images
+    out_dicts[0]["adversarial_images"] = self.adversarial_images
+    out_dicts[0]["num_data"] = self.num_data
+    out_dicts[0]["step_size"] = self.analysis_params.adversarial_step_size
+    out_dicts[0]["num_steps"] = self.analysis_params.adversarial_step_size
+    out_dicts[0]["input_id"] = input_id
+    out_dicts[0]["target_id"] = target_id
+    out_dicts[0].update(distances)
 
-    np.savez(self.analysis_out_dir+"savefiles/recon_adversary_"+save_info+".npz", data=out_dict)
+    out_dicts[1]["adversarial_recons"] = self.adversarial_recons
+
+    np.savez(self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz",
+      data=out_dicts[0])
+    np.savez(self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz",
+      data=out_dicts[1])
     self.analysis_logger.log_info("Adversary analysis is complete.")
 
   def construct_class_adversarial_stimulus(self, input_images, input_labels,

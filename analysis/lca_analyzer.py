@@ -10,7 +10,7 @@ class LcaAnalyzer(Analyzer):
   def __init__(self):
     super(LcaAnalyzer, self).__init__()
     self.var_names = [
-      "weights/w:0",
+      "lca/weights/w:0",
       "inference/activity:0",
       "output/reconstruction:0",
       "performance_metrics/recon_quality:0"]
@@ -32,7 +32,7 @@ class LcaAnalyzer(Analyzer):
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.analysis_params.do_basis_analysis:
-      self.bf_stats = self.basis_analysis(self.evals["weights/w:0"], save_info)
+      self.bf_stats = self.basis_analysis(self.evals["lca/weights/w:0"], save_info)
     if self.analysis_params.do_atas:
       self.atas, self.atcs = self.ata_analysis(images[:int(self.analysis_params.num_ata_images), ...],
         self.evals["inference/activity:0"], save_info)
