@@ -1217,8 +1217,8 @@ class Analyzer(object):
     out_dicts[0]["adv_accuracy"] = self.adversarial_adv_accuracy
     out_dicts[0]["attack_success_rate"] = self.adversarial_success_rate
     np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz",
-      data=out_dict[0])
+      data=out_dicts[0])
     out_dicts[1]["adversarial_images"] = self.adversarial_images
     np.savez(self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz",
-      data=out_dict[1])
+      data=out_dicts[1])
     self.analysis_logger.log_info("Adversary analysis is complete.")
