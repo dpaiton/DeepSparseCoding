@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_sae"
-    self.model_name = "mlp_sae_768_recon_adv"
+    self.model_name = "mlp_sae_768_latent_adv"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -37,7 +37,7 @@ class params(BaseParams):
     self.tie_decoder_weights = False
     self.optimizer = "adam"
     # MLP Params
-    self.train_on_recon = True # if False, train on LCA latent activations
+    self.train_on_recon = False # if False, train on LCA latent activations
     self.num_val = 10000
     self.num_labeled = 50000
     self.num_classes = 10
@@ -96,15 +96,7 @@ class params(BaseParams):
       #Training MLP on SAE recon
       #Only training MLP weights, not SAE
       #TODO change weight names
-      {"weights": [
-        "mlp/layer0/conv_w_0:0",
-        "mlp/layer0/conv_b_0:0",
-        "mlp/layer1/conv_w_1:0",
-        "mlp/layer1/conv_b_1:0",
-        "mlp/layer2/fc_w_2:0",
-        "mlp/layer2/fc_b_2:0",
-        "mlp/layer3/fc_w_3:0",
-        "mlp/layer3/fc_b_3:0"],
+      {"weights": None,
       "train_on_adversarial": True,
       "train_sae": False,
       "num_batches": int(1e4),
@@ -136,7 +128,6 @@ class params(BaseParams):
       self.gen_plot_int = 1e4
       self.cp_load = True
       # MLP params
-      self.train_on_recon = True # if False, train on activations
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
         self.num_classes = 10
@@ -154,6 +145,16 @@ class params(BaseParams):
         # NOTE schedule index will change if sae training is happening
         self.schedule[1]["num_batches"] = int(2e4)
         for sched_idx in range(len(self.schedule)):
+          self.schedule[sched_idx]["weights"] = [
+            "mlp/layer0/conv_w_0:0",
+            "mlp/layer0/conv_b_0:0",
+            "mlp/layer1/conv_w_1:0",
+            "mlp/layer1/conv_b_1:0",
+            "mlp/layer2/fc_w_2:0",
+            "mlp/layer2/fc_b_2:0",
+            "mlp/layer3/fc_w_3:0",
+            "mlp/layer3/fc_b_3:0"]
+
           self.schedule[sched_idx]["weight_lr"] = 1e-4
           self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
           self.schedule[sched_idx]["decay_rate"] = 0.90
@@ -171,6 +172,8 @@ class params(BaseParams):
         self.max_pool_strides = [None]*3
         self.schedule[1]["num_batches"] = int(4e4)
         for sched_idx in range(len(self.schedule)):
+          #TODO
+          self.schedule[sched_idx]["weights"] = None
           self.schedule[sched_idx]["weight_lr"] = 1e-4
           self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
           self.schedule[sched_idx]["decay_rate"] = 0.90

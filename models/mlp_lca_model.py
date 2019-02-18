@@ -126,19 +126,19 @@ class MlpLcaModel(MlpModel):
       orig_img = feed_dict[self.input_placeholder]
       adv_feed_dict = feed_dict.copy()
       adv_feed_dict[self.use_adv_input] = True
-      adv_img = tf.get_default_session().run(self.adv_module.get_adv_input())
+      adv_img = tf.get_default_session().run(self.adv_module.get_adv_input(), adv_feed_dict)
 
-      reduc_dims = list(range(1, len(orig_img.shape)))
-      orig_adv_linf = np.max(np.abs(orig_img - adv_im), axis=reduc_dims)
+      reduc_dims = tuple(range(1, len(orig_img.shape)))
+      orig_adv_linf = np.max(np.abs(orig_img - adv_img), axis=reduc_dims)
       orig_recon_linf = np.max(np.abs(orig_img - recon), axis=reduc_dims)
 
-      orig_adv_linf_max = np.max(orig_adv_l_inf)
-      orig_adv_linf_mean = np.mean(orig_adv_l_inf)
-      orig_adv_linf_min = np.min(orig_adv_l_inf)
+      orig_adv_linf_max = np.max(orig_adv_linf)
+      orig_adv_linf_mean = np.mean(orig_adv_linf)
+      orig_adv_linf_min = np.min(orig_adv_linf)
 
-      orig_recon_linf_max = np.max(orig_recon_l_inf)
-      orig_recon_linf_mean = np.mean(orig_recon_l_inf)
-      orig_recon_linf_min = np.min(orig_recon_l_inf)
+      orig_recon_linf_max = np.max(orig_recon_linf)
+      orig_recon_linf_mean = np.mean(orig_recon_linf)
+      orig_recon_linf_min = np.min(orig_recon_linf)
 
 
     input_max = np.max(input_data)

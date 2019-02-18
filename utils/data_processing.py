@@ -1051,10 +1051,16 @@ def cos_similarity(x, y):
   x and y are np.ndarray with first dim indicating batch
   similarity is computed elementwise across the batch dimension
   """
+  assert np.all(np.isfinite(x)), ("Error: input 'x' has non-finite values")
+  assert np.all(np.isfinite(y)), ("Error: input 'y' has non-finite values")
   l2_norm = lambda x : np.sqrt(np.sum(np.square(x)))
   batch_similarity = []
   for batch_idx in range(x.shape[0]):
     x_vect = x[batch_idx, ...]
     y_vect = y[batch_idx, ...]
-    batch_similarity.append(np.dot(x_vect, y_vect.T) / (l2_norm(x_vect) * l2_norm(y_vect)))
+    x_norm = l2_norm(x_vect)
+    y_norm = l2_norm(y_vect)
+    assert x_norm > 0, ("Error: input 'x' for batch_idx %g must have l2 norm > 0"%(batch_idx))
+    assert y_norm > 0, ("Error: input 'y' for batch_idx %g must have l2 norm > 0"%(batch_idx))
+    batch_similarity.append(np.dot(x_vect, y_vect.T) / (y_norm * x_norm))
   return np.stack(batch_similarity, axis=0)

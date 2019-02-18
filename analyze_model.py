@@ -20,17 +20,17 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = True
+    self.do_evals = False
     # Dictionary fitting
-    self.do_basis_analysis = True
+    self.do_basis_analysis = False
     # LCA Inference analysis
     self.do_inference = False
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False # TODO: broken for rica
+    self.do_recon_adversaries = True # TODO: broken for rica
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -80,7 +80,7 @@ class params(object):
 
     #Specify which adv to use here
     #If none, use all
-    self.adversarial_input_id = None
+    self.adversarial_input_id = list(range(100))
 
     #TODO
     #Parameter for "specified" target_method
