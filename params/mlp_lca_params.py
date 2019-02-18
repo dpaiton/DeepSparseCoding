@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_lca"
-    self.model_name = "mlp_lca_768_recon_adv"
+    self.model_name = "mlp_lca_768_latent_adv"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -46,7 +46,7 @@ class params(BaseParams):
     self.thresh_type = "soft"
     self.optimizer = "annealed_sgd"
     # MLP Params
-    self.train_on_recon = True # if False, train on LCA latent activations
+    self.train_on_recon = False # if False, train on LCA latent activations
     self.num_val = 10000
     self.num_labeled = 50000
     self.num_classes = 10
@@ -97,15 +97,7 @@ class params(BaseParams):
       #"staircase": True},
       #Training MLP on LCA recons
       #Only training MLP weights, not VAE
-      {"weights": [
-        "mlp/layer0/conv_w_0:0",
-        "mlp/layer0/conv_b_0:0",
-        "mlp/layer1/conv_w_1:0",
-        "mlp/layer1/conv_b_1:0",
-        "mlp/layer2/fc_w_2:0",
-        "mlp/layer2/fc_b_2:0",
-        "mlp/layer3/fc_w_3:0",
-        "mlp/layer3/fc_b_3:0"],
+      {"weights": None,
       "train_lca": False,
       "train_on_adversarial": True,
       "num_batches": int(1e4),
@@ -117,7 +109,7 @@ class params(BaseParams):
       ]
     self.schedule = [self.schedule[0].copy()] + self.schedule
     self.schedule[0]["train_on_adversarial"] = False
-    self.schedule[0]["num_batches"] = 1000
+    self.schedule[0]["num_batches"] = 10000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -132,8 +124,6 @@ class params(BaseParams):
       self.gen_plot_int = 1e5
       # LCA params
       self.num_neurons = 768
-      self.train_on_recon = True # if False, train on LCA latent activations
-      # MLP params
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
         self.num_classes = 10
@@ -150,6 +140,15 @@ class params(BaseParams):
         self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
         # NOTE schedule index will change if lca training is happening
         for sched_idx in range(len(self.schedule)):
+          self.schedule[sched_idx]["weights"] = [
+            "mlp/layer0/conv_w_0:0",
+            "mlp/layer0/conv_b_0:0",
+            "mlp/layer1/conv_w_1:0",
+            "mlp/layer1/conv_b_1:0",
+            "mlp/layer2/fc_w_2:0",
+            "mlp/layer2/fc_b_2:0",
+            "mlp/layer3/fc_w_3:0",
+            "mlp/layer3/fc_b_3:0"]
           self.schedule[sched_idx]["sparse_mult"] = 0.19
           self.schedule[sched_idx]["weight_lr"] = 1e-4
           self.schedule[sched_idx]["decay_steps"] = int(0.5*self.schedule[1]["num_batches"])
@@ -170,6 +169,13 @@ class params(BaseParams):
         self.max_pool_ksize = [None]*3
         self.max_pool_strides = [None]*3
         for sched_idx in range(len(self.schedule)):
+          self.schedule[sched_idx]["weights"] = [
+            "mlp/layer0/fc_w_0:0",
+            "mlp/layer0/fc_b_0:0",
+            "mlp/layer1/fc_w_1:0",
+            "mlp/layer1/fc_b_1:0",
+            "mlp/layer2/fc_w_2:0",
+            "mlp/layer2/fc_b_2:0"]
           self.schedule[sched_idx]["sparse_mult"] = 0.25
           self.schedule[sched_idx]["weight_lr"] = 1e-5
           self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[1]["num_batches"])

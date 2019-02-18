@@ -12,13 +12,13 @@ class ReconAdversarialModule(object):
     Adversarial module
     Inputs:
       data_tensor: Input images to be perturbed, of size [batch, pixels]
-      use_adv_input: Flag 
-        If None, 
-        If True, 
+      use_adv_input: Flag
+        If None,
+        If True,
         if False,
       num_steps: How many adversarial steps to use
       step_size: How big of an adversarial perturbation to use
-      max_step: 
+      max_step:
       clip_adv
       clip_range
       attack_method
@@ -78,12 +78,9 @@ class ReconAdversarialModule(object):
             self.adv_image, self.clip_range[0]), self.clip_range[1])
 
       with tf.variable_scope("input_switch"):
-        ## Switch between adv_image and input placeholder
-        # Option to not use switch input if use_adv_input is None
-        if(self.use_adv_input is not None):
-          self.adv_switch_input = tf.cond(self.use_adv_input,
-            true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
-            strict=True)
+        self.adv_switch_input = tf.cond(self.use_adv_input,
+          true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
+          strict=True)
 
   def get_adv_input(self):
     return self.adv_switch_input

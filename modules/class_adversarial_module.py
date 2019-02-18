@@ -72,12 +72,9 @@ class ClassAdversarialModule(object):
             self.adv_image, self.clip_range[0]), self.clip_range[1])
 
       with tf.variable_scope("input_switch"):
-        ##Switch between adv_image and input placeholder
-        #Option to not use switch input if use_adv_input is None
-        if(self.use_adv_input is not None):
-          self.adv_switch_input = tf.cond(self.use_adv_input,
-            true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
-            strict=True)
+        self.adv_switch_input = tf.cond(self.use_adv_input,
+          true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
+          strict=True)
 
   def get_adv_input(self):
     return self.adv_switch_input
