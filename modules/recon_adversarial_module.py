@@ -153,8 +153,8 @@ class ReconAdversarialModule(object):
     out_dict["target_adv_mses"] = [dp.mse(target_images, orig_images)]
     out_dict["adv_recon_mses"] = [dp.mse(orig_images, recons)]
     out_dict["target_adv_sim"] = [dp.cos_similarity(target_images, orig_images)]
-    out_dict["target_pert_sim"] = [dp.cos_similarity(target_images, np.zeros_like(target_images))]
-    out_dict["input_pert_sim"] = [dp.cos_similarity(orig_images, np.zeros_like(orig_images))]
+    out_dict["target_pert_sim"] = []
+    out_dict["input_pert_sim"] = []
 
     # Calculate adversarial examples
     for step in range(self.num_steps):

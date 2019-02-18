@@ -879,7 +879,7 @@ class Analyzer(object):
     distances = {"input_target_mse":input_target_mse, "input_recon_mses":[],
     "input_adv_mses":[], "target_recon_mses":[],
     "target_adv_mses":[], "adv_recon_mses":[], "target_adv_cos_similarities":[],
-    "input_adv_cos_similarities":[]}
+    "target_pert_cos_similarities": [], "input_pert_cos_similarities":[]}
 
     steps=None
     all_adversarial_images = []
@@ -903,10 +903,11 @@ class Analyzer(object):
         distances["target_recon_mses"].append(out_dict["target_recon_mses"])
         distances["target_adv_mses"].append(out_dict["target_adv_mses"])
         distances["adv_recon_mses"].append(out_dict["adv_recon_mses"])
-        distances["target_adv_cos_similarities"].append(out_dict["target_adv_angles"])
-        distances["input_adv_cos_similarities"].append(out_dict["input_adv_angles"])
+        distances["target_adv_cos_similarities"].append(out_dict["target_adv_sim"])
+        distances["target_pert_cos_similarities"].append(out_dict["target_pert_sim"])
+        distances["input_pert_cos_similarities"].append(out_dict["input_pert_sim"])
         all_adversarial_images.append(out_dict["adv_images"])
-        all_recons.append(out_dict["adv_recon"])
+        all_recons.append(out_dict["adv_recons"])
     return steps, all_adversarial_images, all_recons, distances
 
   def recon_adversary_analysis(self, images, labels=None, batch_size=1, input_id=None,
