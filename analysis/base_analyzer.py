@@ -178,11 +178,10 @@ class Analyzer(object):
           self.recon_adv_module = ReconAdversarialModule(input_node, self.use_adv_input,
             self.analysis_params.adversarial_num_steps,
             self.analysis_params.adversarial_step_size,
-            max_step=self.analysis_params.adversarial_max_change,
+            adv_upper_bound=self.analysis_params.adversarial_max_change,
             clip_adv=self.analysis_params.adversarial_clip,
             clip_range=self.analysis_params.adversarial_clip_range,
-            attack_method=self.analysis_params.adversarial_attack_method,
-            eps=self.model_params.eps)
+            attack_method=self.analysis_params.adversarial_attack_method)
 
       self.model.build_graph_from_input(self.recon_adv_module.adv_image)
       with tf.device(self.model.params.device):

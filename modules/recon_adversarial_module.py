@@ -5,38 +5,31 @@ import utils.data_processing as dp
 import pdb
 
 class ReconAdversarialModule(object):
-  def __init__(self, data_tensor, use_adv_input, num_steps, step_size, max_step=None, clip_adv=True,
-    clip_range=[0.0, 1.0], attack_method="kurakin_targeted", eps=1e-8,
+  def __init__(self, data_tensor, use_adv_input, num_steps, step_size, adv_upper_bound=None,
+    clip_adv=True, clip_range=[0.0, 1.0], attack_method="kurakin_targeted",
     variable_scope="recon_adversarial"):
     """
     Adversarial module
     Inputs:
       data_tensor: Input images to be perturbed, of size [batch, pixels]
-      use_adv_input: Flag
-        If None,
-        If True,
-        if False,
+      use_adv_input: Flag to (True) use adversarial ops or (False) passthrough data_tensor
       num_steps: How many adversarial steps to use
       step_size: How big of an adversarial perturbation to use
-      max_step:
-      clip_adv
-      clip_range
-      attack_method
-      eps
-      variable_scope
-    Outputs:
-      dictionary
+      adv_upper_bound: Maximum perturbation size (None to not have a limit)
+      clip_adv: [bool] If True, clip adversarial images to clip_range
+      clip_range: [tuple or list] (min, max) values for adversarial images
+      attack_method: [str] "kurakin_targeted", "carlini_targeted"
+      variable_scope: [str] scope for adv module graph operators
     """
     self.data_tensor = data_tensor
     self.use_adv_input = use_adv_input
     self.input_shape = self.data_tensor.get_shape().as_list()
     self.num_steps = num_steps
     self.step_size = step_size
-    self.max_step = max_step
+    self.adv_upper_bound = adv_upper_bound
     self.clip_adv = clip_adv
     self.clip_range = clip_range
     self.attack_method = attack_method
-    self.eps = eps
     # List of vars to ignore in savers/loaders
     self.ignore_load_var_list = []
     self.variable_scope = str(variable_scope)
@@ -65,9 +58,9 @@ class ReconAdversarialModule(object):
         self.adv_var.set_shape([None,] + self.input_shape[1:])
 
         # Clip pertubations by maximum amount of change allowed
-        if(self.max_step is not None):
+        if(self.adv_upper_bound is not None):
           max_pert = tfc.upper_bound(tfc.lower_bound(
-            self.adv_var, -self.max_step), self.max_step)
+            self.adv_var, -self.adv_upper_bound), self.adv_upper_bound)
         else:
           max_pert = self.adv_var
 
