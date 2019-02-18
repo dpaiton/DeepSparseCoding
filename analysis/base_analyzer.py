@@ -300,14 +300,14 @@ class Analyzer(object):
       self.adversarial_recons = data["adversarial_recons"]
 
     #Class adversarial analysis
-    class_adversarial_file_loc = self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
+    class_adversarial_file_loc = \
+      self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.steps_idx = data["steps_idx"]
       self.class_adversarial_input_images = data["input_images"]
       self.adversarial_input_labels = data["input_labels"]
       self.adversarial_target_labels = data["target_labels"]
-      self.adversarial_images = data["adversarial_images"]
       self.adversarial_outputs = data["adversarial_outputs"]
       self.analysis_params.adversarial_step_size = data["step_size"]
       self.analysis_params.adversarial_num_steps = data["num_steps"]
@@ -318,6 +318,11 @@ class Analyzer(object):
       self.adversarial_clean_accuracy = data["clean_accuracy"]
       self.adversarial_adv_accuracy = data["adv_accuracy"]
       self.adversarial_success_rate = data["attack_success_rate"]
+    class_adversarial_file_loc = \
+      self.analysis_out_dir+"savefiles/class_adversary_images"+save_info+".npz"
+    if os.path.exists(class_adversarial_file_loc):
+      data = np.load(class_adversarial_file_loc)["data"].item()
+      self.adversarial_images = data["adversarial_images"]
 
   def load_basis_stats(self, save_info):
     bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
@@ -1195,25 +1200,24 @@ class Analyzer(object):
       self.adversarial_success_rate = 1.0 - self.adversarial_adv_accuracy
 
     #Store everything in out dictionaries
-    out_dict = {}
-    out_dict["steps_idx"] = self.steps_idx
-    out_dict["input_images"] = input_images
-    out_dict["input_labels"] = input_labels
-    out_dict["target_labels"] = target_labels
-    out_dict["adversarial_images"] = self.adversarial_images
-    out_dict["adversarial_outputs"] = self.adversarial_outputs
-    out_dict["num_data"] = self.num_data
-    out_dict["step_size"] = self.analysis_params.adversarial_step_size
-    out_dict["num_steps"] = self.analysis_params.adversarial_num_steps
-    out_dict["input_id"] = input_id
-    out_dict["input_adv_mses"] = self.adversarial_input_adv_mses
-    out_dict["target_output_losses"] = self.adversarial_target_output_losses
-    out_dict["clean_accuracy"] = self.adversarial_clean_accuracy
-    out_dict["adv_accuracy"] = self.adversarial_adv_accuracy
-    out_dict["attack_success_rate"] = self.adversarial_success_rate
-
-    np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz", data=out_dict)
+    out_dicts = [{}, {}]
+    out_dicts[0]["steps_idx"] = self.steps_idx
+    out_dicts[0]["input_images"] = input_images
+    out_dicts[0]["input_labels"] = input_labels
+    out_dicts[0]["target_labels"] = target_labels
+    out_dicts[0]["adversarial_outputs"] = self.adversarial_outputs
+    out_dicts[0]["num_data"] = self.num_data
+    out_dicts[0]["step_size"] = self.analysis_params.adversarial_step_size
+    out_dicts[0]["num_steps"] = self.analysis_params.adversarial_num_steps
+    out_dicts[0]["input_id"] = input_id
+    out_dicts[0]["input_adv_mses"] = self.adversarial_input_adv_mses
+    out_dicts[0]["target_output_losses"] = self.adversarial_target_output_losses
+    out_dicts[0]["clean_accuracy"] = self.adversarial_clean_accuracy
+    out_dicts[0]["adv_accuracy"] = self.adversarial_adv_accuracy
+    out_dicts[0]["attack_success_rate"] = self.adversarial_success_rate
+    np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz",
+      data=out_dict[0])
+    out_dicts[1]["adversarial_images"] = self.adversarial_images
+    np.savez(self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz",
+      data=out_dict[1])
     self.analysis_logger.log_info("Adversary analysis is complete.")
-
-
-
