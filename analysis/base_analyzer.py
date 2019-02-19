@@ -334,7 +334,8 @@ class Analyzer(object):
   def stats_analysis(self, save_info):
     """Run stats extracted from the logfile"""
     run_stats = self.get_log_stats()
-    np.savez(self.analysis_out_dir+"savefiles/run_stats_"+save_info+".npz", data={"run_stats":run_stats})
+    np.savez(self.analysis_out_dir+"savefiles/run_stats_"+save_info+".npz",
+      data={"run_stats":run_stats})
     self.analysis_logger.log_info("Run stats analysis is complete.")
     return run_stats
 
@@ -968,7 +969,7 @@ class Analyzer(object):
 
     #Make sure that the save interval is less than num steps, otherwise
     #it won't store the adv exmaples
-    assert self.analysis_params.adversarial_save_int <= self.analysis_params.adversarial_num_steps,  \
+    assert self.analysis_params.adversarial_save_int <= self.analysis_params.adversarial_num_steps,\
       ("Save interval must be <= adversarial_num_steps")
 
     num_stored_steps = ((self.analysis_params.adversarial_num_steps)//self.analysis_params.adversarial_save_int) + 1
@@ -1024,7 +1025,7 @@ class Analyzer(object):
     out_dicts[0]["adversarial_images"] = self.adversarial_images
     out_dicts[0]["num_data"] = self.num_data
     out_dicts[0]["step_size"] = self.analysis_params.adversarial_step_size
-    out_dicts[0]["num_steps"] = self.analysis_params.adversarial_step_size
+    out_dicts[0]["num_steps"] = self.analysis_params.adversarial_num_steps
     out_dicts[0]["input_id"] = input_id
     out_dicts[0]["target_id"] = target_id
     out_dicts[0].update(distances)

@@ -59,7 +59,7 @@ class params(object):
 
     #Adversarial params
     self.adversarial_num_steps = 5000 # Step size for adversarial attacks
-    #self.adversarial_attack_method = "kurakin_untargeted"
+    #self.adversarial_attack_method = "kurakin_untargeted" # Only for class attack
     #self.adversarial_attack_method = "kurakin_targeted"
     self.adversarial_attack_method = "carlini_targeted"
 
@@ -87,7 +87,6 @@ class params(object):
     #Only for class attack
     #Need to be a list or numpy array of size [adv_batch_size]
     self.adversarial_target_labels = None
-
 
     # Rescale inputs to match dataset scales used during training
     self.input_scale = 1.0

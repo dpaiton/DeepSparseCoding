@@ -41,6 +41,7 @@ plot_over_time = True
 
 #Base outdir for multi-network plot
 outdir = "/home/slundquist/Work/Projects/vis/"
+#outdir = "/home/dpaiton/Work/Projects/vis/"
 
 class params(object):
   def __init__(self):
@@ -62,8 +63,6 @@ def setup(params):
   analyzer.setup(params)
   analyzer.model.setup(analyzer.model_params)
   analyzer.load_analysis(save_info=params.save_info)
-  makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_recons/")
-  makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_stims/")
   return analyzer
 
 makedir(outdir)
@@ -92,7 +91,6 @@ for model_idx, (model_type, model_name) in enumerate(analysis_list):
     int(num_data),
     int(np.sqrt(analyzer.model.params.num_pixels)),
     int(np.sqrt(analyzer.model.params.num_pixels)))
-
 
   #Grab final mses
   #These mses are in shape [num_recon_mults, num_iterations, num_batch]
@@ -214,12 +212,14 @@ if(plot_over_time):
 
     for batch_idx in range(num_data):
       #TODO put batch idx in filename
+      out_dir = analyzer.analysis_out_dir+"/vis/adv_input_imges/"
+      makedir(out_dir)
       pf.plot_image(orig_imgs[batch_idx], title="Input Image",
-        save_filename=analyzer.analysis_out_dir+"/vis/"+\
-        analysis_params.save_info+"_adversarial_input.png")
+        save_filename=out_dir+analysis_params.save_info+"_adversarial_input.png")
+      out_dir = analyzer.analysis_out_dir+"/vis/adv_target_imges/"
+      makedir(out_dir)
       pf.plot_image(target_imgs[batch_idx], title="Target Image",
-        save_filename=analyzer.analysis_out_dir+"/vis/"+\
-        analysis_params.save_info+"_adversarial_target.png")
+        save_filename=out_dir+analysis_params.save_info+"_adversarial_target.png")
 
     plot_int = 100
     recon_mult = analyzer.analysis_params.carlini_recon_mult
@@ -233,6 +233,8 @@ if(plot_over_time):
 
     #plot all recons of adv per step
 
+    #makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_recons/")
+    #makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_stims/")
     #for i_rm, rm in rm_list:
     #  rm_str = "%.2f"%rm
     #  for step, recon in enumerate(analyzer.adversarial_recons[i_rm]):
@@ -283,7 +285,9 @@ if(plot_over_time):
       adv_recon_mses = np.array(analyzer.adversarial_adv_recon_mses)[i_rm]
 
       for batch_idx in range(num_data):
-        out_filename = analyzer.analysis_out_dir+"/vis/"+\
+        out_dir = analyzer.analysis_out_dir+"/vis/adv_losses/"
+        makedir(out_dir)
+        out_filename = out_dir+\
           "adversarial_losses_"+analysis_params.save_info+"_batch_"+str(batch_idx)+"_rm_"+rm_str+".pdf"
         print(out_filename)
 
