@@ -297,6 +297,7 @@ class Analyzer(object):
     recon_adversarial_file_loc = \
       self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz"
     if os.path.exists(recon_adversarial_file_loc):
+      data = np.load(recon_adversarial_file_loc)["data"].item()
       self.adversarial_recons = data["adversarial_recons"]
 
     #Class adversarial analysis
