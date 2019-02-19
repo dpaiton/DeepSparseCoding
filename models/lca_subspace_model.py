@@ -17,7 +17,7 @@ class LcaSubspaceModel(LcaModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.group_orth_mult = tf.placeholder(tf.float32, shape=(), name="group_orth_mult")
 
     super(LcaSubspaceModel, self).build_graph_from_input(input_node)
@@ -25,7 +25,7 @@ class LcaSubspaceModel(LcaModel):
   def build_module(self, input_node):
     module = LcaSubspaceModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.num_steps, self.params.num_groups, self.group_orth_mult,
-      self.params.eps, name_scope="lca_subspace")
+      self.params.eps)
     return module
 
   def generate_plots(self, input_data, input_labels=None):

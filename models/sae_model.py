@@ -12,14 +12,14 @@ class SaeModel(AeModel):
   def build_module(self, input_node):
     module = SaeModule(input_node, self.params.output_channels, self.sparse_mult, self.decay_mult,
       self.target_act, self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights,
-      self.params.conv, self.conv_strides, self.patch_y, self.patch_x, name_scope="SAE")
+      self.params.conv, self.conv_strides, self.patch_y, self.patch_x, variable_scope="sae")
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.target_act = tf.placeholder(tf.float32, shape=(), name="target_act")
     super(SaeModel, self).build_graph_from_input(input_node)

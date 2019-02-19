@@ -90,7 +90,6 @@ class params(BaseParams):
         self.schedule[sched_idx]["weight_lr"] = 0.01
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
-        self.schedule[sched_idx]["weight_lr"] = 0.01
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
@@ -147,6 +146,7 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 8
+    self.cp_load = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4

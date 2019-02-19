@@ -57,15 +57,15 @@ class IcaModel(Model):
           #self.w_synth = tf.matrix_inverse(self.w_analysis, name="w_synth")
           #self.trainable_variables[self.w_analysis.name] = self.w_analysis
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
           self.a = tf.matmul(input_node, self.w_analysis, name="activity")
           if self.params.prior.lower() == "laplacian":
             self.z = tf.sign(self.a)
           else: #It must be laplacian or cauchy
             self.z = (2*self.a) / (1 + tf.pow(self.a, 2.0))
 
-        with tf.name_scope("output") as scope:
-          with tf.name_scope("image_estimate"):
+        with tf.variable_scope("output") as scope:
+          with tf.variable_scope("image_estimate"):
             self.reconstruction = tf.matmul(self.a, self.w_synth, name="reconstruction")
 
     self.graph_built = True

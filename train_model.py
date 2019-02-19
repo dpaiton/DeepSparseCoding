@@ -57,7 +57,9 @@ with tf.Session(config=config, graph=model.graph) as sess:
   #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
   #sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
 
-  sess.run(model.init_op)
+  #Need the shape of input placeholders for running init
+  init_feed_dict = {model.input_placeholder: np.zeros([params.batch_size,] + params.data_shape)}
+  sess.run(model.init_op, init_feed_dict)
 
   sess.graph.finalize() # Graph is read-only after this statement
   model.write_graph(sess.graph_def)
@@ -84,6 +86,13 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
       ## Get feed dictionary for placeholders
       feed_dict = model.get_feed_dict(input_data, input_labels)
+      #TODO: (see below)
+      #if("train_on_adversarial" in sch):
+      #  if(sch["train_on_adversarial"]):
+      #    model.modify_input(feed_dict)
+      if("train_on_adversarial" not in sch):
+        sch["train_on_adversarial"] = False
+      model.modify_input(feed_dict, sch["train_on_adversarial"])
 
       batch_t0 = ti.time()
 
@@ -129,11 +138,29 @@ with tf.Session(config=config, graph=model.graph) as sess:
         if params.val_on_cp: #Compute validation accuracy
           val_images = data["val"].images
           val_labels = data["val"].labels
-          val_feed_dict = model.get_feed_dict(val_images, val_labels, is_test=True)
-          val_accuracy = np.array(sess.run(model.accuracy, val_feed_dict)).tolist()
+
+          est_labels = model.evaluate_model_batch(params.eval_batch_size,
+            val_images, labels=val_labels, var_nodes=[model.label_est])[model.label_est]
+
+          val_accuracy = np.mean(np.argmax(val_labels, -1) == np.argmax(est_labels, -1))
           stat_dict = {"validation_accuracy":val_accuracy}
           js_str = model.js_dumpstring(stat_dict)
           model.log_info("<stats>"+js_str+"</stats>")
+
+  #If training ends right after a validation, need to remodify inputs
+  #for adv examples
+  #TODO is there a better way to do this?
+  #if(current_step % params.cp_int == 0
+  #  and params.cp_int > 0):
+  #  if("train_on_adversarial" in sch):
+  #    if(sch["train_on_adversarial"]):
+  #      model.modify_input(feed_dict)
+  #TODO: modify_input must be called no matter what to initialize adv_var
+  #  should we have a diffferent function for initializing?
+  #  also rename modify_input to better reflect what is being done
+  if("train_on_adversarial" not in sch):
+    sch["train_on_adversarial"] = False
+  model.modify_input(feed_dict, sch["train_on_adversarial"])
 
   model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
   model.generate_plots(input_data=input_data, input_labels=input_labels)

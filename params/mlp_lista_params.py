@@ -15,7 +15,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_lista"
-    self.model_name = "mlp_lista_5"
+    self.model_name = "mlp_lista_5_adv"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -61,9 +61,21 @@ class params(BaseParams):
     self.max_pool = [False]*num_mlp_layers
     self.max_pool_ksize = [None]*num_mlp_layers
     self.max_pool_strides = [None]*num_mlp_layers
+    #Adversarial params
+    self.adversarial_num_steps = 40
+    self.adversarial_attack_method = "kurakin_untargeted"
+    self.adversarial_step_size = 0.01
+    self.adversarial_max_change = 0.3
+    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
+    self.adversarial_clip = True
+    #TODO get these params from other params
+    self.adversarial_clip_range = [0.0, 1.0]
+    #Tradeoff in carlini attack between input pert and target
+    self.carlini_recon_mult = 1
     # Others
     self.cp_int = 1e4
     self.val_on_cp = True
+    self.eval_batch_size = 100
     self.max_cp_to_keep = 1
     self.cp_load = True
     self.cp_load_name = "lista_5_mnist"
@@ -76,7 +88,7 @@ class params(BaseParams):
     self.save_plots = True
     self.schedule = [
       {"weights": None,
-      "train_lca": False,
+      "train_on_adversarial":True,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
       "weight_lr": 0.01,
@@ -84,6 +96,9 @@ class params(BaseParams):
       "decay_rate": 0.8,
       "staircase": True},
       ]
+    self.schedule = [self.schedule[0].copy()] + self.schedule
+    self.schedule[0]["train_on_adversarial"] = False
+    self.schedule[0]["num_batches"] = 1000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -111,11 +126,12 @@ class params(BaseParams):
       self.max_pool = [False]*3
       self.max_pool_ksize = [None]*3
       self.max_pool_strides = [None]*3
-      self.schedule[0]["num_batches"] = int(4e4)
-      self.schedule[0]["sparse_mult"] = 0.19
-      self.schedule[0]["weight_lr"] = 1e-4
-      self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
-      self.schedule[0]["decay_rate"] = 0.90
+      self.schedule[1]["num_batches"] = int(4e4)
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.19
+        self.schedule[sched_idx]["weight_lr"] = 1e-4
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.90
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -144,6 +160,7 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 8
+    self.cp_load = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2

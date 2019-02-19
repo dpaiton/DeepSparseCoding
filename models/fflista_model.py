@@ -29,7 +29,7 @@ class FfListaModel(Model):
   def build_lca_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name_scope="LCA")
+      self.params.num_steps, self.params.eps)
     return module
 
   def build_mlp_module(self, input_node):
@@ -37,14 +37,14 @@ class FfListaModel(Model):
       self.params.output_channels, self.params.batch_norm, self.params.dropout,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="l2", name_scope="LCA")
+      self.params.eps, loss_type="l2")
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
 
@@ -55,15 +55,15 @@ class FfListaModel(Model):
         self.mlp_module = self.build_mlp_module(input_node)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           #Loss switches based on train_lca flag
           self.total_loss = self.train_lca * self.lca_module.total_loss + \
             (1-self.train_lca) * self.mlp_module.total_loss
 
-        with tf.name_scope("norm_weights") as scope:
+        with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.lca_module.norm_w, name="l2_normalization")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           #LCA metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
@@ -155,37 +155,36 @@ class FfListaModel(Model):
       self.lca_module.reconstruction, self.lca_module.a, self.get_encodings()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
+
     weights, recon, lca_activity, lista_activity = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
 
     #Scale image by max and min of images and/or recon
     r_max = np.max([np.max(input_data), np.max(recon)])
     r_min = np.min([np.min(input_data), np.min(recon)])
 
-    name_suffix = "_v"+self.params.version+"-"+current_step.zfill(5)+".png"
-
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"images" + name_suffix))
+      save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"recons" + name_suffix))
+      save_filename=self.params.disp_dir+"recons"+filename_suffix)
 
     fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
-      save_filename=(self.params.disp_dir+"lca_act_hist" + name_suffix))
+      save_filename=self.params.disp_dir+"lca_act_hist"+filename_suffix)
 
     fig = pf.plot_activity_hist(lista_activity, title="LISTA Activity Histogram",
-      save_filename=(self.params.disp_dir+"lista_act_hist" + name_suffix))
+      save_filename=self.params.disp_dir+"lista_act_hist"+filename_suffix)
 
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"phi" + name_suffix))
+      save_filename=self.params.disp_dir+"phi"+filename_suffix)
 
     #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
     #  grad = weight_grad_var[0][0].eval(feed_dict)
@@ -194,4 +193,4 @@ class FfListaModel(Model):
     #  grad = dp.reshape_data(grad.T, flatten=False)[0]
     #  fig = pf.plot_data_tiled(grad, normalize=True,
     #    title="Gradient for w at step "+current_step, vmin=None, vmax=None,
-    #    save_filename=(self.params.disp_dir+"dphi" + name_suffix))
+    #    save_filename=self.params.disp_dir+"dphi"+filename_suffix)

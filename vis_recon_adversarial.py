@@ -17,9 +17,9 @@ import pdb
 analysis_list = [
   ("lca", "lca_1568_mnist"),
   ("lca", "lca_768_mnist"),
+  ("vae", "vae_mnist"),
   ("vae", "deep_vae_mnist"),
-  ("sae", "deep_sae_mnist"),
-  ("sae", "sae_1568_mnist"),
+  ("vae", "deep_denoising_vae_mnist"),
   ("sae", "sae_768_mnist"),
   ]
 
@@ -41,6 +41,7 @@ plot_over_time = True
 
 #Base outdir for multi-network plot
 outdir = "/home/slundquist/Work/Projects/vis/"
+#outdir = "/home/dpaiton/Work/Projects/vis/"
 
 class params(object):
   def __init__(self):
@@ -48,8 +49,8 @@ class params(object):
     self.model_name = ""
     self.plot_title_name = model_name.replace("_", " ").title()
     self.version = "0.0"
-    self.save_info = "analysis_test_carlini"
-    #self.save_info = "analysis_test_kurakin"
+    self.save_info = "analysis_test_carlini_targeted"
+    #self.save_info = "analysis_test_kurakin_targeted"
     self.overwrite_analysis_log = False
 
 def makedir(name):
@@ -62,8 +63,6 @@ def setup(params):
   analyzer.setup(params)
   analyzer.model.setup(analyzer.model_params)
   analyzer.load_analysis(save_info=params.save_info)
-  makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_recons/")
-  makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_stims/")
   return analyzer
 
 makedir(outdir)
@@ -83,16 +82,15 @@ for model_idx, (model_type, model_name) in enumerate(analysis_list):
 
   analyzer = setup(analysis_params)
 
-  batch_size = analyzer.analysis_params.adversarial_batch_size
+  num_data = analyzer.num_data
   orig_img = analyzer.recon_adversarial_input_images.reshape(
-    int(batch_size),
+    int(num_data),
     int(np.sqrt(analyzer.model.params.num_pixels)),
     int(np.sqrt(analyzer.model.params.num_pixels)))
   target_img = analyzer.adversarial_target_images.reshape(
-    int(batch_size),
+    int(num_data),
     int(np.sqrt(analyzer.model.params.num_pixels)),
     int(np.sqrt(analyzer.model.params.num_pixels)))
-
 
   #Grab final mses
   #These mses are in shape [num_recon_mults, num_iterations, num_batch]
@@ -118,7 +116,7 @@ for model_idx, (model_type, model_name) in enumerate(analysis_list):
   norm_target_recon_vals = target_recon_vals / input_recon_val[None, :]
 
   #Normalize target_recon mse by orig_recon mse
-  recon_mult = np.array(analyzer.analysis_params.recon_mult)
+  recon_mult = np.array(analyzer.analysis_params.carlini_recon_mult)
 
 
   ##Find lowest l2 distance of the two axes to the 0,0
@@ -202,27 +200,29 @@ if(plot_over_time):
 
     analyzer = setup(analysis_params)
 
-    batch_size = analyzer.analysis_params.adversarial_batch_size
+    num_data = analyzer.num_data
     orig_imgs = analyzer.recon_adversarial_input_images.reshape(
-      int(batch_size),
+      int(num_data),
       int(np.sqrt(analyzer.model.params.num_pixels)),
       int(np.sqrt(analyzer.model.params.num_pixels)))
     target_imgs = analyzer.adversarial_target_images.reshape(
-      int(batch_size),
+      int(num_data),
       int(np.sqrt(analyzer.model.params.num_pixels)),
       int(np.sqrt(analyzer.model.params.num_pixels)))
 
-    for batch_idx in range(batch_size):
+    for batch_idx in range(num_data):
       #TODO put batch idx in filename
+      out_dir = analyzer.analysis_out_dir+"/vis/adv_input_imges/"
+      makedir(out_dir)
       pf.plot_image(orig_imgs[batch_idx], title="Input Image",
-        save_filename=analyzer.analysis_out_dir+"/vis/"+\
-        analysis_params.save_info+"_adversarial_input.png")
+        save_filename=out_dir+analysis_params.save_info+"_adversarial_input.png")
+      out_dir = analyzer.analysis_out_dir+"/vis/adv_target_imges/"
+      makedir(out_dir)
       pf.plot_image(target_imgs[batch_idx], title="Target Image",
-        save_filename=analyzer.analysis_out_dir+"/vis/"+\
-        analysis_params.save_info+"_adversarial_target.png")
+        save_filename=out_dir+analysis_params.save_info+"_adversarial_target.png")
 
     plot_int = 100
-    recon_mult = analyzer.analysis_params.recon_mult
+    recon_mult = analyzer.analysis_params.carlini_recon_mult
     if(plot_all):
       rm_list = enumerate(recon_mult)
     else:
@@ -233,6 +233,8 @@ if(plot_over_time):
 
     #plot all recons of adv per step
 
+    #makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_recons/")
+    #makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_stims/")
     #for i_rm, rm in rm_list:
     #  rm_str = "%.2f"%rm
     #  for step, recon in enumerate(analyzer.adversarial_recons[i_rm]):
@@ -263,17 +265,17 @@ if(plot_over_time):
     for i_rm, rm in rm_list:
       rm_str = "%.2f"%rm
       orig_recon = np.array(analyzer.adversarial_recons)[i_rm, 0, ...].reshape(
-        int(batch_size),
+        int(num_data),
         int(np.sqrt(analyzer.model.params.num_pixels)),
         int(np.sqrt(analyzer.model.params.num_pixels)))
 
       adv_recon = np.array(analyzer.adversarial_recons)[i_rm, -1, ...].reshape(
-        int(batch_size),
+        int(num_data),
         int(np.sqrt(analyzer.model.params.num_pixels)),
         int(np.sqrt(analyzer.model.params.num_pixels)))
 
       adv_img = np.array(analyzer.adversarial_images)[i_rm, -1, ...].reshape(
-        int(batch_size),
+        int(num_data),
         int(np.sqrt(analyzer.model.params.num_pixels)),
         int(np.sqrt(analyzer.model.params.num_pixels)))
 
@@ -282,8 +284,10 @@ if(plot_over_time):
       target_adv_mses = np.array(analyzer.adversarial_target_adv_mses)[i_rm]
       adv_recon_mses = np.array(analyzer.adversarial_adv_recon_mses)[i_rm]
 
-      for batch_idx in range(batch_size):
-        out_filename = analyzer.analysis_out_dir+"/vis/"+\
+      for batch_idx in range(num_data):
+        out_dir = analyzer.analysis_out_dir+"/vis/adv_losses/"
+        makedir(out_dir)
+        out_filename = out_dir+\
           "adversarial_losses_"+analysis_params.save_info+"_batch_"+str(batch_idx)+"_rm_"+rm_str+".pdf"
         print(out_filename)
 
@@ -333,8 +337,7 @@ if(plot_over_time):
         axbig.set_ylabel("MSE", fontsize=axes_font_size)
 
         #Generate x idxs based on length of lines and save int
-        line_x = np.arange(0, analyzer.analysis_params.adversarial_num_steps,
-          analyzer.analysis_params.adversarial_save_int)
+        line_x = analyzer.steps_idx
 
         line1 = axbig.plot(line_x, input_adv_mses[:, batch_idx], 'r', label="input to perturbed")
         line2 = axbig.plot(line_x, target_adv_mses[:, batch_idx], 'b', label="target to perturbed")

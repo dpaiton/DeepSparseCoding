@@ -6,7 +6,7 @@ from modules.batch_normalization_module import BatchNormalizationModule
 class MlpModule(object):
   def __init__(self, data_tensor, label_tensor, layer_types, output_channels, batch_norm,
       dropout, max_pool, max_pool_ksize, max_pool_strides, patch_size_y, patch_size_x,
-      conv_strides, eps, loss_type="softmax_cross_entropy", name_scope="MLP"):
+      conv_strides, eps, loss_type="softmax_cross_entropy", variable_scope="mlp"):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
@@ -21,7 +21,7 @@ class MlpModule(object):
       batch_norm is a list of decay multipliers or None
       eps is a float
       loss_type is a string specifying the type of loss ("softmax_cross_entropy" or "l2")
-      name_scope is a string
+      variable_scope is a string
     Outputs:
       dictionary
     TODO: relu is hard coded, but should be a parameter that is passed to an activation module
@@ -67,7 +67,7 @@ class MlpModule(object):
     self.patch_size_x = patch_size_x
     self.conv_strides = conv_strides
     self.eps = eps
-    self.name_scope = name_scope
+    self.variable_scope = variable_scope
 
     # computed params
     self.num_fc_layers = layer_types.count("fc")
@@ -120,7 +120,7 @@ class MlpModule(object):
         b), name="conv_out"+str(layer_id))
       if self.batch_norm[layer_id] is not None:
         bn = BatchNormalizationModule(conv_out, self.batch_norm[layer_id], self.eps,
-          reduc_axes=[0,1,2], name="BatchNorm_"+str(layer_id))
+          reduc_axes=[0,1,2], variable_scope="batch_norm_"+str(layer_id))
         conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
       conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
@@ -144,7 +144,7 @@ class MlpModule(object):
       fc_out = act_func(tf.add(tf.matmul(a_in, w), b), name="fc_out"+str(layer_id))
       if self.batch_norm[layer_id] is not None:
         bn = BatchNormalizationModule(fc_out, self.batch_norm[layer_id], self.eps, reduc_axes=[0],
-          name="BatchNorm_"+str(layer_id))
+          variable_scope="batch_norm_"+str(layer_id))
         fc_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
       fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
@@ -180,20 +180,20 @@ class MlpModule(object):
     """
     Build an MLP TensorFlow Graph.
     """
-    with tf.name_scope(self.name_scope) as scope:
-      with tf.name_scope("weight_inits") as scope:
+    with tf.variable_scope(self.variable_scope) as scope:
+      with tf.variable_scope("weight_inits") as scope:
         self.w_init = tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32)
         self.b_init = tf.initializers.constant(0.1, dtype=tf.float32)
 
       self.layer_list, self.weight_list, self.bias_list = self.make_layers()
 
-      with tf.name_scope("output") as scope:
-        with tf.name_scope("label_estimate"):
+      with tf.variable_scope("output") as scope:
+        with tf.variable_scope("label_estimate"):
           self.label_est = tf.nn.softmax(self.layer_list[-1])
 
-      with tf.name_scope("loss") as scope:
-        with tf.name_scope("supervised"):
-          with tf.name_scope(self.loss_type):
+      with tf.variable_scope("loss") as scope:
+        with tf.variable_scope("supervised"):
+          with tf.variable_scope(self.loss_type):
             if(self.loss_type == "softmax_cross_entropy"):
               ## For semi-supervised learning, loss is 0 if there is no label
               self.label_mult = tf.reduce_sum(self.label_tensor, axis=[1]) # vector with len [batch]
@@ -207,15 +207,17 @@ class MlpModule(object):
               pred_fn_pairs = {
                 tf.equal(label_count, tf.constant(0.0)): f1, # all labels are 'ignore'
                 tf.greater(label_count, tf.constant(0.0)): f2} # mean over non-ignore labels
+              self.sum_loss = self.cross_entropy_loss
               self.mean_loss = tf.case(pred_fn_pairs,
                 default=f2, exclusive=True, name="mean_cross_entropy_loss")
             elif(self.loss_type == "l2"):
+              #TODO allow for semi-supervised learning with l2 loss
               # Want to avg over batch, sum over the rest
               reduc_dim = list(range(1, len(self.label_tensor.shape)))
               # Label_tensor sometimes can depend on trainable variables
               labels = tf.stop_gradient(self.label_tensor)
-              self.mean_loss = tf.reduce_mean(
-                tf.reduce_sum(tf.square(labels - self.layer_list[-1]),
-                axis=reduc_dim))
+              self.l2_loss = tf.reduce_sum(tf.square(labels - self.layer_list[-1]), axis=reduc_dim)
+              self.sum_loss = tf.reduce_sum(self.l2_loss)
+              self.mean_loss = tf.reduce_mean(self.l2_loss)
           self.supervised_loss = self.mean_loss
         self.total_loss = self.supervised_loss

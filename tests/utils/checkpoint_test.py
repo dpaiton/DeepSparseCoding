@@ -15,6 +15,7 @@ class CheckpointTest(tf.test.TestCase):
     data_type = "synthetic"
 
     params = pp.get_params(model_type) # Import params
+    params.model_name = "mlp"
     params.cp_int = 1
     params.batch_norm = [False, False]
     params.schedule[0]["weight_lr"] = 100
@@ -32,7 +33,7 @@ class CheckpointTest(tf.test.TestCase):
       params.cp_load_name = "test_checkpoints_mlp_synthetic"
       params.cp_load_step = 1
       params.cp_load_ver = "0.0"
-      params.cp_load_var = ["layer0/conv_w_0:0", "layer0/conv_b_0:0"]
+      params.cp_load_var = ["mlp/layer0/conv_w_0:0", "mlp/layer0/conv_b_0:0"]
     elif(load_style=="none"):
       pass
     else:
@@ -60,8 +61,8 @@ class CheckpointTest(tf.test.TestCase):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=model.graph) as sess:
-      sess.run(model.init_op)
-        #feed_dict={model.x:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
+      sess.run(model.init_op,
+        feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
       sess.graph.finalize() # Graph is read-only after this statement
       model.write_graph(sess.graph_def)
       model.sched_idx = 0
@@ -83,7 +84,8 @@ class CheckpointTest(tf.test.TestCase):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=model.graph) as sess:
-      sess.run(model.init_op)
+      sess.run(model.init_op,
+        feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
       sess.graph.finalize() # Graph is read-only after this statement
 
       cp_load_file = (params.cp_load_dir+params.cp_load_name+"_v"+params.cp_load_ver
@@ -98,7 +100,6 @@ class CheckpointTest(tf.test.TestCase):
     for name in pre_vars.keys():
       pre_val = pre_vars[name]
       post_val = post_vars[name]
-      #assert(np.all(np.abs(pre_val - post_val) < cmp_eps))
       self.assertAllClose(pre_val, post_val, rtol=cmp_eps, atol=cmp_eps)
 
     #Test loading specific variables
@@ -107,7 +108,8 @@ class CheckpointTest(tf.test.TestCase):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=model.graph) as sess:
-      sess.run(model.init_op)
+      sess.run(model.init_op,
+        feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
       sess.graph.finalize() # Graph is read-only after this statement
 
       cp_load_file = (params.cp_load_dir+params.cp_load_name+"_v"+params.cp_load_ver
@@ -128,10 +130,7 @@ class CheckpointTest(tf.test.TestCase):
         if("/b_" in name or "/BatchNorm" in name or "_b_" in name):
           pass
         else:
-          try:
-            self.assertNotAllClose(pre_val, post_val, rtol=cmp_eps, atol=cmp_eps)
-          except:
-            import pdb; pdb.set_trace()
+          self.assertNotAllClose(pre_val, post_val, rtol=cmp_eps, atol=cmp_eps)
 
     print("Checkpoint Test Passed")
 

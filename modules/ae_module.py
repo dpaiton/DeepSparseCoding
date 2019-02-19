@@ -4,7 +4,7 @@ from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
   def __init__(self, data_tensor, output_channels, decay_mult, act_funcs, dropout,
-    tie_decoder_weights, conv=False, conv_strides=None, patch_y=None, patch_x=None, name_scope="AE"):
+    tie_decoder_weights, conv=False, conv_strides=None, patch_y=None, patch_x=None, variable_scope="ae"):
     """
     Autoencoder module
     Inputs:
@@ -17,7 +17,7 @@ class AeModule(object):
       conv_strides: list of strides for convolution [batch, y, x, channels]
       patch_y: number of y inputs for convolutional patches
       patch_x: number of x inputs for convolutional patches
-      name_scope: specifies the name_scope for the module
+      variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
     """
@@ -25,7 +25,7 @@ class AeModule(object):
     self.conv_strides = conv_strides
     self.patch_y = patch_y
     self.patch_x = patch_x
-    self.name_scope = name_scope
+    self.variable_scope = variable_scope
 
     data_ndim = len(data_tensor.get_shape().as_list())
     assert data_ndim == 2 or data_ndim == 4, (
@@ -72,13 +72,13 @@ class AeModule(object):
     self.build_graph()
 
   def compute_weight_decay_loss(self):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       w_decay_list = [tf.reduce_sum(tf.square(w)) for w in self.w_list]
       decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n(w_decay_list))
     return decay_loss
 
   def compute_recon_loss(self, reconstruction):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(reconstruction.shape)))# We want to avg over batch
       recon_loss = 0.5 * tf.reduce_mean(
         tf.reduce_sum(tf.square(tf.subtract(reconstruction, self.data_tensor)),
@@ -169,8 +169,8 @@ class AeModule(object):
     return dec_u_list, dec_w_list, dec_b_list
 
   def build_graph(self):
-    with tf.name_scope(self.name_scope) as scope:
-      with tf.name_scope("weight_inits") as scope:
+    with tf.variable_scope(self.variable_scope) as scope:
+      with tf.variable_scope("weight_inits") as scope:
         self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
         self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
 
@@ -197,10 +197,10 @@ class AeModule(object):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
 
-      with tf.name_scope("output") as scope:
+      with tf.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
-      with tf.name_scope("loss") as scope:
+      with tf.variable_scope("loss") as scope:
         self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
           "weight_decay_loss":self.compute_weight_decay_loss()}
         self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")

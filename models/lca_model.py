@@ -28,29 +28,34 @@ class LcaModel(Model):
   def build_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps, name_scope="LCA")
+      self.params.num_steps, self.params.eps)
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-        with tf.name_scope("placeholders") as sess:
+        with tf.variable_scope("placeholders") as sess:
           self.latent_input = tf.placeholder(tf.float32, name="latent_input")
 
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
-        with tf.name_scope("norm_weights") as scope:
+        with tf.variable_scope("inference") as scope:
+          self.a = tf.identity(self.get_encodings(), name="activity")
+
+        with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
 
-        with tf.name_scope("output") as scope:
+        with tf.variable_scope("output") as scope:
           self.decoder_recon = self.module.build_decoder(self.latent_input, name="latent_recon")
+          self.reconstruction = tf.identity(self.compute_recon_from_encoding(self.a),
+            name="reconstruction")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.module.reconstruction)),
             name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
@@ -137,32 +142,28 @@ class LcaModel(Model):
     eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encodings()]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, activity = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     #Scale image by max and min of images and/or recon
     r_max = np.max([np.max(input_data), np.max(recon)])
     r_min = np.min([np.min(input_data), np.min(recon)])
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"images_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"recons"+filename_suffix)
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
-      save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"phi_v"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"phi"+filename_suffix)
     for weight_grad_var in self.grads_and_vars[self.sched_idx]:
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
@@ -170,4 +171,4 @@ class LcaModel(Model):
       grad = dp.reshape_data(grad.T, flatten=False)[0]
       fig = pf.plot_data_tiled(grad, normalize=True,
         title="Gradient for w at step "+current_step, vmin=None, vmax=None,
-        save_filename=(self.params.disp_dir+"dphi_v"+self.params.version+"_"+current_step.zfill(5)+".png"))
+        save_filename=self.params.disp_dir+"dphi"+filename_suffix)

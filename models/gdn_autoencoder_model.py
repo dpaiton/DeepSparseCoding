@@ -45,13 +45,13 @@ class GdnAutoencoderModel(Model):
     return a_entropies
 
   def compute_entropy_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       a_entropies = self.compute_entropies(a_in)
       entropy_loss = tf.multiply(self.ent_mult, tf.reduce_sum(a_entropies), name="entropy_loss")
     return entropy_loss
 
   def compute_weight_decay_loss(self):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       #decay_loss = tf.multiply(0.5*self.decay_mult,
       #  tf.add_n([tf.nn.l2_loss(weight) for weight in self.w_list]), name="weight_decay_loss")
       w_enc_decay = tf.reduce_sum(tf.square(tf.subtract(tf.reduce_sum(self.w_list[0],
@@ -69,7 +69,7 @@ class GdnAutoencoderModel(Model):
     return ramp_loss
 
   def compute_recon_loss(self, recon):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(recon.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.reduce_mean(0.5 * tf.reduce_sum(tf.square(tf.subtract(self.x, recon)),
         axis=reduc_dim), name="recon_loss")
@@ -103,7 +103,7 @@ class GdnAutoencoderModel(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
           self.triangle_centers = tf.placeholder(tf.float32, shape=[self.params.num_triangles],
             name="triangle_centers")
@@ -112,14 +112,11 @@ class GdnAutoencoderModel(Model):
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
           self.noise_var_mult = tf.placeholder(tf.float32, shape=(), name="noise_var_mult")
 
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         with tf.variable_scope("probability_estimate") as scope:
           self.mle_thetas, self.theta_init = ef.construct_thetas(self.params.num_neurons,
             self.params.num_triangles)
 
-        with tf.name_scope("weight_inits") as scope:
+        with tf.variable_scope("weight_inits") as scope:
           self.w_init = tf.initializers.random_normal(mean=0.0, stddev=0.1,
             seed=self.rand_seed, dtype=tf.float32)
           self.b_init = tf.initializers.zeros(dtype=tf.float32)
@@ -172,7 +169,7 @@ class GdnAutoencoderModel(Model):
           self.mle_update = [ef.mle(ll, self.mle_thetas, self.params.mle_step_size)
             for _ in range(self.params.num_mle_steps)]
 
-        with tf.name_scope("output") as scope:
+        with tf.variable_scope("output") as scope:
           u_dec = tf.add(tf.matmul(a_noise, self.w_dec), self.b_dec, name="u_dec")
           x_, self.w_igdn, self.b_igdn, self.igdn_mult = self.gdn(layer_id=1, u_in=u_dec,
             inverse=True)
@@ -180,15 +177,15 @@ class GdnAutoencoderModel(Model):
           self.w_gdn_list = [self.w_gdn, self.w_igdn]
           self.b_gdn_list = [self.b_gdn, self.b_igdn]
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           self.loss_dict = {"recon_loss":self.compute_recon_loss(self.x_),
             "entropy_loss":self.compute_entropy_loss(self.a),
             "weight_decay_loss":self.compute_weight_decay_loss(),
             "ramp_loss":self.compute_ramp_loss(a_noise)}
           self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
-        with tf.name_scope("performance_metrics") as scope:
-          with tf.name_scope("reconstruction_quality"):
+        with tf.variable_scope("performance_metrics") as scope:
+          with tf.variable_scope("reconstruction_quality"):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.x, self.x_)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(self.x, axes=[1])[1]
@@ -201,7 +198,7 @@ class GdnAutoencoderModel(Model):
     Same as base class, except the weight scope is a member variable instead of "weights"
     """
     with self.graph.as_default():
-      with tf.name_scope("optimizers") as scope:
+      with tf.variable_scope("optimizers") as scope:
         self.grads_and_vars = list() # [sch_idx][weight_idx]
         self.apply_grads = list() # [sch_idx][weight_idx]
         for schedule_idx, sch in enumerate(self.sched):

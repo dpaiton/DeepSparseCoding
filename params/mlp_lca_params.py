@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_lca"
-    self.model_name = "mlp_lca_768_recon"
+    self.model_name = "mlp_lca_768_latent_adv"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -46,7 +46,7 @@ class params(BaseParams):
     self.thresh_type = "soft"
     self.optimizer = "annealed_sgd"
     # MLP Params
-    self.train_on_recon = True # if False, train on LCA latent activations
+    self.train_on_recon = False # if False, train on LCA latent activations
     self.num_val = 10000
     self.num_labeled = 50000
     self.num_classes = 10
@@ -60,15 +60,27 @@ class params(BaseParams):
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
+    #Adversarial params
+    self.adversarial_num_steps = 40
+    self.adversarial_attack_method = "kurakin_untargeted"
+    self.adversarial_step_size = 0.01
+    self.adversarial_max_change = 0.3
+    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
+    self.adversarial_clip = True
+    #TODO get these params from other params
+    self.adversarial_clip_range = [0.0, 1.0]
+    #Tradeoff in carlini attack between input pert and target
+    self.carlini_recon_mult = 1
     # Others
     self.cp_int = 10000
     self.val_on_cp = True
-    self.max_cp_to_keep = 1
+    self.eval_batch_size = 100
+    self.max_cp_to_keep = None
     self.cp_load = True
     self.cp_load_name = "lca_768_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
-    self.cp_load_var = ["weights/w:0"]
+    self.cp_load_var = ["lca/weights/w:0"]
     self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 10000
@@ -87,6 +99,7 @@ class params(BaseParams):
       #Only training MLP weights, not VAE
       {"weights": None,
       "train_lca": False,
+      "train_on_adversarial": True,
       "num_batches": int(1e4),
       "sparse_mult": 0.01,
       "weight_lr": 0.01,
@@ -94,6 +107,9 @@ class params(BaseParams):
       "decay_rate": 0.8,
       "staircase": True},
       ]
+    self.schedule = [self.schedule[0].copy()] + self.schedule
+    self.schedule[0]["train_on_adversarial"] = False
+    self.schedule[0]["num_batches"] = 10000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -108,8 +124,6 @@ class params(BaseParams):
       self.gen_plot_int = 1e5
       # LCA params
       self.num_neurons = 768
-      self.train_on_recon = True # if False, train on LCA latent activations
-      # MLP params
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
         self.num_classes = 10
@@ -125,20 +139,23 @@ class params(BaseParams):
         self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
         self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
         # NOTE schedule index will change if lca training is happening
-        self.schedule[0]["weights"] = [
-          "layer0/conv_w_0:0",
-          "layer0/conv_b_0:0",
-          "layer1/conv_w_1:0",
-          "layer1/conv_b_1:0",
-          "layer2/fc_w_2:0",
-          "layer2/fc_b_2:0",
-          "layer3/fc_w_3:0",
-          "layer3/fc_b_3:0"]
-        self.schedule[0]["num_batches"] = int(4e4)
-        self.schedule[0]["sparse_mult"] = 0.19
-        self.schedule[0]["weight_lr"] = 1e-4
-        self.schedule[0]["decay_steps"] = int(0.5*self.schedule[0]["num_batches"])
-        self.schedule[0]["decay_rate"] = 0.50
+        for sched_idx in range(len(self.schedule)):
+          self.schedule[sched_idx]["weights"] = [
+            "mlp/layer0/conv_w_0:0",
+            "mlp/layer0/conv_b_0:0",
+            "mlp/layer1/conv_w_1:0",
+            "mlp/layer1/conv_b_1:0",
+            "mlp/layer2/fc_w_2:0",
+            "mlp/layer2/fc_b_2:0",
+            "mlp/layer3/fc_w_3:0",
+            "mlp/layer3/fc_b_3:0"]
+          self.schedule[sched_idx]["sparse_mult"] = 0.19
+          self.schedule[sched_idx]["weight_lr"] = 1e-4
+          self.schedule[sched_idx]["decay_steps"] = int(0.5*self.schedule[1]["num_batches"])
+          #self.schedule[sched_idx]["decay_rate"] = 0.50
+          self.schedule[sched_idx]["decay_rate"] = 0.9
+        #self.schedule[-1]["num_batches"] = int(4e4)
+        self.schedule[-1]["num_batches"] = int(1e5)
       else:
         self.output_channels = [1200, 1200, self.num_classes]
         self.layer_types = ["fc"]*3
@@ -151,18 +168,20 @@ class params(BaseParams):
         self.max_pool = [False]*3
         self.max_pool_ksize = [None]*3
         self.max_pool_strides = [None]*3
-        self.schedule[0]["weights"] = [
-          "layer0/fc_w_0:0",
-          "layer0/fc_b_0:0",
-          "layer1/fc_w_1:0",
-          "layer1/fc_b_1:0",
-          "layer2/fc_w_2:0",
-          "layer2/fc_b_2:0"]
-        self.schedule[0]["num_batches"] = int(2e5)
-        self.schedule[0]["sparse_mult"] = 0.25
-        self.schedule[0]["weight_lr"] = 1e-5
-        self.schedule[0]["decay_steps"] = int(0.4*self.schedule[0]["num_batches"])
-        self.schedule[0]["decay_rate"] = 0.50
+        for sched_idx in range(len(self.schedule)):
+          self.schedule[sched_idx]["weights"] = [
+            "mlp/layer0/fc_w_0:0",
+            "mlp/layer0/fc_b_0:0",
+            "mlp/layer1/fc_w_1:0",
+            "mlp/layer1/fc_b_1:0",
+            "mlp/layer2/fc_w_2:0",
+            "mlp/layer2/fc_b_2:0"]
+          self.schedule[sched_idx]["sparse_mult"] = 0.25
+          self.schedule[sched_idx]["weight_lr"] = 1e-5
+          self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[1]["num_batches"])
+          #self.schedule[sched_idx]["decay_rate"] = 0.50
+          self.schedule[sched_idx]["decay_rate"] = 0.9
+        self.schedule[-1]["num_batches"] = int(2e5)
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -191,6 +210,7 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 8
+    self.cp_load = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2

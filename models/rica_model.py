@@ -27,14 +27,14 @@ class RicaModel(Model):
     return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")
 
   def compute_recon_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       recon_loss = tf.multiply(self.recon_mult,
         tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon_from_encoding(a_in),
         self.input_placeholder)), axis=[1])), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       sparse_loss = tf.multiply(self.sparse_mult,
         tf.reduce_mean(tf.reduce_sum(tf.log(tf.cosh(a_in)), axis=[1])), name="sparse_loss")
     return sparse_loss
@@ -60,12 +60,9 @@ class RicaModel(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult") # lambda
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
-
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("weights") as scope:
           w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
@@ -77,20 +74,20 @@ class RicaModel(Model):
             keepdims=True), self.params.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
-        with tf.name_scope("inference") as scope:
+        with tf.variable_scope("inference") as scope:
           self.a = tf.matmul(input_node, self.w, name="activity")
 
-        with tf.name_scope("output") as scope:
+        with tf.variable_scope("output") as scope:
           self.reconstruction = self.compute_recon_from_encoding(self.a)
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           loss_funcs = self.get_loss_funcs()
           self.loss_dict = dict(zip(
             [key for key in loss_funcs.keys()], [func(self.a) for func in loss_funcs.values()]))
           self.total_loss = self.compute_total_loss(self.a, loss_funcs)
 
-        with tf.name_scope("performance_metrics") as scope:
-          with tf.name_scope("reconstruction_quality"):
+        with tf.variable_scope("performance_metrics") as scope:
+          with tf.variable_scope("reconstruction_quality"):
             MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(input_node, axes=[1])[1]
@@ -167,31 +164,27 @@ class RicaModel(Model):
     eval_list = [self.global_step, self.w, self.reconstruction,  self.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, activity = eval_out[1:]
     #w_lengths = np.sqrt(np.sum(np.square(weights), axis=0))
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [units, pixels]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Images at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"images_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_activity_hist(activity, title="Activity Histogram",
-      save_filename=(self.params.disp_dir+"act_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"w_v"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"w"+filename_suffix)
     #fig = pf.plot_bar(w_lengths, title="Weight L2 Norms", xlabel="Weight Index", ylabel="L2 Norm",
-    #  save_filename=(self.params.disp_dir+"w_norms_v"+self.params.version+"-"+current_step.zfill(5)+".png"))
+    #  save_filename=self.params.disp_dir+"w_norms"+filename_suffix)
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"recons_v"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"recons"+filename_suffix)
     if self.params.optimizer != "lbfgsb":
       for weight_grad_var in self.grads_and_vars[self.sched_idx]:
         grad = weight_grad_var[0][0].eval(feed_dict)
@@ -200,5 +193,4 @@ class RicaModel(Model):
         grad = dp.reshape_data(grad.T, flatten=False)[0]
         fig = pf.plot_data_tiled(grad, normalize=True,
           title="Gradient for w at step "+current_step, vmin=None, vmax=None,
-          save_filename=(self.params.disp_dir+"dw_v"+self.params.version+"_"
-          +current_step.zfill(5)+".png"))
+          save_filename=self.params.disp_dir+"dw"+filename_suffix)

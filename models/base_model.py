@@ -12,7 +12,6 @@ class Model(object):
     self.params_loaded = False
     self.trainable_variables = TrainableVariableDict()
     self.graph = tf.Graph()
-
     self.full_model_load_ignore = []
 
   def setup(self, params):
@@ -167,7 +166,7 @@ class Model(object):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("optimizers") as scope:
+        with tf.variable_scope("optimizers") as scope:
           self.grads_and_vars = list() # [sch_idx][weight_idx]
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
@@ -226,7 +225,7 @@ class Model(object):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("initialization") as scope:
+        with tf.variable_scope("initialization") as scope:
           self.init_op = tf.group(tf.global_variables_initializer(),
             tf.local_variables_initializer())
 
@@ -234,7 +233,7 @@ class Model(object):
     """Get variables for loading"""
     all_vars = tf.global_variables()
     if self.params.cp_load_var is None:
-      load_v = all_vars
+      load_v = [v for v in all_vars if v not in self.full_model_load_ignore]
     else:
       load_v = []
       for weight in self.params.cp_load_var:
@@ -373,7 +372,7 @@ class Model(object):
   def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("step_counter") as scope:
+        with tf.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
   #If build_graph gets called without parameters,
@@ -542,6 +541,76 @@ class Model(object):
     """
     pass
 
+  #Labels are needed by adv examples
+  def evaluate_model_batch(self, batch_size, images, labels=None,
+    var_names=None, var_nodes=None):
+    """
+    Creates a session with the loaded model graph to run all tensors specified by var_names
+    Runs in batches
+    Outputs:
+      evals [dict] containing keys that match var_names or var_node (depending on which
+        gets specified) and the values computed from the session run
+      Note that all var_names/var_nodes must have batch dimension in first dimension
+    Inputs:
+      batch_size scalar that defines the batch size to split images up into
+      images [np.ndarray] of shape (num_imgs, num_img_pixels)
+      var_names [list of str] list of strings containing the tf variable names to be evaluated
+      var_nodes [list of tf nodes] list of tensorflow node references containing the
+        variables to be evaluated
+    """
+    num_data = images.shape[0]
+    num_iterations = int(np.ceil(num_data / batch_size))
+
+    evals = {}
+
+    assert images.shape[0] == labels.shape[0], (
+      "Images and labels must be the same shape, not %g and %g"%(images.shape[0], labels.shape[0]))
+    #^ is xor
+    assert (var_names is None) ^ (var_nodes is None),  \
+      ("Only one of var_names or var_nodes can be specified")
+
+    if(var_names is not None):
+      dict_keys = var_names
+      tensors = [self.graph.get_tensor_by_name(name) for name in var_names]
+    elif(var_nodes is not None):
+      dict_keys = var_nodes
+      tensors = var_nodes
+
+    for key in dict_keys:
+      evals[key] = []
+
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+
+    sess = tf.get_default_session()
+    for it in range(num_iterations):
+      batch_start_idx = int(it * batch_size)
+      batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))
+      batch_images = images[batch_start_idx:batch_end_idx, ...]
+      if(labels is not None):
+        batch_labels = labels[batch_start_idx:batch_end_idx, ...]
+      else:
+        batch_labels = None
+
+      feed_dict = self.get_feed_dict(batch_images, input_labels=batch_labels, is_test=True)
+      sch = self.get_schedule()
+      #TODO: (see train_model.py)
+      #if("train_on_adversarial" in sch):
+      #  if(sch["train_on_adversarial"]):
+      #    self.modify_input(feed_dict)
+      if("train_on_adversarial" not in sch):
+        sch["train_on_adversarial"] = False
+      self.modify_input(feed_dict, sch["train_on_adversarial"])
+      eval_list = sess.run(tensors, feed_dict)
+
+      for key, ev in zip(dict_keys, eval_list):
+        evals[key].append(ev)
+
+    #Concatenate all evals in batch dim
+    for key, val in evals.items():
+      evals[key] = np.concatenate(val, axis=0)
+    return evals
+
   #Functions that expose specific variables to outer classes
   #Defaults to raising not implemented error
   def get_total_loss(self):
@@ -550,3 +619,5 @@ class Model(object):
   def get_encodings(self):
     raise NotImplementedError
 
+  def modify_input(self, feed_dict, train_on_adversarial):
+    return feed_dict
