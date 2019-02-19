@@ -322,7 +322,7 @@ class Analyzer(object):
       self.adversarial_adv_accuracy = data["adv_accuracy"]
       self.adversarial_success_rate = data["attack_success_rate"]
     class_adversarial_file_loc = \
-      self.analysis_out_dir+"savefiles/class_adversary_images"+save_info+".npz"
+      self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz"
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.adversarial_images = data["adversarial_images"]
