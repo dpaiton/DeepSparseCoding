@@ -9,7 +9,7 @@ class DaeModule(AeModule):
   def __init__(self, data_tensor, output_channels, ent_mult, decay_mult, bounds_slope, latent_min,
     latent_max, num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
     gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights, conv=False, 
-    conv_strides=None, patch_y=None, patch_x=None, name_scope="dae"):
+    conv_strides=None, patch_y=None, patch_x=None, variable_scope="dae"):
     """
     Divisive Autoencoder module
     Inputs:
@@ -39,7 +39,7 @@ class DaeModule(AeModule):
       conv_strides: list of strides for convolution [batch, y, x, channels]
       patch_y: number of y inputs for convolutional patches
       patch_x: number of x inputs for convolutional patches
-      name_scope: specifies the name_scope for the module
+      variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
     """
@@ -59,7 +59,7 @@ class DaeModule(AeModule):
     self.gdn_b_thresh_min = gdn_b_thresh_min
     self.gdn_eps = gdn_eps
     super(DaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
-      dropout, tie_decoder_weights, conv, conv_strides, patch_y, patch_x, name_scope)
+      dropout, tie_decoder_weights, conv, conv_strides, patch_y, patch_x, variable_scope)
 
   def compute_entropies(self, a_in):
     a_probs = ef.prob_est(a_in, self.mle_thetas, self.triangle_centers)
@@ -67,7 +67,7 @@ class DaeModule(AeModule):
     return a_entropies
 
   def compute_entropy_loss(self, a_in):
-    with tf.name_scope("latent"):
+    with tf.variable_scope("latent"):
       #a_flat = tf.reshape(a_in, [tf.shape(a_in)[0], -1])
       #a_flat = tf.layers.Flatten()(a_in)#tf.reshape(a_in, [tf.shape(a_in)[0], -1])
       dim = tf.reduce_prod(tf.shape(a_in)[1:])
@@ -182,12 +182,12 @@ class DaeModule(AeModule):
     return u_list, w_list, b_list, w_gdn_list, b_gdn_list
 
   def build_graph(self):
-    with tf.name_scope(self.name_scope) as scope:
-      with tf.name_scope("weight_inits") as scope:
+    with tf.variable_scope(self.variable_scope) as scope:
+      with tf.variable_scope("weight_inits") as scope:
         self.w_init = tf.initializers.random_normal(mean=0.0, stddev = 1e-2, dtype=tf.float32)
         self.b_init = tf.initializers.zeros(dtype=tf.float32)
 
-      with tf.name_scope("gdn_weight_inits") as scope:
+      with tf.variable_scope("gdn_weight_inits") as scope:
         self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
           off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
         self.w_igdn_init = self.w_gdn_init
@@ -214,7 +214,7 @@ class DaeModule(AeModule):
       else:
         self.num_latent = self.output_channels[-1]
 
-      with tf.name_scope("inference") as scope:
+      with tf.variable_scope("inference") as scope:
         self.a = tf.identity(self.u_list[-1], name="activity")
 
       with tf.variable_scope("probability_estimate") as scope:
@@ -246,10 +246,10 @@ class DaeModule(AeModule):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
 
-      with tf.name_scope("output") as scope:
+      with tf.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
-      with tf.name_scope("loss") as scope:
+      with tf.variable_scope("loss") as scope:
         self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
           "weight_decay_loss":self.compute_weight_decay_loss(),
           "entropy_loss":self.compute_entropy_loss(self.a),
