@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_lca"
-    self.model_name = "mlp_lca_768_latent_adv"
+    self.model_name = "mlp_lca_1568_recon"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -75,9 +75,9 @@ class params(BaseParams):
     self.cp_int = 10000
     self.val_on_cp = True
     self.eval_batch_size = 100
-    self.max_cp_to_keep = None
+    self.max_cp_to_keep = 1
     self.cp_load = True
-    self.cp_load_name = "lca_768_mnist"
+    self.cp_load_name = "lca_1568_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["lca/weights/w:0"]
@@ -123,7 +123,8 @@ class params(BaseParams):
       self.cp_int = 1e3
       self.gen_plot_int = 1e5
       # LCA params
-      self.num_neurons = 768
+      self.num_neurons = 1568
+      self.train_on_recon = True # if False, train on activations
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
         self.num_classes = 10
