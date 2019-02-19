@@ -107,7 +107,7 @@ class params(BaseParams):
   def set_test_params(self, data_type):
     self.set_data_params(data_type)
     self.epoch_size = 50
-    self.batch_size = 10
+    self.batch_size = 11
     self.num_edge_pixels = 8
     self.tie_decoder_weights = False
     for sched_idx in range(len(self.schedule)):

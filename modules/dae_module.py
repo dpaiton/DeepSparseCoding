@@ -118,7 +118,11 @@ class DaeModule(AeModule):
 
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, decode)
       if activation_function == activation_picker("gdn"):
-        w_gdn = tf.get_variable(name="w_gdn_"+str(layer_id), shape=[w_shape[-1], w_shape[-1]],
+        if self.conv and decode:
+          w_gdn_shape = [w_shape[-2], w_shape[-2]]
+        else:
+          w_gdn_shape = [w_shape[-1], w_shape[-1]]
+        w_gdn = tf.get_variable(name="w_gdn_"+str(layer_id), shape=w_gdn_shape,
           dtype=tf.float32, initializer=self.w_gdn_init, trainable=True)
         trainable_variables.append(w_gdn)
         b_gdn = tf.get_variable(name="b_gdn_"+str(layer_id), shape=b_shape,
@@ -205,12 +209,16 @@ class DaeModule(AeModule):
       self.w_gdn_list += enc_w_gdn_list
       self.b_gdn_list += enc_b_gdn_list
 
+      if self.conv:
+        self.num_latent = tf.reduce_prod(self.u_list[-1].get_shape()[1:]) 
+      else:
+        self.num_latent = self.output_channels[-1]
+
       with tf.name_scope("inference") as scope:
         self.a = tf.identity(self.u_list[-1], name="activity")
 
       with tf.variable_scope("probability_estimate") as scope:
-        self.mle_thetas, self.theta_init = ef.construct_thetas(self.output_channels[-1],
-          self.num_triangles)
+        self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_latent, self.num_triangles)
 
         ll = ef.log_likelihood(tf.nn.sigmoid(tf.reshape(self.a, [tf.shape(self.a)[0], -1])),
           self.mle_thetas, self.triangle_centers)
