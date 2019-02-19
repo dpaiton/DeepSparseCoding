@@ -294,6 +294,8 @@ class Analyzer(object):
       self.adversarial_target_adv_mses = data["target_adv_mses"]
       self.adversarial_adv_recon_mses = data["adv_recon_mses"]
       self.adversarial_target_adv_cos_similarities = data["target_adv_cos_similarities"]
+      self.adversarial_target_pert_cos_similarities = data["target_adv_cos_similarities"]
+      self.adversarial_input_pert_cos_similarities = data["target_adv_cos_similarities"]
     recon_adversarial_file_loc = \
       self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz"
     if os.path.exists(recon_adversarial_file_loc):
