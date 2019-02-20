@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf 
 #import utils.plot_functions as pf 
 #import utils.data_processing as dp 
-from models.base_model import Model 
+from models.ica_model import IcaModel
 
 class IcaSubspaceModel(IcaModel):
 
