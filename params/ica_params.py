@@ -50,6 +50,7 @@ class params(BaseParams):
       "decay_steps": int(5e5*0.8),
       "decay_rate": 0.8,
       "staircase": True}]
+
   def set_data_params(self, data_type):
     if data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
