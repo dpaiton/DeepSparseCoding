@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf 
 #import utils.plot_functions as pf 
 #import utils.data_processing as dp 
-#from models.base_model import Model 
+from models.base_model import Model 
 
 class IcaSubspaceModel(IcaModel):
 
@@ -51,8 +51,7 @@ class IcaSubspaceModel(IcaModel):
 
         with tf.variable_scope("weights") as scope:
           Q, R = np.linalg.gr(np.random.standard_normal(self.w_analysis_shape))
-          self.w_synth = tf.get_variable(name="w_synth", dtype=tf.float32),
-            initializer=Q.astype(np.float32), trainable=True)
+          self.w_synth = tf.get_variable(name="w_synth", dtype=tf.float32, initializer=Q.astype(np.float32), trainable=True)
           self.w_analy = tf.tranpose(self.w_synth, name="w_analy")
           self.trainable_variables[self.w_synth.name] = self.w_synth
 
@@ -73,16 +72,10 @@ class IcaSubspaceModel(IcaModel):
       weight_op = [weight_op]
 
     assert len(weight_op) == 1, ("IcaModel should only have one weight matrix")
-
-    nonlinear_term = tf.matmul(self.sum_arr, 
-                               tf.transpose(tf.matmul(tf.math.pow(tf.matmul(tf.transpose(I), 
-                                                                            weight_op[0] 
-                                                                            ), 2), 
-                                                      self.sum_arr
-                                                      )
-                                            )
-                               )
-    scalars = tf.math.multiply(tf.matmul(weight_op[0], self.input_img), nonlinear_term)
+    
+    wI = tf.matmul(tf.transpose(weight_op[0]), self.input_img)
+    nonlinear_term = nonlinearity(tf.matmul(self.sum_arr, tf.matmul(tf.transpose(tf.math.pow(wI, 2)), self.sum_arr)))
+    scalars = tf.math.multiply(wI, nonlinear_term)
     gradient = tf.transpose(tf.math.multiply(tf.transpose(tf.tile(self.input_img, [1, self.num_pixels])), scalars), name="gradient")
 
     return [(gradient, weight_op[0])]
