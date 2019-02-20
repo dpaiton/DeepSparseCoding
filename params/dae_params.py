@@ -72,7 +72,6 @@ class params(BaseParams):
     self.gen_plot_int = 10000
     self.save_plots = True
     self.num_pixels = self.patch_edge_size**2
-
     self.schedule = [
       {"num_batches": int(1e6),
       "weights": None,
@@ -88,9 +87,14 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.output_channels = [1568, 784, 50]
+      self.conv = False
+      self.output_channels = [768, 512, 50]
       self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-      self.dropout = [1.0]*len(self.activation_funtions)
+      self.dropout = [1.0]*len(self.activation_functions)
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e5)
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["weight_lr"] = 1e-4
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vanhateren"
