@@ -80,7 +80,7 @@ class IcaSubspaceModel(IcaModel):
 
     return [(gradient, weight_op[0])]
     
-  def construct_group_sizes():
+  def construct_group_sizes(self):
       """Construct respective group sizes. If group_size initialzed as None, then group sizes are uniformally
       distributed; unless specified otherwise. """
       if self.group_sizes is None:
