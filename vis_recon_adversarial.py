@@ -4,6 +4,7 @@ import os
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 from skimage.measure import compare_psnr
 from data.dataset import Dataset
 import data.data_selector as ds
@@ -15,11 +16,11 @@ import pdb
 
 #List of models for analysis
 analysis_list = [
-  ("lca", "lca_1568_mnist"),
-  ("lca", "lca_768_mnist"),
-  ("vae", "vae_mnist"),
-  ("vae", "deep_vae_mnist"),
-  ("vae", "deep_denoising_vae_mnist"),
+    #  ("lca", "lca_1568_mnist"),
+    #  ("lca", "lca_768_mnist"),
+    #  ("vae", "vae_mnist"),
+    #  ("vae", "deep_vae_mnist"),
+    #  ("vae", "deep_denoising_vae_mnist"),
   ("sae", "sae_768_mnist"),
   ]
 
@@ -36,8 +37,11 @@ colors = [
 title_font_size = 16
 axes_font_size = 16
 
-plot_all = True
-plot_over_time = True
+construct_recon_mult_tradeoff = False
+construct_adv_examples = True
+construct_over_time = True
+num_output_batches = 3
+recon_mult_idx = 4
 
 #Base outdir for multi-network plot
 outdir = "/home/slundquist/Work/Projects/vis/"
@@ -67,131 +71,206 @@ def setup(params):
 
 makedir(outdir)
 
-fig_unnorm, ax_unnorm = plt.subplots()
-fig_norm, ax_norm = plt.subplots()
-fig_max_change, ax_max_change = plt.subplots()
+if construct_recon_mult_tradeoff:
+  fig_unnorm, ax_unnorm = plt.subplots()
+  fig_norm, ax_norm = plt.subplots()
+  fig_max_change, ax_max_change = plt.subplots()
 
-#saved_rm = [0 for i in analysis_list]
+  #saved_rm = [0 for i in analysis_list]
 
-#TODO only do this analysis if we're sweeping
-for model_idx, (model_type, model_name) in enumerate(analysis_list):
-  analysis_params = params()
-  analysis_params.model_type = model_type
-  analysis_params.model_name = model_name
-  analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
+  #TODO only do this analysis if we're sweeping
+  for model_idx, (model_type, model_name) in enumerate(analysis_list):
+    analysis_params = params()
+    analysis_params.model_type = model_type
+    analysis_params.model_name = model_name
+    analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
 
-  analyzer = setup(analysis_params)
+    analyzer = setup(analysis_params)
 
-  num_data = analyzer.num_data
-  orig_img = analyzer.recon_adversarial_input_images.reshape(
-    int(num_data),
-    int(np.sqrt(analyzer.model.params.num_pixels)),
-    int(np.sqrt(analyzer.model.params.num_pixels)))
-  target_img = analyzer.adversarial_target_images.reshape(
-    int(num_data),
-    int(np.sqrt(analyzer.model.params.num_pixels)),
-    int(np.sqrt(analyzer.model.params.num_pixels)))
+    num_data = analyzer.num_data
+    orig_img = analyzer.recon_adversarial_input_images.reshape(
+      int(num_data),
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
+    target_img = analyzer.adversarial_target_images.reshape(
+      int(num_data),
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
 
-  #Grab final mses
-  #These mses are in shape [num_recon_mults, num_iterations, num_batch]
-  input_adv_vals = np.array(analyzer.adversarial_input_adv_mses)[:, -1, :]
-  target_recon_vals = np.array(analyzer.adversarial_target_recon_mses)[:, -1, :]
-  input_recon_val = np.array(analyzer.adversarial_input_recon_mses)[:, 0, :]
+    #Grab final mses
+    #These mses are in shape [num_recon_mults, num_iterations, num_batch]
+    input_adv_vals = np.array(analyzer.adversarial_input_adv_mses)[:, -1, :]
+    target_recon_vals = np.array(analyzer.adversarial_target_recon_mses)[:, -1, :]
+    input_recon_val = np.array(analyzer.adversarial_input_recon_mses)[:, 0, :]
 
-  #recon - adv recon
-  orig_recon = np.array(analyzer.adversarial_recons)[:, 0, ...]
-  adv_recon = np.array(analyzer.adversarial_recons)[:, -1, ...]
-  reduc_dims = tuple(range(2, len(orig_recon.shape)))
-  recon_adv_recon_vals = np.mean((orig_recon - adv_recon)**2, axis=reduc_dims)
+    #recon - adv recon
+    orig_recon = np.array(analyzer.adversarial_recons)[:, 0, ...]
+    adv_recon = np.array(analyzer.adversarial_recons)[:, -1, ...]
+    reduc_dims = tuple(range(2, len(orig_recon.shape)))
+    recon_adv_recon_vals = np.mean((orig_recon - adv_recon)**2, axis=reduc_dims)
 
-  #input_recon_val should be within threshold no matter the recon val being tested
-  #Here, not identical because vae's sample latent space, so recon is non-deterministic
-  #try:
-  #  assert np.all(np.abs(input_recon_val[0] - np.mean(input_recon_val, axis=0)) < 1e-3)
-  #except:
-  #  pdb.set_trace()
+    #input_recon_val should be within threshold no matter the recon val being tested
+    #Here, not identical because vae's sample latent space, so recon is non-deterministic
+    #try:
+    #  assert np.all(np.abs(input_recon_val[0] - np.mean(input_recon_val, axis=0)) < 1e-3)
+    #except:
+    #  pdb.set_trace()
 
-  input_recon_val = np.mean(input_recon_val, axis=0)
+    input_recon_val = np.mean(input_recon_val, axis=0)
 
-  norm_target_recon_vals = target_recon_vals / input_recon_val[None, :]
+    norm_target_recon_vals = target_recon_vals / input_recon_val[None, :]
 
-  #Normalize target_recon mse by orig_recon mse
-  recon_mult = np.array(analyzer.analysis_params.carlini_recon_mult)
+    #Normalize target_recon mse by orig_recon mse
+    recon_mult = np.array(analyzer.analysis_params.carlini_recon_mult)
 
 
-  ##Find lowest l2 distance of the two axes to the 0,0
-  #l2_dist = np.mean(np.sqrt(np.array(input_adv_vals) ** 2 + np.array(target_recon_vals) ** 2), axis=-1)
-  #min_idx = np.argmin(l2_dist)
-  #saved_rm[model_idx] = (min_idx, recon_mult[min_idx])
+    ##Find lowest l2 distance of the two axes to the 0,0
+    #l2_dist = np.mean(np.sqrt(np.array(input_adv_vals) ** 2 + np.array(target_recon_vals) ** 2), axis=-1)
+    #min_idx = np.argmin(l2_dist)
+    #saved_rm[model_idx] = (min_idx, recon_mult[min_idx])
 
-  #plt.scatter(input_adv_vals, target_recon_vals, c=recon_mult)
-  label_str = model_name + " recon_mse:%.4f"%np.mean(input_recon_val)
-  #TODO how to draw error bars? for now, treat each batch as a scatter data point
-  ax_norm.errorbar(np.mean(input_adv_vals, axis=-1),
-    np.mean(norm_target_recon_vals, axis=-1),
-    xerr = np.std(input_adv_vals, axis=-1),
-    yerr = np.std(norm_target_recon_vals, axis=-1),
-    label = label_str, c=colors[model_idx], fmt="o")
+    #plt.scatter(input_adv_vals, target_recon_vals, c=recon_mult)
+    label_str = model_name + " recon_mse:%.4f"%np.mean(input_recon_val)
+    #TODO how to draw error bars? for now, treat each batch as a scatter data point
+    ax_norm.errorbar(np.mean(input_adv_vals, axis=-1),
+      np.mean(norm_target_recon_vals, axis=-1),
+      xerr = np.std(input_adv_vals, axis=-1),
+      yerr = np.std(norm_target_recon_vals, axis=-1),
+      label = label_str, c=colors[model_idx], fmt="o")
 
-  ax_unnorm.errorbar(np.mean(input_adv_vals, axis=-1),
-    np.mean(target_recon_vals, axis=-1),
-    xerr = np.std(input_adv_vals, axis=-1),
-    yerr = np.std(target_recon_vals, axis=-1),
-    label = label_str, c=colors[model_idx], fmt="o")
+    ax_unnorm.errorbar(np.mean(input_adv_vals, axis=-1),
+      np.mean(target_recon_vals, axis=-1),
+      xerr = np.std(input_adv_vals, axis=-1),
+      yerr = np.std(target_recon_vals, axis=-1),
+      label = label_str, c=colors[model_idx], fmt="o")
 
-  ax_max_change.errorbar(np.mean(input_adv_vals, axis=-1),
-    np.mean(recon_adv_recon_vals, axis=-1),
-    xerr = np.std(input_adv_vals, axis=-1),
-    yerr = np.std(recon_adv_recon_vals, axis=-1),
-    label = label_str, c=colors[model_idx], fmt="o")
+    ax_max_change.errorbar(np.mean(input_adv_vals, axis=-1),
+      np.mean(recon_adv_recon_vals, axis=-1),
+      xerr = np.std(input_adv_vals, axis=-1),
+      yerr = np.std(recon_adv_recon_vals, axis=-1),
+      label = label_str, c=colors[model_idx], fmt="o")
 
-  #ax_norm.scatter(input_adv_vals.flatten(), norm_target_recon_vals.flatten(), label=label_str, c=colors[model_idx], s=2)
-  #ax_unnorm.scatter(input_adv_vals.flatten(), target_recon_vals.flatten(), label=label_str, c=colors[model_idx], s=2)
+    #ax_norm.scatter(input_adv_vals.flatten(), norm_target_recon_vals.flatten(), label=label_str, c=colors[model_idx], s=2)
+    #ax_unnorm.scatter(input_adv_vals.flatten(), target_recon_vals.flatten(), label=label_str, c=colors[model_idx], s=2)
 
-#Draw identity line
-identity_adv_vals = np.zeros((recon_mult.shape[0], orig_img.shape[0]))
-identity_target_recon_vals = np.zeros((recon_mult.shape[0], orig_img.shape[0]))
-identity_recon_adv_recon_vals = np.zeros((recon_mult.shape[0], orig_img.shape[0]))
+  #Draw identity line
+  identity_adv_vals = np.zeros((recon_mult.shape[0], orig_img.shape[0]))
+  identity_target_recon_vals = np.zeros((recon_mult.shape[0], orig_img.shape[0]))
+  identity_recon_adv_recon_vals = np.zeros((recon_mult.shape[0], orig_img.shape[0]))
 
-#Find line with identity
-for i, rmult in enumerate(recon_mult):
-  recon = rmult * orig_img + (1 - rmult) * target_img
-  identity_adv_vals[i, :] = dp.mse(recon, orig_img)
-  identity_target_recon_vals[i, :] = dp.mse(recon, target_img)
-  identity_recon_adv_recon_vals[i, :] = dp.mse(recon, orig_img)
+  #Find line with identity
+  for i, rmult in enumerate(recon_mult):
+    recon = rmult * orig_img + (1 - rmult) * target_img
+    identity_adv_vals[i, :] = dp.mse(recon, orig_img)
+    identity_target_recon_vals[i, :] = dp.mse(recon, target_img)
+    identity_recon_adv_recon_vals[i, :] = dp.mse(recon, orig_img)
 
-#Plot on unnorm
-ax_unnorm.errorbar(np.mean(identity_adv_vals, axis=-1),
-    np.mean(identity_target_recon_vals, axis=-1),
-    xerr = np.std(identity_adv_vals, axis=-1),
-    yerr=np.std(identity_target_recon_vals, axis=-1),
-    label = "identity", c = "k", fmt = "o")
+  #Plot on unnorm
+  ax_unnorm.errorbar(np.mean(identity_adv_vals, axis=-1),
+      np.mean(identity_target_recon_vals, axis=-1),
+      xerr = np.std(identity_adv_vals, axis=-1),
+      yerr=np.std(identity_target_recon_vals, axis=-1),
+      label = "identity", c = "k", fmt = "o")
 
-ax_max_change.errorbar(np.mean(identity_adv_vals, axis=-1),
-    np.mean(identity_recon_adv_recon_vals, axis=-1),
-    xerr = np.std(identity_adv_vals, axis=-1),
-    yerr=np.std(identity_recon_adv_recon_vals, axis=-1),
-    label = "identity", c = "k", fmt = "o")
+  ax_max_change.errorbar(np.mean(identity_adv_vals, axis=-1),
+      np.mean(identity_recon_adv_recon_vals, axis=-1),
+      xerr = np.std(identity_adv_vals, axis=-1),
+      yerr=np.std(identity_recon_adv_recon_vals, axis=-1),
+      label = "identity", c = "k", fmt = "o")
 
-ax_norm.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
-ax_norm.set_ylabel("Normalized Target Recon MSE", fontsize=axes_font_size)
-ax_norm.legend()
+  ax_norm.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
+  ax_norm.set_ylabel("Normalized Target Recon MSE", fontsize=axes_font_size)
+  ax_norm.legend()
 
-ax_unnorm.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
-ax_unnorm.set_ylabel("Target Recon MSE", fontsize=axes_font_size)
-ax_unnorm.legend()
+  ax_unnorm.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
+  ax_unnorm.set_ylabel("Target Recon MSE", fontsize=axes_font_size)
+  ax_unnorm.legend()
 
-ax_max_change.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
-ax_max_change.set_ylabel("Recon AdvRecon MSE", fontsize=axes_font_size)
-ax_max_change.legend()
+  ax_max_change.set_xlabel("Input Adv MSE", fontsize=axes_font_size)
+  ax_max_change.set_ylabel("Recon AdvRecon MSE", fontsize=axes_font_size)
+  ax_max_change.legend()
 
-fig_unnorm.savefig(outdir + "/recon_mult_tradeoff.png")
-fig_norm.savefig(outdir + "/norm_recon_mult_tradeoff.png")
-fig_max_change.savefig(outdir + "/max_change.png")
+  fig_unnorm.savefig(outdir + "/recon_mult_tradeoff.png")
+  fig_norm.savefig(outdir + "/norm_recon_mult_tradeoff.png")
+  fig_max_change.savefig(outdir + "/max_change.png")
 
-plt.close('all')
+  plt.close('all')
 
-if(plot_over_time):
+if(construct_adv_examples):
+  imgs = []
+  for model_idx, (model_type, model_name) in enumerate(analysis_list):
+    analysis_params = params()
+    analysis_params.model_type = model_type
+    analysis_params.model_name = model_name
+    analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
+    analyzer = setup(analysis_params)
+
+    num_data = analyzer.num_data
+
+    orig_img = analyzer.adversarial_images[recon_mult_idx, -1, ...].reshape(
+      int(num_data),
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
+
+    orig_recon = analyzer.adversarial_recons[recon_mult_idx, -1, ...].reshape(
+      int(num_data),
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
+
+    #Get adv examples from source
+    adv_img = analyzer.adversarial_images[recon_mult_idx, -1, ...].reshape(
+      int(num_data),
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
+
+    adv_recon = analyzer.adversarial_recons[recon_mult_idx, -1, ...].reshape(
+      int(num_data),
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
+
+    targ_img = analyzer.adversarial_target_images.reshape(
+      int(num_data),
+      int(np.sqrt(analyzer.model.params.num_pixels)),
+      int(np.sqrt(analyzer.model.params.num_pixels)))
+
+    pert = adv_img - orig_img
+    imgs.append([orig_img, orig_recon, pert, adv_img, adv_recon, targ_img])
+
+  for batch_id in range(num_output_batches):
+    #Construct img table
+    fig, ax = plt.subplots(len(analysis_list), 7, squeeze=False)
+    plt.suptitle(analysis_params.save_info)
+
+    ax[0, 1].set_title("orig")
+    ax[0, 2].set_title("recon")
+    ax[0, 3].set_title("pert")
+    ax[0, 4].set_title("adv_image")
+    ax[0, 5].set_title("adv_recon")
+    ax[0, 6].set_title("target")
+
+    for model_idx, (model_type, model_name) in enumerate(analysis_list):
+      ax[model_idx, 0].text(1, 0.5, model_name, horizontalalignment="right", verticalalignment="center")
+
+      ax[model_idx, 1].imshow(imgs[model_idx][0][batch_id], cmap="gray")
+      ax[model_idx, 2].imshow(imgs[model_idx][1][batch_id], cmap="gray")
+
+      pert_img = ax[model_idx, 3].imshow(imgs[model_idx][2][batch_id], cmap="gray")
+      cb = fig.colorbar(pert_img, ax=ax[model_idx, 3], aspect=5)
+      tick_locator = ticker.MaxNLocator(nbins=3)
+      cb.locator = tick_locator
+      cb.update_ticks()
+
+      ax[model_idx, 4].imshow(imgs[model_idx][3][batch_id], cmap="gray")
+      ax[model_idx, 5].imshow(imgs[model_idx][4][batch_id], cmap="gray")
+      ax[model_idx, 6].imshow(imgs[model_idx][5][batch_id], cmap="gray")
+
+      for i in range(6):
+        pf.clear_axis(ax[model_idx, i])
+
+    fig.savefig(outdir+"/adv_recon_example_"+analysis_params.save_info+"_batch_" + str(batch_id)+ ".png")
+    plt.close("all")
+
+if(construct_over_time):
   for model_idx, (model_type, model_name) in enumerate(analysis_list):
     analysis_params = params()
     analysis_params.model_type = model_type
@@ -210,57 +289,20 @@ if(plot_over_time):
       int(np.sqrt(analyzer.model.params.num_pixels)),
       int(np.sqrt(analyzer.model.params.num_pixels)))
 
-    for batch_idx in range(num_data):
+    for batch_idx in range(num_output_batches):
       #TODO put batch idx in filename
       out_dir = analyzer.analysis_out_dir+"/vis/adv_input_imges/"
       makedir(out_dir)
       pf.plot_image(orig_imgs[batch_idx], title="Input Image",
-        save_filename=out_dir+analysis_params.save_info+"_adversarial_input.png")
+        save_filename=out_dir+analysis_params.save_info+"_adversarial_input_batch_"+str(batch_idx)+".png")
       out_dir = analyzer.analysis_out_dir+"/vis/adv_target_imges/"
       makedir(out_dir)
       pf.plot_image(target_imgs[batch_idx], title="Target Image",
-        save_filename=out_dir+analysis_params.save_info+"_adversarial_target.png")
+        save_filename=out_dir+analysis_params.save_info+"_adversarial_target_batch_"+str(batch_idx)+".png")
 
     plot_int = 100
     recon_mult = analyzer.analysis_params.carlini_recon_mult
-    if(plot_all):
-      rm_list = enumerate(recon_mult)
-    else:
-      assert False, ("TODO")
-    #else:
-    #  #saved_rm is a tuple of (idx, recon_mult val)
-    #  rm_list = [saved_rm[model_idx]]
-
-    #plot all recons of adv per step
-
-    #makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_recons/")
-    #makedir(analyzer.analysis_out_dir+"/vis/"+params.save_info+"_adversarial_stims/")
-    #for i_rm, rm in rm_list:
-    #  rm_str = "%.2f"%rm
-    #  for step, recon in enumerate(analyzer.adversarial_recons[i_rm]):
-    #    if(step % plot_int == 0):
-    #      adv_recon = recon.reshape(
-    #        int(batch_size),
-    #        int(np.sqrt(analyzer.model.params.num_pixels)),
-    #        int(np.sqrt(analyzer.model.params.num_pixels)))
-
-    #      for batch_idx in range(batch_size):
-    #        pf.plot_image(adv_recon[batch_idx], title="step_"+str(step),
-    #          save_filename=analyzer.analysis_out_dir+"/vis/"+\
-    #          analysis_params.save_info+"_adversarial_recons/"+\
-    #          "recon_batch_"+str(batch_idx)+"_rm_"+rm_str+"_step_"+str(step)+".png")
-
-    #  for step, stim in enumerate(analyzer.adversarial_images[i_rm]):
-    #    if(step % plot_int == 0):
-    #      adv_img = stim.reshape(
-    #        int(batch_size),
-    #        int(np.sqrt(analyzer.model.params.num_pixels)),
-    #        int(np.sqrt(analyzer.model.params.num_pixels)))
-    #      for batch_idx in range(batch_size):
-    #        pf.plot_image(adv_img[batch_idx], title="step_"+str(step),
-    #          save_filename=analyzer.analysis_out_dir+"/vis/"+\
-    #          analysis_params.save_info+"_adversarial_stims/"+\
-    #          "stim_batch_"+str(batch_idx)+"_rm_"+rm_str+"_step_"+str(step)+".png")
+    rm_list = enumerate(recon_mult)
 
     for i_rm, rm in rm_list:
       rm_str = "%.2f"%rm
@@ -284,7 +326,7 @@ if(plot_over_time):
       target_adv_mses = np.array(analyzer.adversarial_target_adv_mses)[i_rm]
       adv_recon_mses = np.array(analyzer.adversarial_adv_recon_mses)[i_rm]
 
-      for batch_idx in range(num_data):
+      for batch_idx in range(num_output_batches):
         out_dir = analyzer.analysis_out_dir+"/vis/adv_losses/"
         makedir(out_dir)
         out_filename = out_dir+\
