@@ -54,7 +54,7 @@ class MlpModel(Model):
         #Build the rest of the ops here since we need nodes from this graph
         #Use sum loss here for untargted
         self.adv_module.build_adversarial_ops(self.label_est,
-          label_tensor=self.label_placeholder, model_logits=self.get_encodings(),
+          model_logits=self.get_encodings(),
           loss=self.mlp_module.sum_loss)
     #Add adv module ignore list to model ignore list
     self.full_model_load_ignore.extend(self.adv_module.ignore_load_var_list)

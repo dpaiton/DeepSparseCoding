@@ -79,7 +79,7 @@ class ClassAdversarialModule(object):
   def get_adv_input(self):
     return self.adv_switch_input
 
-  def build_adversarial_ops(self, label_est, label_tensor=None, model_logits=None, loss=None):
+  def build_adversarial_ops(self, label_est, model_logits=None, loss=None):
     with tf.variable_scope(self.variable_scope) as scope:
       self.label_est = label_est
       with tf.variable_scope("loss") as scope:

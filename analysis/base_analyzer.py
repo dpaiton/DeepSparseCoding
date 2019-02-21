@@ -160,7 +160,6 @@ class Analyzer(object):
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.class_adv_module.build_adversarial_ops(self.model.label_est,
-            label_tensor=self.model.label_placeholder,
             model_logits=self.model.get_encodings(),
             loss=self.model.mlp_module.sum_loss)
       #Add adv module ignore list to model ignore list

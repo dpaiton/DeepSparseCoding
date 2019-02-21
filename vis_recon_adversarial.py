@@ -16,11 +16,11 @@ import pdb
 
 #List of models for analysis
 analysis_list = [
-    #  ("lca", "lca_1568_mnist"),
-    #  ("lca", "lca_768_mnist"),
-    #  ("vae", "vae_mnist"),
-    #  ("vae", "deep_vae_mnist"),
-    #  ("vae", "deep_denoising_vae_mnist"),
+  #("lca", "lca_1568_mnist"),
+  ("lca", "lca_768_mnist"),
+  ("vae", "vae_mnist"),
+  ("vae", "deep_vae_mnist"),
+  ("vae", "deep_denoising_vae_mnist"),
   ("sae", "sae_768_mnist"),
   ]
 
@@ -39,9 +39,9 @@ axes_font_size = 16
 
 construct_recon_mult_tradeoff = False
 construct_adv_examples = True
-construct_over_time = True
+construct_over_time = False
 num_output_batches = 3
-recon_mult_idx = 4
+recon_mult_idx = -1 #use last recon mult
 
 #Base outdir for multi-network plot
 outdir = "/home/slundquist/Work/Projects/vis/"
@@ -207,12 +207,12 @@ if(construct_adv_examples):
 
     num_data = analyzer.num_data
 
-    orig_img = analyzer.adversarial_images[recon_mult_idx, -1, ...].reshape(
+    orig_img = analyzer.adversarial_images[recon_mult_idx, 0, ...].reshape(
       int(num_data),
       int(np.sqrt(analyzer.model.params.num_pixels)),
       int(np.sqrt(analyzer.model.params.num_pixels)))
 
-    orig_recon = analyzer.adversarial_recons[recon_mult_idx, -1, ...].reshape(
+    orig_recon = analyzer.adversarial_recons[recon_mult_idx, 0, ...].reshape(
       int(num_data),
       int(np.sqrt(analyzer.model.params.num_pixels)),
       int(np.sqrt(analyzer.model.params.num_pixels)))
@@ -238,15 +238,15 @@ if(construct_adv_examples):
 
   for batch_id in range(num_output_batches):
     #Construct img table
-    fig, ax = plt.subplots(len(analysis_list), 7, squeeze=False)
+    fig, ax = plt.subplots(len(analysis_list), 8, squeeze=False)
     plt.suptitle(analysis_params.save_info)
 
     ax[0, 1].set_title("orig")
     ax[0, 2].set_title("recon")
     ax[0, 3].set_title("pert")
-    ax[0, 4].set_title("adv_image")
-    ax[0, 5].set_title("adv_recon")
-    ax[0, 6].set_title("target")
+    ax[0, 5].set_title("adv_image")
+    ax[0, 6].set_title("adv_recon")
+    ax[0, 7].set_title("target")
 
     for model_idx, (model_type, model_name) in enumerate(analysis_list):
       ax[model_idx, 0].text(1, 0.5, model_name, horizontalalignment="right", verticalalignment="center")
@@ -260,11 +260,11 @@ if(construct_adv_examples):
       cb.locator = tick_locator
       cb.update_ticks()
 
-      ax[model_idx, 4].imshow(imgs[model_idx][3][batch_id], cmap="gray")
-      ax[model_idx, 5].imshow(imgs[model_idx][4][batch_id], cmap="gray")
-      ax[model_idx, 6].imshow(imgs[model_idx][5][batch_id], cmap="gray")
+      ax[model_idx, 5].imshow(imgs[model_idx][3][batch_id], cmap="gray")
+      ax[model_idx, 6].imshow(imgs[model_idx][4][batch_id], cmap="gray")
+      ax[model_idx, 7].imshow(imgs[model_idx][5][batch_id], cmap="gray")
 
-      for i in range(6):
+      for i in range(8):
         pf.clear_axis(ax[model_idx, i])
 
     fig.savefig(outdir+"/adv_recon_example_"+analysis_params.save_info+"_batch_" + str(batch_id)+ ".png")
