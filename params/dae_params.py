@@ -94,10 +94,11 @@ class params(BaseParams):
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
       for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["entropy_mult"] = 0.01
         self.schedule[sched_idx]["decay_mult"] = 0.01
         self.schedule[sched_idx]["noise_variance_mult"] = 0.01
-        self.schedule[sched_idx]["weight_lr"] = 5e-4
+        self.schedule[sched_idx]["weight_lr"] = 1e-3
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vanhateren"

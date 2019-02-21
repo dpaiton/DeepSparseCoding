@@ -9,7 +9,7 @@ from modules.dae_module import DaeModule
 class DaeModel(AeModel):
   def __init__(self):
     """
-    Divisive Autoencoder 
+    Divisive Autoencoder
     """
     super(DaeModel, self).__init__()
 
