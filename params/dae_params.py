@@ -89,12 +89,15 @@ class params(BaseParams):
       self.model_name += "_mnist"
       self.conv = False
       self.output_channels = [768, 512, 50]
-      self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
+      self.activation_functions = ["gdn", "gdn", "sigmoid", "gdn", "gdn", "identity"]
       self.dropout = [1.0]*len(self.activation_functions)
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["weight_lr"] = 1e-4
+        self.schedule[sched_idx]["entropy_mult"] = 0.01
+        self.schedule[sched_idx]["decay_mult"] = 0.01
+        self.schedule[sched_idx]["noise_variance_mult"] = 0.01
+        self.schedule[sched_idx]["weight_lr"] = 5e-4
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vanhateren"
