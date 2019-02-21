@@ -294,8 +294,9 @@ class Analyzer(object):
       self.adversarial_target_adv_mses = data["target_adv_mses"]
       self.adversarial_adv_recon_mses = data["adv_recon_mses"]
       self.adversarial_target_adv_cos_similarities = data["target_adv_cos_similarities"]
-      self.adversarial_target_pert_cos_similarities = data["target_adv_cos_similarities"]
-      self.adversarial_input_pert_cos_similarities = data["target_adv_cos_similarities"]
+      self.adversarial_input_adv_cos_similarities = data["input_adv_cos_similarities"]
+      self.adversarial_target_pert_cos_similarities = data["target_pert_cos_similarities"]
+      self.adversarial_input_pert_cos_similarities = data["input_pert_cos_similarities"]
     recon_adversarial_file_loc = \
       self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz"
     if os.path.exists(recon_adversarial_file_loc):
@@ -883,7 +884,8 @@ class Analyzer(object):
     distances = {"input_target_mse":input_target_mse, "input_recon_mses":[],
     "input_adv_mses":[], "target_recon_mses":[],
     "target_adv_mses":[], "adv_recon_mses":[], "target_adv_cos_similarities":[],
-    "target_pert_cos_similarities": [], "input_pert_cos_similarities":[]}
+    "input_adv_cos_similarities":[], "target_pert_cos_similarities": [],
+    "input_pert_cos_similarities":[]}
 
     steps=None
     all_adversarial_images = []
@@ -908,6 +910,7 @@ class Analyzer(object):
         distances["target_adv_mses"].append(out_dict["target_adv_mses"])
         distances["adv_recon_mses"].append(out_dict["adv_recon_mses"])
         distances["target_adv_cos_similarities"].append(out_dict["target_adv_sim"])
+        distances["input_adv_cos_similarities"].append(out_dict["input_adv_sim"])
         distances["target_pert_cos_similarities"].append(out_dict["target_pert_sim"])
         distances["input_pert_cos_similarities"].append(out_dict["input_pert_sim"])
         all_adversarial_images.append(out_dict["adv_images"])
@@ -1056,7 +1059,7 @@ class Analyzer(object):
       assert False, ("Adversarial attack method must be "+\
         "\"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
 
-    mses = {"input_adv_mses":[], "target_output_losses":[],}
+    mses = {"input_adv_mses":[], "target_output_losses":[]}
     steps = None
     all_adv_images = []
     all_adv_outputs = []

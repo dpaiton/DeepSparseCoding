@@ -84,7 +84,7 @@ class ClassAdversarialModule(object):
       self.label_est = label_est
       with tf.variable_scope("loss") as scope:
         if(self.attack_method == "kurakin_untargeted"):
-          self.adv_loss = -loss
+          self.adv_loss = tf.reduce_sum(-loss, name="sum_loss")
         elif(self.attack_method == "kurakin_targeted"):
           self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
             tf.log(tf.clip_by_value(self.label_est, self.eps, 1.0))))
