@@ -24,11 +24,11 @@ class IcaSubspaceModel(IcaModel):
 
     # new params for subspace ica
     self.num_groups = self.params.num_groups
-    self.group_sizes = self.construct_group_sizes()
+    self.group_sizes = self.construct_group_sizes(self.params.group_sizes)
     self.group_index = [sum(self.group_sizes[:i])-1 for i in range(self.num_groups)]
     self.sum_arr = self.construct_sum_arr() 
 
-  def build_graph_from_input(self):
+  def build_graph_from_input(self, input_node):
     """Build the Tensorflow graph object. 
 
     Placeholders:
@@ -80,20 +80,22 @@ class IcaSubspaceModel(IcaModel):
 
     return [(gradient, weight_op[0])]
     
-  def construct_group_sizes(self):
-      """Construct respective group sizes. If group_size initialzed as None, then group sizes are uniformally
-      distributed; unless specified otherwise. """
-      if self.group_sizes is None:
-          self.group_sizes = [self.num_neurons // self.num_groups for _ in self.num_groups]
-      assert sum(self.group_sizes) == self.num_neurons, ("Total number of vectors should be the same "
+  def construct_group_sizes(self, params_group_sizes):
+    """Construct respective group sizes. If group_size initialzed as None, then group sizes are uniformally
+    distributed; unless specified otherwise. """
+    self.group_sizes = params_group_sizes
+    if params_group_sizes is None:
+      self.group_sizes = [self.num_neurons // self.num_groups for _ in range(self.num_groups)]
+    
+    assert sum(self.group_sizes) == self.num_neurons, ("Total number of vectors should be the same "
                                                         "as number of neurons.")
-      print("construct_group_sizes: {}".format(self.group_sizes))
-      return self.group_sizes
+    print("construct_group_sizes: {}".format(self.group_sizes))
+    return self.group_sizes
 
-  def construct_sum_arr():
+  def construct_sum_arr(self):
     sum_arr = []
-    for s, i in zip(self.group_size, self.group_index):
-      col_index = np.zeros(num_pixels)
+    for s, i in zip(self.group_sizes, self.group_index):
+      col_index = np.zeros(self.num_neurons)
       col_index[i:i+s] = 1
       sum_arr.append(col_index)
     sum_arr = np.stack(sum_arr, axis=1)

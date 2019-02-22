@@ -11,7 +11,7 @@ class params(ica_params):
     self.model_name = "ica_subspace"
     self.version = "0.0"
 
-    self.num_groups = 5
+    self.num_groups = 16
     self.group_sizes = None
 
     self.center_data = True
