@@ -90,6 +90,7 @@ class params(BaseParams):
       self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
       self.batch_norm = [None, None, None, None]
       self.dropout = [1.0, 1.0, 1.0, 1.0] # TODO: Set dropout defaults somewhere
+      self.lrn = [False, False, False, False,]
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
@@ -99,6 +100,40 @@ class params(BaseParams):
         self.schedule[sched_idx]["weight_lr"] = 1e-4
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.90
+
+    elif data_type.lower() == "cifar10":
+      self.model_name += "_cifar10"
+      self.vectorize_data = False
+      self.rescale_data = True
+      self.center_data = False
+      self.whiten_data = False
+      self.extract_patches = False
+      self.log_int = 100
+      self.cp_int = 500
+      self.gen_plot_int = 1e3
+      self.num_classes = 10
+      self.optimizer = "adam"
+      self.layer_types = ["conv", "conv", "fc", "fc", "fc"]
+      #TF model does lrn after pool in conv1, lrn before pool in conv2
+      #TODO test if this matters
+      #String can be post or pre, depending on applying LRN before or after pooling
+      self.lrn = ["post", "post", None, None, None]
+      self.output_channels = [64, 64, 384, 192, self.num_classes]
+      self.patch_size_y = [5, 5, None, None, None]
+      self.patch_size_x = self.patch_size_y
+      self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None, None]
+      self.batch_norm = [None, None, None, None, None]
+      self.dropout = [1.0, 1.0, 1.0, 1.0, 1.0] # TODO: Set dropout defaults somewhere
+      self.max_pool = [True, True, False, False, False]
+      self.max_pool_ksize = [(1,3,3,1), (1,3,3,1), None, None, None]
+      self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None, None]
+      self.batch_size = 128
+      #self.schedule[1]["num_batches"] = int(1e5)
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["weight_lr"] = 1e-3
+        self.schedule[sched_idx]["decay_steps"] = int(.8*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.1
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
