@@ -620,7 +620,7 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
         activity = activations[bf_indices[bf_idx], co_idx, :]
         color_val = scalarMap.to_rgba(contrast)
         ax.plot(orientations, activity, linewidth=1, color=color_val)
-        ax.scatter(orientations, activity, s=4, c=color_val)
+        ax.scatter(orientations, activity, s=4, c=[color_val])
         ax.yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
         ax.set_yticks([0, np.max(activity)])
         ax.set_xticks([0, 90, 180])
