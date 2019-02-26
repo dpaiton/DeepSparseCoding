@@ -37,11 +37,11 @@ colors = [
 title_font_size = 16
 axes_font_size = 16
 
-construct_recon_mult_tradeoff = False
+construct_recon_mult_tradeoff = True
 construct_adv_examples = True
-construct_over_time = False
+construct_over_time = True
 num_output_batches = 3
-recon_mult_idx = -1 #use last recon mult
+recon_mult_idx = -2 #use second to last recon mult
 
 #Base outdir for multi-network plot
 outdir = "/home/slundquist/Work/Projects/vis/"
@@ -88,26 +88,32 @@ if construct_recon_mult_tradeoff:
     analyzer = setup(analysis_params)
 
     num_data = analyzer.num_data
-    orig_img = analyzer.recon_adversarial_input_images.reshape(
-      int(num_data),
-      int(np.sqrt(analyzer.model.params.num_pixels)),
-      int(np.sqrt(analyzer.model.params.num_pixels)))
-    target_img = analyzer.adversarial_target_images.reshape(
-      int(num_data),
-      int(np.sqrt(analyzer.model.params.num_pixels)),
-      int(np.sqrt(analyzer.model.params.num_pixels)))
+    target_img = analyzer.adversarial_target_images
+    orig_img = analyzer.adversarial_images[0, 0, ...]
+    orig_recon = analyzer.adversarial_recons[0, 0, ...]
+    adv_img = analyzer.adversarial_images[:, -1, ...]
+    adv_recon = analyzer.adversarial_recons[:, -1, ...]
 
-    #Grab final mses
-    #These mses are in shape [num_recon_mults, num_iterations, num_batch]
-    input_adv_vals = np.array(analyzer.adversarial_input_adv_mses)[:, -1, :]
-    target_recon_vals = np.array(analyzer.adversarial_target_recon_mses)[:, -1, :]
-    input_recon_val = np.array(analyzer.adversarial_input_recon_mses)[:, 0, :]
+    #Calculate distances
+    r_mults = adv_img.shape[0]
 
-    #recon - adv recon
-    orig_recon = np.array(analyzer.adversarial_recons)[:, 0, ...]
-    adv_recon = np.array(analyzer.adversarial_recons)[:, -1, ...]
-    reduc_dims = tuple(range(2, len(orig_recon.shape)))
-    recon_adv_recon_vals = np.mean((orig_recon - adv_recon)**2, axis=reduc_dims)
+    input_adv_vals = np.zeros((r_mults, num_data))
+    target_recon_vals = np.zeros((r_mults, num_data))
+    recon_adv_recon_vals = np.zeros((r_mults, num_data))
+    for r_idx in range(r_mults):
+      input_adv_vals[r_idx, :] = dp.cos_similarity(orig_img, adv_img[r_idx])
+      target_recon_vals[r_idx, :] = dp.cos_similarity(target_img, adv_recon[r_idx])
+      recon_adv_recon_vals[r_idx, :] = dp.cos_similarity(orig_recon, adv_recon[r_idx])
+    input_recon_val = dp.cos_similarity(orig_img, orig_recon)
+
+
+    ##These mses are in shape [num_recon_mults, num_iterations, num_batch]
+    #input_adv_vals = np.array(analyzer.adversarial_input_adv_mses)[:, -1, :]
+    #target_recon_vals = np.array(analyzer.adversarial_target_recon_mses)[:, -1, :]
+    #input_recon_val = np.array(analyzer.adversarial_input_recon_mses)[:, 0, :]
+
+    #reduc_dims = tuple(range(2, len(orig_recon.shape)))
+    #recon_adv_recon_vals = np.mean((orig_recon - adv_recon)**2, axis=reduc_dims)
 
     #input_recon_val should be within threshold no matter the recon val being tested
     #Here, not identical because vae's sample latent space, so recon is non-deterministic
@@ -115,8 +121,6 @@ if construct_recon_mult_tradeoff:
     #  assert np.all(np.abs(input_recon_val[0] - np.mean(input_recon_val, axis=0)) < 1e-3)
     #except:
     #  pdb.set_trace()
-
-    input_recon_val = np.mean(input_recon_val, axis=0)
 
     norm_target_recon_vals = target_recon_vals / input_recon_val[None, :]
 
@@ -161,9 +165,12 @@ if construct_recon_mult_tradeoff:
   #Find line with identity
   for i, rmult in enumerate(recon_mult):
     recon = rmult * orig_img + (1 - rmult) * target_img
-    identity_adv_vals[i, :] = dp.mse(recon, orig_img)
-    identity_target_recon_vals[i, :] = dp.mse(recon, target_img)
-    identity_recon_adv_recon_vals[i, :] = dp.mse(recon, orig_img)
+    #identity_adv_vals[i, :] = dp.mse(recon, orig_img)
+    #identity_target_recon_vals[i, :] = dp.mse(recon, target_img)
+    #identity_recon_adv_recon_vals[i, :] = dp.mse(recon, orig_img)
+    identity_adv_vals[i, :] = dp.cos_similarity(recon, orig_img)
+    identity_target_recon_vals[i, :] = dp.cos_similarity(recon, target_img)
+    identity_recon_adv_recon_vals[i, :] = dp.cos_similarity(recon, orig_img)
 
   #Plot on unnorm
   ax_unnorm.errorbar(np.mean(identity_adv_vals, axis=-1),
