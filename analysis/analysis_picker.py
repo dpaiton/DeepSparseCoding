@@ -5,8 +5,9 @@ from analysis.lca_subspace_analyzer import LcaSubspaceAnalyzer as sub_lca_analyz
 from analysis.lca_pca_analyzer import LcaPcaAnalyzer as lca_pca_analyzer
 from analysis.lca_conv_analyzer import LcaConvAnalyzer as conv_lca_analyzer
 from analysis.lista_analyzer import ListaAnalyzer as lista_analyzer
-from analysis.sae_analyzer import SaeAnalyzer as sae_analyzer
 from analysis.rica_analyzer import RicaAnalyzer as rica_analyzer
+from analysis.ae_analyzer import AeAnalyzer as ae_analyzer
+from analysis.sae_analyzer import SaeAnalyzer as sae_analyzer
 from analysis.vae_analyzer import VaeAnalyzer as vae_analyzer
 from analysis.gdn_autoencoder_analyzer import GaAnalyzer as ga_analyzer
 
@@ -27,6 +28,8 @@ def get_analyzer(model_type):
     return conv_lca_analyzer()
   if model_type.lower() == "lista":
     return lista_analyzer()
+  if model_type.lower() == "ae":
+    return ae_analyzer()
   if model_type.lower() == "sae":
     return sae_analyzer()
   if model_type.lower() == "gdn_autoencoder":
