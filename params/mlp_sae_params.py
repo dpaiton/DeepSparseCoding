@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_sae"
-    self.model_name = "mlp_sae_768_latent_adv"
+    self.model_name = "mlp_sae_768_latent"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -97,7 +97,7 @@ class params(BaseParams):
       #Only training MLP weights, not SAE
       #TODO change weight names
       {"weights": None,
-      "train_on_adversarial": True,
+      "train_on_adversarial": False,
       "train_sae": False,
       "num_batches": int(1e4),
       "decay_mult": 0.0,
@@ -108,9 +108,9 @@ class params(BaseParams):
       "decay_rate": 0.8,
       "staircase": True},
       ]
-    self.schedule = [self.schedule[0].copy()] + self.schedule
-    self.schedule[0]["train_on_adversarial"] = False
-    self.schedule[0]["num_batches"] = 1000
+    #self.schedule = [self.schedule[0].copy()] + self.schedule
+    #self.schedule[0]["train_on_adversarial"] = False
+    #self.schedule[0]["num_batches"] = 1000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -124,9 +124,10 @@ class params(BaseParams):
       self.sae_output_channels = [768]
       self.activation_functions = ["sigmoid", "identity"]
       self.dropout = [1.0]*2*len(self.sae_output_channels)
-      self.cp_int = 1e4
-      self.gen_plot_int = 1e4
+      self.cp_int = 1e3
+      self.gen_plot_int = 1e5
       self.cp_load = True
+      self.train_on_recon = False # if False, train on LCA latent activations
       # MLP params
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
@@ -159,24 +160,29 @@ class params(BaseParams):
           self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
           self.schedule[sched_idx]["decay_rate"] = 0.90
       else:
-        self.mlp_output_channels = [1536, 1200, self.num_classes]
+        self.mlp_output_channels = [1200, 1200, self.num_classes]
         self.layer_types = ["fc"]*3
         self.optimizer = "adam"
         self.patch_size_y = [None]*3
         self.patch_size_x = [None]*3
         self.conv_strides = [None]*3
         self.batch_norm = [None]*3
-        self.dropout = [0.5, 0.4, 1.0]
+        self.dropout = [0.5, 0.5, 1.0]
         self.max_pool = [False]*3
         self.max_pool_ksize = [None]*3
         self.max_pool_strides = [None]*3
-        self.schedule[1]["num_batches"] = int(4e4)
         for sched_idx in range(len(self.schedule)):
-          #TODO
-          self.schedule[sched_idx]["weights"] = None
-          self.schedule[sched_idx]["weight_lr"] = 1e-4
-          self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
-          self.schedule[sched_idx]["decay_rate"] = 0.90
+          self.schedule[sched_idx]["num_batches"] = int(2e5)
+          self.schedule[sched_idx]["weights"] = [
+            "mlp/layer0/fc_w_0:0",
+            "mlp/layer0/fc_b_0:0",
+            "mlp/layer1/fc_w_1:0",
+            "mlp/layer1/fc_b_1:0",
+            "mlp/layer2/fc_w_2:0",
+            "mlp/layer2/fc_b_2:0"]
+          self.schedule[sched_idx]["weight_lr"] = 1e-5
+          self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[sched_idx]["num_batches"])
+          self.schedule[sched_idx]["decay_rate"] = 0.9
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

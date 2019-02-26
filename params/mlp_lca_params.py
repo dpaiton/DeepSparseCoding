@@ -107,9 +107,9 @@ class params(BaseParams):
       "decay_rate": 0.8,
       "staircase": True},
       ]
-    self.schedule = [self.schedule[0].copy()] + self.schedule
-    self.schedule[0]["train_on_adversarial"] = False
-    self.schedule[0]["num_batches"] = 10000
+    #self.schedule = [self.schedule[0].copy()] + self.schedule
+    #self.schedule[0]["train_on_adversarial"] = False
+    #self.schedule[0]["num_batches"] = 10000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -150,9 +150,10 @@ class params(BaseParams):
             "mlp/layer2/fc_b_2:0",
             "mlp/layer3/fc_w_3:0",
             "mlp/layer3/fc_b_3:0"]
+          self.schedule[sched_idx]["train_on_adversarial"] = False
           self.schedule[sched_idx]["sparse_mult"] = 0.19
           self.schedule[sched_idx]["weight_lr"] = 1e-4
-          self.schedule[sched_idx]["decay_steps"] = int(0.5*self.schedule[1]["num_batches"])
+          self.schedule[sched_idx]["decay_steps"] = int(0.5*self.schedule[sched_idx]["num_batches"])
           #self.schedule[sched_idx]["decay_rate"] = 0.50
           self.schedule[sched_idx]["decay_rate"] = 0.9
         #self.schedule[-1]["num_batches"] = int(4e4)
@@ -179,7 +180,7 @@ class params(BaseParams):
             "mlp/layer2/fc_b_2:0"]
           self.schedule[sched_idx]["sparse_mult"] = 0.25
           self.schedule[sched_idx]["weight_lr"] = 1e-5
-          self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[1]["num_batches"])
+          self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[sched_idx]["num_batches"])
           #self.schedule[sched_idx]["decay_rate"] = 0.50
           self.schedule[sched_idx]["decay_rate"] = 0.9
         self.schedule[-1]["num_batches"] = int(2e5)
