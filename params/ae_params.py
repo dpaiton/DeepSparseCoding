@@ -37,7 +37,6 @@ class params(BaseParams):
     self.log_to_file = True
     self.gen_plot_int = 10000
     self.save_plots = True
-
     self.schedule = [
       {"num_batches": int(3e5),
       "weights": None,
@@ -52,8 +51,20 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.output_channels = [768, 50]
-      self.activation_functions = ["relu", "relu", "relu", "identity"]
-      self.dropout = [1.0]*4
+      self.optimizer = "annealed_sgd"
+      self.batch_size = 100
+      self.activation_functions = ["lrelu", "lrelu", "lrelu", "sigmoid"]
+      self.dropout = [0.5, 0.5, 0.5, 1.0]
+      self.cp_int = int(1e3)
+      self.gen_plot_int = int(1e3)
+      self.schedule = [
+        {"num_batches": int(5e3),
+        "weights": None,
+        "decay_mult": 0.0007,
+        "weight_lr": 0.005,
+        "decay_steps": int(3e3),
+        "decay_rate": 0.5,
+        "staircase": True,}]
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
