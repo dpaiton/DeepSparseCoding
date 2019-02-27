@@ -50,13 +50,20 @@ class LcaConvModel(LcaModel):
     else:
       assert False, ("Input_data.shape[-1] should indicate color channel, and should be 1 or 3")
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    weights, recon = tf.get_default_session().run([self.module.w, self.module.reconstruction],
-      feed_dict)
+    weights, recon, activity = tf.get_default_session().run(
+      [self.module.w, self.module.reconstruction, self.get_encodings()], feed_dict)
+
     recon = dp.rescale_data_to_one(recon)[0]
     weights = np.transpose(dp.rescale_data_to_one(weights.T)[0].T, axes=(3,0,1,2))
     current_step = str(self.global_step.eval())
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     input_data = dp.rescale_data_to_one(input_data)[0]
+
+    num_features = activity.shape[-1]
+    activity = np.reshape(activity, [-1, num_features])
+    fig = pf.plot_activity_hist(activity, title="LCA Activity Histogram",
+      save_filename=self.params.disp_dir+"lca_act_hist"+filename_suffix)
+
     pf.plot_data_tiled(input_data[0,...], normalize=False,
       title="Images at step "+current_step, vmin=None, vmax=None, cmap=cmap,
       save_filename=self.params.disp_dir+"images"+filename_suffix)
@@ -70,6 +77,7 @@ class LcaConvModel(LcaModel):
       grad = weight_grad_var[0][0].eval(feed_dict)
       shape = grad.shape
       name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
-        title="Gradient for phi at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-        save_filename=self.params.disp_dir+"dphi"+filename_suffix)
+      #TODO this function is breaking due to the range of gradients
+      #pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
+      #  title="Gradient for phi at step "+current_step, vmin=None, vmax=None, cmap=cmap,
+      #  save_filename=self.params.disp_dir+"dphi"+filename_suffix)

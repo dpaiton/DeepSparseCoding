@@ -127,9 +127,9 @@ class params(BaseParams):
 
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
-      self.batch_size = 1 # 12
+      self.batch_size = 12
       self.standardize_data = True
-      self.rescale_data = False # True
+      self.rescale_data = False
       self.center_data = False
       self.whiten_data = False # True
       self.whiten_method = "FT"
@@ -143,13 +143,13 @@ class params(BaseParams):
       self.num_neurons = 256 # 128
       self.num_steps = 100
       self.dt = 0.001
-      self.tau = 0.03
+      self.tau = 0.1
       self.rectify_a = True
       self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.07 #0.1
         self.schedule[sched_idx]["weight_lr"] = [0.001]
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     elif data_type.lower() == "synthetic":
