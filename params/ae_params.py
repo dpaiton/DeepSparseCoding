@@ -41,7 +41,7 @@ class params(BaseParams):
       {"num_batches": int(3e5),
       "weights": None,
       "decay_mult": 0.01,
-      "weight_lr": 1e-4,
+      "weight_lr": 1e-3,
       "decay_steps": int(3e5*0.4),
       "decay_rate": 0.9,
       "staircase": True,}]
@@ -50,18 +50,18 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.output_channels = [768, 50]
-      self.optimizer = "annealed_sgd"
+      self.output_channels = [512]
+      self.optimizer = "annealed_sgd"#"adam"
       self.batch_size = 100
-      self.activation_functions = ["lrelu", "lrelu", "lrelu", "sigmoid"]
-      self.dropout = [0.5, 0.5, 0.5, 1.0]
+      self.activation_functions = ["relu", "identity"]
+      self.dropout = [0.5, 1.0]
       self.cp_int = int(1e3)
       self.gen_plot_int = int(1e3)
       self.schedule = [
-        {"num_batches": int(5e3),
+        {"num_batches": int(4e3),
         "weights": None,
-        "decay_mult": 0.0007,
-        "weight_lr": 0.005,
+        "decay_mult": 0.060,
+        "weight_lr": 0.020,
         "decay_steps": int(3e3),
         "decay_rate": 0.5,
         "staircase": True,}]
