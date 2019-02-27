@@ -147,12 +147,15 @@ class ReconAdversarialModule(object):
     out_dict["adv_images"] = [orig_images]
     out_dict["adv_recons"] = [recons]
     out_dict["adv_losses"] = [loss]
+    # Mean Squared Error between different images of interest
     out_dict["input_recon_mses"] = [dp.mse(orig_images, recons)]
     out_dict["input_adv_mses"] = [dp.mse(orig_images, orig_images)]
     out_dict["target_recon_mses"] = [dp.mse(target_images, recons)]
     out_dict["target_adv_mses"] = [dp.mse(target_images, orig_images)]
     out_dict["adv_recon_mses"] = [dp.mse(orig_images, recons)]
+    # Cosine similarity between different vectors of interest
     out_dict["target_adv_sim"] = [dp.cos_similarity(target_images, orig_images)]
+    out_dict["input_adv_sim"] = [dp.cos_similarity(orig_images, orig_images)]
     out_dict["target_pert_sim"] = []
     out_dict["input_pert_sim"] = []
 
@@ -172,7 +175,8 @@ class ReconAdversarialModule(object):
         out_dict["target_recon_mses"].append(dp.mse(target_images, recons))
         out_dict["target_adv_mses"].append(dp.mse(target_images, adv_images))
         out_dict["adv_recon_mses"].append(dp.mse(adv_images, recons))
-        out_dict["target_adv_sim"] = [dp.cos_similarity(target_images, adv_images)]
-        out_dict["target_pert_sim"] = [dp.cos_similarity(target_images, adv_images-orig_images)]
-        out_dict["input_pert_sim"] = [dp.cos_similarity(orig_images, adv_images-orig_images)]
+        out_dict["target_adv_sim"].append(dp.cos_similarity(target_images, adv_images))
+        out_dict["input_adv_sim"].append(dp.cos_similarity(orig_images, adv_images))
+        out_dict["target_pert_sim"].append(dp.cos_similarity(target_images, adv_images-orig_images))
+        out_dict["input_pert_sim"].append(dp.cos_similarity(orig_images, adv_images-orig_images))
     return out_dict

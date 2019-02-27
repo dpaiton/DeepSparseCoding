@@ -160,7 +160,6 @@ class Analyzer(object):
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.class_adv_module.build_adversarial_ops(self.model.label_est,
-            label_tensor=self.model.label_placeholder,
             model_logits=self.model.get_encodings(),
             loss=self.model.mlp_module.sum_loss)
       #Add adv module ignore list to model ignore list
@@ -294,9 +293,13 @@ class Analyzer(object):
       self.adversarial_target_adv_mses = data["target_adv_mses"]
       self.adversarial_adv_recon_mses = data["adv_recon_mses"]
       self.adversarial_target_adv_cos_similarities = data["target_adv_cos_similarities"]
+      self.adversarial_input_adv_cos_similarities = data["input_adv_cos_similarities"]
+      self.adversarial_target_pert_cos_similarities = data["target_pert_cos_similarities"]
+      self.adversarial_input_pert_cos_similarities = data["input_pert_cos_similarities"]
     recon_adversarial_file_loc = \
       self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz"
     if os.path.exists(recon_adversarial_file_loc):
+      data = np.load(recon_adversarial_file_loc)["data"].item()
       self.adversarial_recons = data["adversarial_recons"]
 
     #Class adversarial analysis
@@ -319,7 +322,7 @@ class Analyzer(object):
       self.adversarial_adv_accuracy = data["adv_accuracy"]
       self.adversarial_success_rate = data["attack_success_rate"]
     class_adversarial_file_loc = \
-      self.analysis_out_dir+"savefiles/class_adversary_images"+save_info+".npz"
+      self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz"
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.adversarial_images = data["adversarial_images"]
@@ -331,7 +334,8 @@ class Analyzer(object):
   def stats_analysis(self, save_info):
     """Run stats extracted from the logfile"""
     run_stats = self.get_log_stats()
-    np.savez(self.analysis_out_dir+"savefiles/run_stats_"+save_info+".npz", data={"run_stats":run_stats})
+    np.savez(self.analysis_out_dir+"savefiles/run_stats_"+save_info+".npz",
+      data={"run_stats":run_stats})
     self.analysis_logger.log_info("Run stats analysis is complete.")
     return run_stats
 
@@ -879,7 +883,8 @@ class Analyzer(object):
     distances = {"input_target_mse":input_target_mse, "input_recon_mses":[],
     "input_adv_mses":[], "target_recon_mses":[],
     "target_adv_mses":[], "adv_recon_mses":[], "target_adv_cos_similarities":[],
-    "target_pert_cos_similarities": [], "input_pert_cos_similarities":[]}
+    "input_adv_cos_similarities":[], "target_pert_cos_similarities": [],
+    "input_pert_cos_similarities":[]}
 
     steps=None
     all_adversarial_images = []
@@ -904,6 +909,7 @@ class Analyzer(object):
         distances["target_adv_mses"].append(out_dict["target_adv_mses"])
         distances["adv_recon_mses"].append(out_dict["adv_recon_mses"])
         distances["target_adv_cos_similarities"].append(out_dict["target_adv_sim"])
+        distances["input_adv_cos_similarities"].append(out_dict["input_adv_sim"])
         distances["target_pert_cos_similarities"].append(out_dict["target_pert_sim"])
         distances["input_pert_cos_similarities"].append(out_dict["input_pert_sim"])
         all_adversarial_images.append(out_dict["adv_images"])
@@ -965,7 +971,7 @@ class Analyzer(object):
 
     #Make sure that the save interval is less than num steps, otherwise
     #it won't store the adv exmaples
-    assert self.analysis_params.adversarial_save_int <= self.analysis_params.adversarial_num_steps,  \
+    assert self.analysis_params.adversarial_save_int <= self.analysis_params.adversarial_num_steps,\
       ("Save interval must be <= adversarial_num_steps")
 
     num_stored_steps = ((self.analysis_params.adversarial_num_steps)//self.analysis_params.adversarial_save_int) + 1
@@ -1021,7 +1027,7 @@ class Analyzer(object):
     out_dicts[0]["adversarial_images"] = self.adversarial_images
     out_dicts[0]["num_data"] = self.num_data
     out_dicts[0]["step_size"] = self.analysis_params.adversarial_step_size
-    out_dicts[0]["num_steps"] = self.analysis_params.adversarial_step_size
+    out_dicts[0]["num_steps"] = self.analysis_params.adversarial_num_steps
     out_dicts[0]["input_id"] = input_id
     out_dicts[0]["target_id"] = target_id
     out_dicts[0].update(distances)
@@ -1052,7 +1058,7 @@ class Analyzer(object):
       assert False, ("Adversarial attack method must be "+\
         "\"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
 
-    mses = {"input_adv_mses":[], "target_output_losses":[],}
+    mses = {"input_adv_mses":[], "target_output_losses":[]}
     steps = None
     all_adv_images = []
     all_adv_outputs = []
