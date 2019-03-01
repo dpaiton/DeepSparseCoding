@@ -899,6 +899,9 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
     data = np.squeeze(data)
   elif data.ndim == 4:
     data = np.squeeze(pad_data(data))
+    #If rgb, need to rescale from 0 .. 1
+    if(data.shape[-1] == 3):
+      data = (data - data.min())/(data.max() - data.min())
   else:
     assert False, ("input data must have ndim==3 or 4")
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))
