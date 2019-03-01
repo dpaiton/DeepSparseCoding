@@ -61,7 +61,7 @@ class MlpModule(object):
     self.max_pool_strides = max_pool_strides
     self.dropout = dropout
     self.batch_norm = batch_norm
-    # assert no FC after Conv in layer types
+    #TODO assert no FC after Conv in layer types
     self.output_channels = output_channels
     self.patch_size_y = patch_size_y
     self.patch_size_x = patch_size_x

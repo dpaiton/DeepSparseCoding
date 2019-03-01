@@ -25,7 +25,12 @@ class params(BaseParams):
     #Specify number of neurons for encoder
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
+    self.layer_types = ["fc", "fc"]
     self.output_channels = [512, 50]
+    self.patch_size_y = [None, None]
+    self.patch_size_x = [None, None]
+    self.conv_strides = [None, None]
+
     self.tie_decoder_weights = False
     self.activation_functions = ["relu", "relu", "relu", "identity"]
     self.dropout = [1.0]*4
@@ -50,6 +55,7 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.layer_types = ["fc"]
       self.output_channels = [512]
       self.optimizer = "annealed_sgd"#"adam"
       self.batch_size = 100
@@ -65,6 +71,33 @@ class params(BaseParams):
         "decay_steps": int(3e3),
         "decay_rate": 0.5,
         "staircase": True,}]
+
+    elif data_type.lower() == "cifar10":
+      self.model_name += "_cifar10"
+      self.vectorize_data = False
+      self.standardize_data = True
+      self.rescale_data = False
+      self.layer_types = ["conv"]
+      self.output_channels = [256]
+      self.patch_size_y = [12]
+      self.patch_size_x = [12]
+      self.conv_strides = [(1, 2, 2, 1)]
+
+      self.optimizer = "adam"
+      self.batch_size = 100
+      self.activation_functions = ["relu", "identity"]
+      self.dropout = [1.0] * 2
+      self.cp_int = int(1e3)
+      self.gen_plot_int = int(1e3)
+      self.schedule = [
+        {"num_batches": int(1e4),
+        "weights": None,
+        "decay_mult": 0.0,
+        "weight_lr": 0.001,
+        "decay_steps": int(800000),
+        "decay_rate": 0.8,
+        "staircase": True,}]
+
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
