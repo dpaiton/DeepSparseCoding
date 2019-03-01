@@ -88,7 +88,7 @@ class LcaModel(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.loss_dict["recon_loss"],
       self.module.loss_dict["sparse_loss"], self.get_total_loss(), self.get_encodings(),
-      self.module.reconstruction, self.pSNRdB]
+      self.module.reconstruction, self.pSNRdB, self.module.w]
     grad_name_list = []
     learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
@@ -97,7 +97,7 @@ class LcaModel(Model):
       grad_name_list.append(grad_name)
       learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    current_step, recon_loss, sparse_loss, total_loss, a_vals, recon, pSNRdB = out_vals[0:7]
+    current_step, recon_loss, sparse_loss, total_loss, a_vals, recon, pSNRdB, weights = out_vals[0:8]
     input_max = np.max(input_data)
     input_mean = np.mean(input_data)
     input_min = np.min(input_data)
@@ -109,6 +109,9 @@ class LcaModel(Model):
     a_vals_min = np.array(a_vals.min())
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
+    w_vals_min = weights.min()
+    w_vals_mean = weights.mean()
+    w_vals_max = weights.max()
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
@@ -119,8 +122,10 @@ class LcaModel(Model):
       "a_fraction_active":a_frac_act,
       "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
-      "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
-    grads = out_vals[7:]
+      "x_hat_max_mean_min":[recon_max, recon_mean, recon_min],
+      "w_max_mean_min":[w_vals_max, w_vals_mean, w_vals_min]
+      }
+    grads = out_vals[8:]
     for grad, name in zip(grads, grad_name_list):
       grad_max = learning_rate_dict[name]*np.array(grad.max())
       grad_min = learning_rate_dict[name]*np.array(grad.min())
@@ -128,6 +133,7 @@ class LcaModel(Model):
       stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
       stat_dict[name+"_learning_rate"] = learning_rate_dict[name]
     update_dict.update(stat_dict) #stat_dict overwrites for same keys
+
     return update_dict
 
   def generate_plots(self, input_data, input_labels=None):

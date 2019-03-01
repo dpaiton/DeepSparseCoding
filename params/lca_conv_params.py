@@ -39,12 +39,12 @@ class params(BaseParams):
     self.norm_weights = True
     self.thresh_type = "soft"
     self.optimizer = "annealed_sgd"
-    self.cp_int = 10000
+    self.cp_int = 5000
     self.max_cp_to_keep = 1
     self.cp_load = False
     self.log_int = 10
     self.log_to_file = True
-    self.gen_plot_int = 2000
+    self.gen_plot_int = 1000
     self.save_plots = True
     self.schedule = [
       {"weights": ["lca_conv/weights/w:0"],
@@ -126,29 +126,30 @@ class params(BaseParams):
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     elif data_type.lower() == "cifar10":
-      self.model_name += "_cifar"
-      self.batch_size = 1
+      self.model_name += "_cifar10"
+      self.batch_size = 12
+      self.standardize_data = True
       self.rescale_data = False
-      self.center_data = True
-      self.whiten_data = True
+      self.center_data = False
+      self.whiten_data = False # True
       self.whiten_method = "FT"
       self.lpf_data = False # FT whitening already does LPF
       self.lpf_cutoff = 0.7
       self.image_edge_size = 128
-      self.stride_y = 8
-      self.stride_x = 8
-      self.patch_size_y = 12 # weight receptive field
-      self.patch_size_x = 12
-      self.num_neurons = 100
-      self.num_steps = 60
+      self.stride_y = 2
+      self.stride_x = 2
+      self.patch_size_y = 12 #8 # weight receptive field
+      self.patch_size_x = 12 #8
+      self.num_neurons = 256 # 128
+      self.num_steps = 100
       self.dt = 0.001
-      self.tau = 0.03
+      self.tau = 0.1
       self.rectify_a = True
       self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.8
+        self.schedule[sched_idx]["sparse_mult"] = 0.07 #0.1
         self.schedule[sched_idx]["weight_lr"] = [0.001]
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     elif data_type.lower() == "synthetic":
