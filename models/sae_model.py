@@ -8,12 +8,12 @@ from modules.sae_module import SaeModule
 class SaeModel(AeModel):
   def __init__(self):
     super(SaeModel, self).__init__()
-    self.vector_inputs = True
 
   def build_module(self, input_node):
-    module = SaeModule(input_node, self.params.output_channels, self.sparse_mult,
-      self.decay_mult, self.target_act, self.act_funcs, self.dropout_keep_probs,
-      self.params.tie_decoder_weights)
+    module = SaeModule(input_node, self.params.layer_types, self.params.output_channels,
+      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
+      self.sparse_mult, self.decay_mult, self.target_act, self.act_funcs,
+      self.dropout_keep_probs, self.params.tie_decoder_weights)
     return module
 
   def build_graph_from_input(self, input_node):

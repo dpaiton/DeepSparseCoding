@@ -1,9 +1,10 @@
 import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
-import pdb
 
 class AeModule(object):
+  #TODO consolidate patch_size_y and patch_size_x into one variable
+  #TODO propogate above change to all other modules
   def __init__(self, data_tensor, layer_types, output_channels, patch_size_y,
     patch_size_x, conv_strides, decay_mult, act_funcs, dropout,
     tie_decoder_weights, variable_scope="ae"):
@@ -263,6 +264,12 @@ class AeModule(object):
 
     return dec_u_list, dec_w_list, dec_b_list
 
+  def compute_total_loss(self):
+    with tf.variable_scope("loss") as scope:
+      self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+        "weight_decay_loss":self.compute_weight_decay_loss()}
+      self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
+
   def build_graph(self):
     with tf.variable_scope(self.variable_scope) as scope:
       with tf.variable_scope("weight_inits") as scope:
@@ -301,7 +308,5 @@ class AeModule(object):
       with tf.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
-      with tf.variable_scope("loss") as scope:
-        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
-          "weight_decay_loss":self.compute_weight_decay_loss()}
-        self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
+      self.compute_total_loss()
+

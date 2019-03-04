@@ -90,9 +90,9 @@ class params(BaseParams):
       self.cp_int = int(1e3)
       self.gen_plot_int = int(1e3)
       self.schedule = [
-        {"num_batches": int(1e4),
+        {"num_batches": int(1e6),
         "weights": None,
-        "decay_mult": 0.0,
+        "decay_mult": 0.001,
         "weight_lr": 0.001,
         "decay_steps": int(800000),
         "decay_rate": 0.8,
