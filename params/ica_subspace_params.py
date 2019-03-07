@@ -12,6 +12,9 @@ class params(ica_params):
         self.version = "0.0"
         self.data_type = "vanHateren"
 
+        self.batch_size = 2
+
+
         self.num_groups = 16
         self.group_sizes = None
 
@@ -23,7 +26,7 @@ class params(ica_params):
 
         self.schedule = [
             {"weights": None,
-             "num_batches": int(5e5),
+             "num_batches": int(10),
              "weight_lr": 0.001, 
              "decay_steps": 0,
              "decay_rate": 0.0,

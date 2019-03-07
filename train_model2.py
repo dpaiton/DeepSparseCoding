@@ -36,4 +36,15 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 
 
+# train model 
+with tf.Session() as sess:
+#    sess.run(model.inti_op)
+    sess.graph.finalize()
+
+    for sch_idx, sch in enumerate(params.schedule):
+        for b_step in range(sch["num_batches"]):
+            data_batch = data["train"].next_batch(params.batch_size)
+            
+    
+
 
