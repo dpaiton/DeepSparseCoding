@@ -21,6 +21,7 @@ class IcaSubspaceModel(IcaModel):
 
     """
     super(IcaSubspaceModel, self).load_params(params)
+    self.input_shape = [self.num_neurons, 1]
 
     # new params for subspace ica
     self.num_groups = self.params.num_groups
@@ -50,13 +51,13 @@ class IcaSubspaceModel(IcaModel):
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
         with tf.variable_scope("weights") as scope:
-          Q, R = np.linalg.gr(np.random.standard_normal(self.w_analysis_shape))
+          Q, R = np.linalg.qr(np.random.standard_normal(self.w_analysis_shape))
           self.w_synth = tf.get_variable(name="w_synth", dtype=tf.float32, initializer=Q.astype(np.float32), trainable=True)
-          self.w_analy = tf.tranpose(self.w_synth, name="w_analy")
+          self.w_analy = tf.transpose(self.w_synth, name="w_analy")
           self.trainable_variables[self.w_synth.name] = self.w_synth
 
         with tf.name_scope("inference") as scope:
-          self.s = tf.matmul(self.w_analy.T, self.input_img, name="latent_variables") 
+          self.s = tf.matmul(tf.transpose(self.w_analy), self.input_img, name="latent_variables") 
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
@@ -64,7 +65,7 @@ class IcaSubspaceModel(IcaModel):
 
     self.graph_built = True
 
-  def compute_weight_gradient(self, optimizer, weight_op=None):
+  def compute_weight_gradients(self, optimizer, weight_op=None):
     def nonlinearity(u):
       return u**(-0.5)
 
@@ -74,9 +75,11 @@ class IcaSubspaceModel(IcaModel):
     assert len(weight_op) == 1, ("IcaModel should only have one weight matrix")
     
     wI = tf.matmul(tf.transpose(weight_op[0]), self.input_img)
-    nonlinear_term = nonlinearity(tf.matmul(self.sum_arr, tf.matmul(tf.transpose(tf.math.pow(wI, 2)), self.sum_arr)))
+    group_scalars = tf.matmul(tf.transpose(tf.math.pow(wI, 2)), self.sum_arr) # [1, num_groups]
+    nonlinear_term = nonlinearity(tf.matmul(self.sum_arr, tf.transpose(group_scalars))) 
     scalars = tf.math.multiply(wI, nonlinear_term)
-    gradient = tf.transpose(tf.math.multiply(tf.transpose(tf.tile(self.input_img, [1, self.num_pixels])), scalars), name="gradient")
+    img_tiled = tf.tile(self.input_img, [1, self.num_neurons])
+    gradient = tf.transpose(tf.matmul(tf.transpose(img_tiled), scalars), name="gradient")
 
     return [(gradient, weight_op[0])]
     
@@ -99,6 +102,7 @@ class IcaSubspaceModel(IcaModel):
       col_index[i:i+s] = 1
       sum_arr.append(col_index)
     sum_arr = np.stack(sum_arr, axis=1)
+    sum_arr.dtype = np.float32
     return sum_arr
 
   def get_subspace(g):
