@@ -10,12 +10,15 @@ class params(ica_params):
         self.model_type = "ica_subspace"
         self.model_name = "ica_subspace"
         self.version = "0.0"
+        self.data_type = "vanHateren"
 
         self.num_groups = 16
         self.group_sizes = None
 
-        self.center_data = True
-        self.whiten_data = True
+        self.center_data = False
+        self.whiten_data = False
+        self.lpf_data = False
+    
         self.whiten_method = "PCA"
 
         self.schedule = [
@@ -23,7 +26,7 @@ class params(ica_params):
              "num_batches": int(5e5),
              "weight_lr": 0.001, 
              "decay_steps": 0,
-             "decay_rate": 0,
+             "decay_rate": 0.0,
              "staircase": False}
         ]
 
