@@ -168,7 +168,6 @@ class AeModel(Model):
       w_enc_img = dp.reshape_data(w_enc.T, flatten=False)[0]
     else:
       w_enc_img = np.transpose(w_enc, (3, 0, 1, 2))
-
     w_enc_img = dp.norm_weights(w_enc_img)
 
     if(not self.params.tie_decoder_weights):
