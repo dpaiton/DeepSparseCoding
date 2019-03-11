@@ -109,6 +109,23 @@ class params(BaseParams):
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
 
+    elif data_type.lower() == "cifar10":
+      self.model_name += "_cifar"
+      self.epoch_size = 50
+      self.batch_size = 12
+      self.num_edge_pixels = 8
+      self.tie_decoder_weights = False
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["weight_lr"] = 1e-4
+      self.output_channels = [20, 10]
+      self.conv = True
+      self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
+      self.patch_size_y = [3.0, 3.0]
+      self.patch_size_x = self.patch_size_y
+      self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
+      self.dropout = [1.0]*4
+      self.vectorize_data = False
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 
