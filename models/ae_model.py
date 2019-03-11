@@ -6,7 +6,6 @@ import utils.entropy_functions as ef
 from models.base_model import Model
 from modules.ae_module import AeModule
 from modules.activations import activation_picker
-import pdb
 
 class AeModel(Model):
   def __init__(self):
