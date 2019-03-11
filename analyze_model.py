@@ -89,7 +89,7 @@ class params(object):
     self.adversarial_target_labels = None
 
     # Rescale inputs to match dataset scales used during training
-    self.input_scale = 1.0
+    self.input_scale = 1.0 # TODO: Get input_scale from log file
 
     # Which neurons to run tuning experiments on (None to do all)
     self.neuron_indices = None
