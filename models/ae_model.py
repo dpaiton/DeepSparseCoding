@@ -161,7 +161,6 @@ class AeModel(Model):
     w_enc, w_dec, b_list, activations = eval_out[1:]
     recon = activations[-1]
     # compute weight norms
-    reduc_dims = tuple(range(len(w_enc.shape)-1))
     num_features = w_enc.shape[-1]
     w_enc_norm = np.linalg.norm(np.reshape(w_enc, (-1, num_features)), axis=0, keepdims=False)
     # reshapes flat data into image & normalize
