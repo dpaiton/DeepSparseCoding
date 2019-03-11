@@ -309,4 +309,3 @@ class AeModule(object):
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
       self.compute_total_loss()
-
