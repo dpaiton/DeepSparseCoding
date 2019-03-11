@@ -20,6 +20,7 @@ class MlpModule(object):
       dropout specifies the keep probability or None
       batch_norm is a list of decay multipliers or None
       eps is a float
+      lrn is a float for specifying local response normalization
       loss_type is a string specifying the type of loss ("softmax_cross_entropy" or "l2")
       variable_scope is a string
     Outputs:
