@@ -18,10 +18,10 @@ import pdb
 analysis_list = [
   #("lca", "lca_1568_mnist"),
   ("lca", "lca_768_mnist"),
-  ("vae", "vae_mnist"),
-  ("vae", "deep_vae_mnist"),
-  ("vae", "deep_denoising_vae_mnist"),
-  ("sae", "sae_768_mnist"),
+  #("vae", "vae_mnist"),
+  #("vae", "deep_vae_mnist"),
+  #("vae", "deep_denoising_vae_mnist"),
+  #("sae", "sae_768_mnist"),
   ]
 
 #colors for analysis_list
@@ -52,8 +52,6 @@ class params(object):
     self.model_type = ""
     self.model_name = ""
     self.plot_title_name = model_name.replace("_", " ").title()
-    self.version = "0.0"
-    self.save_info = "analysis_test_carlini_targeted"
     #self.save_info = "analysis_test_kurakin_targeted"
     self.overwrite_analysis_log = False
 
@@ -197,9 +195,10 @@ if construct_recon_mult_tradeoff:
   ax_max_change.set_ylabel("Recon AdvRecon MSE", fontsize=axes_font_size)
   ax_max_change.legend()
 
-  fig_unnorm.savefig(outdir + "/recon_mult_tradeoff.png")
-  fig_norm.savefig(outdir + "/norm_recon_mult_tradeoff.png")
-  fig_max_change.savefig(outdir + "/max_change.png")
+  # TODO: Save these in model folders (analyzer.analysis_out_dir) instead of root output directory
+  fig_unnorm.savefig(outdir + "/"+analysis_params.save_info+"_recon_mult_tradeoff.png")
+  fig_norm.savefig(outdir + "/"+analysis_params.save_info+"_norm_recon_mult_tradeoff.png")
+  fig_max_change.savefig(outdir + "/"+analysis_params.save_info+"_max_change.png")
 
   plt.close('all')
 
@@ -308,11 +307,14 @@ if(construct_over_time):
         save_filename=out_dir+analysis_params.save_info+"_adversarial_target_batch_"+str(batch_idx)+".png")
 
     plot_int = 100
-    recon_mult = analyzer.analysis_params.carlini_recon_mult
-    rm_list = enumerate(recon_mult)
+    if "kurakin" in analyzer.analysis_params.adversarial_attack_method:
+      rm_list = enumerate([1.0]) # no recon multiplier for Kurakin attacks
+    else:
+      recon_mult = analyzer.analysis_params.carlini_recon_mult
+      rm_list = enumerate(recon_mult)
 
     for i_rm, rm in rm_list:
-      rm_str = "%.2f"%rm
+      rm_str = "%.7f"%rm
       orig_recon = np.array(analyzer.adversarial_recons)[i_rm, 0, ...].reshape(
         int(num_data),
         int(np.sqrt(analyzer.model.params.num_pixels)),
