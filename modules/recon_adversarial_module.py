@@ -82,12 +82,13 @@ class ReconAdversarialModule(object):
     with tf.variable_scope(self.variable_scope) as scope:
       self.recon = recon
       with tf.variable_scope("loss") as scope:
+        adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recon))
         if(self.attack_method == "kurakin_targeted"):
-          self.adv_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recon))
+          self.adv_loss = adv_recon_loss
         elif(self.attack_method == "carlini_targeted"):
-          adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recon))
           input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_var))
           self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
+          #self.adv_loss =  input_pert_loss + self.recon_mult * adv_recon_loss
         else:
           assert False, ("attack_method " + self.attack_method +" not recognized. "+
             "Options are \"kurakin_targeted\" or \"carlini_targeted\"")
@@ -97,8 +98,8 @@ class ReconAdversarialModule(object):
           self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
           self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
         elif(self.attack_method == "carlini_targeted"):
-          self.adv_opt = tf.train.AdamOptimizer(
-            learning_rate = self.step_size)
+          #self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
+          self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
           self.adv_grad = self.adv_opt.compute_gradients(
             self.adv_loss, var_list=[self.adv_var])
           self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grad)
