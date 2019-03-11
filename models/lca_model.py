@@ -133,7 +133,6 @@ class LcaModel(Model):
       stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
       stat_dict[name+"_learning_rate"] = learning_rate_dict[name]
     update_dict.update(stat_dict) #stat_dict overwrites for same keys
-
     return update_dict
 
   def generate_plots(self, input_data, input_labels=None):
