@@ -6,7 +6,6 @@ import utils.entropy_functions as ef
 from models.base_model import Model
 from modules.ae_module import AeModule
 from modules.activations import activation_picker
-import pdb
 
 class AeModel(Model):
   def __init__(self):
@@ -162,7 +161,6 @@ class AeModel(Model):
     w_enc, w_dec, b_list, activations = eval_out[1:]
     recon = activations[-1]
     # compute weight norms
-    reduc_dims = tuple(range(len(w_enc.shape)-1))
     num_features = w_enc.shape[-1]
     w_enc_norm = np.linalg.norm(np.reshape(w_enc, (-1, num_features)), axis=0, keepdims=False)
     # reshapes flat data into image & normalize
@@ -170,7 +168,6 @@ class AeModel(Model):
       w_enc_img = dp.reshape_data(w_enc.T, flatten=False)[0]
     else:
       w_enc_img = np.transpose(w_enc, (3, 0, 1, 2))
-
     w_enc_img = dp.norm_weights(w_enc_img)
 
     if(not self.params.tie_decoder_weights):
