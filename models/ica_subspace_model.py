@@ -51,11 +51,7 @@ class IcaSubspaceModel(IcaModel):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
-          self.input_img = tf.placeholder(tf.float32, shape=self.input_shape, name="input_data")
-
-        with tf.name_scope("step_counter") as scope:
-          self.global_step = tf.Variable(0, trainable=False, name="global_step")
+        self.input_img = input_node
 
         with tf.variable_scope("weights") as scope:
           Q, R = np.linalg.qr(np.random.standard_normal(self.w_analysis_shape))
@@ -64,7 +60,8 @@ class IcaSubspaceModel(IcaModel):
           self.trainable_variables[self.w_synth.name] = self.w_synth
 
         with tf.name_scope("inference") as scope:
-          self.s = tf.matmul(tf.transpose(self.w_analy), self.input_img, name="latent_variables") 
+#         self.s = tf.matmul(tf.transpose(self.w_analy), self.input_img, name="latent_variables") 
+         self.s = tf.matmul(tf.transpose(self.w_analy), input_node, name="latent_variables") 
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
@@ -100,7 +97,7 @@ class IcaSubspaceModel(IcaModel):
     img_tiled = tf.tile(self.input_img, [self.num_neurons, 1])
     print("img_tiled.shape", img_tiled.shape)
     
-    gradient = tf.transpose(tf.matmul(tf.transpose(img_tiled), scalars), name="gradient")
+    gradient = tf.transpose(tf.multiply(tf.transpose(img_tiled), scalars), name="gradient")
     print("gradient.shape", gradient.shape)
 
     #gradient = tf.zeros_like(weight_op[0])
@@ -154,6 +151,20 @@ class IcaSubspaceModel(IcaModel):
     num_vec = self.group_sizes[g]
     subspace_index = self.group_index[g]
     return self.w_synth[:, subspace_index:subspace_index+num_vec]
+
+
+  def generate_update_dict1(self, input_data, input_labels=None, batch_step=0):
+    update_dict = super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
+    eval_list = [self.global_step, self]
+    return update_dict
+
+
+  def generate_plots1(self, input_data, input_labels=None, batch_step=0):
+    update_dict = super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
+    eval_list = [self.global_step, self.w_synth, self.w_analy, self.recon] 
+  
     
 
     
