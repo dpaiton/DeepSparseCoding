@@ -55,8 +55,8 @@ with tf.Session(config=config, graph=model.graph) as sess:
             print("feed dict: ")
             print(feed_dict)
             sess.run(model.apply_grads[sch_idx][0], feed_dict)
-            #if b_step % 1000 == 0:
-                #model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
+            if b_step % 1000 == 0:
+                model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
 
     
 
