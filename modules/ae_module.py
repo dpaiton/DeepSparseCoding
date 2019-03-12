@@ -13,12 +13,16 @@ class AeModule(object):
       decay_mult: weight decay multiplier
       act_funcs: activation functions
       dropout: specifies the keep probability or None
+      conv: if True, do convolution
+      conv_strides: list of strides for convolution [batch, y, x, channels]
+      patch_y: number of y inputs for convolutional patches
+      patch_x: number of x inputs for convolutional patches
       variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
     """
+    self.conv_strides = conv_strides
     self.variable_scope = variable_scope
-
     self.trainable_variables = TrainableVariableDict()
 
     self.data_tensor = data_tensor
@@ -70,7 +74,6 @@ class AeModule(object):
       ("act_funcs parameter must be a list of size " + str(self.num_layers))
 
     self.conv_strides = self.conv_strides + [None]*(self.num_fc_layers*2) + self.conv_strides[::-1]
-
     self.build_graph()
 
   def compute_weight_decay_loss(self):
@@ -153,7 +156,6 @@ class AeModule(object):
     enc_u_list = [input_tensor]
     enc_w_list = []
     enc_b_list = []
-
     prev_input_features = input_tensor.get_shape().as_list()[-1]
     # Make conv layers first
     for layer_id in range(self.num_conv_layers):
@@ -236,7 +238,6 @@ class AeModule(object):
       w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()
       u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[dec_conv_layer_id],
         w_shape, conv=True, decode=True)
-
       dec_u_list.append(u_out)
       dec_w_list.append(w)
       dec_b_list.append(b)

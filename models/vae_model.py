@@ -15,7 +15,6 @@ class VaeModel(AeModel):
     arXiv preprint arXiv:1312.6114 (2013).
     """
     super(VaeModel, self).__init__()
-    self.vector_inputs = True
 
   def build_module(self, input_node):
     module = VaeModule(input_node, self.params.layer_types, self.params.output_channels,

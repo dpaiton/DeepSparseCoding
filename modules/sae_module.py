@@ -17,9 +17,13 @@ class SaeModule(AeModule):
     Inputs:
       data_tensor
       output_channels - a list of channels to make, also defines number of layers
-      decay_mult - weight decay multiplier
+      decay_mult -  weight decay multiplier
       act_funcs - activation functions
-      dropout - specifies the keep probability or None
+      dropout: specifies the keep probability or None
+      conv: if True, do convolution
+      conv_strides: list of strides for convolution [batch, y, x, channels]
+      patch_y: number of y inputs for convolutional patches
+      patch_x: number of x inputs for convolutional patches
       variable_scope - specifies the variable_scope for the module
     Outputs:
       dictionary

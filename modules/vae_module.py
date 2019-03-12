@@ -19,6 +19,10 @@ class VaeModule(AeModule):
       dropout [list of floats] specifies the keep probability or None
       noise_level [float] stddev of noise to be added to the input (for denoising VAE)
       recon_loss_type [str] either "mse" or the cross entropy loss used in Kingma & Welling
+      conv [bool] if True, do convolution
+      conv_strides [list] list of strides for convolution [batch, y, x, channels]
+      patch_y [list] number of y inputs for convolutional patches
+      patch_x [list] number of x inputs for convolutional patches
       variable_scope [str] specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -83,18 +87,21 @@ class VaeModule(AeModule):
       else:
         b_shape = w_shape[-1]
       self.b_enc_std = tf.get_variable(name="b_enc_"+str(self.num_encoder_layers)+"_std",
-        shape=b_shape, dtype=tf.float32,
-        initializer=self.b_init, trainable=True)
+        shape=b_shape, dtype=tf.float32, initializer=self.b_init, trainable=True)
       self.trainable_variables[self.w_enc_std.name] = self.w_enc_std
       self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
 
       self.latent_mean_activation = enc_u_list[-1]
       self.a = self.latent_mean_activation # alias for AE model
 
-      self.latent_std_activation = tf.add(tf.matmul(enc_u_list[-2], self.w_enc_std),
-        self.b_enc_std)
-      #self.latent_std_activation = 1e-8 + tf.nn.softplus(tf.matmul(enc_u_list[-2],
-      #  self.w_enc_std) + self.b_enc_std) # std must be positive
+      if self.conv:
+        self.latent_std_activation = tf.add(tf.nn.conv2d(enc_u_list[-2], self.w_enc_std,
+          self.conv_strides[self.num_encoder_layers-1], padding="SAME"), self.b_enc_std)
+      else:
+        self.latent_std_activation = tf.add(tf.matmul(enc_u_list[-2], self.w_enc_std),
+          self.b_enc_std)
+        #self.latent_std_activation = 1e-8 + tf.nn.softplus(tf.matmul(enc_u_list[-2],
+        #  self.w_enc_std) + self.b_enc_std) # std must be positive
 
       noise = tf.random_normal(tf.shape(self.latent_std_activation))
 

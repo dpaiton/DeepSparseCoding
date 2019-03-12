@@ -31,6 +31,7 @@ class params(BaseParams):
     self.conv_strides = []
 
     self.tie_decoder_weights = False
+    self.conv = False
     self.activation_functions = ["relu", "relu", "relu", "identity"]
     self.dropout = [1.0]*4
     self.optimizer = "annealed_sgd"
