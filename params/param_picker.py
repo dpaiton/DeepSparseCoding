@@ -19,6 +19,7 @@ import params.fflista_params as fflista
 import params.relu_autoencoder_params as ra
 import params.ae_params as ae
 import params.dae_params as dae
+import params.dae_mem_params as dae_mem
 import params.sae_params as sae
 import params.vae_params as vae
 
@@ -65,6 +66,8 @@ def get_params(model_type):
     return ae.params()
   if model_type.lower() == "dae":
     return dae.params()
+  if model_type.lower() == "dae_mem":
+    return dae_mem.params()
   if model_type.lower() == "sae":
     return sae.params()
   if model_type.lower() == "vae":

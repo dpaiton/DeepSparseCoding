@@ -6,20 +6,8 @@ class params(BaseParams):
   def __init__(self):
     """
     Additional modifiable parameters:
-      mle_step_size       [float] size of maximum likelihood estimator steps
-      num_mle_steps       [int] number of maximum likelihood estimation steps for the entropy estimator
-      num_triangles       [int] number of triangle kernels to use for the entropy estimator
-      bounds_slope        [float] slope for out of bounds loss (two relus back to back)
-      latent_min          [float] minimum allowable value for latent variables where ramp loss = 0
-      latent_max          [float] maximum allowable value for latent variables where ramp loss = 0
-      mle_step_size       [float] size of maximimum likelihood estimator steps
-      num_mle_steps       [int] number of max likelihood estimation steps for the entropy estimator
-      num_quant_bins      [int] number of bins you want for quantization
-      gdn_w_init_const    [float] initial value for the GDN weights
-      gdn_b_init_const    [float] initial value for the GDN biases
-      gdn_w_thresh_min    [float] minimum allowable value for GDN weights
-      gdn_b_thresh_min    [float] minimum allowable value for GDN biases
-      gdn_eps             [float] epsilon that will be added to the GDN denominator
+      memristor_type: the type of memristor for memristorize
+      synthetic_noise: noise to create synthetic channels (e.g. upper/lower bounds for RRAM data with write verify)
     """
     super(params, self).__init__()
     self.model_type = "dae"
@@ -60,6 +48,10 @@ class params(BaseParams):
     self.gdn_w_thresh_min = 1e-6
     self.gdn_b_thresh_min = 1e-6
     self.gdn_eps = 1e-6
+    self.memristor_data_loc = os.path.expanduser("~")+"/Work/DeepSparseCoding/memristor_data/Partial_Reset_PCM.pkl" 
+    self.memristor_type = "rram"
+    self.synthetic_noise = np.sqrt(2.0)
+    self.mem_error_rate = 0.0
     self.optimizer = "annealed_sgd"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
@@ -72,6 +64,7 @@ class params(BaseParams):
     self.gen_plot_int = 10000
     self.save_plots = True
     self.num_pixels = self.patch_edge_size**2
+
     self.schedule = [
       {"num_batches": int(1e6),
       "weights": None,
@@ -87,18 +80,9 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.conv = False
-      self.output_channels = [768, 512, 50]
+      self.output_channels = [1568, 784, 50]
       self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-      self.dropout = [1.0]*len(self.activation_functions)
-      self.cp_int = int(1e5)
-      self.gen_plot_int = int(1e5)
-      for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
-        self.schedule[sched_idx]["entropy_mult"] = 0.001
-        self.schedule[sched_idx]["decay_mult"] = 0.001
-        self.schedule[sched_idx]["noise_variance_mult"] = 0.001
-        self.schedule[sched_idx]["weight_lr"] = 1e-3
+      self.dropout = [1.0]*len(self.activation_funtions)
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vanhateren"
@@ -109,23 +93,6 @@ class params(BaseParams):
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
 
-    elif data_type.lower() == "cifar10":
-      self.model_name += "_cifar"
-      self.epoch_size = 50
-      self.batch_size = 12
-      self.num_edge_pixels = 8
-      self.tie_decoder_weights = False
-      for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
-        self.schedule[sched_idx]["weight_lr"] = 1e-4
-      self.output_channels = [20, 10]
-      self.conv = True
-      self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-      self.patch_size_y = [3.0, 3.0]
-      self.patch_size_x = self.patch_size_y
-      self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
-      self.dropout = [1.0]*4
-      self.vectorize_data = False
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 
