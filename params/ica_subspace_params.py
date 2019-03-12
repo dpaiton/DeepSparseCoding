@@ -12,7 +12,7 @@ class params(ica_params):
         self.version = "0.0"
         self.data_type = "vanHateren"
 
-        self.batch_size = 2
+        self.batch_size = 1
 
 
         self.num_groups = 16
@@ -21,12 +21,13 @@ class params(ica_params):
         self.center_data = False
         self.whiten_data = False
         self.lpf_data = False
-    
         self.whiten_method = "PCA"
 
+        self.optimizer = "adam"
+
         self.schedule = [
-            {"weights": None,
-             "num_batches": int(10),
+            {"weights": None, 
+             "num_batches": int(1e5),
              "weight_lr": 0.001, 
              "decay_steps": 0,
              "decay_rate": 0.0,
