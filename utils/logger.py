@@ -3,6 +3,7 @@ import time
 import numpy as np
 import json as js
 import os
+from copy import deepcopy
 
 class Logger(object):
   def __init__(self, filename=None, overwrite=True):
@@ -36,9 +37,10 @@ class Logger(object):
     Inputs:
       params: [dict] containing parameters values
     """
-    if "rand_state" in params.keys():
-      del params["rand_state"]
-    js_str = self.js_dumpstring(params)
+    out_params = deepcopy(params)
+    if "rand_state" in out_params.keys():
+      del out_params["rand_state"]
+    js_str = self.js_dumpstring(out_params)
     self.log_info("<params>"+js_str+"</params>")
 
   def log_schedule(self, sched):
