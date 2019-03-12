@@ -37,14 +37,26 @@ config.gpu_options.allow_growth = True
 
 
 # train model 
-with tf.Session() as sess:
+with tf.Session(config=config, graph=model.graph) as sess:
 #    sess.run(model.inti_op)
-    sess.graph.finalize()
-
+    
+    sess.run(model.init_op)
     for sch_idx, sch in enumerate(params.schedule):
         for b_step in range(sch["num_batches"]):
             data_batch = data["train"].next_batch(params.batch_size)
-            
-    
+            input_data = data_batch[0]
+            input_labels = data_batch[1]
+            #model.generate_update_dict(input_data, input_labels)
 
+            #print("input_data")
+            #print(input_data)
+
+            feed_dict = model.get_feed_dict(input_data, input_labels)
+            print("feed dict: ")
+            print(feed_dict)
+            sess.run(model.apply_grads[sch_idx][0], feed_dict)
+            #if b_step % 1000 == 0:
+                #model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
+
+    
 
