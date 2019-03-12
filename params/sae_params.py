@@ -33,9 +33,8 @@ class params(BaseParams):
 
     self.layer_types = ["fc"]
     self.output_channels = [768]
-    self.patch_size_y = [None]
-    self.patch_size_x = [None]
-    self.conv_strides = [None]
+    self.patch_size = []
+    self.conv_strides = []
 
     self.tie_decoder_weights = False
     self.activation_functions = ["sigmoid", "identity"]
@@ -102,8 +101,7 @@ class params(BaseParams):
 
       self.layer_types = ["conv"]
       self.output_channels = [256]
-      self.patch_size_y = [12]
-      self.patch_size_x = [12]
+      self.patch_size = [(12, 12)]
       self.conv_strides = [(1, 2, 2, 1)]
 
       self.activation_functions = ["sigmoid", "identity"]
@@ -197,6 +195,8 @@ class params(BaseParams):
       self.schedule[sched_idx]["sparse_mult"] = 0.15
       self.schedule[sched_idx]["target_act"] = 0.2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.output_channels = [100]
+    self.layer_types = ["fc"]
+    self.vectorize_data = True
+    self.output_channels = [30]
     self.activation_functions = ["sigmoid", "identity"]
-    self.dropout = [1.0]*2
+    self.dropout = [1.0]*len(self.activation_functions)

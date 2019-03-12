@@ -89,6 +89,7 @@ class params(BaseParams):
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
+    self.layer_types = ["fc", "fc"]
     self.output_channels = [20, 10]
     self.activation_functions = ["relu", "identity", "relu", "identity"]
-    self.dropout = [1.0]*4
+    self.dropout = [1.0]*len(self.activation_functions)

@@ -25,14 +25,17 @@ class AeModel(Model):
     self.num_latent = self.params.output_channels[-1]
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.activation_functions]
+    if np.all([layer_type == "fc" for layer_type in self.params.layer_types]):
+      self.params.patch_size = []
+      self.params.conv_strides = []
 
   def get_input_shape(self):
     return self.input_shape
 
   def build_module(self, input_node):
     module = AeModule(input_node, self.params.layer_types, self.params.output_channels,
-      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.decay_mult, self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights)
+      self.params.patch_size, self.params.conv_strides, self.decay_mult, self.act_funcs,
+      self.dropout_keep_probs, self.params.tie_decoder_weights, variable_scope="ae")
     return module
 
   def build_graph_from_input(self, input_node):

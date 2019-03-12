@@ -22,22 +22,25 @@ class MlpVaeModel(MlpModel):
     self.label_shape = [None, self.params.num_classes]
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.activation_functions]
+    if np.all([layer_type == "fc" for layer_type in self.params.vae_layer_types]):
+      self.params.vae_patch_size = []
+      self.params.vae_conv_strides = []
 
   def build_vae_module(self, input_node):
-    module = VaeModule(input_node, self.params.vae_output_channels,
-      self.decay_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
-      self.params.tie_decoder_weights, self.params.noise_level,
-      self.params.recon_loss_type)
+    module = VaeModule(input_node, self.params.vae_layer_types, self.params.vae_output_channels,
+      self.params.vae_patch_size, self.params.vae_conv_strides, self.decay_mult, self.kld_mult,
+      self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
+      self.params.noise_level, self.params.recon_loss_type, variable_scope="vae")
     return module
 
   def build_mlp_module(self, input_node):
     #The only parameter different here vs base class is mlp_output_channels vs output_channels
     #TODO is there a better way to do this?
-    module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
+    module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
       self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="softmax_cross_entropy")
+      self.params.mlp_patch_size, self.params.mlp_conv_strides, self.params.eps,
+      loss_type="softmax_cross_entropy")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -63,15 +66,15 @@ class MlpVaeModel(MlpModel):
         self.trainable_variables.update(self.vae_module.trainable_variables)
 
         if self.params.train_on_recon:
-          if self.params.layer_types[0] == "conv":
+          if self.params.mlp_layer_types[0] == "conv":
             data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
             mlp_input = tf.reshape(self.vae_module.reconstruction, shape=data_shape)
-          elif self.params.layer_types[0] == "fc":
+          elif self.params.mlp_layer_types[0] == "fc":
             mlp_input = self.vae_module.reconstruction
           else:
-            assert False, ("params.layer_types must be 'fc' or 'conv'")
+            assert False, ("params.mlp_layer_types must be 'fc' or 'conv'")
         else: # train on VAE latent encoding
-          assert self.params.layer_types[0] == "fc", (
+          assert self.params.mlp_layer_types[0] == "fc", (
             "MLP must have FC layers to train on VAE activity")
           mlp_input = self.vae_module.a
         self.mlp_module = self.build_mlp_module(mlp_input)

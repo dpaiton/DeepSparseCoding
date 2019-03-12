@@ -63,8 +63,8 @@ class MlpModel(Model):
     module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy")
+      self.params.patch_size, self.params.conv_strides, self.params.eps, lrn=self.params.lrn,
+      loss_type="softmax_cross_entropy")
     return module
 
   def build_graph_from_input(self, input_node):
