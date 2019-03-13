@@ -47,7 +47,7 @@ def testBasic(self):
 
 #Make class with specific model_type name in class name
 #model_list = mp.get_model_list()
-model_list = ["dae_mem", "mlp", "mlp_lca", "mlp_vae", "mlp_sae", "mlp_lista", "ae", "vae", "sae", "dae", "lca", "lca_conv", "lca_pca", "lca_pca_fb", "lca_subspace", "fflista", "lista", "ica", "rica"]
+model_list = ["mlp", "mlp_lca", "mlp_vae", "mlp_sae", "mlp_lista", "ae", "vae", "sae", "lca", "lca_conv", "lca_pca", "lca_pca_fb", "lca_subspace", "fflista", "lista", "ica", "rica", "dae", "dae_mem"]
 data_type = "synthetic"
 for model_type in model_list:
   #Define class name with model_type

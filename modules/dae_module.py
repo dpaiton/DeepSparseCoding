@@ -6,15 +6,15 @@ from ops.init_ops import GDNGammaInitializer
 from modules.activations import activation_picker
 
 class DaeModule(AeModule):
-  def __init__(self, data_tensor, output_channels, ent_mult, decay_mult, bounds_slope, latent_min,
-    latent_max, num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
-    gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights, conv=False, 
-    conv_strides=None, patch_y=None, patch_x=None, variable_scope="dae"):
+  def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides, ent_mult,
+    decay_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size, num_mle_steps,
+    num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min,
+    gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights, variable_scope="dae"):
     """
     Divisive Autoencoder module
     Inputs:
       data_tensor
-      output_channels: A list of channels to make, also defines number of layers
+      output_channels: a list of channels to make, also defines number of layers
       ent_mult: tradeoff multiplier for latent entropy loss
       decay_mult: tradeoff multiplier for weight decay loss
       bounds_slope: slope for out of bounds loss (two relus back to back)
@@ -58,8 +58,12 @@ class DaeModule(AeModule):
     self.gdn_w_thresh_min = gdn_w_thresh_min
     self.gdn_b_thresh_min = gdn_b_thresh_min
     self.gdn_eps = gdn_eps
-    super(DaeModule, self).__init__(data_tensor, output_channels, decay_mult, act_funcs,
-      dropout, tie_decoder_weights, conv, conv_strides, patch_y, patch_x, variable_scope)
+    if layer_types[-1] == "conv":
+      self.latent_conv = True
+    else:
+      self.latent_conv = False
+    super(DaeModule, self).__init__(data_tensor, layer_types, output_channels, patch_size,
+      conv_strides, decay_mult, act_funcs, dropout, tie_decoder_weights, variable_scope)
 
   def compute_entropies(self, a_in):
     a_probs = ef.prob_est(a_in, self.mle_thetas, self.triangle_centers)
@@ -84,9 +88,18 @@ class DaeModule(AeModule):
       + tf.nn.relu(self.latent_min - a_in)), axis=reduc_dim))
     return ramp_loss
 
-  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape, decode):
+  def compute_total_loss(self):
+    with tf.variable_scope("loss") as scope:
+      self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+        "weight_decay_loss":self.compute_weight_decay_loss(),
+        "entropy_loss":self.compute_entropy_loss(self.a),
+        "ramp_loss":self.compute_ramp_loss(self.a)}
+      self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
+
+  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape,
+    conv=False, decode=False):
     """
-    Make layer that does act(u*w+b)
+    Make layer that does act(u*w+b) where * is a dot product or convolution
     Example case for w_read_id logic:
       layer_id: [0 1 2 3 4] [5 6 7 8 9]
 
@@ -102,23 +115,24 @@ class DaeModule(AeModule):
       else:
         w_read_id = layer_id
 
-      w_name = "w_"+str(w_read_id)
+      name_prefix = "conv_" if conv else "fc_"
+      w_name = name_prefix+"w_"+str(w_read_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
       trainable_variables.append(w)
 
-      b_name = "b_"+str(layer_id)
-      if self.conv and decode:
+      b_name = name_prefix+"b_"+str(layer_id)
+      if conv and decode:
         b_shape = w_shape[-2]
       else:
         b_shape = w_shape[-1]
-      b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
-        initializer=self.b_init, trainable=True)
+      b = tf.get_variable(name=b_name, shape=b_shape,
+        dtype=tf.float32, initializer=self.b_init, trainable=True)
       trainable_variables.append(b)
 
-      pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, decode)
+      pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       if activation_function == activation_picker("gdn"):
-        if self.conv and decode:
+        if self.latent_conv and decode:
           w_gdn_shape = [w_shape[-2], w_shape[-2]]
         else:
           w_gdn_shape = [w_shape[-1], w_shape[-1]]
@@ -130,61 +144,130 @@ class DaeModule(AeModule):
         trainable_variables.append(b_gdn)
         gdn_inverse = True if layer_id >= self.num_encoder_layers else False
         output_tensor, gdn_mult = activation_function(pre_act, w_gdn, b_gdn, self.gdn_w_thresh_min,
-          self.gdn_b_thresh_min, self.gdn_eps, gdn_inverse, conv=self.conv)
+          self.gdn_b_thresh_min, self.gdn_eps, gdn_inverse, conv=self.latent_conv)
       else:
         output_tensor = activation_function(pre_act)
       output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, trainable_variables
 
-  def build_encoder(self, input_tensor, activation_functions, w_shapes):
-    assert len(activation_functions) == len(w_shapes), (
-      "activation_functions & w_shapes must be the same length")
-    u_list = [input_tensor]
-    w_list = []
-    b_list = []
-    w_gdn_list = []
-    b_gdn_list = []
-    for layer_id in range(len(w_shapes)):
-      u_out, trainable_variables = self.layer_maker(layer_id, u_list[layer_id],
-        activation_functions[layer_id], w_shapes[layer_id], decode=False)
+  def build_encoder(self, input_tensor, activation_functions):
+    enc_u_list = [input_tensor]
+    enc_w_list = []
+    enc_b_list = []
+    enc_w_gdn_list = []
+    enc_b_gdn_list = []
+    prev_input_features = input_tensor.get_shape().as_list()[-1]
+    # Make conv layers first
+    for layer_id in range(self.num_conv_layers):
+      w_shape = [int(self.patch_size_y[layer_id]), int(self.patch_size_x[layer_id]),
+        int(prev_input_features), int(self.output_channels[layer_id])]
+      u_out, trainable_variables = self.layer_maker(layer_id, enc_u_list[layer_id],
+        activation_functions[layer_id], w_shape, conv=True, decode=False)
       if activation_functions[layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
-        w_gdn_list.append(w_gdn)
-        b_gdn_list.append(b_gdn)
+        enc_w_gdn_list.append(w_gdn)
+        enc_b_gdn_list.append(b_gdn)
       else:
         w, b = trainable_variables
-      u_list.append(u_out)
-      w_list.append(w)
-      b_list.append(b)
-    return u_list, w_list, b_list, w_gdn_list, b_gdn_list
+      enc_u_list.append(u_out)
+      enc_w_list.append(w)
+      enc_b_list.append(b)
+      prev_input_features = int(self.output_channels[layer_id])
 
-  def build_decoder(self, input_tensor, activation_functions, w_shapes):
-    assert len(activation_functions) == len(w_shapes), (
-      "activation_functions & w_shapes must be the same length")
-    u_list = [input_tensor]
-    w_list = []
-    b_list = []
-    w_gdn_list = []
-    b_gdn_list = []
-    for dec_layer_id in range(len(w_shapes)):
+    # Make fc layers second
+    for fc_layer_id in range(self.num_fc_layers):
+      layer_id = fc_layer_id + self.num_conv_layers
+
+      if fc_layer_id == 0:
+        # Input needs to be reshaped to [batch, num_units] for FC layers
+        enc_shape = enc_u_list[-1].get_shape().as_list()
+        if len(enc_shape) == 4:
+          (batch, y, x, f) = enc_shape
+          prev_input_features = y * x * f # Flatten input (input_tensor or last conv layer)
+          in_tensor  = tf.reshape(enc_u_list[-1], [-1, prev_input_features])
+        elif(len(enc_shape) == 2):
+          in_tensor = enc_u_list[-1]
+        else:
+          assert False, ("Final conv encoder output or input_tensor has incorrect ndim")
+      else:
+        in_tensor = enc_u_list[layer_id]
+
+      w_shape = [int(prev_input_features), int(self.output_channels[layer_id])]
+      u_out, trainable_variables = self.layer_maker(layer_id, in_tensor, activation_functions[layer_id],
+        w_shape, conv=False, decode=False)
+      if activation_functions[layer_id] == activation_picker("gdn"):
+        w, b, w_gdn, b_gdn = trainable_variables
+        enc_w_gdn_list.append(w_gdn)
+        enc_b_gdn_list.append(b_gdn)
+      else:
+        w, b = trainable_variables
+      enc_u_list.append(u_out)
+      enc_w_list.append(w)
+      enc_b_list.append(b)
+      prev_input_features = int(self.output_channels[layer_id])
+    return enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list
+
+  def build_decoder(self, input_tensor, activation_functions):
+    dec_u_list = [input_tensor]
+    dec_w_list = []
+    dec_b_list = []
+    dec_w_gdn_list = []
+    dec_b_gdn_list = []
+    # Build FC layers first
+    for dec_layer_id in range(self.num_fc_layers):
       layer_id = self.num_encoder_layers + dec_layer_id
-      u_out, trainable_variables = self.layer_maker(layer_id, u_list[dec_layer_id],
-        activation_functions[dec_layer_id], w_shapes[dec_layer_id], decode=True)
+      #Corresponding enc layer
+      enc_w_id = -(dec_layer_id+1)
+      w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()[::-1]
+      u_out, trainable_variables = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
+        activation_functions[dec_layer_id], w_shape, conv=False, decode=True)
       if activation_functions[dec_layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
-        w_gdn_list.append(w_gdn)
-        b_gdn_list.append(b_gdn)
+        dec_w_gdn_list.append(w_gdn)
+        dec_b_gdn_list.append(b_gdn)
       else:
         w, b = trainable_variables
-      u_list.append(u_out)
-      w_list.append(w)
-      b_list.append(b)
-    return u_list, w_list, b_list, w_gdn_list, b_gdn_list
+      dec_u_list.append(u_out)
+      dec_w_list.append(w)
+      dec_b_list.append(b)
+
+    # Build conv layers second
+    for dec_conv_layer_id in range(self.num_conv_layers):
+      dec_layer_id = self.num_fc_layers + dec_conv_layer_id
+      layer_id = self.num_encoder_layers + dec_layer_id
+
+      if dec_conv_layer_id == 0:
+        #Reshape flat vector for next conv
+        u_list_id = -(self.num_fc_layers + 1)
+        enc_shape = self.enc_u_list[u_list_id].get_shape().as_list()
+        if len(enc_shape) == 4:
+          (batch, y, x, f) = self.enc_u_list[u_list_id].get_shape().as_list()
+          in_tensor = tf.reshape(dec_u_list[-1], [-1, y, x, f])
+        else:
+          in_tensor = dec_u_list[-1]
+      else:
+        u_list_id = -(dec_layer_id + 1) # u_list_id is the id for the INPUT of this layer
+        in_tensor = dec_u_list[dec_layer_id]
+
+      enc_w_id = -(dec_layer_id + 1)
+      w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()
+      u_out, trainable_variables = self.layer_maker(layer_id, in_tensor, activation_functions[dec_conv_layer_id],
+        w_shape, conv=True, decode=True)
+      if activation_functions[dec_layer_id] == activation_picker("gdn"):
+        w, b, w_gdn, b_gdn = trainable_variables
+        dec_w_gdn_list.append(w_gdn)
+        dec_b_gdn_list.append(b_gdn)
+      else:
+        w, b = trainable_variables
+      dec_u_list.append(u_out)
+      dec_w_list.append(w)
+      dec_b_list.append(b)
+    return dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list
 
   def build_graph(self):
     with tf.variable_scope(self.variable_scope) as scope:
       with tf.variable_scope("weight_inits") as scope:
-        self.w_init = tf.initializers.random_normal(mean=0.0, stddev = 1e-2, dtype=tf.float32)
+        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev = 1e-2, dtype=tf.float32)
         self.b_init = tf.initializers.zeros(dtype=tf.float32)
 
       with tf.variable_scope("gdn_weight_inits") as scope:
@@ -201,21 +284,22 @@ class DaeModule(AeModule):
       self.w_gdn_list = []
       self.b_gdn_list = []
       enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list = \
-        self.build_encoder(self.u_list[0], self.act_funcs[:self.num_encoder_layers],
-        self.w_shapes[:self.num_encoder_layers])
+        self.build_encoder(self.u_list[0], self.act_funcs[:self.num_encoder_layers])
+      self.enc_u_list = enc_u_list
+      self.enc_w_list = enc_w_list
       self.u_list += enc_u_list
       self.w_list += enc_w_list
       self.b_list += enc_b_list
       self.w_gdn_list += enc_w_gdn_list
       self.b_gdn_list += enc_b_gdn_list
 
-      if self.conv:
-        self.num_latent = tf.reduce_prod(self.u_list[-1].get_shape()[1:]) 
+      if self.layer_types[-1] == "conv":
+        self.num_latent = tf.reduce_prod(self.u_list[-1].get_shape()[1:])
       else:
         self.num_latent = self.output_channels[-1]
 
       with tf.variable_scope("inference") as scope:
-        self.a = tf.identity(self.u_list[-1], name="activity")
+        self.a = tf.identity(enc_u_list[-1], name="activity")
 
       with tf.variable_scope("probability_estimate") as scope:
         self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_latent, self.num_triangles)
@@ -231,10 +315,10 @@ class DaeModule(AeModule):
       a_noise = tf.add(noise,self.u_list[-1])
 
       dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \
-        self.build_decoder(a_noise, self.act_funcs[self.num_encoder_layers:],
-        self.w_shapes[self.num_encoder_layers:])
+        self.build_decoder(a_noise, self.act_funcs[self.num_encoder_layers:])
       self.u_list += dec_u_list
-      self.w_list += dec_w_list
+      if not self.tie_decoder_weights:
+        self.w_list += dec_w_list
       self.b_list += dec_b_list
       self.w_gdn_list += dec_w_gdn_list
       self.b_gdn_list += dec_b_gdn_list
@@ -249,9 +333,4 @@ class DaeModule(AeModule):
       with tf.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
-      with tf.variable_scope("loss") as scope:
-        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
-          "weight_decay_loss":self.compute_weight_decay_loss(),
-          "entropy_loss":self.compute_entropy_loss(self.a),
-          "ramp_loss":self.compute_ramp_loss(self.a)}
-        self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
+      self.compute_total_loss()

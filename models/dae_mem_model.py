@@ -3,28 +3,26 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
-#from models.ae_model import AeModel
-#from modules.dae_module import DaeModule
 from models.dae_model import DaeModel
 from modules.dae_mem_module import DaeMemModule
 
 class DaeMemModel(DaeModel):
   def __init__(self):
     """
-    Divisive Memristor Autoencoder 
+    Divisive Memristor Autoencoder
     """
     super(DaeMemModel, self).__init__()
 
   def build_module(self, input_node):
-
-    module = DaeMemModule(input_node, self.params.output_channels, self.ent_mult, self.decay_mult,
-      self.params.bounds_slope, self.params.latent_min, self.params.latent_max, self.params.num_triangles,
-      self.params.mle_step_size, self.params.num_mle_steps,
+    module = DaeMemModule(input_node, self.params.layer_types, self.params.output_channels,
+      self.params.patch_size, self.params.conv_strides, self.ent_mult, self.decay_mult,
+      self.params.bounds_slope, self.params.latent_min, self.params.latent_max,
+      self.params.num_triangles, self.params.mle_step_size, self.params.num_mle_steps,
       self.params.gdn_w_init_const, self.params.gdn_b_init_const, self.params.gdn_w_thresh_min,
       self.params.gdn_b_thresh_min, self.params.gdn_eps, self.params.memristor_data_loc,
-      self.params.memristor_type, self.memristor_std_eps, self.params.synthetic_noise, self.params.mem_error_rate,
-      self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights, self.params.conv, self.conv_strides, 
-      self.patch_y, self.patch_x)
+      self.params.memristor_type, self.memristor_std_eps, self.params.synthetic_noise,
+      self.params.mem_error_rate, self.act_funcs, self.dropout_keep_probs,
+      self.params.tie_decoder_weights, variable_scope="dae_mem")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -36,7 +34,7 @@ class DaeMemModel(DaeModel):
         with tf.variable_scope("auto_placeholders") as scope:
           self.ent_mult = tf.placeholder(tf.float32, shape=(), name="entropy_mult")
 
-        # this is where you construct mem noise using self.num_latent# 
+        # this is where you construct mem noise using self.num_latent#
         with tf.variable_scope("placeholders") as scope:
           self.memristor_std_eps = tf.placeholder(tf.float32, shape=[None, None],
             name="memristor_std_eps")

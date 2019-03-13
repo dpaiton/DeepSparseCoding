@@ -43,9 +43,9 @@ class params(BaseParams):
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
+    self.layer_types = ["fc", "fc", "fc"]
     self.output_channels = [1500, 1000, 50]
     self.tie_decoder_weights = False
-    self.conv = False
     self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
     self.dropout = [1.0]*6
     self.num_triangles = 30
@@ -87,7 +87,7 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.conv = False
+      self.layer_types = ["fc", "fc", "fc"]
       self.output_channels = [768, 512, 50]
       self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
       self.dropout = [1.0]*len(self.activation_functions)
@@ -118,11 +118,10 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 1e-4
+      self.layer_types = ["conv", "conv"]
       self.output_channels = [20, 10]
-      self.conv = True
       self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-      self.patch_size_y = [3.0, 3.0]
-      self.patch_size_x = self.patch_size_y
+      self.patch_size = [(3, 3), (3, 3)]
       self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
       self.dropout = [1.0]*4
       self.vectorize_data = False
@@ -138,11 +137,11 @@ class params(BaseParams):
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
+    self.vectorize_data = False
+    self.layer_types = ["conv", "conv"]
     self.output_channels = [20, 10]
-    self.conv = True
     self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-    self.patch_size_y = [3.0, 3.0]
-    self.patch_size_x = self.patch_size_y
+    self.patch_size = [(3, 3), (3, 3)]
     self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
-    self.dropout = [1.0]*4
+    self.dropout = [1.0]*len(self.activation_functions)
     self.vectorize_data = False

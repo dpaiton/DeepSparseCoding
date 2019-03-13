@@ -31,7 +31,6 @@ class params(BaseParams):
     self.noise_level = 0.0 # Variance of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_decoder_weights = False
-    self.conv = False
     self.norm_weights = False
     self.optimizer = "adam"
     self.cp_int = 1e4
@@ -91,11 +90,12 @@ class params(BaseParams):
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.layer_types = ["fc", "fc"]
-    self.output_channels = [20, 10]
-    self.conv = True
-    self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-    self.patch_size_y = [3.0, 3.0]
-    self.patch_size_x = self.patch_size_y
     self.activation_functions = ["relu", "identity", "relu", "identity"]
     self.dropout = [1.0]*len(self.activation_functions)
+    self.output_channels = [20, 10]
+    # Test 1
+    self.layer_types = ["fc", "fc"]
+    # Test 2
+    #self.layer_types = ["conv", "conv"]
+    #self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
+    #self.patch_size = [(3, 3), (3, 3)]

@@ -10,7 +10,7 @@ class AeModule(object):
     Inputs:
       data_tensor
       output_channels: a list of channels to make, also defines number of layers
-      decay_mult: weight decay multiplier
+      decay_mult: tradeoff multiplier for weight decay loss
       act_funcs: activation functions
       dropout: specifies the keep probability or None
       conv: if True, do convolution
@@ -166,7 +166,7 @@ class AeModule(object):
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
-      prev_input_features = self.output_channels[layer_id]
+      prev_input_features = int(self.output_channels[layer_id])
 
     # Make fc layers second
     for fc_layer_id in range(self.num_fc_layers):
@@ -203,7 +203,6 @@ class AeModule(object):
     dec_u_list = [input_tensor]
     dec_w_list = []
     dec_b_list = []
-
     # Build FC layers first
     for dec_layer_id in range(self.num_fc_layers):
       layer_id = self.num_encoder_layers + dec_layer_id
@@ -241,7 +240,6 @@ class AeModule(object):
       dec_u_list.append(u_out)
       dec_w_list.append(w)
       dec_b_list.append(b)
-
     return dec_u_list, dec_w_list, dec_b_list
 
   def build_graph(self):
@@ -253,13 +251,10 @@ class AeModule(object):
       self.u_list = [self.data_tensor]
       self.w_list = []
       self.b_list = []
-
       enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
         self.act_funcs[:self.num_encoder_layers])
-      #Need these member variables for build_decoder
-      self.enc_u_list = enc_u_list
+      self.enc_u_list = enc_u_list # TODO: Remove the dependency for these member variables for build_decoder
       self.enc_w_list = enc_w_list
-
       self.u_list += enc_u_list
       self.w_list += enc_w_list
       self.b_list += enc_b_list

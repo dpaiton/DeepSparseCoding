@@ -19,7 +19,6 @@ class VaeModule(AeModule):
       dropout [list of floats] specifies the keep probability or None
       noise_level [float] stddev of noise to be added to the input (for denoising VAE)
       recon_loss_type [str] either "mse" or the cross entropy loss used in Kingma & Welling
-      conv [bool] if True, do convolution
       conv_strides [list] list of strides for convolution [batch, y, x, channels]
       patch_y [list] number of y inputs for convolutional patches
       patch_x [list] number of x inputs for convolutional patches
@@ -94,7 +93,7 @@ class VaeModule(AeModule):
       self.latent_mean_activation = enc_u_list[-1]
       self.a = self.latent_mean_activation # alias for AE model
 
-      if self.conv:
+      if self.layer_types[-1] == "conv":
         self.latent_std_activation = tf.add(tf.nn.conv2d(enc_u_list[-2], self.w_enc_std,
           self.conv_strides[self.num_encoder_layers-1], padding="SAME"), self.b_enc_std)
       else:
