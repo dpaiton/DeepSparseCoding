@@ -55,12 +55,12 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.layer_types = ["fc"]
-      self.output_channels = [512]
+      self.layer_types = ["fc", "fc", "fc"]
+      self.output_channels = [768, 256, 50]
       self.optimizer = "annealed_sgd"#"adam"
       self.batch_size = 100
-      self.activation_functions = ["relu", "identity"]
-      self.dropout = [0.5, 1.0]
+      self.activation_functions = ["relu", "relu", "relu", "relu", "relu", "identity"]
+      self.dropout = [0.5, 0.5, 1.0, 1.0, 0.5, 0.5]
       self.cp_int = int(1e3)
       self.gen_plot_int = int(1e3)
       self.schedule = [

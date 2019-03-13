@@ -28,6 +28,8 @@ class AeModel(Model):
     if np.all([layer_type == "fc" for layer_type in self.params.layer_types]):
       self.params.patch_size = []
       self.params.conv_strides = []
+    assert len(self.params.dropout) == len(self.params.activation_functions), \
+        ("Dropout parameter must be a list of size " + str(len(self.params.activation_functions)))
 
   def get_input_shape(self):
     return self.input_shape
