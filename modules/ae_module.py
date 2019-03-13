@@ -60,6 +60,8 @@ class AeModule(object):
     if self.num_conv_layers > 0:
       assert np.all("conv" in self.layer_types[:self.num_conv_layers]), \
         ("Conv layers must come before fc layers")
+    assert len(self.dropout) == self.num_layers, \
+        ("Dropout parameter must be a list of size " + str(self.num_layers))
     assert len(self.layer_types) == self.num_encoder_layers, \
       ("All layer_types must be conv or fc")
     assert len(self.output_channels) == self.num_encoder_layers, \
