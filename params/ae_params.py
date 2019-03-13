@@ -31,7 +31,6 @@ class params(BaseParams):
     self.conv_strides = []
 
     self.tie_decoder_weights = False
-    self.conv = False
     self.activation_functions = ["relu", "relu", "relu", "identity"]
     self.dropout = [1.0]*4
     self.optimizer = "annealed_sgd"
@@ -56,19 +55,19 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.layer_types = ["fc", "fc", "fc"]
-      self.output_channels = [768, 256, 50]
+      self.output_channels = [768, 100, 20]
       self.optimizer = "annealed_sgd"#"adam"
       self.batch_size = 100
       self.activation_functions = ["relu", "relu", "relu", "relu", "relu", "identity"]
-      self.dropout = [0.5, 0.5, 1.0, 1.0, 0.5, 0.5]
+      self.dropout = [0.4, 0.4, 1.0, 0.4, 0.4, 1.0]
       self.cp_int = int(1e3)
       self.gen_plot_int = int(1e3)
       self.schedule = [
-        {"num_batches": int(4e3),
+        {"num_batches": int(5e3),
         "weights": None,
-        "decay_mult": 0.060,
-        "weight_lr": 0.020,
-        "decay_steps": int(3e3),
+        "decay_mult": 0.090,
+        "weight_lr": 0.02,# 0.020,
+        "decay_steps": int(4e3),
         "decay_rate": 0.5,
         "staircase": True,}]
 

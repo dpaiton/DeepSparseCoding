@@ -37,7 +37,6 @@ class params(BaseParams):
     self.conv_strides = []
 
     self.tie_decoder_weights = False
-    self.conv = False
     self.activation_functions = ["sigmoid", "identity"]
     self.dropout = [1.0]*2
     self.optimizer = "annealed_sgd"#"adam"
