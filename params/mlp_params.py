@@ -20,9 +20,8 @@ class params(BaseParams):
     self.num_classes = 10
     self.layer_types = ["conv", "fc"]
     self.output_channels = [300, self.num_classes]
-    self.patch_size_y = [8, None]
-    self.patch_size_x = [8, None]
-    self.conv_strides = [(1,1,1,1), None]
+    self.patch_size = [(8, 8)]
+    self.conv_strides = [(1,1,1,1)]
     self.num_val = 10000
     self.num_labeled = 50000
     self.batch_norm = [0.4, None]
@@ -85,12 +84,11 @@ class params(BaseParams):
       self.optimizer = "adam"
       self.layer_types = ["conv", "conv", "fc", "fc"]
       self.output_channels = [32, 64, 1024, self.num_classes]
-      self.patch_size_y = [5, 5, None, None]
-      self.patch_size_x = self.patch_size_y
-      self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
+      self.patch_size = [(5, 5), (5, 5)]
+      self.conv_strides = [(1,1,1,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None]
       self.dropout = [1.0, 1.0, 1.0, 1.0] # TODO: Set dropout defaults somewhere
-      self.lrn = [False, False, False, False,]
+      self.lrn = [None, None, None, None]
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
@@ -119,9 +117,8 @@ class params(BaseParams):
       #String can be post or pre, depending on applying LRN before or after pooling
       self.lrn = ["post", "post", None, None, None]
       self.output_channels = [64, 64, 384, 192, self.num_classes]
-      self.patch_size_y = [5, 5, None, None, None]
-      self.patch_size_x = self.patch_size_y
-      self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None, None]
+      self.patch_size = [(5, 5), (5, 5)]
+      self.conv_strides = [(1,1,1,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None, None]
       self.dropout = [1.0, 1.0, 1.0, 1.0, 1.0] # TODO: Set dropout defaults somewhere
       self.max_pool = [True, True, False, False, False]
@@ -156,11 +153,11 @@ class params(BaseParams):
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.output_channels = [20]+[self.output_channels[-1]]
     self.layer_types = ["conv", "fc"]
-    self.patch_size_y = [2, None]
-    self.patch_size_x = self.patch_size_y
-    self.conv_strides = [(1,1,1,1), None]
+    self.patch_size = [(2, 2)]
+    self.conv_strides = [(1,1,1,1)]
     self.batch_norm = [None, None]
     self.dropout = [1.0, 1.0]
+    self.lrn = ["post", None]
     self.max_pool = [True, False]
     self.max_pool_ksize = [(1,2,2,1), None]
     self.max_pool_strides = [(1,2,2,1), None]

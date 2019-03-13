@@ -15,13 +15,12 @@ class VaeModel(AeModel):
     arXiv preprint arXiv:1312.6114 (2013).
     """
     super(VaeModel, self).__init__()
-    self.vector_inputs = True
 
   def build_module(self, input_node):
-    module = VaeModule(input_node, self.params.output_channels,
-      self.decay_mult, self.kld_mult, self.act_funcs, self.dropout_keep_probs,
-      self.params.tie_decoder_weights, self.params.noise_level,
-      self.params.recon_loss_type)
+    module = VaeModule(input_node, self.params.layer_types, self.params.output_channels,
+      self.params.patch_size, self.params.conv_strides, self.decay_mult, self.kld_mult,
+      self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights,
+      self.params.noise_level, self.params.recon_loss_type, variable_scope="vae")
     return module
 
   def build_graph_from_input(self, input_node):

@@ -25,8 +25,13 @@ class params(BaseParams):
     #Specify number of neurons for encoder
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
+    self.layer_types = ["fc", "fc"]
     self.output_channels = [512, 50]
+    self.patch_size = []
+    self.conv_strides = []
+
     self.tie_decoder_weights = False
+    self.conv = False
     self.activation_functions = ["relu", "relu", "relu", "identity"]
     self.dropout = [1.0]*4
     self.optimizer = "annealed_sgd"
@@ -50,6 +55,7 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.layer_types = ["fc"]
       self.output_channels = [512]
       self.optimizer = "annealed_sgd"#"adam"
       self.batch_size = 100
@@ -66,6 +72,31 @@ class params(BaseParams):
         "decay_rate": 0.5,
         "staircase": True,}]
 
+    elif data_type.lower() == "cifar10":
+      self.model_name += "_cifar10"
+      self.vectorize_data = False
+      self.standardize_data = True
+      self.rescale_data = False
+      self.layer_types = ["conv"]
+      self.output_channels = [256]
+      self.patch_size = [(12, 12)]
+      self.conv_strides = [(1, 2, 2, 1)]
+
+      self.optimizer = "adam"
+      self.batch_size = 100
+      self.activation_functions = ["relu", "identity"]
+      self.dropout = [1.0] * 2
+      self.cp_int = int(1e3)
+      self.gen_plot_int = int(1e3)
+      self.schedule = [
+        {"num_batches": int(1e6),
+        "weights": None,
+        "decay_mult": 0.001,
+        "weight_lr": 0.001,
+        "decay_steps": int(800000),
+        "decay_rate": 0.8,
+        "staircase": True,}]
+
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
       self.epoch_size = 1000
@@ -76,14 +107,30 @@ class params(BaseParams):
       assert False, ("Data type "+data_type+" is not supported.")
 
   def set_test_params(self, data_type):
+    #TODO: allow for test_params to be list of params to be run individually
     self.set_data_params(data_type)
     self.epoch_size = 50
     self.batch_size = 10
-    self.num_edge_pixels = 8
+    self.num_edge_pixels = 16
     self.tie_decoder_weights = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.output_channels = [20, 10]
-    self.activation_functions = ["relu", "relu", "relu", "identity"]
-    self.dropout = [1.0]*4
+    self.activation_functions = ["relu", "relu", "relu", "relu", "relu", "identity"]
+    self.dropout = [1.0]*len(self.activation_functions)
+    # Test 1
+    #self.layer_types = ["fc", "fc", "fc"]
+    #self.vectorize_data = True
+    #self.output_channels = [30, 20, 10]
+    # Test 2
+    #self.layer_types = ["conv", "conv", "conv"]
+    #self.vectorize_data = False
+    #self.output_channels = [30, 20, 10]
+    #self.patch_size = [(8,8), (4,4), (2,2)]
+    #self.conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
+    # Test 3
+    self.layer_types = ["conv", "conv", "fc"]
+    self.vectorize_data = False
+    self.output_channels = [30, 20, 10]
+    self.patch_size = [(8,8), (4,4)]
+    self.conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]

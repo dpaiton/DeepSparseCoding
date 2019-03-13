@@ -22,6 +22,9 @@ class FfListaModel(Model):
     self.input_shape = [None, self.params.num_pixels]
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
+    if np.all([layer_type == "fc" for layer_type in self.params.layer_types]):
+      self.params.patch_size = []
+      self.params.conv_strides = []
 
   def get_input_shape(self):
     return self.input_shape
@@ -36,8 +39,7 @@ class FfListaModel(Model):
     module = MlpModule(input_node, self.lca_module.a, self.params.layer_types,
       self.params.output_channels, self.params.batch_norm, self.params.dropout,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="l2")
+      self.params.patch_size, self.params.conv_strides, self.params.eps, loss_type="l2")
     return module
 
   def build_graph_from_input(self, input_node):

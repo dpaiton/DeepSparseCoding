@@ -32,6 +32,9 @@ class params(BaseParams):
     self.batch_size = 100
     # SAE Params
     self.sae_output_channels = [768]
+    self.sae_layer_types = ["fc"]
+    self.sae_patch_size = []
+    self.sae_conv_strides = []
     self.activation_functions = ["sigmoid", "identity"]
     self.ae_dropout = [1.0]*2*len(self.sae_output_channels)
     self.tie_decoder_weights = False
@@ -41,11 +44,10 @@ class params(BaseParams):
     self.num_val = 10000
     self.num_labeled = 50000
     self.num_classes = 10
-    self.layer_types = ["fc", "fc", "fc"]
+    self.mlp_layer_types = ["fc", "fc", "fc"]
     self.mlp_output_channels = [300, 500, self.num_classes]
-    self.patch_size_y = [None, None, None]
-    self.patch_size_x = [None, None, None]
-    self.conv_strides = [None, None, None]
+    self.mlp_patch_size = []
+    self.mlp_conv_strides = []
     self.batch_norm = [None, None, None]
     self.dropout = [1.0, 1.0, 1.0]
     self.max_pool = [False, False, False]
@@ -121,6 +123,7 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
+      self.sae_layer_types = ["fc"]
       self.sae_output_channels = [768]
       self.activation_functions = ["sigmoid", "identity"]
       self.dropout = [1.0]*2*len(self.sae_output_channels)
@@ -133,11 +136,10 @@ class params(BaseParams):
         self.full_data_shape = [28, 28, 1]
         self.num_classes = 10
         self.optimizer = "adam"
-        self.layer_types = ["conv", "conv", "fc", "fc"]
+        self.mlp_layer_types = ["conv", "conv", "fc", "fc"]
         self.mlp_output_channels = [32, 64, 1024, self.num_classes]
-        self.patch_size_y = [5, 5, None, None]
-        self.patch_size_x = self.patch_size_y
-        self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
+        self.mlp_patch_size = [(5, 5), (5, 5)]
+        self.mlp_conv_strides = [(1,1,1,1), (1,1,1,1)]
         self.batch_norm = [None, None, None, None]
         self.dropout = [1.0, 1.0, 0.4, 1.0]
         self.max_pool = [True, True, False, False]
@@ -161,11 +163,10 @@ class params(BaseParams):
           self.schedule[sched_idx]["decay_rate"] = 0.90
       else:
         self.mlp_output_channels = [1200, 1200, self.num_classes]
-        self.layer_types = ["fc"]*3
+        self.mlp_layer_types = ["fc"]*3
         self.optimizer = "adam"
-        self.patch_size_y = [None]*3
-        self.patch_size_x = [None]*3
-        self.conv_strides = [None]*3
+        self.mlp_patch_size = []
+        self.mlp_conv_strides = []
         self.batch_norm = [None]*3
         self.dropout = [0.5, 0.5, 1.0]
         self.max_pool = [False]*3
@@ -193,15 +194,18 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
+      self.sae_layer_types = ["fc"]
+      self.sae_output_channels = [768]
+      self.activation_functions = ["sigmoid", "identity"]
+      self.mlp_layer_types = ["fc"]
       self.ae_dropout = [1.0]*2*len(self.sae_output_channels)
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [16, 16, 1]
       self.num_classes = 2
-      self.layer_types = ["conv", "fc", "fc"]
+      self.mlp_layer_types = ["conv", "fc", "fc"]
       self.mlp_output_channels = [128, 768, self.num_classes]
-      self.patch_size_y = [5, None, None]
-      self.patch_size_x = self.patch_size_y
-      self.conv_strides = [(1,1,1,1), None, None]
+      self.mlp_patch_size = [(5, 5)]
+      self.mlp_conv_strides = [(1,1,1,1)]
       self.batch_norm = [None, None, None]
       self.dropout = [1.0]*len(self.mlp_output_channels)
       self.max_pool = [True, False, False]
