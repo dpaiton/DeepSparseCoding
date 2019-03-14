@@ -23,7 +23,7 @@ params.data_dir = "/home/ryanchan/datasets"
 ## import data
 data = ds.get_data(params)
 
-## import model and process data
+## import model and  rocess data
 model = mp.get_model(model_type)
 data = model.preprocess_dataset(data, params)
 data = model.reshape_dataset(data, params)
@@ -33,7 +33,7 @@ model.setup(params)
 
 # setup tensorflow model
 config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
+#config.gpu_options.allow_growth = True
 
 
 # train model 
@@ -52,11 +52,12 @@ with tf.Session(config=config, graph=model.graph) as sess:
             #print(input_data)
 
             feed_dict = model.get_feed_dict(input_data, input_labels)
-            print("feed dict: ")
-            print(feed_dict)
             sess.run(model.apply_grads[sch_idx][0], feed_dict)
-            if b_step % 1000 == 0:
-                model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
+            print("model w synth")
+            print(sess.run(model.w_synth))
+            
+            model.print_update(input_data, input_labels, b_step+1)
+                
 
     
 
