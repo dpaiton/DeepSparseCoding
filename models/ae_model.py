@@ -107,14 +107,17 @@ class AeModel(Model):
     update_dict = super(AeModel, self).generate_update_dict(input_data,
       input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
+
     eval_list = [self.global_step, self.module.loss_dict["recon_loss"],
       self.module.loss_dict["weight_decay_loss"], self.get_total_loss(), self.get_encodings(),
       self.module.reconstruction, self.MSE, self.learning_rates]
+
     grad_name_list = []
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
       grad_name = weight_grad_var[0][1].name.split('/')[-1].split(':')[0] #2nd is np.split
       grad_name_list.append(grad_name)
+
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, decay_loss, total_loss, a_vals, recon, mse = out_vals[0:7]
     mse_mean = np.mean(mse)
@@ -129,6 +132,7 @@ class AeModel(Model):
     a_vals_mean = np.mean(a_vals)
     a_frac_act = np.array(np.count_nonzero(a_vals)
       / float(a_vals.size))
+
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "schedule_index":self.sched_idx,
@@ -139,6 +143,7 @@ class AeModel(Model):
       "a_max_mean_min":[a_vals_max, a_vals_mean, a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
+
     lrs = out_vals[7]
     grads = out_vals[8:]
     for w_idx, (grad, name) in enumerate(zip(grads, grad_name_list)):
@@ -147,6 +152,26 @@ class AeModel(Model):
       grad_mean = lrs[0][w_idx]*np.mean(np.array(grad))
       stat_dict[name+"_lr"] = lrs[0][w_idx]
       stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
+
+    names = []
+    tf_vars = []
+    for var_name, var in self.trainable_variables.items():
+      names.append(var_name)
+      tf_vars.append(var)
+
+    np_vars = tf.get_default_session().run(tf_vars, feed_dict)
+    for var_name, np_v in zip(names, np_vars):
+      v_max = np.max(np_v)
+      v_min = np.min(np_v)
+      v_mean = np.mean(np_v)
+      stat_dict[var_name+"_max_mean_min"] = [v_max, v_mean, v_min]
+
+      num_f = np_v.shape[-1]
+      v_reshape = np.reshape(np_v, [-1, num_f])
+      v_norm = np.linalg.norm(np_v, axis=0)
+      mean_v_norm = np.mean(v_norm)
+      stat_dict[var_name+"_norm"] = mean_v_norm
+
     update_dict.update(stat_dict)
     return update_dict
 

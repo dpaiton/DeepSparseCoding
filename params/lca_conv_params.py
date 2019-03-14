@@ -149,7 +149,7 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.07 #0.1
         self.schedule[sched_idx]["weight_lr"] = [0.001]
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["num_batches"] = int(5e5)
         self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
 
     elif data_type.lower() == "synthetic":
