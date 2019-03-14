@@ -27,9 +27,7 @@ class IcaSubspaceModel(IcaModel):
     self.num_groups = self.params.num_groups
     self.group_sizes = self.construct_group_sizes(self.params.group_sizes)
     self.group_index = [sum(self.group_sizes[:i]) for i in range(self.num_groups)]
-    print("group_index", self.group_index)
     self.sum_arr = self.construct_sum_arr() 
-    print("sumarr shape", self.sum_arr.shape)
 
 
   def get_input_shape(self):
@@ -78,52 +76,14 @@ class IcaSubspaceModel(IcaModel):
 
     assert len(weight_op) == 1, ("IcaModel should only have one weight matrix")
 
-    print("weight shape", weight_op[0].shape)
-    print("input_img.shape", self.input_img.shape)
-    
-#    wI = tf.matmul(tf.transpose(weight_op[0]), self.input_img)
     wI = tf.transpose(tf.matmul(self.input_img, weight_op[0]))
-    print("wI.shape", wI.shape)
-
     group_scalars = tf.matmul(tf.transpose(tf.math.pow(wI, 2)), self.sum_arr) # [1, num_groups]
-    print("group_scalars.shape", group_scalars.shape)
-    
     nonlinear_term = nonlinearity(tf.matmul(self.sum_arr, tf.transpose(group_scalars))) 
-    print("nonlienar_term.shape", nonlinear_term.shape)
-
     scalars = tf.math.multiply(wI, nonlinear_term)
-    print("scalars.shape", scalars.shape)
-
     img_tiled = tf.tile(self.input_img, [self.num_neurons, 1])
-    print("img_tiled.shape", img_tiled.shape)
-    
     gradient = tf.transpose(tf.multiply(tf.transpose(img_tiled), scalars), name="gradient")
-    print("gradient.shape", gradient.shape)
-
-    #gradient = tf.zeros_like(weight_op[0])
-    #print("CORRECT gradient shape", gradient.shape)
-
     return [(gradient, weight_op[0])]
 
-  def compute_weight_gradients1(self, optimizer, weight_op=None):
-      def nonlinearity(u):
-        return tf.power(u, -0.5)
-    
-      grads = []
-
-      for i in range(self.input_shape[0]):
-        wI = tf.matmul(tf.transpose(weight_op[0], self.input_img[i]))
-        group_scalars = tf.matmul(tf.transpose(tf.math.pow(wI, 2)), self.sum_arr)
-        nonlinear_term = nonlinearity(tf.matmul(self.sum_arr, tf.tranpose(group_scalars)))
-        scalars = tf.math.multiply(wI, nonlinear_term)
-        img_tiled = tf.tile(self.input_img[i], [1, self.num_nuerons])
-        gradient = tf.tranpose(tf.matmul(tf.tranpose(img_tiled), scalars))
-        grads.append(gradient)
-      avg_grads = tf.reduce_mean(grads, axis=0, name="gradient")
-      return [(avg_grads, weight_op[0])]
-
-
-    
   def construct_group_sizes(self, params_group_sizes):
     """Construct respective group sizes. If group_size initialzed as None, then group sizes are uniformally
     distributed; unless specified otherwise. """
@@ -153,15 +113,16 @@ class IcaSubspaceModel(IcaModel):
     return self.w_synth[:, subspace_index:subspace_index+num_vec]
 
 
-  def generate_update_dict1(self, input_data, input_labels=None, batch_step=0):
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
+    print("ica subspace generate update dict")
     update_dict = super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self]
+    #eval_list = [self.global_step, self]
     return update_dict
 
 
-  def generate_plots1(self, input_data, input_labels=None, batch_step=0):
-    update_dict = super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
+  def generate_plots(self, input_data, input_labels=None, batch_step=0):
+    super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_synth, self.w_analy, self.recon] 
   
