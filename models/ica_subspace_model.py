@@ -113,16 +113,17 @@ class IcaSubspaceModel(IcaModel):
     return self.w_synth[:, subspace_index:subspace_index+num_vec]
 
 
-  def print_update(self, input_data, input_labels=None, batch_step=0):
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     print("ica subspace update dict")
-    update_dict = super(IcaSubspaceModel, self.print_update).print_update(input_data, input_labels, batch_step)
+    update_dict = super(IcaSubspaceModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     #eval_list = [self.global_step, self]
+    print("after update dict")
     return update_dict
 
 
   def generate_plots(self, input_data, input_labels=None, batch_step=0):
-    super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
+    #super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_synth, self.w_analy, self.recon] 
   

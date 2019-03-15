@@ -110,7 +110,7 @@ class IcaModel(Model):
       to write an np function that converts numpy types to their corresponding
       python types.
     """
-    update_dict = super(IcaModel, self).print_update(input_data, input_labels, batch_step)
+    update_dict = super(IcaModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list  = [self.global_step, self.a, self.z, self.reconstruction]
     grad_name_list = []
