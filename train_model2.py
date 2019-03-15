@@ -53,11 +53,9 @@ with tf.Session(config=config, graph=model.graph) as sess:
 
             feed_dict = model.get_feed_dict(input_data, input_labels)
             sess.run(model.apply_grads[sch_idx][0], feed_dict)
-            print("model w synth")
-            print(sess.run(model.w_synth))
+            #print("model w synth")
+            #print(sess.run(model.w_synth))
             
-            model.print_update(input_data, input_labels, b_step+1)
-                
-
-    
-
+            if b_step % 20 == 0:
+                model.print_update(input_data, input_labels, b_step+1)
+                model.generate_plots(input_data, input_labels)
