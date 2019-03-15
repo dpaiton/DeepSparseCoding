@@ -59,11 +59,14 @@ class IcaSubspaceModel(IcaModel):
 
         with tf.name_scope("inference") as scope:
 #         self.s = tf.matmul(tf.transpose(self.w_analy), self.input_img, name="latent_variables") 
-         self.s = tf.matmul(tf.transpose(self.w_analy), input_node, name="latent_variables") 
+         #self.s = tf.matmul(tf.transpose(self.w_analy), input_node, name="latent_variables") 
+         self.s = tf.matmul(self.w_synth, tf.transpose(input_node), name="latent_variables")
+         self.a = tf.identity(self.s, name="activity")
+         self.z = tf.sign(self.a)
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
-            self.recon = tf.matmul(self.w_synth, self.s, name="reconstruction")
+            self.reconstruction = tf.matmul(self.w_synth, self.s, name="reconstruction")
 
     self.graph_built = True
 
@@ -114,11 +117,9 @@ class IcaSubspaceModel(IcaModel):
 
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
-    print("ica subspace update dict")
     update_dict = super(IcaSubspaceModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     #eval_list = [self.global_step, self]
-    print("after update dict")
     return update_dict
 
 
