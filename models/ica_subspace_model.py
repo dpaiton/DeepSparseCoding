@@ -113,9 +113,9 @@ class IcaSubspaceModel(IcaModel):
     return self.w_synth[:, subspace_index:subspace_index+num_vec]
 
 
-  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
-    print("ica subspace generate update dict")
-    update_dict = super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
+  def print_update(self, input_data, input_labels=None, batch_step=0):
+    print("ica subspace update dict")
+    update_dict = super(IcaSubspaceModel, self.print_update).print_update(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     #eval_list = [self.global_step, self]
     return update_dict
