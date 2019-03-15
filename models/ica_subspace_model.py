@@ -123,8 +123,9 @@ class IcaSubspaceModel(IcaModel):
     return update_dict
 
 
-  def generate_plots(self, input_data, input_labels=None, batch_step=0):
-    #super(IcaSubspaceModel, self).print_update(input_data, input_labels, batch_step)
+  def generate_plots(self, input_data, input_labels=None):
+    super(IcaModel, self).generate_plots(input_data, input_labels)
+    ## ADD FUCNITONS
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_synth, self.w_analy, self.reconstruction] 
   
