@@ -110,7 +110,7 @@ class IcaModel(Model):
       to write an np function that converts numpy types to their corresponding
       python types.
     """
-    update_dict = super(IcaModel, self).print_update(input_data, input_labels, batch_step)
+    update_dict = super(IcaModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list  = [self.global_step, self.a, self.z, self.reconstruction]
     grad_name_list = []
@@ -132,12 +132,12 @@ class IcaModel(Model):
     a_vals_mean = np.mean(a_vals)
     a_vals_min = np.min(a_vals)
     a_frac_act = np.array(np.count_nonzero(a_vals)
-      / float(self.num_neurons * self.batch_size))
+      / float(self.num_neurons * self.params.batch_size))
     z_vals_max = np.max(z_vals)
     z_vals_mean = np.mean(z_vals)
     z_vals_min = np.min(z_vals)
     z_frac_act = np.array(np.count_nonzero(z_vals)
-      / float(self.num_neurons * self.batch_size))
+      / float(self.num_neurons * self.params.batch_size))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "number_of_batch_steps":self.get_schedule("num_batches"),
