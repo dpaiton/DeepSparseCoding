@@ -21,14 +21,14 @@ class VaeModel(AeModel):
     module = VaeModule(input_node, self.params.output_channels,
       self.decay_mult, self.kld_mult, self.act_funcs, self.dropout_keep_probs,
       self.params.tie_decoder_weights, self.params.noise_level,
-      self.params.recon_loss_type, name_scope="VAE")
+      self.params.recon_loss_type)
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
     super(VaeModel, self).build_graph_from_input(input_node)
 
@@ -62,9 +62,14 @@ class VaeModel(AeModel):
     super(VaeModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.w_enc_std, self.module.b_enc_std]
+    if self.params.noise_level > 0.0:
+      eval_list += [self.module.corrupt_data]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
-    w_enc_std, b_enc_std = eval_out[1:]
+    w_enc_std = eval_out[1]
+    b_enc_std = eval_out[2]
+    if self.params.noise_level > 0.0:
+      corrupt_data  = eval_out[3]
     w_enc_std_norm = np.linalg.norm(w_enc_std, axis=0, keepdims=False)
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     #TODO histogram with large bins is broken
@@ -74,12 +79,16 @@ class VaeModel(AeModel):
     latent_layer = self.module.num_encoder_layers-1
     fig = pf.plot_activity_hist(w_enc_std,
       title="Activity Encoder "+str(latent_layer)+" Std Histogram",
-      save_filename=(self.params.disp_dir+"act_enc_"+str(latent_layer)
-      +"_std_hist"+filename_suffix))
+      save_filename=self.params.disp_dir+"act_enc_"+str(latent_layer)+"_std_hist"+filename_suffix)
     fig = pf.plot_bar(w_enc_std_norm, num_xticks=5,
       title="w_enc_"+str(latent_layer)+"_std l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=(self.params.disp_dir+"w_enc_"+str(latent_layer)+"_std_norm"
-      +filename_suffix))
+      save_filename=self.params.disp_dir+"w_enc_"+str(latent_layer)+"_std_norm"+filename_suffix)
+    if self.params.noise_level > 0.0:
+      corrupt_data = dp.reshape_data(corrupt_data, flatten=False)[0]
+      fig = pf.plot_data_tiled(corrupt_data, normalize=False,
+        title="Corrupted Images at step "+current_step,
+        save_filename=self.params.disp_dir+"corrupt_images"+filename_suffix)
+
     # Plot generated digits
     randoms = [np.random.normal(0, 1, self.num_latent) for _ in range(self.params.batch_size)]
     feed_dict[self.latent_input] = np.stack(randoms, axis=0)
@@ -91,6 +100,7 @@ class VaeModel(AeModel):
       title="Generated images", vmin=0, vmax=1,
       save_filename=(self.params.disp_dir+"generated_images"
       +"_v"+self.params.version+"_"+str(current_step).zfill(5)+".png"))
+
     # display a 30x30 2D manifold of digits
     n = 30
     digit_size = int(np.sqrt(self.params.num_pixels))
@@ -108,6 +118,7 @@ class VaeModel(AeModel):
         digit = x_decoded[0].reshape(digit_size, digit_size)
         figure_img[i * digit_size: (i + 1) * digit_size,
           j * digit_size: (j + 1) * digit_size] = digit
+
     fig, ax = plt.subplots(1, figsize=(10, 10))
     start_range = digit_size // 2
     end_range = n * digit_size + start_range + 1
@@ -124,6 +135,7 @@ class VaeModel(AeModel):
     ax.imshow(figure_img, cmap='Greys_r')
     fig.savefig(self.params.disp_dir+"generated_latent_interpolation"+filename_suffix)
     plt.close(fig)
+
     if input_labels is not None:
       z_mean = tf.get_default_session().run(self.get_encodings(), feed_dict)
       fig, ax = plt.subplots(1, figsize=(12, 10))

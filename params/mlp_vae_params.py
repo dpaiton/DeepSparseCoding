@@ -74,12 +74,12 @@ class params(BaseParams):
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = [
-        "w_enc_1_std:0",
-        "b_enc_1_std:0",
-        "layer0/w_0:0",
-        "layer0/b_0:0",
-        "layer1/w_1:0",
-        "layer1/b_1:0",
+        "vae/w_enc_1_std:0",
+        "vae/b_enc_1_std:0",
+        "vae/layer0/w_0:0",
+        "vae/layer0/b_0:0",
+        "vae/layer1/w_1:0",
+        "vae/layer1/b_1:0",
         ]
     self.log_int = 100
     self.log_to_file = True
@@ -101,14 +101,14 @@ class params(BaseParams):
       #TODO change weight names
       #TODO make option to train only mlp weights in schedule
       {"weights": [
-        "layer0/conv_w_0:0",
-        "layer0/conv_b_0:0",
-        "layer1/conv_w_1:0",
-        "layer1/conv_b_1:0",
-        "layer2/fc_w_2:0",
-        "layer2/fc_b_2:0",
-        "layer3/fc_w_3:0",
-        "layer3/fc_b_3:0"],
+        "mlp/layer0/conv_w_0:0",
+        "mlp/layer0/conv_b_0:0",
+        "mlp/layer1/conv_w_1:0",
+        "mlp/layer1/conv_b_1:0",
+        "mlp/layer2/fc_w_2:0",
+        "mlp/layer2/fc_b_2:0",
+        "mlp/layer3/fc_w_3:0",
+        "mlp/layer3/fc_b_3:0"],
       "train_on_adversarial": True,
       "train_vae": False,
       "num_batches": int(1e4),

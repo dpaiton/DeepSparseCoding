@@ -59,7 +59,7 @@ class LcaPcaFbModel(LcaPcaModel):
     return lca_fb
 
   def step_inference(self, u_in, a_in, b, g, step):
-    with tf.name_scope("update_u"+str(step)) as scope:
+    with tf.variable_scope("update_u"+str(step)) as scope:
       lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
       lca_fb = self.compute_inference_feedback(a_in)
       du = tf.identity(b - lca_explain_away - u_in - lca_fb, name="du")
@@ -78,7 +78,7 @@ class LcaPcaFbModel(LcaPcaModel):
    return (u_list, a_list)
 
   def compute_mean_feedback_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       feedback_loss = tf.reduce_mean(self.compute_feedback_loss(a_in), axis=0,
         name="feedback_loss")
     return feedback_loss
@@ -89,7 +89,7 @@ class LcaPcaFbModel(LcaPcaModel):
 
   def build_graph_from_input(self, input_node):
     with self.graph.as_default():
-      with tf.name_scope("auto_placeholders") as scope:
+      with tf.variable_scope("auto_placeholders") as scope:
         self.fb_mult = tf.placeholder(tf.float32, shape=(), name="fb_mult")
       if self.params.act_cov_loc is None:
         self.full_cov = np.eye(self.params.num_neurons)

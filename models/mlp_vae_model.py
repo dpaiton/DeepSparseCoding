@@ -27,7 +27,7 @@ class MlpVaeModel(MlpModel):
     module = VaeModule(input_node, self.params.vae_output_channels,
       self.decay_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
       self.params.tie_decoder_weights, self.params.noise_level,
-      self.params.recon_loss_type, name_scope="VAE")
+      self.params.recon_loss_type)
     return module
 
   def build_mlp_module(self, input_node):
@@ -37,21 +37,21 @@ class MlpVaeModel(MlpModel):
       self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="softmax_cross_entropy", name_scope="MLP")
+      self.params.eps, loss_type="softmax_cross_entropy")
     return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.variable_scope("auto_placeholders") as scope:
           self.label_placeholder = tf.placeholder(tf.float32,
             shape=self.label_shape, name="input_labels")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
           self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
           self.train_vae = tf.placeholder(tf.bool, shape=(), name="train_vae")
 
-        with tf.name_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
           self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
@@ -77,24 +77,24 @@ class MlpVaeModel(MlpModel):
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.name_scope("loss") as scope:
+        with tf.variable_scope("loss") as scope:
           #Loss switches based on train_vae flag
           self.total_loss = self.train_vae * self.vae_module.total_loss + \
             (1-self.train_vae) * self.mlp_module.total_loss
 
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
-        with tf.name_scope("performance_metrics") as scope:
+        with tf.variable_scope("performance_metrics") as scope:
           #VAE metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.vae_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
-          with tf.name_scope("prediction_bools"):
+          with tf.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.name_scope("accuracy"):
+          with tf.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
@@ -171,30 +171,28 @@ class MlpVaeModel(MlpModel):
       self.vae_module.reconstruction, self.vae_module.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, vae_activity = eval_out[1:]
 
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
-      save_filename=(self.params.disp_dir+"img_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     fig = pf.plot_activity_hist(recon, title="Recon Histogram",
-      save_filename=(self.params.disp_dir+"recon_hist_"+self.params.version+"-"
-      +current_step.zfill(5)+".png"))
+      save_filename=self.params.disp_dir+"recon_hist"+filename_suffix)
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     #Scale image by max and min of images and/or recon
     r_max = np.max([np.max(input_data), np.max(recon)])
     r_min = np.min([np.min(input_data), np.min(recon)])
-    name_suffix = "_v"+self.params.version+"-"+current_step.zfill(5)+".png"
     input_data = dp.reshape_data(input_data, flatten=False)[0]
     fig = pf.plot_data_tiled(input_data, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"images" + name_suffix))
+      save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
-      save_filename=(self.params.disp_dir+"recons" + name_suffix))
+      save_filename=self.params.disp_dir+"recons"+filename_suffix)
     fig = pf.plot_activity_hist(vae_activity, title="VAE Activity Histogram",
-      save_filename=(self.params.disp_dir+"vae_act_hist" + name_suffix))
+      save_filename=self.params.disp_dir+"vae_act_hist"+filename_suffix)
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=(self.params.disp_dir+"phi" + name_suffix))
+      save_filename=self.params.disp_dir+"phi"+filename_suffix)

@@ -6,7 +6,7 @@ import pdb
 
 class LcaSubspaceModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size,
-    num_steps, num_groups, group_orth_mult, eps, name_scope="LCA_Subspace"):
+    num_steps, num_groups, group_orth_mult, eps, variable_scope="lca_subspace"):
 
     self.num_groups = num_groups
     self.group_orth_mult = group_orth_mult
@@ -28,7 +28,7 @@ class LcaSubspaceModule(LcaModule):
         self.group_assignments[neuron_id] = group_index
 
     super(LcaSubspaceModule, self).__init__(data_tensor, num_neurons, sparse_mult, step_size,
-        None, None, num_steps, eps, name_scope)
+        None, None, num_steps, eps, variable_scope)
 
   def reshape_groups_per_neuron(self, sigmas, name=None):
     """
@@ -76,14 +76,14 @@ class LcaSubspaceModule(LcaModule):
     return a_out
 
   def compute_sparse_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       sigmas = self.group_amplitudes(a_in) # [num_batch, num_groups]
       sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(sigmas, axis=1),
         name="group_sparse_loss")
     return sparse_loss
 
   def compute_group_orthogonalization_loss(self, a_in):
-    with tf.name_scope("unsupervised"):
+    with tf.variable_scope("unsupervised"):
       # For each group
         # assemble matrix of W = [num_pixels, num_neurons_in_group]
         # compute E =  ( W^T * W ) - I
@@ -104,7 +104,7 @@ class LcaSubspaceModule(LcaModule):
 
   def build_graph(self):
     super(LcaSubspaceModule, self).build_graph()
-    with tf.name_scope(self.name_scope) as scope:
+    with tf.variable_scope(self.variable_scope) as scope:
       with tf.variable_scope(self.inference_scope):
         self.group_activity = tf.identity(self.group_amplitudes(self.u),
           name="group_activity")

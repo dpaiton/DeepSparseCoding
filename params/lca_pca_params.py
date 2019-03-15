@@ -35,7 +35,7 @@ class params(lca_params):
     self.save_plots = True
 
     self.schedule = [
-      {"weights": ["weights/w:0"],
+      {"weights": ["lca/weights/w:0"],
       "sparse_mult": 1.0,
       "weight_lr": [0.01],
       "decay_steps": [int(self.num_batches*0.5)],

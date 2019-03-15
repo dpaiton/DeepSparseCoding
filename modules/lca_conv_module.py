@@ -7,7 +7,7 @@ import pdb
 class LcaConvModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,
     rectify_a, num_steps, patch_size_y, patch_size_x,
-    stride_y, stride_x, eps, name_scope="LCA_Conv"):
+    stride_y, stride_x, eps, variable_scope="lca_conv"):
 
     #Set these before calling init
     self.patch_size_y = patch_size_y
@@ -16,7 +16,7 @@ class LcaConvModule(LcaModule):
     self.stride_x = stride_x
 
     super(LcaConvModule, self).__init__(data_tensor, num_neurons, sparse_mult, step_size,
-        thresh_type, rectify_a, num_steps, eps, name_scope)
+        thresh_type, rectify_a, num_steps, eps, variable_scope)
 
   def calc_shapes(self):
     assert (self.num_pixels_y % self.stride_y == 0), (
@@ -44,7 +44,7 @@ class LcaConvModule(LcaModule):
     return x_
 
   def step_inference(self, u_in, a_in, step):
-    with tf.name_scope("update_u"+str(step)) as scope:
+    with tf.variable_scope("update_u"+str(step)) as scope:
       recon_error = self.data_tensor - self.build_decoder(a_in, name="reconstruction")
       error_injection = tf.nn.conv2d(recon_error, self.w, [1, self.stride_y,
         self.stride_x, 1], padding="SAME", use_cudnn_on_gpu=True, name="forward_injection")

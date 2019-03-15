@@ -166,7 +166,7 @@ class Model(object):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("optimizers") as scope:
+        with tf.variable_scope("optimizers") as scope:
           self.grads_and_vars = list() # [sch_idx][weight_idx]
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
@@ -225,7 +225,7 @@ class Model(object):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("initialization") as scope:
+        with tf.variable_scope("initialization") as scope:
           self.init_op = tf.group(tf.global_variables_initializer(),
             tf.local_variables_initializer())
 
@@ -372,7 +372,7 @@ class Model(object):
   def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("step_counter") as scope:
+        with tf.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
   #If build_graph gets called without parameters,
@@ -563,6 +563,8 @@ class Model(object):
 
     evals = {}
 
+    assert images.shape[0] == labels.shape[0], (
+      "Images and labels must be the same shape, not %g and %g"%(images.shape[0], labels.shape[0]))
     #^ is xor
     assert (var_names is None) ^ (var_nodes is None),  \
       ("Only one of var_names or var_nodes can be specified")
@@ -592,9 +594,13 @@ class Model(object):
 
       feed_dict = self.get_feed_dict(batch_images, input_labels=batch_labels, is_test=True)
       sch = self.get_schedule()
-      if("train_on_adversarial" in sch):
-        if(sch["train_on_adversarial"]):
-          self.modify_input(feed_dict)
+      #TODO: (see train_model.py)
+      #if("train_on_adversarial" in sch):
+      #  if(sch["train_on_adversarial"]):
+      #    self.modify_input(feed_dict)
+      if("train_on_adversarial" not in sch):
+        sch["train_on_adversarial"] = False
+      self.modify_input(feed_dict, sch["train_on_adversarial"])
       eval_list = sess.run(tensors, feed_dict)
 
       for key, ev in zip(dict_keys, eval_list):
@@ -613,8 +619,5 @@ class Model(object):
   def get_encodings(self):
     raise NotImplementedError
 
-  def modify_input(self, feed_dict):
+  def modify_input(self, feed_dict, train_on_adversarial):
     return feed_dict
-
-
-

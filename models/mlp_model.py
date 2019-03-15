@@ -25,19 +25,19 @@ class MlpModel(Model):
 
   def build_adv_module(self, input_node):
     #Placeholders for using adv or clean examples
-    with tf.name_scope("placeholders") as scope:
+    with tf.variable_scope("placeholders") as scope:
       #This is a swith used internally to use clean or adv examples
       self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
-    with tf.name_scope("auto_placeholders") as scope:
+    with tf.variable_scope("auto_placeholders") as scope:
       #This is a schedule flag to determine if we're training on adv examples
-      self.train_on_adversarial=tf.placeholder(tf.bool, shape=(), name="train_on_adversarial")
+      self.train_on_adversarial = tf.placeholder(tf.bool, shape=(), name="train_on_adversarial")
 
     self.adv_module = ClassAdversarialModule(input_node, self.use_adv_input,
       self.params.num_classes, self.params.adversarial_num_steps, self.params.adversarial_step_size,
       max_step=self.params.adversarial_max_change,
       clip_adv=self.params.adversarial_clip, clip_range=self.params.adversarial_clip_range,
       attack_method=self.params.adversarial_attack_method,
-      eps=self.params.eps, name="class_adversarial")
+      eps=self.params.eps)
 
     return self.adv_module.get_adv_input()
 
@@ -64,7 +64,7 @@ class MlpModel(Model):
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="softmax_cross_entropy", name_scope="MLP")
+      self.params.eps, loss_type="softmax_cross_entropy")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -73,9 +73,9 @@ class MlpModel(Model):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("label_placeholders") as scope:
+        with tf.variable_scope("label_placeholders") as scope:
           self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
-        with tf.name_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
 
@@ -85,11 +85,11 @@ class MlpModel(Model):
         #TODO analysis depends on this name for label ests. Can we abstract this?
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
-        with tf.name_scope("performance_metrics") as scope:
-          with tf.name_scope("prediction_bools"):
+        with tf.variable_scope("performance_metrics") as scope:
+          with tf.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.name_scope("accuracy"):
+          with tf.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
@@ -99,15 +99,19 @@ class MlpModel(Model):
   def get_total_loss(self):
     return self.mlp_module.total_loss
 
-  def modify_input(self, feed_dict):
+  #def modify_input(self, feed_dict):
+  def modify_input(self, feed_dict, train_on_adversarial):
     sess = tf.get_default_session()
 
-    #TODO add in rand_state and target_generation_method here
-    #Generate adversarial examples to store within internal variable
-    self.adv_module.construct_adversarial_examples(feed_dict,
-      labels=feed_dict[self.label_placeholder],
-      recon_mult=self.params.carlini_recon_mult,
-      rand_state=None, target_generation_method="random")
+    if train_on_adversarial:
+      #TODO add in rand_state and target_generation_method here
+      #Generate adversarial examples to store within internal variable
+      self.adv_module.construct_adversarial_examples(feed_dict,
+        labels=feed_dict[self.label_placeholder],
+        recon_mult=self.params.carlini_recon_mult,
+        rand_state=None, target_generation_method="random")
+    else:
+      sess.run(self.adv_module.reset, feed_dict)
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(MlpModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
@@ -172,7 +176,6 @@ class MlpModel(Model):
       stat_dict["accuracy"] = accuracy
       stat_dict["total_loss"] = total_loss
 
-
     update_dict.update(stat_dict) #stat_dict overwrites
 
     eval_list = []
@@ -202,29 +205,42 @@ class MlpModel(Model):
     Inputs: input_data and input_labels used for the session
     """
     super(MlpModel, self).generate_plots(input_data, input_labels)
-    # TODO: there is a lot of variability in the MLP - which plots are general?
     feed_dict = self.get_feed_dict(input_data, input_labels)
-
-    eval_list = [self.global_step, self.get_encodings()] # how to get first layer weights?
-
+    eval_list = [self.global_step, self.get_encodings(), self.mlp_module.weight_list[0]]
     train_on_adversarial = feed_dict[self.train_on_adversarial]
     if(train_on_adversarial):
       eval_list += [self.adv_module.get_adv_input()]
 
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
+
     current_step = str(eval_out[0])
-    activity = eval_out[1]
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
 
+    activity = eval_out[1]
     fig = pf.plot_activity_hist(activity, title="Logit Histogram",
-      save_filename=(self.params.disp_dir+"act_hist" + filename_suffix))
+      save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
+
+    w_enc = eval_out[2]
+    if self.params.layer_types[0] == "fc":
+      w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
+      # Don't plot weights as images if input is not square
+      w_input_sqrt = np.sqrt(w_enc.shape[0])
+      if(np.floor(w_input_sqrt) == np.ceil(w_input_sqrt)):
+        w_enc = dp.reshape_data(w_enc.T, flatten=False)[0] # [num_neurons, height, width]
+        fig = pf.plot_data_tiled(w_enc, normalize=False,
+          title="Weights at step "+current_step, vmin=None, vmax=None,
+          save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
+      fig = pf.plot_bar(w_enc_norm, num_xticks=5,
+        title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
+        save_filename=self.params.disp_dir+"w_enc_norm"+filename_suffix)
+    else: # conv
+      w_enc = np.transpose(dp.rescale_data_to_one(w_enc.T)[0].T, axes=(3,0,1,2))
+      pf.plot_data_tiled(w_enc, normalize=False, title="Weights at step "+current_step,
+        save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
 
     if(train_on_adversarial):
-      adv_input = eval_out[2]
+      adv_input = eval_out[3]
       adv_input = dp.reshape_data(adv_input, flatten=False)[0]
       fig = pf.plot_data_tiled(adv_input, normalize=False,
         title="Adv inputs at "+current_step,
-        save_filename=(self.params.disp_dir+"adv_input"+filename_suffix))
-
-
-
+        save_filename=self.params.disp_dir+"adv_input"+filename_suffix)

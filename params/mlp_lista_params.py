@@ -160,6 +160,7 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 8
+    self.cp_load = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2

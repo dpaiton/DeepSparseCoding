@@ -80,7 +80,7 @@ class params(BaseParams):
     self.cp_load_name = "lca_768_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
-    self.cp_load_var = ["weights/w:0"]
+    self.cp_load_var = ["lca/weights/w:0"]
     self.log_int = 100
     self.log_to_file = True
     self.gen_plot_int = 10000
@@ -98,14 +98,14 @@ class params(BaseParams):
       #Training MLP on LCA recons
       #Only training MLP weights, not VAE
       {"weights": [
-        "layer0/conv_w_0:0",
-        "layer0/conv_b_0:0",
-        "layer1/conv_w_1:0",
-        "layer1/conv_b_1:0",
-        "layer2/fc_w_2:0",
-        "layer2/fc_b_2:0",
-        "layer3/fc_w_3:0",
-        "layer3/fc_b_3:0"],
+        "mlp/layer0/conv_w_0:0",
+        "mlp/layer0/conv_b_0:0",
+        "mlp/layer1/conv_w_1:0",
+        "mlp/layer1/conv_b_1:0",
+        "mlp/layer2/fc_w_2:0",
+        "mlp/layer2/fc_b_2:0",
+        "mlp/layer3/fc_w_3:0",
+        "mlp/layer3/fc_b_3:0"],
       "train_lca": False,
       "train_on_adversarial": True,
       "num_batches": int(1e4),
@@ -204,6 +204,7 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 8
+    self.cp_load = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2

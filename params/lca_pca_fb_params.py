@@ -33,7 +33,7 @@ class params(lca_pca_params):
     self.gen_plot_int = 100
     self.save_plots = True
     self.schedule = [
-      {"weights": ["weights/w:0"],
+      {"weights": ["lca/weights/w:0"],
       "sparse_mult": 0.08,
       "fb_mult": 1e-3,
       "weight_lr": [0.8],

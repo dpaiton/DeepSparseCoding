@@ -6,8 +6,9 @@ import pdb
 
 class ClassAdversarialModule(object):
   def __init__(self, data_tensor, use_adv_input, num_classes, num_steps, step_size, max_step=None, clip_adv=True,
-    clip_range = [0.0, 1.0], attack_method="kurakin_untargeted", eps=1e-8, name="class_adversarial"):
+    clip_range = [0.0, 1.0], attack_method="kurakin_untargeted", eps=1e-8, variable_scope="class_adversarial"):
     """
+    TODO:
     Adversarial module
     Inputs:
       data_tensor
@@ -32,110 +33,112 @@ class ClassAdversarialModule(object):
     #List of vars to ignore in savers/loaders
     self.ignore_load_var_list = []
 
-    self.name = str(name)
+    self.variable_scope = str(variable_scope)
     self.build_init_graph()
 
   def build_init_graph(self):
-    #These placeholders are here since they're only needed for construct adv examples
-    with tf.name_scope("placeholders") as scope:
-      self.adv_target = tf.placeholder(tf.float32, shape=[None, self.num_classes],
-        name="adversarial_target_data")
-      self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+    with tf.variable_scope(self.variable_scope) as scope:
+      #These placeholders are here since they're only needed for construct adv examples
+      with tf.variable_scope("placeholders") as scope:
+        self.adv_target = tf.placeholder(tf.float32, shape=[None, self.num_classes],
+          name="adversarial_target_data")
+        self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
 
-    with tf.name_scope("input_var"):
-      #Adversarial pertubation
-      self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
-        dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
+      with tf.variable_scope("input_var"):
+        #Adversarial pertubation
+        self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
+          dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
 
-      self.ignore_load_var_list.append(self.adv_var)
-      self.reset = self.adv_var.initializer
+        self.ignore_load_var_list.append(self.adv_var)
+        #TODO:
+        #NOTE: This will get overwritten in build_adersarialv_ops
+        self.reset = self.adv_var.initializer
 
-      #Here, adv_var has a fully dynamic shape. We reshape it to give the variable
-      #a semi-dymaic shape (i.e., only batch dimension unknown)
-      self.adv_var.set_shape([None,] + self.input_shape[1:])
+        #Here, adv_var has a fully dynamic shape. We reshape it to give the variable
+        #a semi-dymaic shape (i.e., only batch dimension unknown)
+        self.adv_var.set_shape([None,] + self.input_shape[1:])
 
-      #Clip pertubations by maximum amount of change allowed
-      if(self.max_step is not None):
-        max_pert = tfc.upper_bound(tfc.lower_bound(
-          self.adv_var, -self.max_step), self.max_step)
-      else:
-        max_pert = self.adv_var
+        #Clip pertubations by maximum amount of change allowed
+        if(self.max_step is not None):
+          max_pert = tfc.upper_bound(tfc.lower_bound(
+            self.adv_var, -self.max_step), self.max_step)
+        else:
+          max_pert = self.adv_var
 
-      self.adv_image = self.data_tensor + max_pert
+        self.adv_image = self.data_tensor + max_pert
 
-      if(self.clip_adv):
-        self.adv_image = tfc.upper_bound(tfc.lower_bound(
-          self.adv_image, self.clip_range[0]), self.clip_range[1])
+        if(self.clip_adv):
+          self.adv_image = tfc.upper_bound(tfc.lower_bound(
+            self.adv_image, self.clip_range[0]), self.clip_range[1])
 
-    with tf.name_scope("input_switch"):
-      ##Switch between adv_image and input placeholder
-      #Option to not use switch input if use_adv_input is None
-      if(self.use_adv_input is not None):
-        self.adv_switch_input = tf.cond(self.use_adv_input,
-          true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
-          strict=True)
+      with tf.variable_scope("input_switch"):
+        ##Switch between adv_image and input placeholder
+        #Option to not use switch input if use_adv_input is None
+        if(self.use_adv_input is not None):
+          self.adv_switch_input = tf.cond(self.use_adv_input,
+            true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
+            strict=True)
 
   def get_adv_input(self):
     return self.adv_switch_input
 
   def build_adversarial_ops(self, label_est, label_tensor=None, model_logits=None, loss=None):
-    self.label_est = label_est
-    with tf.name_scope("loss") as scope:
-      if(self.attack_method == "kurakin_untargeted"):
-        self.adv_loss = -loss
-      elif(self.attack_method == "kurakin_targeted"):
-        self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
-          tf.log(tf.clip_by_value(label_est, self.eps, 1.0))))
-      elif(self.attack_method == "carlini_targeted"):
-        self.input_pert_loss = 0.5 * tf.reduce_sum(
-          tf.square(self.adv_var), name="input_perturbed_loss")
+    with tf.variable_scope(self.variable_scope) as scope:
+      self.label_est = label_est
+      with tf.variable_scope("loss") as scope:
+        if(self.attack_method == "kurakin_untargeted"):
+          self.adv_loss = -loss
+        elif(self.attack_method == "kurakin_targeted"):
+          self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
+            tf.log(tf.clip_by_value(self.label_est, self.eps, 1.0))))
+        elif(self.attack_method == "carlini_targeted"):
+          self.input_pert_loss = 0.5 * tf.reduce_sum(
+            tf.square(self.adv_var), name="input_perturbed_loss")
 
-        #Assuming adv_target is one hot
-        with tf.control_dependencies([
-          tf.assert_equal(tf.reduce_sum(self.adv_target, axis=-1), 1.0)]):
-          self.adv_target = self.adv_target
+          #Assuming adv_target is one hot
+          with tf.control_dependencies([
+            tf.assert_equal(tf.reduce_sum(self.adv_target, axis=-1), 1.0)]):
+            self.adv_target = self.adv_target
 
-        #Construct two boolean masks, one with only target class as true
-        #and one with everything not target class
-        target_mask = self.adv_target > .5
-        not_target_mask = self.adv_target < .5
+          #Construct two boolean masks, one with only target class as true
+          #and one with everything not target class
+          target_mask = self.adv_target > .5
+          not_target_mask = self.adv_target < .5
 
-        #Z(x)_t
-        #boolean_mask returns a flattened array, so need to reshape back
-        logits_target_val = tf.boolean_mask(model_logits, target_mask)[:, None]
-        #max_{i!=t} Z(x)_i
-        logits_not_target_val = tf.boolean_mask(model_logits, not_target_mask)
-        logits_not_target_val = tf.reshape(logits_not_target_val,
-          [-1, self.num_classes-1])
+          #Z(x)_t
+          #boolean_mask returns a flattened array, so need to reshape back
+          logits_target_val = tf.boolean_mask(model_logits, target_mask)[:, None]
+          #max_{i!=t} Z(x)_i
+          logits_not_target_val = tf.boolean_mask(model_logits, not_target_mask)
+          logits_not_target_val = tf.reshape(logits_not_target_val,
+            [-1, self.num_classes-1])
 
-        max_logits_not_target_val = tf.reduce_max(logits_not_target_val, axis=-1)
+          max_logits_not_target_val = tf.reduce_max(logits_not_target_val, axis=-1)
 
-        self.target_class_loss = tf.reduce_sum(tf.nn.relu(
-          max_logits_not_target_val - logits_target_val))
+          self.target_class_loss = tf.reduce_sum(tf.nn.relu(
+            max_logits_not_target_val - logits_target_val))
 
-        self.adv_loss = self.input_pert_loss + \
-          self.recon_mult * self.target_class_loss
-      else:
-        assert False, ("attack_method " + self.attack_method +" not recognized. "+
-          "Options are \"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
+          self.adv_loss = self.input_pert_loss + \
+            self.recon_mult * self.target_class_loss
+        else:
+          assert False, ("attack_method " + self.attack_method +" not recognized. "+
+            "Options are \"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
 
-    with tf.name_scope("optimizer") as scope:
-      if(self.attack_method == "kurakin_untargeted" or self.attack_method == "kurakin_targeted"):
-        self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
-        self.adv_update_op = self.adv_var.assign_add(
-          self.step_size * self.adv_grad)
-      elif(self.attack_method == "carlini_targeted"):
-        self.adv_opt = tf.train.AdamOptimizer(
-          learning_rate = self.step_size)
-        self.adv_grad = self.adv_opt.compute_gradients(
-          self.adv_loss, var_list=[self.adv_var])
-        self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grad)
-        #Add adam vars to reset variable
-        initializer_ops = [v.initializer for v in self.adv_opt.variables()]
-        self.reset = tf.group(initializer_ops + [self.reset])
-        #Add adam vars to list of ignore vars
-        self.ignore_load_var_list.extend(self.adv_opt.variables())
-
+      with tf.variable_scope("optimizer") as scope:
+        if(self.attack_method == "kurakin_untargeted" or self.attack_method == "kurakin_targeted"):
+          self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
+          self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
+        elif(self.attack_method == "carlini_targeted"):
+          self.adv_opt = tf.train.AdamOptimizer(
+            learning_rate = self.step_size)
+          self.adv_grad = self.adv_opt.compute_gradients(
+            self.adv_loss, var_list=[self.adv_var])
+          self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grad)
+          #Add adam vars to reset variable
+          initializer_ops = [v.initializer for v in self.adv_opt.variables()]
+          self.reset = tf.group(initializer_ops + [self.reset])
+          #Add adam vars to list of ignore vars
+          self.ignore_load_var_list.extend(self.adv_opt.variables())
 
   def generate_random_target_labels(self, input_labels, rand_state=None):
     input_classes = np.argmax(input_labels, axis=-1)
