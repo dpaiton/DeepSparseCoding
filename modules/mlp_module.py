@@ -5,8 +5,8 @@ from modules.batch_normalization_module import BatchNormalizationModule
 
 class MlpModule(object):
   def __init__(self, data_tensor, label_tensor, layer_types, output_channels, batch_norm,
-      dropout, max_pool, max_pool_ksize, max_pool_strides, patch_size_y, patch_size_x,
-      conv_strides, eps, loss_type="softmax_cross_entropy", variable_scope="mlp"):
+      dropout, max_pool, max_pool_ksize, max_pool_strides, patch_size, conv_strides,
+      eps, lrn=None, loss_type="softmax_cross_entropy", variable_scope="mlp"):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
@@ -20,6 +20,7 @@ class MlpModule(object):
       dropout specifies the keep probability or None
       batch_norm is a list of decay multipliers or None
       eps is a float
+      lrn is a float for specifying local response normalization
       loss_type is a string specifying the type of loss ("softmax_cross_entropy" or "l2")
       variable_scope is a string
     Outputs:
@@ -61,10 +62,10 @@ class MlpModule(object):
     self.max_pool_strides = max_pool_strides
     self.dropout = dropout
     self.batch_norm = batch_norm
-    # assert no FC after Conv in layer types
+    #TODO assert no FC after Conv in layer types
     self.output_channels = output_channels
-    self.patch_size_y = patch_size_y
-    self.patch_size_x = patch_size_x
+    self.patch_size_y = [size[0] for size in patch_size]
+    self.patch_size_x = [size[1] for size in patch_size]
     self.conv_strides = conv_strides
     self.eps = eps
     self.variable_scope = variable_scope
@@ -79,11 +80,11 @@ class MlpModule(object):
       ("All layer_types must be conv or fc")
     assert len(output_channels) == self.num_layers, \
       ("output_channels must be a list of size " + str(self.num_layers))
-    assert len(patch_size_y) == self.num_layers, \
+    assert len(self.patch_size_y) == self.num_conv_layers, \
       ("patch_size_y must be a list of size " + str(self.num_layers))
-    assert len(patch_size_x) == self.num_layers, \
+    assert len(self.patch_size_x) == self.num_conv_layers, \
       ("patch_size_x must be a list of size " + str(self.num_layers))
-    assert len(conv_strides) == self.num_layers, \
+    assert len(conv_strides) == self.num_conv_layers, \
       ("conv_strides must be a list of size " + str(self.num_layers))
     assert len(batch_norm) == self.num_layers, \
       ("batch_norm must be a list of size " + str(self.num_layers))
@@ -101,7 +102,15 @@ class MlpModule(object):
 
     self.fc_output_channels = self.output_channels[self.num_conv_layers:]
 
+    self.lrn = lrn
+    #Default to not using lrn
+    if(self.lrn is None):
+      self.lrn = [None for i in range(self.num_layers)]
+
     self.trainable_variables = TrainableVariableDict()
+
+    self.conv_strides = self.conv_strides + [None]*(self.num_fc_layers*2) + self.conv_strides[::-1]
+
     self.build_graph()
 
   def conv_layer_maker(self, layer_id, a_in, w_shape, strides, b_shape):
@@ -124,9 +133,22 @@ class MlpModule(object):
         conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
       conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
+
+      if self.lrn[layer_id] is not None:
+        if self.lrn[layer_id] == "pre":
+          #TODO these parameters are hard coded for now, move these to params
+          conv_out = tf.nn.lrn(conv_out, depth_radius=4, bias=1.0, alpha=0.001/9.0,
+            beta=0.75, name='norm1')
+
       if self.max_pool[layer_id]:
         conv_out = tf.nn.max_pool(conv_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
+
+      if self.lrn[layer_id] is not None:
+        if self.lrn[layer_id] == "post":
+          #TODO these parameters are hard coded for now, move these to params
+          conv_out = tf.nn.lrn(conv_out, depth_radius=4, bias=1.0, alpha=0.001/9.0,
+            beta=0.75, name='norm1')
     return conv_out, w, b
 
   def fc_layer_maker(self, layer_id, a_in, w_shape, b_shape, act_func):
@@ -157,6 +179,7 @@ class MlpModule(object):
     act_list = [self.data_tensor]
     w_list = []
     b_list = []
+    # Conv is always before FC
     for layer_id in range(self.num_conv_layers):
       a_out, w, b = self.conv_layer_maker(layer_id, act_list[layer_id],
       self.conv_w_shapes[layer_id], self.conv_strides[layer_id], self.output_channels[layer_id])

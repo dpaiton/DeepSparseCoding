@@ -31,7 +31,10 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     # VAE Params
+    self.vae_layer_types = ["fc"]
     self.vae_output_channels = [768]
+    self.vae_patch_size = []
+    self.vae_conv_strides = []
     self.activation_functions = ["lrelu", "sigmoid"]
     self.ae_dropout = [1.0]*2*len(self.vae_output_channels)
     self.noise_level = 0.01 # variance of noise added to the input data
@@ -43,11 +46,10 @@ class params(BaseParams):
     self.num_val = 10000
     self.num_labeled = 50000
     self.num_classes = 10
-    self.layer_types = ["fc", "fc", "fc"]
+    self.mlp_layer_types = ["fc", "fc", "fc"]
     self.mlp_output_channels = [300, 500, self.num_classes]
-    self.patch_size_y = [None, None, None]
-    self.patch_size_x = [None, None, None]
-    self.conv_strides = [None, None, None]
+    self.mlp_patch_size = []
+    self.mlp_conv_strides = []
     self.batch_norm = [None, None, None]
     self.dropout = [1.0, 1.0, 1.0]
     self.max_pool = [False, False, False]
@@ -68,7 +70,7 @@ class params(BaseParams):
     self.cp_int = 10000
     self.val_on_cp = True
     self.eval_batch_size = 100
-    self.max_cp_to_keep = None
+    self.max_cp_to_keep = 1
     self.cp_load = True
     self.cp_load_name = "vae_mnist"
     self.cp_load_step = None # latest checkpoint
@@ -133,16 +135,18 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.cp_load = True
+      self.vae_layer_types = ["fc"]
+      self.vae_output_channels = [768]
+      self.activation_functions = ["lrelu", "sigmoid"]
       # MLP params
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [28, 28, 1]
       self.num_classes = 10
       self.optimizer = "adam"
-      self.layer_types = ["conv", "conv", "fc", "fc"]
+      self.mlp_layer_types = ["conv", "conv", "fc", "fc"]
       self.mlp_output_channels = [32, 64, 1024, self.num_classes]
-      self.patch_size_y = [5, 5, None, None]
-      self.patch_size_x = self.patch_size_y
-      self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
+      self.mlp_patch_size = [(5, 5), (5, 5)]
+      self.mlp_conv_strides = [(1,1,1,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None]
       self.dropout = [1.0, 1.0, 0.4, 1.0]
       self.max_pool = [True, True, False, False]
@@ -168,11 +172,13 @@ class params(BaseParams):
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [16, 16, 1]
       self.num_classes = 2
-      self.layer_types = ["conv", "fc", "fc"]
+      self.vae_layer_types = ["fc"]
+      self.vae_output_channels = [768]
+      self.activation_functions = ["lrelu", "sigmoid"]
+      self.mlp_layer_types = ["conv", "fc", "fc"]
       self.mlp_output_channels = [128, 768, self.num_classes]
-      self.patch_size_y = [5, None, None]
-      self.patch_size_x = self.patch_size_y
-      self.conv_strides = [(1,1,1,1), None, None]
+      self.mlp_patch_size = [(5, 5)]
+      self.mlp_conv_strides = [(1,1,1,1)]
       self.batch_norm = [None, None, None]
       self.dropout = [1.0]*len(self.mlp_output_channels)
       self.max_pool = [True, False, False]

@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_sae"
-    self.model_name = "mlp_sae_768_recon_adv"
+    self.model_name = "mlp_sae_768_latent"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -32,20 +32,22 @@ class params(BaseParams):
     self.batch_size = 100
     # SAE Params
     self.sae_output_channels = [768]
+    self.sae_layer_types = ["fc"]
+    self.sae_patch_size = []
+    self.sae_conv_strides = []
     self.activation_functions = ["sigmoid", "identity"]
     self.ae_dropout = [1.0]*2*len(self.sae_output_channels)
     self.tie_decoder_weights = False
     self.optimizer = "adam"
     # MLP Params
-    self.train_on_recon = True # if False, train on LCA latent activations
+    self.train_on_recon = False # if False, train on LCA latent activations
     self.num_val = 10000
     self.num_labeled = 50000
     self.num_classes = 10
-    self.layer_types = ["fc", "fc", "fc"]
+    self.mlp_layer_types = ["fc", "fc", "fc"]
     self.mlp_output_channels = [300, 500, self.num_classes]
-    self.patch_size_y = [None, None, None]
-    self.patch_size_x = [None, None, None]
-    self.conv_strides = [None, None, None]
+    self.mlp_patch_size = []
+    self.mlp_conv_strides = []
     self.batch_norm = [None, None, None]
     self.dropout = [1.0, 1.0, 1.0]
     self.max_pool = [False, False, False]
@@ -66,7 +68,7 @@ class params(BaseParams):
     self.cp_int = 10000
     self.val_on_cp = True
     self.eval_batch_size = 100
-    self.max_cp_to_keep = None
+    self.max_cp_to_keep = 1
     self.cp_load = True
     self.cp_load_name = "sae_768_mnist"
     self.cp_load_step = None # latest checkpoint
@@ -96,16 +98,8 @@ class params(BaseParams):
       #Training MLP on SAE recon
       #Only training MLP weights, not SAE
       #TODO change weight names
-      {"weights": [
-        "mlp/layer0/conv_w_0:0",
-        "mlp/layer0/conv_b_0:0",
-        "mlp/layer1/conv_w_1:0",
-        "mlp/layer1/conv_b_1:0",
-        "mlp/layer2/fc_w_2:0",
-        "mlp/layer2/fc_b_2:0",
-        "mlp/layer3/fc_w_3:0",
-        "mlp/layer3/fc_b_3:0"],
-      "train_on_adversarial": True,
+      {"weights": None,
+      "train_on_adversarial": False,
       "train_sae": False,
       "num_batches": int(1e4),
       "decay_mult": 0.0,
@@ -116,9 +110,9 @@ class params(BaseParams):
       "decay_rate": 0.8,
       "staircase": True},
       ]
-    self.schedule = [self.schedule[0].copy()] + self.schedule
-    self.schedule[0]["train_on_adversarial"] = False
-    self.schedule[0]["num_batches"] = 1000
+    #self.schedule = [self.schedule[0].copy()] + self.schedule
+    #self.schedule[0]["train_on_adversarial"] = False
+    #self.schedule[0]["num_batches"] = 1000
 
   def set_data_params(self, data_type):
     self.data_type = data_type
@@ -129,23 +123,23 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
+      self.sae_layer_types = ["fc"]
       self.sae_output_channels = [768]
       self.activation_functions = ["sigmoid", "identity"]
       self.dropout = [1.0]*2*len(self.sae_output_channels)
-      self.cp_int = 1e4
-      self.gen_plot_int = 1e4
+      self.cp_int = 1e3
+      self.gen_plot_int = 1e5
       self.cp_load = True
+      self.train_on_recon = False # if False, train on LCA latent activations
       # MLP params
-      self.train_on_recon = True # if False, train on activations
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
         self.num_classes = 10
         self.optimizer = "adam"
-        self.layer_types = ["conv", "conv", "fc", "fc"]
+        self.mlp_layer_types = ["conv", "conv", "fc", "fc"]
         self.mlp_output_channels = [32, 64, 1024, self.num_classes]
-        self.patch_size_y = [5, 5, None, None]
-        self.patch_size_x = self.patch_size_y
-        self.conv_strides = [(1,1,1,1), (1,1,1,1), None, None]
+        self.mlp_patch_size = [(5, 5), (5, 5)]
+        self.mlp_conv_strides = [(1,1,1,1), (1,1,1,1)]
         self.batch_norm = [None, None, None, None]
         self.dropout = [1.0, 1.0, 0.4, 1.0]
         self.max_pool = [True, True, False, False]
@@ -154,26 +148,42 @@ class params(BaseParams):
         # NOTE schedule index will change if sae training is happening
         self.schedule[1]["num_batches"] = int(2e4)
         for sched_idx in range(len(self.schedule)):
+          self.schedule[sched_idx]["weights"] = [
+            "mlp/layer0/conv_w_0:0",
+            "mlp/layer0/conv_b_0:0",
+            "mlp/layer1/conv_w_1:0",
+            "mlp/layer1/conv_b_1:0",
+            "mlp/layer2/fc_w_2:0",
+            "mlp/layer2/fc_b_2:0",
+            "mlp/layer3/fc_w_3:0",
+            "mlp/layer3/fc_b_3:0"]
+
           self.schedule[sched_idx]["weight_lr"] = 1e-4
           self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
           self.schedule[sched_idx]["decay_rate"] = 0.90
       else:
-        self.mlp_output_channels = [1536, 1200, self.num_classes]
-        self.layer_types = ["fc"]*3
+        self.mlp_output_channels = [1200, 1200, self.num_classes]
+        self.mlp_layer_types = ["fc"]*3
         self.optimizer = "adam"
-        self.patch_size_y = [None]*3
-        self.patch_size_x = [None]*3
-        self.conv_strides = [None]*3
+        self.mlp_patch_size = []
+        self.mlp_conv_strides = []
         self.batch_norm = [None]*3
-        self.dropout = [0.5, 0.4, 1.0]
+        self.dropout = [0.5, 0.5, 1.0]
         self.max_pool = [False]*3
         self.max_pool_ksize = [None]*3
         self.max_pool_strides = [None]*3
-        self.schedule[1]["num_batches"] = int(4e4)
         for sched_idx in range(len(self.schedule)):
-          self.schedule[sched_idx]["weight_lr"] = 1e-4
-          self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
-          self.schedule[sched_idx]["decay_rate"] = 0.90
+          self.schedule[sched_idx]["num_batches"] = int(2e5)
+          self.schedule[sched_idx]["weights"] = [
+            "mlp/layer0/fc_w_0:0",
+            "mlp/layer0/fc_b_0:0",
+            "mlp/layer1/fc_w_1:0",
+            "mlp/layer1/fc_b_1:0",
+            "mlp/layer2/fc_w_2:0",
+            "mlp/layer2/fc_b_2:0"]
+          self.schedule[sched_idx]["weight_lr"] = 1e-5
+          self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[sched_idx]["num_batches"])
+          self.schedule[sched_idx]["decay_rate"] = 0.9
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -184,15 +194,18 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
+      self.sae_layer_types = ["fc"]
+      self.sae_output_channels = [768]
+      self.activation_functions = ["sigmoid", "identity"]
+      self.mlp_layer_types = ["fc"]
       self.ae_dropout = [1.0]*2*len(self.sae_output_channels)
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [16, 16, 1]
       self.num_classes = 2
-      self.layer_types = ["conv", "fc", "fc"]
+      self.mlp_layer_types = ["conv", "fc", "fc"]
       self.mlp_output_channels = [128, 768, self.num_classes]
-      self.patch_size_y = [5, None, None]
-      self.patch_size_x = self.patch_size_y
-      self.conv_strides = [(1,1,1,1), None, None]
+      self.mlp_patch_size = [(5, 5)]
+      self.mlp_conv_strides = [(1,1,1,1)]
       self.batch_norm = [None, None, None]
       self.dropout = [1.0]*len(self.mlp_output_channels)
       self.max_pool = [True, False, False]

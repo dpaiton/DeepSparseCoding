@@ -27,8 +27,8 @@ class ClassAdversarialModule(object):
     self.step_size = step_size
     self.max_step = max_step
     self.clip_adv = clip_adv
-    self.attack_method = attack_method
     self.clip_range = clip_range
+    self.attack_method = attack_method
     self.eps = eps
     #List of vars to ignore in savers/loaders
     self.ignore_load_var_list = []
@@ -72,22 +72,19 @@ class ClassAdversarialModule(object):
             self.adv_image, self.clip_range[0]), self.clip_range[1])
 
       with tf.variable_scope("input_switch"):
-        ##Switch between adv_image and input placeholder
-        #Option to not use switch input if use_adv_input is None
-        if(self.use_adv_input is not None):
-          self.adv_switch_input = tf.cond(self.use_adv_input,
-            true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
-            strict=True)
+        self.adv_switch_input = tf.cond(self.use_adv_input,
+          true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
+          strict=True)
 
   def get_adv_input(self):
     return self.adv_switch_input
 
-  def build_adversarial_ops(self, label_est, label_tensor=None, model_logits=None, loss=None):
+  def build_adversarial_ops(self, label_est, model_logits=None, loss=None):
     with tf.variable_scope(self.variable_scope) as scope:
       self.label_est = label_est
       with tf.variable_scope("loss") as scope:
         if(self.attack_method == "kurakin_untargeted"):
-          self.adv_loss = -loss
+          self.adv_loss = tf.reduce_sum(-loss, name="sum_loss")
         elif(self.attack_method == "kurakin_targeted"):
           self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
             tf.log(tf.clip_by_value(self.label_est, self.eps, 1.0))))
@@ -168,7 +165,6 @@ class ClassAdversarialModule(object):
     if(self.attack_method == "kurakin_untargeted"):
       pass
     elif(self.attack_method == "kurakin_targeted"):
-      #TODO allow for specified targets
       if(target_generation_method == "random"):
         feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)
       else:

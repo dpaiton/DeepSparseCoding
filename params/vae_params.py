@@ -86,9 +86,16 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 8
+    self.vectorize_data = True
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.output_channels = [20, 10]
     self.activation_functions = ["relu", "identity", "relu", "identity"]
-    self.dropout = [1.0]*4
+    self.dropout = [1.0]*len(self.activation_functions)
+    self.output_channels = [20, 10]
+    # Test 1
+    self.layer_types = ["fc", "fc"]
+    # Test 2
+    #self.layer_types = ["conv", "conv"]
+    #self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
+    #self.patch_size = [(3, 3), (3, 3)]

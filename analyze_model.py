@@ -20,17 +20,17 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = True
+    self.do_evals = False
     # Dictionary fitting
-    self.do_basis_analysis = True
+    self.do_basis_analysis = False
     # LCA Inference analysis
     self.do_inference = False
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False # TODO: broken for rica
+    self.do_recon_adversaries = True # TODO: broken for rica
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -59,7 +59,7 @@ class params(object):
 
     #Adversarial params
     self.adversarial_num_steps = 5000 # Step size for adversarial attacks
-    #self.adversarial_attack_method = "kurakin_untargeted"
+    #self.adversarial_attack_method = "kurakin_untargeted" # Only for class attack
     #self.adversarial_attack_method = "kurakin_targeted"
     self.adversarial_attack_method = "carlini_targeted"
 
@@ -80,7 +80,7 @@ class params(object):
 
     #Specify which adv to use here
     #If none, use all
-    self.adversarial_input_id = None
+    self.adversarial_input_id = list(range(100))
 
     #TODO
     #Parameter for "specified" target_method
@@ -88,9 +88,8 @@ class params(object):
     #Need to be a list or numpy array of size [adv_batch_size]
     self.adversarial_target_labels = None
 
-
     # Rescale inputs to match dataset scales used during training
-    self.input_scale = 1.0
+    self.input_scale = 1.0 # TODO: Get input_scale from log file
 
     # Which neurons to run tuning experiments on (None to do all)
     self.neuron_indices = None

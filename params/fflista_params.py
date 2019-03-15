@@ -49,9 +49,8 @@ class params(BaseParams):
     self.output_channels = [300, 300, 500, 500, self.num_neurons]
     num_mlp_layers = len(self.output_channels)
     self.layer_types = ["fc"]*num_mlp_layers
-    self.patch_size_y = [None]*num_mlp_layers
-    self.patch_size_x = [None]*num_mlp_layers
-    self.conv_strides = [None]*num_mlp_layers
+    self.patch_size = []
+    self.conv_strides = []
     self.batch_norm = [None]*num_mlp_layers
     self.dropout = [1.0]*num_mlp_layers
     self.max_pool = [False]*num_mlp_layers

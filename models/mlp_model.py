@@ -54,7 +54,7 @@ class MlpModel(Model):
         #Build the rest of the ops here since we need nodes from this graph
         #Use sum loss here for untargted
         self.adv_module.build_adversarial_ops(self.label_est,
-          label_tensor=self.label_placeholder, model_logits=self.get_encodings(),
+          model_logits=self.get_encodings(),
           loss=self.mlp_module.sum_loss)
     #Add adv module ignore list to model ignore list
     self.full_model_load_ignore.extend(self.adv_module.ignore_load_var_list)
@@ -63,8 +63,8 @@ class MlpModel(Model):
     module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-      self.params.patch_size_y, self.params.patch_size_x, self.params.conv_strides,
-      self.params.eps, loss_type="softmax_cross_entropy")
+      self.params.patch_size, self.params.conv_strides, self.params.eps, lrn=self.params.lrn,
+      loss_type="softmax_cross_entropy")
     return module
 
   def build_graph_from_input(self, input_node):

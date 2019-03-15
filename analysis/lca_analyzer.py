@@ -10,7 +10,7 @@ class LcaAnalyzer(Analyzer):
   def __init__(self):
     super(LcaAnalyzer, self).__init__()
     self.var_names = [
-      "weights/w:0",
+      "lca/weights/w:0",
       "inference/activity:0",
       "output/reconstruction:0",
       "performance_metrics/recon_quality:0"]
@@ -32,7 +32,7 @@ class LcaAnalyzer(Analyzer):
     if self.analysis_params.do_evals:
       self.evals = self.eval_analysis(images, self.var_names, save_info)
     if self.analysis_params.do_basis_analysis:
-      self.bf_stats = self.basis_analysis(self.evals["weights/w:0"], save_info)
+      self.bf_stats = self.basis_analysis(self.evals["lca/weights/w:0"], save_info)
     if self.analysis_params.do_atas:
       self.atas, self.atcs = self.ata_analysis(images[:int(self.analysis_params.num_ata_images), ...],
         self.evals["inference/activity:0"], save_info)
@@ -41,20 +41,12 @@ class LcaAnalyzer(Analyzer):
       self.inference_stats = self.inference_analysis(images, save_info,
         self.analysis_params.num_inference_images, self.analysis_params.num_inference_steps)
     if self.analysis_params.do_recon_adversaries:
-      self.adversarial_images, self.adversarial_recons, mses = self.recon_adversary_analysis(images,
-        labels=labels, batch_size=self.analysis_params.adversarial_batch_size,
+      self.recon_adversary_analysis(images,
+        labels=labels, batch_size=self.analysis_params.eval_batch_size,
         input_id=self.analysis_params.adversarial_input_id,
         target_method=self.analysis_params.adversarial_target_method,
         target_id=self.analysis_params.adversarial_target_id,
-        step_size=self.analysis_params.adversarial_step_size,
-        num_steps=self.analysis_params.adversarial_num_steps,
         save_info=save_info)
-      self.adversarial_input_target_mses = mses["input_target_mse"]
-      self.adversarial_input_recon_mses = mses["input_recon_mses"]
-      self.adversarial_input_adv_mses = mses["input_adv_mses"]
-      self.adversarial_target_recon_mses = mses["target_recon_mses"]
-      self.adversarial_target_adv_mses = mses["target_adv_mses"]
-      self.adversarial_adv_recon_mses = mses["adv_recon_mses"]
     if self.analysis_params.do_orientation_analysis:
       self.ot_grating_responses, self.co_grating_responses = self.grating_analysis(self.bf_stats,
         save_info)
@@ -65,6 +57,12 @@ class LcaAnalyzer(Analyzer):
     inference_file_loc = self.analysis_out_dir+"savefiles/inference_"+save_info+".npz"
     if os.path.exists(inference_file_loc):
       self.inference_stats = np.load(inference_file_loc)["data"].item()["inference_stats"]
+    ot_file_loc = self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz"
+    if os.path.exists(ot_file_loc):
+      self.ot_grating_responses = np.load(ot_file_loc)["data"].item()
+    co_file_loc = self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz"
+    if os.path.exists(ot_file_loc):
+      self.co_grating_responses = np.load(co_file_loc)["data"].item()
 
   def compute_time_varied_response(self, images, steps_per_image=None):
     """

@@ -52,10 +52,10 @@ def range_extender(Vs, Rs, num_ext):
         max_Vs = np.amax(Vs)
         min_Vs_indx = [Vs == min_Vs]
         max_Vs_indx = [Vs == max_Vs]
-        Rs_min = Rs[min_Vs_indx]
-        Rs_max = Rs[max_Vs_indx]
-        Vs_min = Vs[min_Vs_indx] - delta_V
-        Vs_max = Vs[max_Vs_indx] + delta_V
+        Rs_min = Rs[tuple(min_Vs_indx)]
+        Rs_max = Rs[tuple(max_Vs_indx)]
+        Vs_min = Vs[tuple(min_Vs_indx)] - delta_V
+        Vs_max = Vs[tuple(max_Vs_indx)] + delta_V
         Vs = np.append(Vs,Vs_min)
         Vs = np.append(Vs,Vs_max)
         Rs = np.append(Rs,Rs_min)
@@ -68,7 +68,7 @@ def normalizer(x,new_min,new_max):
 
     return (((x-x_min)/(x_max-x_min))*(new_max-new_min)+new_min)
 
-def get_pcm_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
+def get_pcm_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1., synthetic_noise=None):
     """
 
     Parameters
@@ -119,7 +119,7 @@ def get_pcm_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
 
     return vs, mus, sigs, orig_min_Vs, orig_max_Vs, orig_min_Rs, orig_max_Rs
 
-def get_gauss_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
+def get_gauss_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1., synthetic_noise=None):
     """
     Simulates some memristors.
 
@@ -149,15 +149,18 @@ def get_gauss_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
 
     return vs, mus, sigs, orig_min_Vs, orig_max_Vs, orig_min_Rs, orig_max_Rs
 
-def get_rram_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1.):
+def get_rram_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1., synthetic_noise=None):
     """
-    Simulates rram array.
+    Simulates rram array
+    20190219: need to modify this so that we can just adjust the variance of the noise with parameter!
+    20190312: added "synthetic_noise" for this (synthetic_noise will have different meaning for other channels, eg PCM)
     """
     Vs = get_raw_data(path)[0]
     Vs = np.array(Vs)
     
     ## for RRAM device with read/verify scheme ##
-    b = np.log10(np.sqrt(2.0))
+    # synthetic_noise for this case is just the min/max set by the read/verify scheme
+    b = np.log10(synthetic_noise) #used to be np.sqrt(2.0) for IEDM paper
     Vs = normalizer(Vs, 4, 8) #RRAM goes from 4 to 8 in R_Target (log scale, so actually 10^4, 10^8)
     ## ##
 

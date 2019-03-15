@@ -51,11 +51,11 @@ class params(BaseParams):
     self.num_labeled = 50000
     self.num_classes = 10
     self.output_channels = [300, 500, self.num_classes]
+    self.lrn = [None]*len(self.output_channels)
     num_mlp_layers = len(self.output_channels)
     self.layer_types = ["fc"]*num_mlp_layers
-    self.patch_size_y = [None]*num_mlp_layers
-    self.patch_size_x = [None]*num_mlp_layers
-    self.conv_strides = [None]*num_mlp_layers
+    self.patch_size = []
+    self.conv_strides = []
     self.batch_norm = [None]*num_mlp_layers
     self.dropout = [1.0]*num_mlp_layers
     self.max_pool = [False]*num_mlp_layers
@@ -116,16 +116,16 @@ class params(BaseParams):
       self.num_neurons = 768
       # MLP params
       self.output_channels = [1536, 1200, self.num_classes]
-      self.layer_types = ["fc"]*3
+      self.layer_types = ["fc"]*len(self.output_channels)
       self.optimizer = "adam"
-      self.patch_size_y = [None]*3
-      self.patch_size_x = [None]*3
-      self.conv_strides = [None]*3
-      self.batch_norm = [None]*3
+      self.patch_size = []
+      self.conv_strides = []
+      self.batch_norm = [None]*len(self.output_channels)
       self.dropout = [0.5, 0.4, 1.0]
-      self.max_pool = [False]*3
-      self.max_pool_ksize = [None]*3
-      self.max_pool_strides = [None]*3
+      self.lrn = [None]*len(self.output_channels)
+      self.max_pool = [False]*len(self.output_channels)
+      self.max_pool_ksize = [None]*len(self.output_channels)
+      self.max_pool_strides = [None]*len(self.output_channels)
       self.schedule[1]["num_batches"] = int(4e4)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.19
@@ -146,6 +146,7 @@ class params(BaseParams):
       self.train_on_recon = True # if False, train on activations
       self.num_classes = 2
       self.output_channels = [128, 64, self.num_classes]
+      self.lrn = [None]*len(self.output_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
         self.schedule[sched_idx]["weight_lr"] = 0.1

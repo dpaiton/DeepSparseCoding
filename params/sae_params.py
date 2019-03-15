@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "sae"
-    self.model_name = "sae_768"
+    self.model_name = "sae_conv"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -30,7 +30,12 @@ class params(BaseParams):
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
+
+    self.layer_types = ["fc"]
     self.output_channels = [768]
+    self.patch_size = []
+    self.conv_strides = []
+
     self.tie_decoder_weights = False
     self.activation_functions = ["sigmoid", "identity"]
     self.dropout = [1.0]*2
@@ -78,6 +83,36 @@ class params(BaseParams):
         self.schedule[sched_idx]["decay_mult"] = 0.02
         self.schedule[sched_idx]["target_act"] = 0.15
         self.schedule[sched_idx]["sparse_mult"] = 0.10
+        self.schedule[sched_idx]["decay_steps"] = int(0.6*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.50
+
+    elif data_type.lower() == "cifar10":
+      self.model_name += "_cifar10"
+
+      self.vectorize_data = False
+      self.standardize_data = True
+      self.rescale_data = False
+
+      self.cp_int = int(1e4)
+      self.gen_plot_int = int(1e4)
+      self.batch_size = 100
+      self.whiten_data = False
+      self.extract_patches = False
+
+      self.layer_types = ["conv"]
+      self.output_channels = [256]
+      self.patch_size = [(12, 12)]
+      self.conv_strides = [(1, 2, 2, 1)]
+
+      self.activation_functions = ["sigmoid", "identity"]
+      self.optimizer = "adam"
+      self.dropout = [1.0]*2*len(self.output_channels)
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["weight_lr"] = 0.001
+        self.schedule[sched_idx]["decay_mult"] = 0.05
+        self.schedule[sched_idx]["target_act"] = 0.10
+        self.schedule[sched_idx]["sparse_mult"] = 100.0
         self.schedule[sched_idx]["decay_steps"] = int(0.6*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.50
 
@@ -160,6 +195,8 @@ class params(BaseParams):
       self.schedule[sched_idx]["sparse_mult"] = 0.15
       self.schedule[sched_idx]["target_act"] = 0.2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.output_channels = [100]
+    self.layer_types = ["fc"]
+    self.vectorize_data = True
+    self.output_channels = [30]
     self.activation_functions = ["sigmoid", "identity"]
-    self.dropout = [1.0]*2
+    self.dropout = [1.0]*len(self.activation_functions)

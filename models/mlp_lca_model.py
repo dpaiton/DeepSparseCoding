@@ -6,6 +6,7 @@ import utils.entropy_functions as ef
 from models.mlp_model import MlpModel
 from modules.lca_module import LcaModule
 from modules.mlp_module import MlpModule
+from modules.lca_conv_module import LcaConvModule
 
 
 class MlpLcaModel(MlpModel):
@@ -17,15 +18,20 @@ class MlpLcaModel(MlpModel):
     """
     super(MlpLcaModel, self).load_params(params)
     # Network Size
-    self.input_shape = [None, self.params.num_pixels]
     self.label_shape = [None, self.params.num_classes]
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
   def build_lca_module(self, input_node):
-    module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
-      self.eta, self.params.thresh_type, self.params.rectify_a,
-      self.params.num_steps, self.params.eps)
+    if(self.params.lca_conv):
+      module = LcaConvModule(input_node, self.params.num_neurons, self.sparse_mult,
+        self.eta, self.params.thresh_type, self.params.rectify_a,
+        self.params.num_steps, self.params.lca_patch_size_y, self.params.lca_patch_size_x,
+        self.params.lca_stride_y, self.params.lca_stride_x, self.params.eps)
+    else:
+      module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
+        self.eta, self.params.thresh_type, self.params.rectify_a,
+        self.params.num_steps, self.params.eps)
     return module
 
   def build_graph_from_input(self, input_node):
@@ -126,19 +132,19 @@ class MlpLcaModel(MlpModel):
       orig_img = feed_dict[self.input_placeholder]
       adv_feed_dict = feed_dict.copy()
       adv_feed_dict[self.use_adv_input] = True
-      adv_img = tf.get_default_session().run(self.adv_module.get_adv_input())
+      adv_img = tf.get_default_session().run(self.adv_module.get_adv_input(), adv_feed_dict)
 
-      reduc_dims = list(range(1, len(orig_img.shape)))
-      orig_adv_linf = np.max(np.abs(orig_img - adv_im), axis=reduc_dims)
+      reduc_dims = tuple(range(1, len(orig_img.shape)))
+      orig_adv_linf = np.max(np.abs(orig_img - adv_img), axis=reduc_dims)
       orig_recon_linf = np.max(np.abs(orig_img - recon), axis=reduc_dims)
 
-      orig_adv_linf_max = np.max(orig_adv_l_inf)
-      orig_adv_linf_mean = np.mean(orig_adv_l_inf)
-      orig_adv_linf_min = np.min(orig_adv_l_inf)
+      orig_adv_linf_max = np.max(orig_adv_linf)
+      orig_adv_linf_mean = np.mean(orig_adv_linf)
+      orig_adv_linf_min = np.min(orig_adv_linf)
 
-      orig_recon_linf_max = np.max(orig_recon_l_inf)
-      orig_recon_linf_mean = np.mean(orig_recon_l_inf)
-      orig_recon_linf_min = np.min(orig_recon_l_inf)
+      orig_recon_linf_max = np.max(orig_recon_linf)
+      orig_recon_linf_mean = np.mean(orig_recon_linf)
+      orig_recon_linf_min = np.min(orig_recon_linf)
 
 
     input_max = np.max(input_data)
@@ -191,10 +197,13 @@ class MlpLcaModel(MlpModel):
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, lca_activity = eval_out[1:]
 
-    fig = pf.plot_activity_hist(input_data, title="Image Histogram",
+    batch_size = input_data.shape[0]
+    fig = pf.plot_activity_hist(np.reshape(input_data, [batch_size, -1]), title="Image Histogram",
       save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
-    fig = pf.plot_activity_hist(recon, title="Recon Histogram",
+
+    fig = pf.plot_activity_hist(np.reshape(recon, [batch_size, -1]), title="Recon Histogram",
       save_filename=self.params.disp_dir+"recon_hist"+filename_suffix)
+
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
@@ -208,8 +217,14 @@ class MlpLcaModel(MlpModel):
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=self.params.disp_dir+"recons"+filename_suffix)
+
+    num_features = lca_activity.shape[-1]
+    lca_activity = np.reshape(lca_activity, [-1, num_features])
     fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
       save_filename=self.params.disp_dir+"lca_act_hist"+filename_suffix)
+
+    if(len(weights.shape) == 4):
+      weights = np.transpose(weights, (0, 2, 3, 1))
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=self.params.disp_dir+"phi"+filename_suffix)

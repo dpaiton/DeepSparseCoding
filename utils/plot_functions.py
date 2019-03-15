@@ -620,7 +620,7 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
         activity = activations[bf_indices[bf_idx], co_idx, :]
         color_val = scalarMap.to_rgba(contrast)
         ax.plot(orientations, activity, linewidth=1, color=color_val)
-        ax.scatter(orientations, activity, s=4, c=color_val)
+        ax.scatter(orientations, activity, s=4, c=[color_val])
         ax.yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
         ax.set_yticks([0, np.max(activity)])
         ax.set_xticks([0, 90, 180])
@@ -899,6 +899,9 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
     data = np.squeeze(data)
   elif data.ndim == 4:
     data = np.squeeze(pad_data(data))
+    #If rgb, need to rescale from 0 .. 1
+    if(data.shape[-1] == 3):
+      data = (data - data.min())/(data.max() - data.min())
   else:
     assert False, ("input data must have ndim==3 or 4")
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))

@@ -15,11 +15,13 @@ from models.lca_subspace_model import LcaSubspaceModel as lca_subspace
 from models.lca_conv_model import LcaConvModel as lca_conv
 from models.fflista_model import FfListaModel as fflista
 from models.lista_model import ListaModel as lista
-from models.gdn_autoencoder_model import GdnAutoencoderModel as ga
-from models.gdn_conv_autoencoder_model import GdnConvAutoencoderModel as ga_conv
-from models.gdn_conv_decoder_model import GdnConvDecoderModel as gd_conv
+#from models.gdn_autoencoder_model import GdnAutoencoderModel as ga
+#from models.gdn_conv_autoencoder_model import GdnConvAutoencoderModel as ga_conv
+#from models.gdn_conv_decoder_model import GdnConvDecoderModel as gd_conv
 from models.relu_autoencoder_model import ReluAutoencoderModel as ra
 from models.ae_model import AeModel as ae
+from models.dae_model import DaeModel as dae
+from models.dae_mem_model import DaeMemModel as dae_mem
 from models.vae_model import VaeModel as vae
 from models.sae_model import SaeModel as sae
 
@@ -56,16 +58,20 @@ def get_model(model_type):
     return lista()
   if model_type.lower() == "fflista":
     return fflista()
-  if model_type.lower() == "gdn_autoencoder":
-    return ga()
-  if model_type.lower() == "gdn_conv_autoencoder":
-    return ga_conv()
-  if model_type.lower() == "gdn_conv_decoder":
-    return gd_conv()
+  #if model_type.lower() == "gdn_autoencoder":
+  #  return ga()
+  #if model_type.lower() == "gdn_conv_autoencoder":
+  #  return ga_conv()
+  #if model_type.lower() == "gdn_conv_decoder":
+  #  return gd_conv()
   if model_type.lower() == "relu_autoencoder":
     return ra()
   if model_type.lower() == "ae":
     return ae()
+  if model_type.lower() == "dae":
+    return dae()
+  if model_type.lower() == "dae_mem":
+    return dae_mem()
   if model_type.lower() == "sae":
     return sae()
   if model_type.lower() == "vae":

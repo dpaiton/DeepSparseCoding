@@ -3,54 +3,77 @@ import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
-  def __init__(self, data_tensor, output_channels, decay_mult, act_funcs, dropout,
-    tie_decoder_weights, variable_scope="ae"):
+  def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides,
+    decay_mult, act_funcs, dropout, tie_decoder_weights, variable_scope="ae"):
     """
     Autoencoder module
     Inputs:
       data_tensor
       output_channels: a list of channels to make, also defines number of layers
-      decay_mult: weight decay multiplier
+      decay_mult: tradeoff multiplier for weight decay loss
       act_funcs: activation functions
       dropout: specifies the keep probability or None
+      conv: if True, do convolution
+      conv_strides: list of strides for convolution [batch, y, x, channels]
+      patch_y: number of y inputs for convolutional patches
+      patch_x: number of x inputs for convolutional patches
       variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
     """
+    self.conv_strides = conv_strides
     self.variable_scope = variable_scope
-
-    data_ndim = len(data_tensor.get_shape().as_list())
-    assert data_ndim == 2, (
-      "Module requires datal_tensor to have shape [batch, num_pixels]")
-
-    self.data_tensor = data_tensor
-    self.batch_size, self.num_pixels = self.data_tensor.get_shape()
-
-    self.output_channels = output_channels
-    self.act_funcs = act_funcs
-    self.dropout = dropout
-
-    self.decay_mult = decay_mult
-
     self.trainable_variables = TrainableVariableDict()
 
-    self.num_encoder_layers = len(self.output_channels)
-    self.num_decoder_layers = self.num_encoder_layers
-    self.num_layers = self.num_encoder_layers + self.num_decoder_layers
+    self.data_tensor = data_tensor
+    self.layer_types = layer_types
+    self.output_channels = output_channels
+    self.patch_size_y = [size[0] for size in patch_size]
+    self.patch_size_x = [size[1] for size in patch_size]
+    self.conv_strides = conv_strides
+    self.dropout = dropout
+    self.decay_mult = decay_mult
+    self.act_funcs = act_funcs
     self.tie_decoder_weights = tie_decoder_weights
 
+    self.num_conv_layers = layer_types.count("conv")
+    self.num_fc_layers = layer_types.count("fc")
+    self.num_encoder_layers = self.num_fc_layers + self.num_conv_layers
+    self.num_decoder_layers = self.num_encoder_layers
+    self.num_layers = self.num_encoder_layers + self.num_decoder_layers
+
+    data_ndim = len(data_tensor.get_shape().as_list())
+    if data_ndim == 2:
+      self.batch_size, self.num_pixels = self.data_tensor.get_shape()
+    else:
+      self.batch_size, self.num_pixels_y, self.num_pixels_x, self.num_channels = \
+        self.data_tensor.get_shape()
+      self.num_pixels = self.num_pixels_y * self.num_pixels_x * self.num_channels
+
+    if layer_types[0] == "conv":
+      assert data_ndim == 4, (
+        "Module requires data_tensor to have shape" +
+        " [batch, num_pixels_y, num_pixels_x, num_features] if first layer is conv")
+    else:
+      assert data_ndim == 2, (
+        "Module requires data_tensor to have shape [batch, num_pixels]")
+    if self.num_conv_layers > 0:
+      assert np.all("conv" in self.layer_types[:self.num_conv_layers]), \
+        ("Conv layers must come before fc layers")
+    assert len(self.layer_types) == self.num_encoder_layers, \
+      ("All layer_types must be conv or fc")
+    assert len(self.output_channels) == self.num_encoder_layers, \
+      ("output_channels must be a list of size " + str(self.num_encoder_layers))
+    assert len(self.patch_size_y) == self.num_conv_layers, \
+      ("patch_size_y must be a list of size " + str(self.num_conv_layers))
+    assert len(self.patch_size_x) == self.num_conv_layers, \
+      ("patch_size_x must be a list of size " + str(self.num_conv_layers))
+    assert len(self.conv_strides) == self.num_conv_layers, \
+      ("conv_strides must be a list of size " + str(self.num_conv_layers))
     assert len(self.act_funcs) == self.num_layers, \
-      ("act_funcs parameter must have the same length as output_channels")
+      ("act_funcs parameter must be a list of size " + str(self.num_layers))
 
-    w_enc_shape = []
-    w_dec_shape = []
-    prev_input_features = self.num_pixels
-    for l in range(self.num_encoder_layers):
-      w_enc_shape.append([int(prev_input_features), int(self.output_channels[l])])
-      prev_input_features = self.output_channels[l]
-    w_dec_shape = [shape[::-1] for shape in w_enc_shape[::-1]]
-    self.w_shapes = w_enc_shape + w_dec_shape
-
+    self.conv_strides = self.conv_strides + [None]*(self.num_fc_layers*2) + self.conv_strides[::-1]
     self.build_graph()
 
   def compute_weight_decay_loss(self):
@@ -67,9 +90,36 @@ class AeModule(object):
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
-  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape):
+  def compute_total_loss(self):
+    with tf.variable_scope("loss") as scope:
+      self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+        "weight_decay_loss":self.compute_weight_decay_loss()}
+      self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
+
+  def compute_pre_activation(self, layer_id, input_tensor, w, b, conv, decode):
+    if conv:
+      strides = self.conv_strides[layer_id]
+      if decode:
+        height_const = tf.shape(input_tensor)[1] % strides[1]
+        out_height = (tf.shape(input_tensor)[1] * strides[1]) - height_const
+        width_const = tf.shape(input_tensor)[2] % strides[2]
+        out_width = (tf.shape(input_tensor)[2] * strides[2]) - width_const
+        out_shape = tf.stack([tf.shape(input_tensor)[0], # Batch
+          out_height, # Height
+          out_width, # Width
+          tf.shape(w)[2]]) # Channels
+        pre_act = tf.add(tf.nn.conv2d_transpose(input_tensor, w, out_shape, strides,
+          padding="SAME"), b)
+      else:
+        pre_act = tf.add(tf.nn.conv2d(input_tensor, w, strides, padding="SAME"), b)
+    else:
+      pre_act = tf.add(tf.matmul(input_tensor, w), b)
+    return pre_act
+
+  def layer_maker(self, layer_id, input_tensor, activation_function, w_shape,
+    conv=False, decode=False):
     """
-    Make layer that does act(u*w+b)
+    Make layer that does act(u*w+b) where * is a dot product or convolution
     Example case for w_read_id logic:
       layer_id: [0 1 2 3 4] [5 6 7 8 9]
 
@@ -84,42 +134,109 @@ class AeModule(object):
       else:
         w_read_id = layer_id
 
-      w_name = "w_"+str(w_read_id)
+      name_prefix = "conv_" if conv else "fc_"
+      w_name = name_prefix+"w_"+str(w_read_id)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
 
-      b_name = "b_"+str(layer_id)
-      b = tf.get_variable(name=b_name, shape=w_shape[1],
+      b_name = name_prefix+"b_"+str(layer_id)
+      if conv and decode:
+        b_shape = w_shape[-2]
+      else:
+        b_shape = w_shape[-1]
+      b = tf.get_variable(name=b_name, shape=b_shape,
         dtype=tf.float32, initializer=self.b_init, trainable=True)
 
-      output_tensor = activation_function(tf.add(tf.matmul(input_tensor, w), b))
+      pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
+      output_tensor = activation_function(pre_act)
       output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, w, b
 
-  def build_encoder(self, input_tensor, activation_functions, w_shapes):
-    assert len(activation_functions) == len(w_shapes), (
-      "activation_functions & w_shapes must be the same length")
+  def build_encoder(self, input_tensor, activation_functions):
     enc_u_list = [input_tensor]
     enc_w_list = []
     enc_b_list = []
-    for layer_id in range(len(w_shapes)):
-      u_out, w, b = self.layer_maker(layer_id, enc_u_list[layer_id], activation_functions[layer_id],
-        w_shapes[layer_id])
+    prev_input_features = input_tensor.get_shape().as_list()[-1]
+    # Make conv layers first
+    for layer_id in range(self.num_conv_layers):
+      w_shape = [int(self.patch_size_y[layer_id]), int(self.patch_size_x[layer_id]),
+        int(prev_input_features), int(self.output_channels[layer_id])]
+      u_out, w, b = self.layer_maker(layer_id, enc_u_list[layer_id],
+        activation_functions[layer_id], w_shape, conv=True, decode=False)
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
+      prev_input_features = int(self.output_channels[layer_id])
+
+    # Make fc layers second
+    for fc_layer_id in range(self.num_fc_layers):
+      layer_id = fc_layer_id + self.num_conv_layers
+
+      if fc_layer_id == 0:
+        # Input needs to be reshaped to [batch, num_units] for FC layers
+        enc_shape = enc_u_list[-1].get_shape().as_list()
+        if len(enc_shape) == 4:
+          (batch, y, x, f) = enc_shape
+          prev_input_features = y * x * f # Flatten input (input_tensor or last conv layer)
+          in_tensor  = tf.reshape(enc_u_list[-1], [-1, prev_input_features])
+        elif(len(enc_shape) == 2):
+          in_tensor = enc_u_list[-1]
+        else:
+          assert False, ("Final conv encoder output or input_tensor has incorrect ndim")
+      else:
+        in_tensor = enc_u_list[layer_id]
+
+      w_shape = [int(prev_input_features), int(self.output_channels[layer_id])]
+      u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[layer_id],
+        w_shape, conv=False, decode=False)
+      enc_u_list.append(u_out)
+      enc_w_list.append(w)
+      enc_b_list.append(b)
+      prev_input_features = int(self.output_channels[layer_id])
     return enc_u_list, enc_w_list, enc_b_list
 
-  def build_decoder(self, input_tensor, activation_functions, w_shapes):
-    assert len(activation_functions) == len(w_shapes), (
-      "activation_functions & w_shapes must be the same length")
+  #TODO this decoder is asserting (in module's __init__) that the decoder mirrors the encoder
+  # We would like this to not be true
+  # Also, we currently need enc_u_list and enc_w_list for inferring conv input shapes and w_shape,
+  #  we'd like to compute this in __init__ as self.w_shapes
+  def build_decoder(self, input_tensor, activation_functions):
     dec_u_list = [input_tensor]
     dec_w_list = []
     dec_b_list = []
-    for dec_layer_id in range(len(w_shapes)):
+    # Build FC layers first
+    for dec_layer_id in range(self.num_fc_layers):
       layer_id = self.num_encoder_layers + dec_layer_id
+      #Corresponding enc layer
+      enc_w_id = -(dec_layer_id+1)
+      w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()[::-1]
       u_out, w, b = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
-        activation_functions[dec_layer_id], w_shapes[dec_layer_id])
+        activation_functions[dec_layer_id], w_shape, conv=False, decode=True)
+      dec_u_list.append(u_out)
+      dec_w_list.append(w)
+      dec_b_list.append(b)
+
+    # Build conv layers second
+    for dec_conv_layer_id in range(self.num_conv_layers):
+      dec_layer_id = self.num_fc_layers + dec_conv_layer_id
+      layer_id = self.num_encoder_layers + dec_layer_id
+
+      if dec_conv_layer_id == 0:
+        #Reshape flat vector for next conv
+        u_list_id = -(self.num_fc_layers + 1)
+        enc_shape = self.enc_u_list[u_list_id].get_shape().as_list()
+        if len(enc_shape) == 4:
+          (batch, y, x, f) = self.enc_u_list[u_list_id].get_shape().as_list()
+          in_tensor = tf.reshape(dec_u_list[-1], [-1, y, x, f])
+        else:
+          in_tensor = dec_u_list[-1]
+      else:
+        u_list_id = -(dec_layer_id + 1) # u_list_id is the id for the INPUT of this layer
+        in_tensor = dec_u_list[dec_layer_id]
+
+      enc_w_id = -(dec_layer_id + 1)
+      w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()
+      u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[dec_conv_layer_id],
+        w_shape, conv=True, decode=True)
       dec_u_list.append(u_out)
       dec_w_list.append(w)
       dec_b_list.append(b)
@@ -135,7 +252,9 @@ class AeModule(object):
       self.w_list = []
       self.b_list = []
       enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
-        self.act_funcs[:self.num_encoder_layers], self.w_shapes[:self.num_encoder_layers])
+        self.act_funcs[:self.num_encoder_layers])
+      self.enc_u_list = enc_u_list # TODO: Remove the dependency for these member variables for build_decoder
+      self.enc_w_list = enc_w_list
       self.u_list += enc_u_list
       self.w_list += enc_w_list
       self.b_list += enc_b_list
@@ -144,7 +263,8 @@ class AeModule(object):
         self.a = tf.identity(enc_u_list[-1], name="activity")
 
       dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
-        self.act_funcs[self.num_encoder_layers:], self.w_shapes[self.num_encoder_layers:])
+        self.act_funcs[self.num_encoder_layers:])
+
       self.u_list += dec_u_list
       if not self.tie_decoder_weights:
         self.w_list += dec_w_list
@@ -157,7 +277,4 @@ class AeModule(object):
       with tf.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
-      with tf.variable_scope("loss") as scope:
-        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
-          "weight_decay_loss":self.compute_weight_decay_loss()}
-        self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
+      self.compute_total_loss()

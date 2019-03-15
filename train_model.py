@@ -78,6 +78,8 @@ with tf.Session(config=config, graph=model.graph) as sess:
   for sch_idx, sch in enumerate(params.schedule):
     tot_num_batches += sch["num_batches"]
     model.sched_idx = sch_idx
+    if("train_on_adversarial" not in sch):
+      sch["train_on_adversarial"] = False
     model.log_info("Beginning schedule "+str(sch_idx))
     for b_step in np.arange(sch["num_batches"]):
       data_batch = data["train"].next_batch(params.batch_size)
@@ -90,8 +92,6 @@ with tf.Session(config=config, graph=model.graph) as sess:
       #if("train_on_adversarial" in sch):
       #  if(sch["train_on_adversarial"]):
       #    model.modify_input(feed_dict)
-      if("train_on_adversarial" not in sch):
-        sch["train_on_adversarial"] = False
       model.modify_input(feed_dict, sch["train_on_adversarial"])
 
       batch_t0 = ti.time()
@@ -101,6 +101,10 @@ with tf.Session(config=config, graph=model.graph) as sess:
         model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
         model.generate_plots(input_data=input_data, input_labels=input_labels)
         init = False
+
+      ## Update MLE estimate
+      if hasattr(model, "mle_update"):
+        sess.run(model.mle_update, feed_dict)
 
       ## Update model weights
       sess_run_list = []
@@ -154,8 +158,8 @@ with tf.Session(config=config, graph=model.graph) as sess:
   #TODO: modify_input must be called no matter what to initialize adv_var
   #  should we have a diffferent function for initializing?
   #  also rename modify_input to better reflect what is being done
-  if("train_on_adversarial" not in sch):
-    sch["train_on_adversarial"] = False
+  #if("train_on_adversarial" not in sch):
+  #  sch["train_on_adversarial"] = False
   model.modify_input(feed_dict, sch["train_on_adversarial"])
 
   model.print_update(input_data=input_data, input_labels=input_labels, batch_step=b_step+1)
