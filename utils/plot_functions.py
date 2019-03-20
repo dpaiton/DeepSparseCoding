@@ -381,31 +381,53 @@ def plot_bf_stats(bf_stats, num_bf=2):
   plt.show()
   return fig
 
-def plot_loc_freq_summary(bf_stats):
-  fig, sub_ax = plt.subplots(1, 2, figsize=(10,5))
+def plot_loc_freq_summary(bf_stats, fontsize=16):
+  plt.rc('text', usetex=True)
+  fig = plt.figure(figsize=(15, 5))
+  gs = fig.add_gridspec(1, 3, wspace=0.3)
+  ax = fig.add_subplot(gs[0])
   x_pos = [x for (y,x) in bf_stats["gauss_centers"]]
   y_pos = [y for (y,x) in bf_stats["gauss_centers"]]
-  sub_ax[0].scatter(x_pos, y_pos, color='k', s=10)
-  sub_ax[0].set_xlim([0, bf_stats["patch_edge_size"]-1])
-  sub_ax[0].set_ylim([bf_stats["patch_edge_size"]-1, 0])
-  sub_ax[0].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-  sub_ax[0].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-  sub_ax[0].set_aspect("equal")
-  sub_ax[0].set_ylabel("Pixels")
-  sub_ax[0].set_xlabel("Pixels")
-  sub_ax[0].set_title("Basis Function Centers", fontsize=12)
+  ax.scatter(x_pos, y_pos, color='k', s=10)
+  ax.set_xlim([0, bf_stats["patch_edge_size"]-1])
+  ax.set_ylim([bf_stats["patch_edge_size"]-1, 0])
+  ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  ax.set_aspect("equal")
+  ax.set_ylabel("Pixels", fontsize=fontsize)
+  ax.set_xlabel("Pixels", fontsize=fontsize)
+  ax.set_title("Basis Function Centers", fontsize=fontsize, pad=32)
+  ax = fig.add_subplot(gs[1])
   x_sf = [x for (y,x) in bf_stats["fourier_centers"]]
   y_sf = [y for (y,x) in bf_stats["fourier_centers"]]
   max_sf = np.max(np.abs(x_sf+y_sf))
-  sub_ax[1].scatter(x_sf, y_sf, color='k', s=10)
-  sub_ax[1].set_xlim([-max_sf, max_sf])
-  sub_ax[1].set_ylim([-max_sf, max_sf])
-  sub_ax[1].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-  sub_ax[1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-  sub_ax[1].set_aspect("equal")
-  sub_ax[1].set_ylabel("Cycles / Patch")
-  sub_ax[1].set_xlabel("Cycles / Patch")
-  sub_ax[1].set_title("Basis Function Spatial Frequencies", fontsize=12)
+  ax.scatter(x_sf, y_sf, color='k', s=10)
+  ax.set_xlim([-max_sf, max_sf])
+  ax.set_ylim([-max_sf, max_sf])
+  ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  ax.set_aspect("equal")
+  ax.set_ylabel("Cycles / Patch", fontsize=fontsize)
+  ax.set_xlabel("Cycles / Patch", fontsize=fontsize)
+  ax.set_title("Basis Function Spatial Frequencies", fontsize=fontsize, pad=32)
+  orientations = [(np.pi + orientation)
+    for orientation in bf_stats["ellipse_orientations"]]
+  num_bins = 360
+  bins = np.linspace(-np.pi, np.pi, num_bins)
+  count, bin_edges = np.histogram(orientations, bins)
+  bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
+  bin_centers = bin_left + (bin_right - bin_left)/2
+  ax = fig.add_subplot(gs[2], polar=True)
+  ax.plot(bin_centers, count, linewidth=3, color='k')
+  ax.set_thetamin(0)
+  ax.set_thetamax(360)
+  ax.set_yticks([])
+  ax.set_xticks([0, np.pi/4, 2*np.pi/4, 3*np.pi/4, 4*np.pi/4,
+    5*np.pi/4, 6*np.pi/4, 7*np.pi/4])
+  ax.set_xticklabels([r"0", r"$\frac{\pi}{4}$", r"$\frac{pi}{2}$",
+    r"$\frac{3\pi}{4}$", r"$\pi$", r"$\frac{5\pi}{4}$", r"$\frac{3\pi}{2}$",
+    r"$\frac{7\pi}{4}$"], fontsize=fontsize)
+  ax.set_title("Basis Function Orientaitons", fontsize=fontsize, pad=20)
   plt.show()
   return fig
 
@@ -582,7 +604,7 @@ def plot_bar(data, num_xticks=5, title="", xlabel="", ylabel="", save_filename=N
   plt.show()
   return fig
 
-def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activations):
+def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activations, figsize=(32,32)):
   """
   Generate contrast orientation tuning curves. Every subplot will have curves for each contrast.
   Inputs:
@@ -596,7 +618,7 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
   cmap = plt.get_cmap('Greys')
   cNorm = matplotlib.colors.Normalize(vmin=0.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
-  fig = plt.figure(figsize=(32,32))
+  fig = plt.figure(figsize=figsize)
   num_plots_y = np.int32(np.ceil(np.sqrt(num_bfs)))+1
   num_plots_x = np.int32(np.ceil(np.sqrt(num_bfs)))
   gs_widths = [1.0,]*num_plots_x
