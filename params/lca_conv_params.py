@@ -24,6 +24,7 @@ class params(BaseParams):
     self.whiten_method = "FT"
     self.lpf_data = False # only for ZCA
     self.lpf_cutoff = 0.7
+    self.use_tf_norm = False
     self.extract_patches = False
     self.image_edge_size = 128
     self.batch_size = 25
@@ -128,7 +129,8 @@ class params(BaseParams):
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
       self.batch_size = 12
-      self.standardize_data = True
+      self.standardize_data = False
+      self.tf_standardize_data = True
       self.rescale_data = False
       self.center_data = False
       self.whiten_data = False # True

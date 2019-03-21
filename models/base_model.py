@@ -367,7 +367,14 @@ class Model(object):
       with self.graph.as_default():
         self.input_placeholder = tf.placeholder(tf.float32,
           shape=self.get_input_shape(), name="input_data")
-    return self.input_placeholder
+
+        #Normalize here if using tf_standardize_data
+        if(self.params.tf_standardize_data):
+          out_img = tf.map_fn(lambda img: tf.image.per_image_standardization(img),
+            self.input_placeholder)
+        else:
+          out_img = self.input_placeholder
+    return out_img
 
   def add_step_counter_to_graph(self):
     with tf.device(self.params.device):

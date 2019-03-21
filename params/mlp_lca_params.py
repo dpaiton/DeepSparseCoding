@@ -191,7 +191,8 @@ class params(BaseParams):
 
       self.vectorize_data = False
       self.rescale_data = False
-      self.standardize_data = True
+      self.standardize_data = False
+      self.tf_standardize_data = True
       self.center_data = False
 
       self.whiten_data = False
