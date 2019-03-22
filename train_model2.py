@@ -56,7 +56,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
             #print("model w synth")
             #print(sess.run(model.w_synth))
             
-            if b_step % 200 == 0:
+            if b_step % 10 == 0:
                 print("step: {}".format(b_step))
                 model.print_update(input_data, input_labels, b_step+1)
                 model.generate_plots(input_data, input_labels)
