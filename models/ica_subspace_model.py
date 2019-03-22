@@ -63,9 +63,10 @@ class IcaSubspaceModel(IcaModel):
         with tf.name_scope("inference") as scope:
 #         self.s = tf.matmul(tf.transpose(self.w_analy), self.input_img, name="latent_variables") 
          #self.s = tf.matmul(tf.transpose(self.w_analy), input_node, name="latent_variables") 
-         self.s = tf.matmul(self.w_synth, tf.transpose(input_node), name="latent_variables")
-         self.a = tf.identity(self.s, name="activity")
-         self.z = tf.sign(self.a)
+          self.s = tf.matmul(self.w_synth, tf.transpose(input_node), name="latent_variables")
+          self.a = tf.identity(self.s, name="activity")
+          self.z = tf.sign(self.a)
+         
 
         with tf.name_scope("output") as scope:
           with tf.name_scope("image_estimate"):
@@ -141,6 +142,8 @@ class IcaSubspaceModel(IcaModel):
     stat_dict["latent_vars"] = latent_vars
 
     # get subspace and store them in a list
+    stat_dict["group_sizes"] = self.group_sizes
+    stat_dict["group_index"] = self.group_index
 #    subspaces = []
 #    print("group_index: {}".format(self.group_index))
 #    for g_i in self.group_index: 
@@ -167,10 +170,14 @@ class IcaSubspaceModel(IcaModel):
                     int(np.sqrt(self.params.num_pixels)), 
                     int(np.sqrt(self.params.num_pixels))]
     w_synth_eval = np.reshape(w_synth_eval, weight_shape)
-    w_analy_eval = np.reshape(w_analt_eval, weight_shape)
+    w_analy_eval = np.reshape(w_analy_eval, weight_shape)
     
     # groups
-    
+    subspaces = []
+    #print("group_index: {}".format(self.group_index))
+    #for g_i in self.group_index: 
+    #    subspaces.append(self.get_subspace(w_analy_eval, g_i))
+#   
     
     # activations
     latent_eval = eval_out[2]

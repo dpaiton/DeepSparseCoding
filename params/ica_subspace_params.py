@@ -25,8 +25,8 @@ class params(ica_params):
 
         self.schedule = [
             {"weights": None, 
-             "num_batches": int(1e5),
-             "weight_lr": 1., 
+             "num_batches": int(1e4),
+             "weight_lr": 0.001, 
              "decay_steps": 1,
              "decay_rate": 1.0,
              "staircase": False}
