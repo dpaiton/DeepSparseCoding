@@ -33,7 +33,7 @@ model.setup(params)
 
 # setup tensorflow model
 config = tf.ConfigProto()
-#config.gpu_options.allow_growth = True
+config.gpu_options.allow_growth = True
 
 
 # train model 
