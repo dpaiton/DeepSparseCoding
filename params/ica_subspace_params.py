@@ -23,8 +23,6 @@ class params(ica_params):
         self.lpf_data = False
         self.whiten_method = "PCA"
 
-        self.optimizer = "adam"
-
         self.schedule = [
             {"weights": None, 
              "num_batches": int(1e5),
