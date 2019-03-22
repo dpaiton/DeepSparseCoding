@@ -53,7 +53,10 @@ class IcaSubspaceModel(IcaModel):
 
         with tf.variable_scope("weights") as scope:
           Q, R = np.linalg.qr(np.random.standard_normal(self.w_analysis_shape))
-          self.w_synth = tf.get_variable(name="w_synth", dtype=tf.float32, initializer=Q.astype(np.float32), trainable=True)
+          self.w_synth = tf.get_variable(name="w_synth", 
+                                         dtype=tf.float32, 
+                                         initializer=Q.astype(np.float32), 
+                                         trainable=True)
           self.w_analy = tf.transpose(self.w_synth, name="w_analy")
           self.trainable_variables[self.w_synth.name] = self.w_synth
 
@@ -109,17 +112,42 @@ class IcaSubspaceModel(IcaModel):
     sum_arr = np.float32(sum_arr)
     return sum_arr
 
-  def get_subspace(g):
+  def get_subspace(self, w, g):
     """Return the column vectors in the g-th subspace. """
     num_vec = self.group_sizes[g]
     subspace_index = self.group_index[g]
-    return self.w_synth[:, subspace_index:subspace_index+num_vec]
+    return w[:, subspace_index:subspace_index+num_vec]
 
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     update_dict = super(IcaSubspaceModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    #eval_list = [self.global_step, self]
+    eval_list = [self.global_step, self.w_synth, self.w_analy, self.s, self.reconstruction]
+    stat_dict = {}
+
+    # evaluate values
+    out_vals = tf.get_default_session().run(eval_list, feed_dict)
+    global_step, w_synth, w_analy, latent_vars, recon = out_vals
+
+    # meta info
+    stat_dict["global_step"] = global_step
+    stat_dict["batch_step"] = batch_step 
+
+    # weights
+    stat_dict["w_synth"] = w_synth
+    stat_dict["w_analy"] = w_analy
+    
+    # activations
+    stat_dict["latent_vars"] = latent_vars
+
+    # get subspace and store them in a list
+#    subspaces = []
+#    print("group_index: {}".format(self.group_index))
+#    for g_i in self.group_index: 
+#        subspaces.append(self.get_subspace(g_i))
+#    stat_dict["subspaces"].append(subspaces)
+
+    update_dict.update(stat_dict)
     return update_dict
 
 
@@ -127,7 +155,28 @@ class IcaSubspaceModel(IcaModel):
     super(IcaModel, self).generate_plots(input_data, input_labels)
     ## ADD FUCNITONS
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.w_synth, self.w_analy, self.reconstruction] 
+    eval_list = [self.global_step, self.w_synth, self.w_analy, self.s]
+    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    
+    # step
+    current_step = str(eval_out[0])
+
+    # weights
+    w_synth_eval, w_analy_eval = eval_out[1], eval_out[2]
+    weight_shape = [self.num_neurons, 
+                    int(np.sqrt(self.params.num_pixels)), 
+                    int(np.sqrt(self.params.num_pixels))]
+    w_synth_eval = np.reshape(w_synth_eval, weight_shape)
+    w_analy_eval = np.reshape(w_analt_eval, weight_shape)
+    
+    # groups
+    
+    
+    # activations
+    latent_eval = eval_out[2]
+    
+    
+
   
     
 
