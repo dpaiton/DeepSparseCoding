@@ -38,14 +38,15 @@ class LcaModel(Model):
         with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-        with tf.variable_scope("placeholders") as sess:
-          self.latent_input = tf.placeholder(tf.float32, name="latent_input")
-
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
         with tf.variable_scope("inference") as scope:
           self.a = tf.identity(self.get_encodings(), name="activity")
+
+        with tf.variable_scope("placeholders") as sess:
+          self.latent_input = tf.placeholder(tf.float32, shape=self.a.get_shape().as_list(),
+            name="latent_input")
 
         with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")

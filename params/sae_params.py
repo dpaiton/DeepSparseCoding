@@ -93,8 +93,8 @@ class params(BaseParams):
       self.standardize_data = True
       self.rescale_data = False
 
-      self.cp_int = int(1e5)
-      self.gen_plot_int = int(1e5)
+      self.cp_int = int(1e4)
+      self.gen_plot_int = int(1e4)
       self.batch_size = 100
       self.whiten_data = False
       self.extract_patches = False
@@ -110,9 +110,9 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 0.001
-        self.schedule[sched_idx]["decay_mult"] = 0.02
-        self.schedule[sched_idx]["target_act"] = 0.15
-        self.schedule[sched_idx]["sparse_mult"] = 0.10
+        self.schedule[sched_idx]["decay_mult"] = 0.05
+        self.schedule[sched_idx]["target_act"] = 0.10
+        self.schedule[sched_idx]["sparse_mult"] = 100.0
         self.schedule[sched_idx]["decay_steps"] = int(0.6*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.50
 

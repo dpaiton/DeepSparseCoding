@@ -102,7 +102,9 @@ class params(BaseParams):
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
       self.vectorize_data = False
-      self.rescale_data = True
+      self.rescale_data = False
+      self.standardize_data = False
+      self.tf_standardize_data = True
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
