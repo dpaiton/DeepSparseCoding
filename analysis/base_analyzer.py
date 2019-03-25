@@ -599,6 +599,7 @@ class Analyzer(object):
     phase_stims = self.model.reshape_dataset(phase_stims, self.model_params)
     phase_stims["test"].images /= np.max(np.abs(phase_stims["test"].images))
     phase_stims["test"].images *= scale
+
     # compute_activations will give orientation tuning for whatever outputs are returned model.a
     activations = self.compute_activations(phase_stims["test"].images).reshape(num_neurons,
       num_contrasts, num_orientations, num_phases, tot_num_bfs)
@@ -608,6 +609,7 @@ class Analyzer(object):
     #activations = self.evaluate_model(phase_stims["test"].images,
     #  [var_name])[var_name].reshape(num_neurons, num_contrasts, num_orientations, num_phases,
     #  tot_num_bfs)
+
     for bf_idx, neuron_idx in enumerate(neuron_indices):
       activity_slice = activations[bf_idx, :, :, :, neuron_idx]
       max_responses[bf_idx, ...] = np.max(np.abs(activity_slice), axis=-1)
@@ -674,7 +676,13 @@ class Analyzer(object):
         base_stims = self.model.reshape_dataset(base_stims, self.model_params)
         base_stims["test"].images /= np.max(np.abs(base_stims["test"].images))
         base_stims["test"].images *= scale
+
         base_activity = self.compute_activations(base_stims["test"].images)[:, neuron_idx]
+        #TODO: param for this (see above TODO)
+        #var_name = self.model.module.u_list[1].name
+        #base_activity = self.evaluate_model(base_stims["test"].images,
+        #  [var_name])[var_name][:, neuron_idx]
+
         base_max_responses[bf_idx, bco_idx] = np.max(np.abs(base_activity))
         base_mean_responses[bf_idx, bco_idx] = np.mean(np.abs(base_activity))
         base_rect_responses[bf_idx, 0, bco_idx] = np.mean(np.maximum(0, base_activity))
@@ -695,7 +703,13 @@ class Analyzer(object):
               mask_stims["test"].images *= scale
               test_stims[or_idx, ...] = base_stims["test"].images[:,None,:] + mask_stims["test"].images[None,:,:]
             test_stims = test_stims.reshape(num_orientations*num_phases*num_phases, num_pixels)
+
             test_activity = self.compute_activations(test_stims)[:, neuron_idx]
+            #TODO: param for this (see above TODO)
+            #var_name = self.model.module.u_list[1].name
+            #test_activity = self.evaluate_model(test_stims,
+            #  [var_name])[var_name][:, neuron_idx]
+
             test_activity = np.reshape(test_activity, (num_orientations, num_phases**2))
             # peak-to-trough amplitude is computed across all base & mask phases
             test_max_responses[bf_idx, bco_idx, co_idx, :] = np.max(np.abs(test_activity), axis=1)
