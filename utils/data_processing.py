@@ -1063,6 +1063,6 @@ def cos_similarity(x, y):
     assert x_norm > 0, (
       "Error: input 'x' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, x_norm))
     assert y_norm > 0, (
-      "Error: input 'y' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, x_norm))
+      "Error: input 'y' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, y_norm))
     batch_similarity.append(np.dot(x_vect, y_vect.T) / (y_norm * x_norm))
   return np.stack(batch_similarity, axis=0)
