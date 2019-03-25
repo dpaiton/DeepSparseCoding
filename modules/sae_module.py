@@ -7,8 +7,8 @@ from modules.activations import sigmoid
 
 class SaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides,
-    sparse_mult, decay_mult, target_act, act_funcs, dropout, tie_decoder_weights,
-    variable_scope="sae"):
+    sparse_mult, decay_mult, norm_mult, target_act, act_funcs, dropout, tie_decoder_weights,
+    norm_w_init, variable_scope="sae"):
     """
     Implementation of sparse autoencoder described in Andrew Ng's 2011 Stanford CS294A lecture notes
     Sigmoidal activation function
@@ -18,12 +18,14 @@ class SaeModule(AeModule):
       data_tensor
       output_channels - a list of channels to make, also defines number of layers
       decay_mult -  weight decay multiplier
+      norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       act_funcs - activation functions
       dropout: specifies the keep probability or None
       conv: if True, do convolution
       conv_strides: list of strides for convolution [batch, y, x, channels]
-      patch_y: number of y inputs for convolutional patches
-      patch_x: number of x inputs for convolutional patches
+      patch_size: number of (y, x) inputs for convolutional patches
+      norm_w_init: if True, l2 normalize w_init,
+        reducing over [0] axis on enc and [-1] axis on dec
       variable_scope - specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -31,8 +33,8 @@ class SaeModule(AeModule):
     self.sparse_mult = sparse_mult
     self.target_act = target_act
     super(SaeModule, self).__init__(data_tensor, layer_types, output_channels,
-      patch_size, conv_strides, decay_mult, act_funcs, dropout,
-      tie_decoder_weights, variable_scope)
+      patch_size, conv_strides, decay_mult, norm_mult, act_funcs, dropout,
+      tie_decoder_weights, norm_w_init, variable_scope)
 
   def compute_sparse_loss(self, a_in):
     with tf.variable_scope("unsupervised"):
@@ -53,5 +55,6 @@ class SaeModule(AeModule):
     with tf.variable_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "sparse_loss":self.compute_sparse_loss(self.a),
-        "weight_decay_loss":self.compute_weight_decay_loss()}
+        "weight_decay_loss":self.compute_weight_decay_loss(),
+        "weight_norm_loss":self.compute_weight_norm_loss()}
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")

@@ -36,8 +36,9 @@ class AeModel(Model):
 
   def build_module(self, input_node):
     module = AeModule(input_node, self.params.layer_types, self.params.output_channels,
-      self.params.patch_size, self.params.conv_strides, self.decay_mult, self.act_funcs,
-      self.dropout_keep_probs, self.params.tie_decoder_weights, variable_scope="ae")
+      self.params.patch_size, self.params.conv_strides, self.decay_mult, self.norm_mult,
+      self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights,
+      self.params.norm_w_init, variable_scope="ae")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -45,7 +46,9 @@ class AeModel(Model):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.variable_scope("auto_placeholders") as scope:
+          #TODO: Change decay_mult & norm_mult to w_decay_mult, w_norm_mult
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
+          self.norm_mult = tf.placeholder(tf.float32, shape=(), name="norm_mult")
 
         with tf.variable_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
@@ -54,6 +57,9 @@ class AeModel(Model):
 
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
+
+        with tf.variable_scope("norm_weights") as scope:
+          self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
 
         with tf.variable_scope("inference") as scope:
           self.a = tf.identity(self.module.a, name="activity")

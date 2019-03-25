@@ -40,6 +40,8 @@ class params(BaseParams):
     self.noise_level = 0.01 # variance of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_decoder_weights = False
+    self.norm_weights = False
+    self.norm_w_init = False
     self.optimizer = "adam"
     # MLP Params
     self.train_on_recon = True # if False, train on LCA latent activations
@@ -93,6 +95,7 @@ class params(BaseParams):
       #"train_vae": True,
       #"num_batches": int(3e5),
       #"decay_mult": 0.0,
+      #"norm_mult": 0.0,
       #"kld_mult": 1/self.batch_size,
       #"weight_lr": 0.001,
       #"decay_steps": int(3e5*0.8),
@@ -115,6 +118,7 @@ class params(BaseParams):
       "train_vae": False,
       "num_batches": int(1e4),
       "decay_mult": 0.0,
+      "norm_mult": 0.0,
       "kld_mult": 1/self.batch_size,
       "weight_lr": 0.01,
       "decay_steps": int(1e4*0.8),

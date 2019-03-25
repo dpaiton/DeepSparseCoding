@@ -32,6 +32,7 @@ class params(BaseParams):
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_decoder_weights = False
     self.norm_weights = False
+    self.norm_w_init = False
     self.optimizer = "adam"
     self.cp_int = 1e4
     self.max_cp_to_keep = 1
@@ -44,6 +45,7 @@ class params(BaseParams):
       {"num_batches": int(3e5),
       "weights": None,
       "decay_mult": 0.0,
+      "norm_mult": 0.0,
       "kld_mult": 1.0,
       "weight_lr": 0.0005,
       "decay_steps": int(3e5*0.8),

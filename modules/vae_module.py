@@ -6,22 +6,24 @@ from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides,
-    decay_mult, kld_mult, act_funcs, dropout, tie_decoder_weights, noise_level=0,
-    recon_loss_type="mse", variable_scope="vae"):
+    decay_mult, norm_mult, kld_mult, act_funcs, dropout, tie_decoder_weights, noise_level, recon_loss_type,
+    norm_w_init, variable_scope="vae"):
     """
     Variational Autoencoder module
     Inputs:
       data_tensor
       output_channels [list of ints] A list of channels to make, also defines number of layers
       decay_mult [float] tradeoff multiplier for weight decay loss
+      norm_mult [float] tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       kld_mult [float] tradeoff multiplier for latent variational kld loss
       act_funcs [list of functions] activation functions
       dropout [list of floats] specifies the keep probability or None
       noise_level [float] stddev of noise to be added to the input (for denoising VAE)
       recon_loss_type [str] either "mse" or the cross entropy loss used in Kingma & Welling
       conv_strides [list] list of strides for convolution [batch, y, x, channels]
-      patch_y [list] number of y inputs for convolutional patches
-      patch_x [list] number of x inputs for convolutional patches
+      patch_size: number of (y, x) inputs for convolutional patches
+      norm_w_init: if True, l2 normalize w_init,
+        reducing over [0] axis on enc and [-1] axis on dec
       variable_scope [str] specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -37,7 +39,8 @@ class VaeModule(AeModule):
     self.recon_loss_type = recon_loss_type
     self.kld_mult = kld_mult
     super(VaeModule, self).__init__(data_tensor, layer_types, output_channels, patch_size,
-      conv_strides, decay_mult, act_funcs, dropout, tie_decoder_weights, variable_scope)
+      conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_decoder_weights, norm_w_init,
+      variable_scope)
 
   def compute_recon_loss(self, reconstruction):
     if self.recon_loss_type == "mse":
@@ -130,5 +133,6 @@ class VaeModule(AeModule):
       with tf.variable_scope("loss") as scope:
         self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
           "weight_decay_loss":self.compute_weight_decay_loss(),
+          "weight_norm_loss":self.compute_weight_norm_loss(),
           "latent_loss":self.compute_latent_loss(self.latent_mean_activation, self.latent_std_activation)}
         self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")

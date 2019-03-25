@@ -32,8 +32,8 @@ class MlpSaeModel(MlpModel):
   def build_sae_module(self, input_node):
     module = SaeModule(input_node, self.params.sae_layer_types, self.params.sae_output_channels,
       self.params.sae_patch_size, self.params.sae_conv_strides, self.sparse_mult, self.decay_mult,
-      self.target_act, self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
-      variable_scope="sae")
+      self.norm_mult, self.target_act, self.act_funcs, self.ae_dropout_keep_probs,
+      self.params.tie_decoder_weights, self.params.norm_w_init, variable_scope="sae")
     return module
 
   def build_mlp_module(self, input_node):
@@ -52,6 +52,7 @@ class MlpSaeModel(MlpModel):
           self.label_placeholder = tf.placeholder(tf.float32,
             shape=self.label_shape, name="input_labels")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
+          self.norm_mult = tf.placeholder(tf.float32, shape=(), name="norm_mult")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.target_act = tf.placeholder(tf.float32, shape=(), name="target_act")
           self.train_sae = tf.placeholder(tf.bool, shape=(), name="train_sae")

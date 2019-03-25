@@ -38,6 +38,8 @@ class params(BaseParams):
     self.activation_functions = ["sigmoid", "identity"]
     self.ae_dropout = [1.0]*2*len(self.sae_output_channels)
     self.tie_decoder_weights = False
+    self.norm_weights = False
+    self.norm_w_init = False
     self.optimizer = "adam"
     # MLP Params
     self.train_on_recon = False # if False, train on LCA latent activations
@@ -89,6 +91,7 @@ class params(BaseParams):
       #"train_sae": True,
       #"num_batches": int(3e5),
       #"decay_mult": 0.0,
+      #"norm_mult": 0.0,
       #"sparse_mult": 0.0,
       #"target_act": 0.1,
       #"weight_lr": 0.001,
@@ -103,6 +106,7 @@ class params(BaseParams):
       "train_sae": False,
       "num_batches": int(1e4),
       "decay_mult": 0.0,
+      "norm_mult": 0.0,
       "sparse_mult": 0.01,
       "target_act": 0.1,
       "weight_lr": 0.01,
