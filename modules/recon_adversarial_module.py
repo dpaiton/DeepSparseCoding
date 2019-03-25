@@ -15,7 +15,7 @@ class ReconAdversarialModule(object):
       use_adv_input: Flag to (True) use adversarial ops or (False) passthrough data_tensor
       num_steps: How many adversarial steps to use
       step_size: How big of an adversarial perturbation to use
-      adv_upper_bound: Maximum perturbation size (None to not have a limit)
+      adv_upper_bound: Maximum perturbation size (None to have no limit)
       clip_adv: [bool] If True, clip adversarial images to clip_range
       clip_range: [tuple or list] (min, max) values for adversarial images
       attack_method: [str] "kurakin_targeted", "carlini_targeted"
@@ -26,6 +26,7 @@ class ReconAdversarialModule(object):
     self.input_shape = self.data_tensor.get_shape().as_list()
     self.num_steps = num_steps
     self.step_size = step_size
+    # TODO: This is an upper and lower bound, so max_change is a better name
     self.adv_upper_bound = adv_upper_bound
     self.clip_adv = clip_adv
     self.clip_range = clip_range
@@ -49,20 +50,24 @@ class ReconAdversarialModule(object):
           dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
 
         self.ignore_load_var_list.append(self.adv_var)
-        # TODO:
-        # NOTE: This will get overwritten in build_adversarial_ops
+        # TODO: NOTE: This will get overwritten in build_adversarial_ops
         self.reset = self.adv_var.initializer
 
         # Here, adv_var has a fully dynamic shape. We reshape it to give the variable
         # a semi-dymaic shape (i.e., only batch dimension unknown)
         self.adv_var.set_shape([None,] + self.input_shape[1:])
 
+        # TODO: if self.carlini_change_of_variables:
+        self.ch_adv_var = 0.5 * (tf.tanh(self.adv_var) + 1) - self.data_tensor
         # Clip pertubations by maximum amount of change allowed
         if(self.adv_upper_bound is not None):
           max_pert = tfc.upper_bound(tfc.lower_bound(
-            self.adv_var, -self.adv_upper_bound), self.adv_upper_bound)
+            self.ch_adv_var, -self.adv_upper_bound), self.adv_upper_bound)
+          #max_pert = tfc.upper_bound(tfc.lower_bound(
+          #  self.adv_var, -self.adv_upper_bound), self.adv_upper_bound)
         else:
-          max_pert = self.adv_var
+          max_pert = self.ch_adv_var
+          #max_pert = self.adv_var
 
         self.adv_image = self.data_tensor + max_pert
 
@@ -82,24 +87,44 @@ class ReconAdversarialModule(object):
     with tf.variable_scope(self.variable_scope) as scope:
       self.recon = recon
       with tf.variable_scope("loss") as scope:
-        adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recon))
+
+        """
+        TODO:
+        * When computing gratings wrt weights (e.g. madry defense), you would want to avg or sum across batch, because you want the weights to defend against all of the attacks.
+        * When coputing attacks for a batch, you want to compute the loss for each individual image, and optimize them independently. Otherwise, when you compute the average/sum loss then the gradients can find solutions where some of the images are successful attacks and others are not. The adv losses per image are independent of each other, so the solution for the summed loss might not be the same as the solution for each loss individually. We should do `tf.group([grad(loss(x1),x1), grad(loss(x2), x2), grad(loss(x3), x3), ...])` or we can make the loss `[batch, 1]` instead of a scalar and `tf.gradients` will take care of it? 
+        * The gradient wrt e.g. x0 is not going to be affected by whether there is a sum or not?
+        * update: giving the loss a batch dim does work for attacks, but we still need to build in a fix for the madry defense
+        """
+        adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recon),
+          axis=list(range(1, len(self.adv_var.shape))))
+
         if(self.attack_method == "kurakin_targeted"):
           self.adv_loss = adv_recon_loss
+
         elif(self.attack_method == "carlini_targeted"):
-          input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_var))
-          self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
-          #self.adv_loss =  input_pert_loss + self.recon_mult * adv_recon_loss
+          #input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_var))
+          #input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_var),
+          #  axis=list(range(1, len(self.adv_var.shape))))
+          input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.ch_adv_var),
+            axis=list(range(1, len(self.ch_adv_var.shape))))
+
+          #self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
+          self.adv_loss =  input_pert_loss + self.recon_mult * adv_recon_loss
+
         else:
           assert False, ("attack_method " + self.attack_method +" not recognized. "+
             "Options are \"kurakin_targeted\" or \"carlini_targeted\"")
 
       with tf.variable_scope("optimizer") as scope:
+
         if(self.attack_method == "kurakin_targeted"):
           self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
           self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
+
         elif(self.attack_method == "carlini_targeted"):
-          #self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
-          self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
+          # TODO: optimizers would want lr to be fed in with feed dictionary so that we can change it on the fly
+          self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
+          #self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
           self.adv_grad = self.adv_opt.compute_gradients(
             self.adv_loss, var_list=[self.adv_var])
           self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grad)
@@ -108,6 +133,9 @@ class ReconAdversarialModule(object):
           self.reset = tf.group(initializer_ops + [self.reset])
           # Add adam vars to list of ignore vars
           self.ignore_load_var_list.extend(self.adv_opt.variables())
+
+          #self.adv_grad = -tf.gradients(self.adv_loss, self.adv_var)[0]
+          #self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
 
   def construct_adversarial_examples(self, feed_dict,
     # Optional parameters

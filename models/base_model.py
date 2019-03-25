@@ -30,6 +30,10 @@ class Model(object):
     self.add_initializer_to_graph()
     self.construct_savers()
 
+  def reset_graph(self):
+    self.graph = tf.Graph()
+    self.trainable_variables = TrainableVariableDict()
+
   def check_schedule_type(self, val, target_type, target_len):
     if (type(val) == list):
       assert len(val) == target_len
@@ -189,7 +193,7 @@ class Model(object):
                 staircase=sch["staircase"][w_idx],
                 name="annealing_schedule_"+weight_name)
               sch_lrs.append(learning_rates)
-              if self.params.optimizer == "annealed_sgd":
+              if self.params.optimizer == "annealed_sgd": # TODO: rename to "sgd"
                 optimizer = tf.train.GradientDescentOptimizer(learning_rates,
                   name="grad_optimizer_"+weight_name)
               elif self.params.optimizer == "adam":
