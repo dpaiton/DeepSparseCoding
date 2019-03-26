@@ -7,7 +7,7 @@ import pdb
 class ReconAdversarialModule(object):
   def __init__(self, data_tensor, use_adv_input, num_steps, step_size, adv_upper_bound=None,
     clip_adv=True, clip_range=[0.0, 1.0], attack_method="kurakin_targeted",
-    variable_scope="recon_adversarial"):
+    carlini_change_variable=False, carlini_optimizer="sgd", variable_scope="recon_adversarial"):
     """
     Adversarial module
     Inputs:
@@ -19,6 +19,9 @@ class ReconAdversarialModule(object):
       clip_adv: [bool] If True, clip adversarial images to clip_range
       clip_range: [tuple or list] (min, max) values for adversarial images
       attack_method: [str] "kurakin_targeted", "carlini_targeted"
+      carlini_change_variables: [bool] if True, follow the change of variable recommendation
+        described in carlini & wagner (2017) Section V, subsection B, number 3
+      carlini_optimizer: [str] specifying "sgd" or "adam" for the carlini optimizer
       variable_scope: [str] scope for adv module graph operators
     """
     self.data_tensor = data_tensor
@@ -31,6 +34,8 @@ class ReconAdversarialModule(object):
     self.clip_adv = clip_adv
     self.clip_range = clip_range
     self.attack_method = attack_method
+    self.carlini_change_variable = carlini_change_variable
+    self.carlini_optimizer = carlini_optimizer.lower()
     # List of vars to ignore in savers/loaders
     self.ignore_load_var_list = []
     self.variable_scope = str(variable_scope)
@@ -48,26 +53,24 @@ class ReconAdversarialModule(object):
         # Adversarial pertubation
         self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
           dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
-
         self.ignore_load_var_list.append(self.adv_var)
-        # TODO: NOTE: This will get overwritten in build_adversarial_ops
         self.reset = self.adv_var.initializer
 
         # Here, adv_var has a fully dynamic shape. We reshape it to give the variable
         # a semi-dymaic shape (i.e., only batch dimension unknown)
         self.adv_var.set_shape([None,] + self.input_shape[1:])
 
-        # TODO: if self.carlini_change_of_variables:
-        self.ch_adv_var = 0.5 * (tf.tanh(self.adv_var) + 1) - self.data_tensor
+        if self.carlini_change_variable:
+          self.ch_adv_var = 0.5 * (tf.tanh(self.adv_var) + 1) - self.data_tensor
+        else:
+          self.ch_adv_var = self.adv_var - self.data_tensor
+
         # Clip pertubations by maximum amount of change allowed
         if(self.adv_upper_bound is not None):
           max_pert = tfc.upper_bound(tfc.lower_bound(
             self.ch_adv_var, -self.adv_upper_bound), self.adv_upper_bound)
-          #max_pert = tfc.upper_bound(tfc.lower_bound(
-          #  self.adv_var, -self.adv_upper_bound), self.adv_upper_bound)
         else:
           max_pert = self.ch_adv_var
-          #max_pert = self.adv_var
 
         self.adv_image = self.data_tensor + max_pert
 
@@ -87,7 +90,6 @@ class ReconAdversarialModule(object):
     with tf.variable_scope(self.variable_scope) as scope:
       self.recon = recon
       with tf.variable_scope("loss") as scope:
-
         """
         TODO:
         * When computing gratings wrt weights (e.g. madry defense), you would want to avg or sum across batch, because you want the weights to defend against all of the attacks.
@@ -102,9 +104,6 @@ class ReconAdversarialModule(object):
           self.adv_loss = adv_recon_loss
 
         elif(self.attack_method == "carlini_targeted"):
-          #input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_var))
-          #input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_var),
-          #  axis=list(range(1, len(self.adv_var.shape))))
           input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.ch_adv_var),
             axis=list(range(1, len(self.ch_adv_var.shape))))
 
@@ -116,26 +115,23 @@ class ReconAdversarialModule(object):
             "Options are \"kurakin_targeted\" or \"carlini_targeted\"")
 
       with tf.variable_scope("optimizer") as scope:
-
         if(self.attack_method == "kurakin_targeted"):
           self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
           self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
-
         elif(self.attack_method == "carlini_targeted"):
-          # TODO: optimizers would want lr to be fed in with feed dictionary so that we can change it on the fly
-          self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
-          #self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
-          self.adv_grad = self.adv_opt.compute_gradients(
-            self.adv_loss, var_list=[self.adv_var])
+          if self.carlini_optimizer == "adam":
+            self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
+            # Add adam vars to reset variable
+            initializer_ops = [v.initializer for v in self.adv_opt.variables()]
+            self.reset = tf.group(initializer_ops + [self.reset])
+            # Add adam vars to list of ignore vars
+          elif self.carlini_optimizer == "sgd":
+            self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
+          else:
+            assert False, ("carlini_optimizer must be 'adam' or 'sgd'")
+          self.adv_grad = self.adv_opt.compute_gradients(self.adv_loss, var_list=[self.adv_var])
           self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grad)
-          # Add adam vars to reset variable
-          initializer_ops = [v.initializer for v in self.adv_opt.variables()]
-          self.reset = tf.group(initializer_ops + [self.reset])
-          # Add adam vars to list of ignore vars
           self.ignore_load_var_list.extend(self.adv_opt.variables())
-
-          #self.adv_grad = -tf.gradients(self.adv_loss, self.adv_var)[0]
-          #self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
 
   def construct_adversarial_examples(self, feed_dict,
     # Optional parameters

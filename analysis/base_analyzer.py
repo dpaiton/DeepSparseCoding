@@ -180,7 +180,9 @@ class Analyzer(object):
             adv_upper_bound=self.analysis_params.adversarial_max_change,
             clip_adv=self.analysis_params.adversarial_clip,
             clip_range=self.analysis_params.adversarial_clip_range,
-            attack_method=self.analysis_params.adversarial_attack_method)
+            attack_method=self.analysis_params.adversarial_attack_method,
+            carlini_change_variable=self.analysis_params.carlini_change_variable,
+            carlini_optimizer=self.analysis_params.carlini_optimizer)
 
       self.model.build_graph_from_input(self.recon_adv_module.adv_image)
       with tf.device(self.model.params.device):
