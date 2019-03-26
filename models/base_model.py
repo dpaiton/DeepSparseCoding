@@ -33,6 +33,7 @@ class Model(object):
   def reset_graph(self):
     self.graph = tf.Graph()
     self.trainable_variables = TrainableVariableDict()
+    self.full_model_load_ignore = []
 
   def check_schedule_type(self, val, target_type, target_len):
     if (type(val) == list):
