@@ -48,11 +48,21 @@ class ReconAdversarialModule(object):
         self.adv_target = tf.placeholder(tf.float32, shape=self.input_shape,
           name="adversarial_target_data")
         self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+        if(self.attack_method == "marzi_untargeted"):
+          self.orig_recons = tf.placeholder(tf.float32, shape=self.input_shape,
+            name="orig_recons")
 
       with tf.variable_scope("input_var"):
         # Adversarial pertubation
-        self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
+
+        # Initialize perturbation to zeros
+        #self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
+        #  dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
+
+        # Initialize perturbation to data tensor
+        self.adv_var = tf.Variable(self.data_tensor,
           dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
+
         self.ignore_load_var_list.append(self.adv_var)
         self.reset = self.adv_var.initializer
 
@@ -60,10 +70,13 @@ class ReconAdversarialModule(object):
         # a semi-dymaic shape (i.e., only batch dimension unknown)
         self.adv_var.set_shape([None,] + self.input_shape[1:])
 
-        if self.carlini_change_variable:
-          self.ch_adv_var = 0.5 * (tf.tanh(self.adv_var) + 1) - self.data_tensor
+        if(self.attack_method == "marzi_untargeted"):
+          self.ch_adv_var = (self.adv_var / tf.nn.l2_normalize(self.adv_var)) - self.data_tensor
         else:
-          self.ch_adv_var = self.adv_var - self.data_tensor
+          if(self.carlini_change_variable):
+            self.ch_adv_var = 0.5 * (tf.tanh(self.adv_var) + 1) - self.data_tensor
+          else:
+            self.ch_adv_var = self.adv_var - self.data_tensor
 
         # Clip pertubations by maximum amount of change allowed
         if(self.adv_upper_bound is not None):
@@ -72,23 +85,23 @@ class ReconAdversarialModule(object):
         else:
           max_pert = self.ch_adv_var
 
-        self.adv_image = self.data_tensor + max_pert
+        self.adv_images = self.data_tensor + max_pert
 
         if(self.clip_adv):
-          self.adv_image = tfc.upper_bound(tfc.lower_bound(
-            self.adv_image, self.clip_range[0]), self.clip_range[1])
+          self.adv_images = tfc.upper_bound(tfc.lower_bound(
+            self.adv_images, self.clip_range[0]), self.clip_range[1])
 
       with tf.variable_scope("input_switch"):
         self.adv_switch_input = tf.cond(self.use_adv_input,
-          true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
+          true_fn=lambda: self.adv_images, false_fn=lambda: self.data_tensor,
           strict=True)
 
   def get_adv_input(self):
     return self.adv_switch_input
 
-  def build_adversarial_ops(self, recon):
+  def build_adversarial_ops(self, recons, original_recon=None):
     with tf.variable_scope(self.variable_scope) as scope:
-      self.recon = recon
+      self.recons = recons
       with tf.variable_scope("loss") as scope:
         """
         TODO:
@@ -97,28 +110,27 @@ class ReconAdversarialModule(object):
         * The gradient wrt e.g. x0 is not going to be affected by whether there is a sum or not?
         * update: giving the loss a batch dim does work for attacks, but we still need to build in a fix for the madry defense
         """
-        adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recon),
+        adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recons),
           axis=list(range(1, len(self.adv_var.shape))))
 
         if(self.attack_method == "kurakin_targeted"):
           self.adv_loss = adv_recon_loss
-
         elif(self.attack_method == "carlini_targeted"):
           input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.ch_adv_var),
             axis=list(range(1, len(self.ch_adv_var.shape))))
-
           #self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
           self.adv_loss =  input_pert_loss + self.recon_mult * adv_recon_loss
-
+        elif(self.attack_method == "marzi_untargeted"):
+          self.adv_loss = tf.reduce_sum(tf.abs(self.recons - self.orig_recons))
         else:
           assert False, ("attack_method " + self.attack_method +" not recognized. "+
-            "Options are \"kurakin_targeted\" or \"carlini_targeted\"")
+            "Options are \"kurakin_targeted\", \"carlini_targeted\", or \"marzi_untargeted\"")
 
       with tf.variable_scope("optimizer") as scope:
         if(self.attack_method == "kurakin_targeted"):
           self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
           self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
-        elif(self.attack_method == "carlini_targeted"):
+        else:
           if self.carlini_optimizer == "adam":
             self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
             # Add adam vars to reset variable
@@ -138,6 +150,7 @@ class ReconAdversarialModule(object):
     recon_mult=None, # For carlini attack
     target_generation_method="specified",
     target_images=None,
+    orig_recons=None,
     save_int=None): # Will not save if None
 
     feed_dict = feed_dict.copy()
@@ -153,8 +166,11 @@ class ReconAdversarialModule(object):
       else:
         feed_dict[self.adv_target] = target_images
       feed_dict[self.recon_mult] = recon_mult
+    elif(self.attack_method == "marzi_untargeted"):
+      feed_dict[self.orig_recons] = orig_recons
     else:
-      assert(False)
+      assert False, (
+        "attack method must be 'kurakin_targeted', 'carlini_targeted', or 'marzi_untargeted'")
 
     # If save_int is none, don't save at all
     if(save_int is None):
@@ -164,7 +180,7 @@ class ReconAdversarialModule(object):
     sess = tf.get_default_session()
     sess.run(self.reset, feed_dict=feed_dict)
     # Always store orig image
-    [orig_images, recons, loss] = sess.run([self.data_tensor, self.recon, self.adv_loss],
+    [orig_images, recons, loss] = sess.run([self.data_tensor, self.recons, self.adv_loss],
       feed_dict)
     # Init vals ("adv" is input + perturbation)
     out_dict = {}
@@ -188,7 +204,7 @@ class ReconAdversarialModule(object):
     for step in range(self.num_steps):
       sess.run(self.adv_update_op, feed_dict)
       if((step+1) % save_int == 0):
-        [adv_images, recons, loss] = sess.run([self.adv_image, self.recon, self.adv_loss], feed_dict)
+        [adv_images, recons, loss] = sess.run([self.adv_images, self.recons, self.adv_loss], feed_dict)
         # +1 since this is post update
         # We do this here since we want to store the last step
         out_dict["step"].append(step+1)
@@ -197,11 +213,17 @@ class ReconAdversarialModule(object):
         out_dict["adv_losses"].append(loss)
         out_dict["input_recon_mses"].append(dp.mse(orig_images, recons))
         out_dict["input_adv_mses"].append(dp.mse(orig_images, adv_images))
-        out_dict["target_recon_mses"].append(dp.mse(target_images, recons))
-        out_dict["target_adv_mses"].append(dp.mse(target_images, adv_images))
         out_dict["adv_recon_mses"].append(dp.mse(adv_images, recons))
-        out_dict["target_adv_sim"].append(dp.cos_similarity(target_images, adv_images))
         out_dict["input_adv_sim"].append(dp.cos_similarity(orig_images, adv_images))
-        out_dict["target_pert_sim"].append(dp.cos_similarity(target_images, adv_images-orig_images))
         out_dict["input_pert_sim"].append(dp.cos_similarity(orig_images, adv_images-orig_images))
+        if target_images is not None:
+          out_dict["target_recon_mses"].append(dp.mse(target_images, recons))
+          out_dict["target_adv_mses"].append(dp.mse(target_images, adv_images))
+          out_dict["target_adv_sim"].append(dp.cos_similarity(target_images, adv_images))
+          out_dict["target_pert_sim"].append(dp.cos_similarity(target_images, adv_images-orig_images))
+        else:
+          out_dict["target_recon_mses"].append(None)
+          out_dict["target_adv_mses"].append(None)
+          out_dict["target_adv_sim"].append(None)
+          out_dict["target_pert_sim"].append(None)
     return out_dict

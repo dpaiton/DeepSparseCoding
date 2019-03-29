@@ -184,7 +184,7 @@ class Analyzer(object):
             carlini_change_variable=self.analysis_params.carlini_change_variable,
             carlini_optimizer=self.analysis_params.carlini_optimizer)
 
-      self.model.build_graph_from_input(self.recon_adv_module.adv_image)
+      self.model.build_graph_from_input(self.recon_adv_module.adv_images)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.recon_adv_module.build_adversarial_ops(self.model.reconstruction)
@@ -893,15 +893,18 @@ class Analyzer(object):
     proj_matrix = np.stack([bf1, v], axis=0)
     return proj_matrix, v
 
-  def construct_recon_adversarial_stimulus(self, input_images, target_images):
-    if(self.analysis_params.adversarial_attack_method == "kurakin_targeted"):
+  def construct_recon_adversarial_stimulus(self, input_images, target_images, orig_recons=None):
+    if(self.analysis_params.adversarial_attack_method == "kurakin_targeted" or
+      self.analysis_params.adversarial_attack_method == "marzi_untargeted"):
       #Not using recon_mult here, so set arb value
       self.analysis_params.carlini_recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini_targeted"):
       if(type(self.analysis_params.carlini_recon_mult) is not list):
         self.analysis_params.carlini_recon_mult = [self.analysis_params.carlini_recon_mult]
     else:
-      assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
+      assert False, (
+        "Adversarial attack method must be"
+        +"\"kurakin_targeted\" or \"carlini_targeted\" or \"marzi_untargted\"")
     input_target_mse = dp.mse(input_images, target_images)
     distances = {"input_target_mse":input_target_mse, "input_recon_mses":[],
     "input_adv_mses":[], "target_recon_mses":[],
@@ -921,6 +924,7 @@ class Analyzer(object):
         out_dict = self.recon_adv_module.construct_adversarial_examples(
           feed_dict, recon_mult=r_mult, target_generation_method="specified",
           target_images=target_images,
+          orig_recons=orig_recons,
           save_int=self.analysis_params.adversarial_save_int)
         steps = out_dict["step"]
         distances["input_recon_mses"].append(out_dict["input_recon_mses"])
