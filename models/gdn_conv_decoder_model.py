@@ -101,6 +101,7 @@ class GdnConvDecoderModel(GdnAutoencoderModel):
       with self.graph.as_default():
         with tf.variable_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
+          self.x = self.normalize_input(self.x)
 
         with tf.variable_scope("placeholders") as scope:
           self.w_init_list = [tf.placeholder(tf.float32, shape=w_shape, name="w"+str(w_id))
