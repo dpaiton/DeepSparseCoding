@@ -6,7 +6,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 from skimage.measure import compare_psnr
-from data.dataset import Dataset
 import data.data_selector as ds
 import utils.data_processing as dp
 import utils.plot_functions as pf
@@ -18,18 +17,20 @@ import pandas as pd
 
 #List of models for analysis
 analysis_list = [
-    #MLP on latent
-    ("mlp_lca", "mlp_lca_768_latent_mnist"),
-    ("mlp_lca", "mlp_lca_1568_latent_mnist"),
-    ("mlp_lista", "mlp_lista_5_mnist"),
-    ("mlp_lista", "mlp_lista_20_mnist"),
-    ("mlp_lista", "mlp_lista_50_mnist"),
+    ##MLP on latent
+    #("mlp_lca", "mlp_lca_768_latent_mnist"),
+    #("mlp_lca", "mlp_lca_1568_latent_mnist"),
+    #("mlp_lista", "mlp_lista_5_mnist"),
+    #("mlp_lista", "mlp_lista_20_mnist"),
+    #("mlp_lista", "mlp_lista_50_mnist"),
     #    #MLP on pixels
-    ("mlp_lca", "mlp_lca_768_recon_mnist"),
-    #("mlp_lca", "mlp_lca_1568_recon_mnist"),
-    ("mlp_sae", "mlp_sae_768_recon_mnist"),
-    ("mlp", "mlp_adv_mnist"),
-    ("mlp", "mlp_mnist"),
+    #("mlp_lca", "mlp_lca_768_recon_mnist"),
+    ##("mlp_lca", "mlp_lca_1568_recon_mnist"),
+    #("mlp_sae", "mlp_sae_768_recon_mnist"),
+    #("mlp", "mlp_adv_mnist"),
+    #("mlp", "mlp_mnist"),
+    ("mlp", "mlp_cifar10"),
+    ("mlp_lca", "mlp_lca_conv_recon_cifar10"),
     ]
 
 #colors for analysis_list
@@ -59,15 +60,15 @@ colors = [
 title_font_size = 16
 axes_font_size = 16
 
-#save_info = "analysis_test_carlini_targeted"
+save_info = "analysis_test_carlini_targeted"
 #TODO pick best recon mult for here
-#recon_mult_idx = 4
+recon_mult_idx = 4
 
-#save_info = "analysis_test_kurakin_untargeted"
-save_info = "analysis_test_kurakin_targeted"
+##save_info = "analysis_test_kurakin_untargeted"
+#save_info = "analysis_test_kurakin_targeted"
 recon_mult_idx = 0
 
-construct_heatmap = False
+construct_heatmap = True
 construct_adv_examples = True
 construct_class_mult_tradeoff = False
 construct_over_time = False
@@ -154,8 +155,11 @@ if(construct_heatmap):
 
         #Sanity check, take out after
         if(source_model_idx == target_model_idx):
-          assert(output_table[source_model_idx, target_model_idx] == \
-            source_analyzer.adversarial_adv_accuracy[recon_mult_idx])
+          try:
+            assert(np.abs(output_table[source_model_idx, target_model_idx] -
+              source_analyzer.adversarial_adv_accuracy[recon_mult_idx]) <= 0.01)
+          except:
+            pdb.set_trace()
 
   ##Construct big numpy array to convert to csv
   #csv_out_array = np.concatenate((np.array(header_y)[:, None], output_table), axis=1)
@@ -187,43 +191,75 @@ if construct_adv_examples:
     num_data = analyzer.num_data
 
     #Get adv examples from source
-    adv_examples = analyzer.adversarial_images[recon_mult_idx, -1, ...].reshape(
-      int(num_data),
-      int(np.sqrt(analyzer.model.params.num_pixels)),
-      int(np.sqrt(analyzer.model.params.num_pixels)))
+    #If last dimension is flat
+    #TODO is there a better way to check this?
+    if(len(analyzer.adversarial_images.shape) == 4):
+      adv_examples = analyzer.adversarial_images[recon_mult_idx, -1, ...].reshape(
+        int(num_data),
+        int(np.sqrt(analyzer.model.params.num_pixels)),
+        int(np.sqrt(analyzer.model.params.num_pixels)))
 
-    orig_image = analyzer.adversarial_images[recon_mult_idx, 0, ...].reshape(
-      int(num_data),
-      int(np.sqrt(analyzer.model.params.num_pixels)),
-      int(np.sqrt(analyzer.model.params.num_pixels)))
+      orig_image = analyzer.adversarial_images[recon_mult_idx, 0, ...].reshape(
+        int(num_data),
+        int(np.sqrt(analyzer.model.params.num_pixels)),
+        int(np.sqrt(analyzer.model.params.num_pixels)))
+    else:
+      adv_examples = analyzer.adversarial_images[recon_mult_idx, -1]
+      orig_image = analyzer.adversarial_images[recon_mult_idx, 0]
 
     output = np.argmax(analyzer.adversarial_outputs[recon_mult_idx, -1], axis=-1)
+    orig_output = np.argmax(analyzer.adversarial_outputs[recon_mult_idx, 0], axis=-1)
     pert = adv_examples - orig_image
     imgs.append([pert, adv_examples, output])
 
   for batch_id in range(num_output_batches):
     #Construct img table
-    fig, ax = plt.subplots(len(analysis_list), 4)
+    fig, ax = plt.subplots(len(analysis_list)+1, 4)
     plt.suptitle(analysis_params.save_info)
 
     ax[0, 1].set_title("pert")
     ax[0, 2].set_title("adv_image")
     ax[0, 3].set_title("output_class")
+
+    ax[0, 0].text(1, .5, "orig", horizontalalignment="right", verticalalignment="center")
+
+    orig_img_range = [orig_image[batch_id].min(), orig_image[batch_id].max()]
+    orig_img = (orig_image[batch_id] - orig_image[batch_id].min())/\
+      (orig_image[batch_id].max() - orig_image[batch_id].min())
+    ax[0, 2].imshow(orig_img)
+    orig_output = np.argmax(analyzer.adversarial_outputs[recon_mult_idx, 0, batch_id], axis=-1)
+    ax[0, 3].text(0.5, 0.5, str(orig_output),
+      horizontalalignment="center", verticalalignment="center")
+
+    for i in range(4):
+      pf.clear_axis(ax[0, i])
+
     for model_idx, (model_type, model_name) in enumerate(analysis_list):
-      ax[model_idx, 0].text(1, 0.5, model_name, horizontalalignment="right", verticalalignment="center")
-      pert_img = ax[model_idx, 1].imshow(imgs[model_idx][0][batch_id], cmap="gray")
+      ax[model_idx+1, 0].text(1, 0.5, model_name, horizontalalignment="right", verticalalignment="center")
+      pert_img = imgs[model_idx][0][batch_id]
+      adv_img = imgs[model_idx][1][batch_id]
 
-      cb = fig.colorbar(pert_img, ax=ax[model_idx, 1], aspect=5)
-      tick_locator = ticker.MaxNLocator(nbins=3)
-      cb.locator = tick_locator
-      cb.update_ticks()
+      pert_range = [pert_img.min(), pert_img.max()]
+      pert_img = (pert_img - pert_img.min()) / (pert_img.max() - pert_img.min())
+      adv_range = [adv_img.min(), adv_img.max()]
+      adv_img = (adv_img - adv_img.min()) / (adv_img.max() - adv_img.min())
 
-      ax[model_idx, 2].imshow(imgs[model_idx][1][batch_id], cmap="gray")
-      ax[model_idx, 3].text(0.5, 0.5, str(imgs[model_idx][2][batch_id]),
+      pert_ax = ax[model_idx+1, 1].imshow(pert_img)
+      ax[model_idx+1, 1].set_title("[%4.2f , %4.2f]"% (pert_range[0], pert_range[1]))
+
+      #cb = fig.colorbar(pert_img, ax=ax[model_idx, 1], aspect=5)
+      #tick_locator = ticker.MaxNLocator(nbins=3)
+      #cb.locator = tick_locator
+      #cb.update_ticks()
+
+      ax[model_idx+1, 2].imshow(adv_img)
+      ax[model_idx+1, 2].set_title("[%4.2f , %4.2f]"% (adv_range[0], adv_range[1]))
+
+      ax[model_idx+1, 3].text(0.5, 0.5, str(imgs[model_idx][2][batch_id]),
         horizontalalignment="center", verticalalignment="center")
 
       for i in range(4):
-        pf.clear_axis(ax[model_idx, i])
+        pf.clear_axis(ax[model_idx+1, i])
 
     fig.savefig(outdir+"/adv_class_example_"+analysis_params.save_info+"_batch_" + str(batch_id)+ ".png")
     plt.close("all")
