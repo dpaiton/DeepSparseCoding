@@ -372,13 +372,17 @@ class Model(object):
       with self.graph.as_default():
         self.input_placeholder = tf.placeholder(tf.float32,
           shape=self.get_input_shape(), name="input_data")
+    return self.input_placeholder
 
+  def normalize_input(self, input_node):
+    with tf.device(self.params.device):
+      with self.graph.as_default():
         #Normalize here if using tf_standardize_data
         if(self.params.tf_standardize_data):
           out_img = tf.map_fn(lambda img: tf.image.per_image_standardization(img),
-            self.input_placeholder)
+            input_node)
         else:
-          out_img = self.input_placeholder
+          out_img = input_node
     return out_img
 
   def add_step_counter_to_graph(self):
@@ -391,11 +395,13 @@ class Model(object):
   #will build placeholder first, then call build_graph_from_input
   #Subclasses can overwrite this function to ignore this functionality
   def build_graph(self):
-    self.build_graph_from_input(self.build_input_placeholder())
+    input_node = self.build_input_placeholder()
+    input_node = self.normalize_input(input_node)
+    self.build_graph_from_input(input_node)
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
-    return NotImplementedError
+    raise NotImplementedError
 
   def slice_features(self, input, indices):
     """
