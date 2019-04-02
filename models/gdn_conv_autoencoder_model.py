@@ -183,6 +183,7 @@ class GdnConvAutoencoderModel(GdnAutoencoderModel):
       with self.graph.as_default():
         with tf.variable_scope("auto_placeholders") as scope:
           self.x = tf.placeholder(tf.float32, shape=self.x_shape, name="input_data")
+          self.x = self.normalize_input(self.x)
           self.triangle_centers = tf.placeholder(tf.float32, shape=[self.params.num_triangles],
             name="triangle_centers")
           self.ent_mult = tf.placeholder(tf.float32, shape=(), name="ent_mult")

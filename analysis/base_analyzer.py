@@ -156,7 +156,8 @@ class Analyzer(object):
             attack_method=self.analysis_params.adversarial_attack_method,
             eps=self.model_params.eps)
 
-      self.model.build_graph_from_input(self.class_adv_module.adv_image)
+      input_node = self.model.normalize_input(self.class_adv_module.adv_image)
+      self.model.build_graph_from_input(input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.class_adv_module.build_adversarial_ops(self.model.label_est,
@@ -182,7 +183,8 @@ class Analyzer(object):
             clip_range=self.analysis_params.adversarial_clip_range,
             attack_method=self.analysis_params.adversarial_attack_method)
 
-      self.model.build_graph_from_input(self.recon_adv_module.adv_image)
+      input_node = self.model.normalize_input(self.recon_adv_module.adv_image)
+      self.model.build_graph_from_input(input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.recon_adv_module.build_adversarial_ops(self.model.reconstruction)
