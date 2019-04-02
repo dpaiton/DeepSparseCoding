@@ -60,8 +60,8 @@ class ReconAdversarialModule(object):
         #  dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
 
         # Initialize perturbation to data tensor
-        self.adv_var = tf.Variable(self.data_tensor,
-          dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
+        self.adv_var = tf.Variable(self.data_tensor, dtype=tf.float32, trainable=True,
+          validate_shape=False, name="adv_var")
 
         self.ignore_load_var_list.append(self.adv_var)
         self.reset = self.adv_var.initializer
@@ -71,12 +71,14 @@ class ReconAdversarialModule(object):
         self.adv_var.set_shape([None,] + self.input_shape[1:])
 
         if(self.attack_method == "marzi_untargeted"):
-          self.ch_adv_var = (self.adv_var / tf.nn.l2_normalize(self.adv_var)) - self.data_tensor
+          marzi_adv_var = tf.nn.l2_normalize(self.adv_var)
         else:
-          if(self.carlini_change_variable):
-            self.ch_adv_var = 0.5 * (tf.tanh(self.adv_var) + 1) - self.data_tensor
-          else:
-            self.ch_adv_var = self.adv_var - self.data_tensor
+          marzi_adv_var = self.adv_var
+
+        if(self.carlini_change_variable):
+          self.ch_adv_var = 0.5 * (tf.tanh(marzi_adv_var) + 1) - self.data_tensor
+        else:
+          self.ch_adv_var = marzi_adv_var - self.data_tensor
 
         # Clip pertubations by maximum amount of change allowed
         if(self.adv_upper_bound is not None):
@@ -99,7 +101,7 @@ class ReconAdversarialModule(object):
   def get_adv_input(self):
     return self.adv_switch_input
 
-  def build_adversarial_ops(self, recons, original_recon=None):
+  def build_adversarial_ops(self, recons):
     with tf.variable_scope(self.variable_scope) as scope:
       self.recons = recons
       with tf.variable_scope("loss") as scope:
@@ -121,7 +123,7 @@ class ReconAdversarialModule(object):
           #self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
           self.adv_loss =  input_pert_loss + self.recon_mult * adv_recon_loss
         elif(self.attack_method == "marzi_untargeted"):
-          self.adv_loss = tf.reduce_sum(tf.abs(self.recons - self.orig_recons))
+          self.adv_loss = -tf.reduce_sum(tf.abs(self.recons - self.orig_recons))
         else:
           assert False, ("attack_method " + self.attack_method +" not recognized. "+
             "Options are \"kurakin_targeted\", \"carlini_targeted\", or \"marzi_untargeted\"")
