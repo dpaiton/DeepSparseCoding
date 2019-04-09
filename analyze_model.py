@@ -20,9 +20,9 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = False
+    self.do_evals = True
     # Dictionary fitting
-    self.do_basis_analysis = False
+    self.do_basis_analysis = True
     # LCA Inference analysis
     self.do_inference = False
     # Activity triggered averages
@@ -34,7 +34,7 @@ class params(object):
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
-    self.do_orientation_analysis = False
+    self.do_orientation_analysis = True
     # How many images to use for analysis, patches are generated from these
     self.num_analysis_images = 1000
     # How many input patches to create - only used if model calls for patching
@@ -67,14 +67,16 @@ class params(object):
     self.save_info += "_"+self.adversarial_attack_method
 
     self.adversarial_step_size = 0.001
-    self.adversarial_max_change = 0.3
+    self.adversarial_max_change = 0.1
+    self.carlini_change_variable = True
+    self.adv_optimizer = "sgd"
     #TODO support specified
     self.adversarial_target_method = "random" #Not used if attach_method is untargeted
     self.adversarial_clip = True
     self.adversarial_clip_range = [0.0, 1.0]
-    self.carlini_recon_mult = list(np.arange(.1, 1, .1))
+    self.carlini_recon_mult = list(np.arange(.5, 1, .1))
     #Interval at which to save adversarial examples to the npy file
-    self.adversarial_save_int = 100
+    self.adversarial_save_int = 1000
 
     self.eval_batch_size = 100
 

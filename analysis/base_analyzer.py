@@ -135,18 +135,18 @@ class Analyzer(object):
     """Load model object into analysis object"""
     self.model = mp.get_model(self.model_params.model_type)
 
-  #If build_graph gets called without parameters,
-  #build placeholders call build graph with default input
+  # If build_graph gets called without parameters,
+  # build placeholders call build graph with default input
   def build_graph(self):
-    #We want to overwrite model adversarial params with what we have in analysis
+    # We want to overwrite model adversarial params with what we have in analysis
     if(self.analysis_params.do_class_adversaries):
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.input_node = self.model.build_input_placeholder()
           with tf.variable_scope("placeholders") as scope:
-            #This is a switch used internally to use clean or adv examples
+            # This is a switch used internally to use clean or adv examples
             self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
-          #Building adv module here with adv_params
+          # Building adv module here with adv_params
           self.class_adv_module = ClassAdversarialModule(self.input_node, self.use_adv_input,
             self.model_params.num_classes, self.analysis_params.adversarial_num_steps,
             self.analysis_params.adversarial_step_size,
@@ -155,7 +155,6 @@ class Analyzer(object):
             clip_range=self.analysis_params.adversarial_clip_range,
             attack_method=self.analysis_params.adversarial_attack_method,
             eps=self.model_params.eps)
-
       self.input_node = self.model.normalize_input(self.class_adv_module.adv_image)
       self.model.build_graph_from_input(self.input_node)
       with tf.device(self.model.params.device):
@@ -163,36 +162,34 @@ class Analyzer(object):
           self.class_adv_module.build_adversarial_ops(self.model.label_est,
             model_logits=self.model.get_encodings(),
             loss=self.model.mlp_module.sum_loss)
-      #Add adv module ignore list to model ignore list
+      # Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
-
     elif(self.analysis_params.do_recon_adversaries):
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.input_node = self.model.build_input_placeholder()
           with tf.variable_scope("placeholders") as scope:
-            #This is a switch used internally to use clean or adv examples
+            # This is a switch used internally to use clean or adv examples
             self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
-
-          #Building adv module here with adv_params
-          self.recon_adv_module = ReconAdversarialModule(self.input_node, self.use_adv_input,
-            self.analysis_params.adversarial_num_steps,
-            self.analysis_params.adversarial_step_size,
-            adv_upper_bound=self.analysis_params.adversarial_max_change,
+          self.recon_adv_module = ReconAdversarialModule(
+            data_tensor=self.input_node,
+            use_adv_input=self.use_adv_input,
+            num_steps=self.analysis_params.adversarial_num_steps,
+            step_size=self.analysis_params.adversarial_step_size,
+            max_adv_change=self.analysis_params.adversarial_max_change,
             clip_adv=self.analysis_params.adversarial_clip,
             clip_range=self.analysis_params.adversarial_clip_range,
             attack_method=self.analysis_params.adversarial_attack_method,
             carlini_change_variable=self.analysis_params.carlini_change_variable,
-            carlini_optimizer=self.analysis_params.carlini_optimizer)
-
+            adv_optimizer=self.analysis_params.adv_optimizer)
+      # Add adv module ops to the graph by passing the module outputs to the model graph as input
       self.input_node = self.model.normalize_input(self.recon_adv_module.adv_images)
       self.model.build_graph_from_input(self.input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
-          self.recon_adv_module.build_adversarial_ops(self.model.reconstruction)
-      #Add adv module ignore list to model ignore list
+          self.recon_adv_module.build_adversarial_ops(self.model.reconstruction)#, self.model.a)
+      # Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.recon_adv_module.ignore_load_var_list)
-
     else:
       self.model.build_graph()
 
@@ -895,10 +892,10 @@ class Analyzer(object):
     proj_matrix = np.stack([bf1, v], axis=0)
     return proj_matrix, v
 
-  def construct_recon_adversarial_stimulus(self, input_images, target_images, orig_recons=None):
+  def construct_recon_adversarial_stimulus(self, input_images, target_images):
     if(self.analysis_params.adversarial_attack_method == "kurakin_targeted" or
       self.analysis_params.adversarial_attack_method == "marzi_untargeted"):
-      #Not using recon_mult here, so set arb value
+      #Not using recon_mult here, so set arbitrary value
       self.analysis_params.carlini_recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini_targeted"):
       if(type(self.analysis_params.carlini_recon_mult) is not list):
@@ -912,7 +909,7 @@ class Analyzer(object):
     "input_adv_mses":[], "target_recon_mses":[],
     "target_adv_mses":[], "adv_recon_mses":[], "target_adv_cos_similarities":[],
     "input_adv_cos_similarities":[], "target_pert_cos_similarities": [],
-    "input_pert_cos_similarities":[]}
+    "input_pert_cos_similarities":[], "adv_loss":[]}
     steps=None
     all_adversarial_images = []
     all_recons = []
@@ -926,9 +923,10 @@ class Analyzer(object):
         out_dict = self.recon_adv_module.construct_adversarial_examples(
           feed_dict, recon_mult=r_mult, target_generation_method="specified",
           target_images=target_images,
-          orig_recons=orig_recons,
+          #selection_vector=self.analysis_params.selection_vector,
           save_int=self.analysis_params.adversarial_save_int)
         steps = out_dict["step"]
+        distances["adv_loss"].append(out_dict["adv_loss"])
         distances["input_recon_mses"].append(out_dict["input_recon_mses"])
         distances["input_adv_mses"].append(out_dict["input_adv_mses"])
         distances["target_recon_mses"].append(out_dict["target_recon_mses"])
@@ -1051,7 +1049,6 @@ class Analyzer(object):
 
   def construct_class_adversarial_stimulus(self, input_images, input_labels,
     target_labels):
-
     if(self.analysis_params.adversarial_attack_method == "kurakin_untargeted"):
       assert(target_labels is not None)
       #Not using recon_mult here, so set arb value
@@ -1066,32 +1063,27 @@ class Analyzer(object):
     else:
       assert False, ("Adversarial attack method must be "+\
         "\"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
-
     mses = {"input_adv_mses":[], "target_output_losses":[]}
     steps = None
     all_adv_images = []
     all_adv_outputs = []
-
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(input_images, input_labels, is_test=True)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
-
       for r_mult in self.analysis_params.carlini_recon_mult:
         out_dict = self.class_adv_module.construct_adversarial_examples(
           feed_dict, labels=input_labels, recon_mult=r_mult,
           rand_state=self.rand_state, target_generation_method="specified",
           target_labels=target_labels,
           save_int=self.analysis_params.adversarial_save_int)
-
         steps = out_dict["step"]
         all_adv_images.append(out_dict["adv_images"])
         all_adv_outputs.append(out_dict["adv_outputs"])
         mses["input_adv_mses"].append(out_dict["input_adv_mses"])
         mses["target_output_losses"].append(out_dict["adv_losses"])
-
     return steps, all_adv_images, all_adv_outputs, mses
 
   def class_adversary_analysis(self, images, labels, batch_size=1, input_id=None,

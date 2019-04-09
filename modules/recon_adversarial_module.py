@@ -5,9 +5,9 @@ import utils.data_processing as dp
 import pdb
 
 class ReconAdversarialModule(object):
-  def __init__(self, data_tensor, use_adv_input, num_steps, step_size, adv_upper_bound=None,
+  def __init__(self, data_tensor, use_adv_input, num_steps, step_size, max_adv_change=None,
     clip_adv=True, clip_range=[0.0, 1.0], attack_method="kurakin_targeted",
-    carlini_change_variable=False, carlini_optimizer="sgd", variable_scope="recon_adversarial"):
+    carlini_change_variable=False, adv_optimizer="sgd", variable_scope="recon_adversarial"):
     """
     Adversarial module
     Inputs:
@@ -15,13 +15,14 @@ class ReconAdversarialModule(object):
       use_adv_input: Flag to (True) use adversarial ops or (False) passthrough data_tensor
       num_steps: How many adversarial steps to use
       step_size: How big of an adversarial perturbation to use
-      adv_upper_bound: Maximum perturbation size (None to have no limit)
+      max_adv_change: Maximum perturbation size (None to have no limit)
       clip_adv: [bool] If True, clip adversarial images to clip_range
       clip_range: [tuple or list] (min, max) values for adversarial images
-      attack_method: [str] "kurakin_targeted", "carlini_targeted"
+      attack_method: [str] allowed values are:
+        "kurakin_targeted", "carlini_targeted", "marzi_untargeted", "marzi_latent"
       carlini_change_variables: [bool] if True, follow the change of variable recommendation
         described in carlini & wagner (2017) Section V, subsection B, number 3
-      carlini_optimizer: [str] specifying "sgd" or "adam" for the carlini optimizer
+      adv_optimizer: [str] specifying "sgd" or "adam" for the carlini optimizer
       variable_scope: [str] scope for adv module graph operators
     """
     self.data_tensor = data_tensor
@@ -30,12 +31,12 @@ class ReconAdversarialModule(object):
     self.num_steps = num_steps
     self.step_size = step_size
     # TODO: This is an upper and lower bound, so max_change is a better name
-    self.adv_upper_bound = adv_upper_bound
+    self.max_adv_change = max_adv_change
     self.clip_adv = clip_adv
     self.clip_range = clip_range
     self.attack_method = attack_method
     self.carlini_change_variable = carlini_change_variable
-    self.carlini_optimizer = carlini_optimizer.lower()
+    self.adv_optimizer = adv_optimizer.lower()
     # List of vars to ignore in savers/loaders
     self.ignore_load_var_list = []
     self.variable_scope = str(variable_scope)
@@ -55,12 +56,14 @@ class ReconAdversarialModule(object):
       with tf.variable_scope("input_var"):
         # Adversarial pertubation
 
-        # Initialize perturbation to zeros
-        #self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
-        #  dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
-
         # Initialize perturbation to data tensor
-        self.adv_var = tf.Variable(self.data_tensor, dtype=tf.float32, trainable=True,
+        adv_init = tf.identity(self.data_tensor)
+        if(self.carlini_change_variable):
+          # adv_init is the inverse of the change-of-variable, so that the final pert init is 0
+          adv_init = 2 * adv_init - 1 # Map adv_init to be between -1 and 1
+          adv_init = 0.5 * tf.log((1 + adv_init) / (1 - adv_init)) # tanh^-1(x)
+
+        self.adv_var = tf.Variable(adv_init, dtype=tf.float32, trainable=True,
           validate_shape=False, name="adv_var")
 
         self.ignore_load_var_list.append(self.adv_var)
@@ -70,24 +73,19 @@ class ReconAdversarialModule(object):
         # a semi-dymaic shape (i.e., only batch dimension unknown)
         self.adv_var.set_shape([None,] + self.input_shape[1:])
 
-        if(self.attack_method == "marzi_untargeted"):
-          marzi_adv_var = tf.nn.l2_normalize(self.adv_var)
-        else:
-          marzi_adv_var = self.adv_var
-
         if(self.carlini_change_variable):
-          self.ch_adv_var = 0.5 * (tf.tanh(marzi_adv_var) + 1) - self.data_tensor
+          carlini_change_pert = 0.5 * (tf.tanh(self.adv_var) + 1) - self.data_tensor
         else:
-          self.ch_adv_var = marzi_adv_var - self.data_tensor
+          carlini_change_pert = self.adv_var - self.data_tensor
 
         # Clip pertubations by maximum amount of change allowed
-        if(self.adv_upper_bound is not None):
-          max_pert = tfc.upper_bound(tfc.lower_bound(
-            self.ch_adv_var, -self.adv_upper_bound), self.adv_upper_bound)
+        if(self.max_adv_change is not None):
+          self.clipped_pert = tfc.upper_bound(tfc.lower_bound(
+            carlini_change_pert, -self.max_adv_change), self.max_adv_change)
         else:
-          max_pert = self.ch_adv_var
+          self.clipped_pert = carlini_change_pert
 
-        self.adv_images = self.data_tensor + max_pert
+        self.adv_images = self.clipped_pert + self.data_tensor
 
         if(self.clip_adv):
           self.adv_images = tfc.upper_bound(tfc.lower_bound(
@@ -95,8 +93,7 @@ class ReconAdversarialModule(object):
 
       with tf.variable_scope("input_switch"):
         self.adv_switch_input = tf.cond(self.use_adv_input,
-          true_fn=lambda: self.adv_images, false_fn=lambda: self.data_tensor,
-          strict=True)
+          true_fn=lambda:self.adv_images, false_fn=lambda:self.data_tensor, strict=True)
 
   def get_adv_input(self):
     return self.adv_switch_input
@@ -112,49 +109,56 @@ class ReconAdversarialModule(object):
         * The gradient wrt e.g. x0 is not going to be affected by whether there is a sum or not?
         * update: giving the loss a batch dim does work for attacks, but we still need to build in a fix for the madry defense
         """
-        adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recons),
-          axis=list(range(1, len(self.adv_var.shape))))
+        #adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recons),
+        #  axis=list(range(1, len(self.adv_var.shape))))
+        adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recons))
 
         if(self.attack_method == "kurakin_targeted"):
           self.adv_loss = adv_recon_loss
+
         elif(self.attack_method == "carlini_targeted"):
-          input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.ch_adv_var),
-            axis=list(range(1, len(self.ch_adv_var.shape))))
+          #input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.clipped_pert),
+          #  axis=list(range(1, len(self.clipped_pert.shape))))
+          input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.clipped_pert))
+
           #self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
           self.adv_loss =  input_pert_loss + self.recon_mult * adv_recon_loss
+
         elif(self.attack_method == "marzi_untargeted"):
-          self.adv_loss = -tf.reduce_sum(tf.abs(self.recons - self.orig_recons))
+          # optimizer uses grad descent, so we need negative loss to maximize
+          # add eps to avoid 0 solution
+          self.adv_loss = -tf.reduce_sum(tf.sqrt(tf.square(self.recons - self.orig_recons + 1e-12)))
+
         else:
           assert False, ("attack_method " + self.attack_method +" not recognized. "+
             "Options are \"kurakin_targeted\", \"carlini_targeted\", or \"marzi_untargeted\"")
 
       with tf.variable_scope("optimizer") as scope:
-        if(self.attack_method == "kurakin_targeted"):
-          self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
-          self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
+        if(self.adv_optimizer == "adam"):
+          self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
+          # code below ensures that adam variables are also reset when the reset op is run
+          initializer_ops = [v.initializer for v in self.adv_opt.variables()]
+          self.reset = tf.group(initializer_ops + [self.reset])
+        elif(self.adv_optimizer == "sgd"):
+          self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
         else:
-          if self.carlini_optimizer == "adam":
-            self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
-            # Add adam vars to reset variable
-            initializer_ops = [v.initializer for v in self.adv_opt.variables()]
-            self.reset = tf.group(initializer_ops + [self.reset])
-            # Add adam vars to list of ignore vars
-          elif self.carlini_optimizer == "sgd":
-            self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
-          else:
-            assert False, ("carlini_optimizer must be 'adam' or 'sgd'")
-          self.adv_grad = self.adv_opt.compute_gradients(self.adv_loss, var_list=[self.adv_var])
-          self.adv_update_op = self.adv_opt.apply_gradients(self.adv_grad)
-          self.ignore_load_var_list.extend(self.adv_opt.variables())
+          assert False, ("adv_optimizer must be 'adam' or 'sgd'")
+
+        adv_grads_and_vars = self.adv_opt.compute_gradients(self.adv_loss, var_list=[self.adv_var])
+        if(self.attack_method == "kurakin_targeted"):
+          adv_grads_and_vars = [(tf.sign(gv[0]), gv[1]) for gv in adv_grads_and_vars]
+
+        self.adv_update_op = self.adv_opt.apply_gradients(adv_grads_and_vars)
+
+        # add optimizer vars to ignore list because the graph was not checkpointed with them
+        self.ignore_load_var_list.extend(self.adv_opt.variables())
 
   def construct_adversarial_examples(self, feed_dict,
     # Optional parameters
     recon_mult=None, # For carlini attack
     target_generation_method="specified",
     target_images=None,
-    orig_recons=None,
     save_int=None): # Will not save if None
-
     feed_dict = feed_dict.copy()
     feed_dict[self.use_adv_input] = True
     if(self.attack_method == "kurakin_targeted"):
@@ -168,28 +172,23 @@ class ReconAdversarialModule(object):
       else:
         feed_dict[self.adv_target] = target_images
       feed_dict[self.recon_mult] = recon_mult
-    elif(self.attack_method == "marzi_untargeted"):
-      feed_dict[self.orig_recons] = orig_recons
-    else:
-      assert False, (
-        "attack method must be 'kurakin_targeted', 'carlini_targeted', or 'marzi_untargeted'")
-
     # If save_int is none, don't save at all
     if(save_int is None):
       save_int = self.num_steps + 1
-
     # Reset input to orig image
     sess = tf.get_default_session()
     sess.run(self.reset, feed_dict=feed_dict)
     # Always store orig image
-    [orig_images, recons, loss] = sess.run([self.data_tensor, self.recons, self.adv_loss],
-      feed_dict)
+    [orig_images, recons] = sess.run([self.data_tensor, self.recons], feed_dict)
+    if(self.attack_method == "marzi_untargeted"):
+      feed_dict[self.orig_recons] = recons
+    loss = sess.run(self.adv_loss, feed_dict)
     # Init vals ("adv" is input + perturbation)
     out_dict = {}
     out_dict["step"] = [0]
     out_dict["adv_images"] = [orig_images]
     out_dict["adv_recons"] = [recons]
-    out_dict["adv_losses"] = [loss]
+    out_dict["adv_loss"] = [loss]
     # Mean Squared Error between different images of interest
     out_dict["input_recon_mses"] = [dp.mse(orig_images, recons)]
     out_dict["input_adv_mses"] = [dp.mse(orig_images, orig_images)]
@@ -201,28 +200,34 @@ class ReconAdversarialModule(object):
     out_dict["input_adv_sim"] = [dp.cos_similarity(orig_images, orig_images)]
     out_dict["target_pert_sim"] = []
     out_dict["input_pert_sim"] = []
-
     # Calculate adversarial examples
     for step in range(self.num_steps):
       sess.run(self.adv_update_op, feed_dict)
       if((step+1) % save_int == 0):
-        [adv_images, recons, loss] = sess.run([self.adv_images, self.recons, self.adv_loss], feed_dict)
+        run_list = [self.adv_images, self.recons, self.adv_loss, self.clipped_pert]
+        [adv_images, recons, loss, perturbations] = sess.run(run_list, feed_dict)
         # +1 since this is post update
         # We do this here since we want to store the last step
         out_dict["step"].append(step+1)
         out_dict["adv_images"].append(adv_images)
         out_dict["adv_recons"].append(recons)
-        out_dict["adv_losses"].append(loss)
+        out_dict["adv_loss"].append(loss)
         out_dict["input_recon_mses"].append(dp.mse(orig_images, recons))
         out_dict["input_adv_mses"].append(dp.mse(orig_images, adv_images))
         out_dict["adv_recon_mses"].append(dp.mse(adv_images, recons))
         out_dict["input_adv_sim"].append(dp.cos_similarity(orig_images, adv_images))
-        out_dict["input_pert_sim"].append(dp.cos_similarity(orig_images, adv_images-orig_images))
+        if not np.all(perturbations == 0):
+          out_dict["input_pert_sim"].append(dp.cos_similarity(orig_images, perturbations))
+        else:
+          out_dict["input_pert_sim"].append(None)
         if target_images is not None:
           out_dict["target_recon_mses"].append(dp.mse(target_images, recons))
           out_dict["target_adv_mses"].append(dp.mse(target_images, adv_images))
           out_dict["target_adv_sim"].append(dp.cos_similarity(target_images, adv_images))
-          out_dict["target_pert_sim"].append(dp.cos_similarity(target_images, adv_images-orig_images))
+          if not np.all(perturbations == 0):
+            out_dict["target_pert_sim"].append(dp.cos_similarity(target_images, perturbations))
+          else:
+            out_dict["target_pert_sim"].append(None)
         else:
           out_dict["target_recon_mses"].append(None)
           out_dict["target_adv_mses"].append(None)
