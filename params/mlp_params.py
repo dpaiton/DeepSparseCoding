@@ -23,8 +23,8 @@ class params(BaseParams):
     self.vectorize_data = False
     self.batch_size = 100
     self.num_classes = 10
-    self.layer_types = ["conv", "fc"]
-    self.output_channels = [300, self.num_classes]
+    self.mlp_layer_types = ["conv", "fc"]
+    self.mlp_output_channels = [300, self.num_classes]
     self.patch_size = [(8, 8)]
     self.conv_strides = [(1,1,1,1)]
     self.num_val = 10000
@@ -87,8 +87,8 @@ class params(BaseParams):
       self.gen_plot_int = 1e3
       self.num_classes = 10
       self.optimizer = "adam"
-      self.layer_types = ["conv", "conv", "fc", "fc"]
-      self.output_channels = [32, 64, 1024, self.num_classes]
+      self.mlp_layer_types = ["conv", "conv", "fc", "fc"]
+      self.mlp_output_channels = [32, 64, 1024, self.num_classes]
       self.patch_size = [(5, 5), (5, 5)]
       self.conv_strides = [(1,1,1,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None]
@@ -119,12 +119,12 @@ class params(BaseParams):
       self.gen_plot_int = 1e3
       self.num_classes = 10
       self.optimizer = "adam"
-      self.layer_types = ["conv", "conv", "fc", "fc", "fc"]
+      self.mlp_layer_types = ["conv", "conv", "fc", "fc", "fc"]
       #TF model does lrn after pool in conv1, lrn before pool in conv2
       #TODO test if this matters
       #String can be post or pre, depending on applying LRN before or after pooling
       self.lrn = ["post", "post", None, None, None]
-      self.output_channels = [64, 64, 384, 192, self.num_classes]
+      self.mlp_output_channels = [64, 64, 384, 192, self.num_classes]
       self.patch_size = [(5, 5), (5, 5)]
       self.conv_strides = [(1,1,1,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None, None]
@@ -147,7 +147,7 @@ class params(BaseParams):
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
       self.num_classes = 2
-      self.output_channels[-1] = self.num_classes
+      self.mlp_output_channels[-1] = self.num_classes
 
     else:
       assert False, ("Data type "+data_type+" is not supported.")
@@ -160,8 +160,8 @@ class params(BaseParams):
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.output_channels = [20]+[self.output_channels[-1]]
-    self.layer_types = ["conv", "fc"]
+    self.mlp_output_channels = [20]+[self.mlp_output_channels[-1]]
+    self.mlp_layer_types = ["conv", "fc"]
     self.patch_size = [(2, 2)]
     self.conv_strides = [(1,1,1,1)]
     self.batch_norm = [None, None]

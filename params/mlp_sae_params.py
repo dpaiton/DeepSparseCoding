@@ -5,8 +5,6 @@ class params(BaseParams):
   def __init__(self):
     """
     Additional modifiable parameters:
-      batch_size   [int] Number of images in a training batch
-      num_neurons  [int] Number of LCA neurons
     """
     super(params, self).__init__()
     self.model_type = "mlp_sae"
@@ -18,6 +16,7 @@ class params(BaseParams):
     self.rescale_data = False
     self.center_data = False
     self.standardize_data = False
+    self.tf_standardize_data = False
     self.contrast_normalize = False
     self.whiten_data = True
     self.whiten_method = "FT"
@@ -42,7 +41,7 @@ class params(BaseParams):
     self.norm_w_init = False
     self.optimizer = "adam"
     # MLP Params
-    self.train_on_recon = False # if False, train on LCA latent activations
+    self.train_on_recon = False # if False, train on SAE latent activations
     self.num_val = 10000
     self.num_labeled = 50000
     self.num_classes = 10
@@ -134,7 +133,7 @@ class params(BaseParams):
       self.cp_int = 1e3
       self.gen_plot_int = 1e5
       self.cp_load = True
-      self.train_on_recon = False # if False, train on LCA latent activations
+      self.train_on_recon = False # if False, train on SAE latent activations
       # MLP params
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
