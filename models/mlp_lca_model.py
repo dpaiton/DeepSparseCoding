@@ -34,6 +34,14 @@ class MlpLcaModel(MlpModel):
         self.params.num_steps, self.params.eps)
     return module
 
+  def build_mlp_module(self, input_node):
+    module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
+      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+      self.params.mlp_patch_size, self.params.mlp_conv_strides, self.params.eps,
+      lrn=self.params.lrn, loss_type="softmax_cross_entropy")
+    return module
+
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
@@ -57,15 +65,15 @@ class MlpLcaModel(MlpModel):
         self.trainable_variables.update(self.lca_module.trainable_variables)
 
         if self.params.train_on_recon:
-          if self.params.layer_types[0] == "conv":
+          if self.params.mlp_layer_types[0] == "conv":
             data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
             mlp_input = tf.reshape(self.lca_module.reconstruction, shape=data_shape)
-          elif self.params.layer_types[0] == "fc":
+          elif self.params.mlp_layer_types[0] == "fc":
             mlp_input = self.lca_module.reconstruction
           else:
-            assert False, ("params.layer_types must be 'fc' or 'conv'")
+            assert False, ("params.mlp_layer_types must be 'fc' or 'conv'")
         else: # train on LCA latent encoding
-          assert self.params.layer_types[0] == "fc", (
+          assert self.params.mlp_layer_types[0] == "fc", (
             "MLP must have FC layers to train on LCA activity")
           mlp_input = self.lca_module.a
 
@@ -206,7 +214,6 @@ class MlpLcaModel(MlpModel):
 
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
-    weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     #Scale image by max and min of images and/or recon
     r_max = np.max([np.max(input_data), np.max(recon)])
     r_min = np.min([np.min(input_data), np.min(recon)])
@@ -223,8 +230,10 @@ class MlpLcaModel(MlpModel):
     fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
       save_filename=self.params.disp_dir+"lca_act_hist"+filename_suffix)
 
-    if(len(weights.shape) == 4):
+    if(len(weights.shape) == 4): # conv
       weights = np.transpose(weights, (0, 2, 3, 1))
+    else: # fc
+      weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=self.params.disp_dir+"phi"+filename_suffix)

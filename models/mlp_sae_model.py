@@ -135,7 +135,7 @@ class MlpSaeModel(MlpModel):
       self.pSNRdB]
 
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    recon_loss, sparse_loss, vae_a_vals, recon, pSNRdB\
+    recon_loss, sparse_loss, sae_a_vals, recon, pSNRdB\
       = out_vals[0:5]
 
     input_max = np.max(input_data)
@@ -144,18 +144,18 @@ class MlpSaeModel(MlpModel):
     recon_max = np.max(recon)
     recon_mean = np.mean(recon)
     recon_min = np.min(recon)
-    vae_a_vals_max = np.array(vae_a_vals.max())
-    vae_a_vals_mean = np.array(vae_a_vals.mean())
-    vae_a_vals_min = np.array(vae_a_vals.min())
-    vae_a_frac_act = np.array(np.count_nonzero(vae_a_vals)
-      / float(vae_a_vals.size))
+    sae_a_vals_max = np.array(sae_a_vals.max())
+    sae_a_vals_mean = np.array(sae_a_vals.mean())
+    sae_a_vals_min = np.array(sae_a_vals.min())
+    sae_a_frac_act = np.array(np.count_nonzero(sae_a_vals)
+      / float(sae_a_vals.size))
 
     stat_dict = {
-      "vae_recon_loss":recon_loss,
-      "vae_sparse_loss":sparse_loss,
+      "sae_recon_loss":recon_loss,
+      "sae_sparse_loss":sparse_loss,
       "pSNRdB": np.mean(pSNRdB),
-      "vae_a_fraction_active":vae_a_frac_act,
-      "vae_a_max_mean_min":[vae_a_vals_max, vae_a_vals_mean, vae_a_vals_min],
+      "sae_a_fraction_active":sae_a_frac_act,
+      "sae_a_max_mean_min":[sae_a_vals_max, sae_a_vals_mean, sae_a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
     update_dict.update(stat_dict) #stat_dict overwrites for same keys
@@ -177,7 +177,7 @@ class MlpSaeModel(MlpModel):
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
-    weights, recon, vae_activity = eval_out[1:]
+    weights, recon, sae_activity = eval_out[1:]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
       save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     fig = pf.plot_activity_hist(recon, title="Recon Histogram",
@@ -195,8 +195,8 @@ class MlpSaeModel(MlpModel):
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=self.params.disp_dir+"recons"+filename_suffix)
-    fig = pf.plot_activity_hist(vae_activity, title="VAE Activity Histogram",
-      save_filename=self.params.disp_dir+"vae_act_hist"+filename_suffix)
+    fig = pf.plot_activity_hist(sae_activity, title="SAE Activity Histogram",
+      save_filename=self.params.disp_dir+"sae_act_hist"+filename_suffix)
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=self.params.disp_dir+"phi"+filename_suffix)

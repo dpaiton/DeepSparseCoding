@@ -61,8 +61,8 @@ class MlpModel(Model):
     self.full_model_load_ignore.extend(self.adv_module.ignore_load_var_list)
 
   def build_mlp_module(self, input_node):
-    module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
-      self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
+    module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
+      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size, self.params.conv_strides, self.params.eps, lrn=self.params.lrn,
       loss_type="softmax_cross_entropy")
@@ -222,7 +222,7 @@ class MlpModel(Model):
       save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
 
     w_enc = eval_out[2]
-    if self.params.layer_types[0] == "fc":
+    if self.params.mlp_layer_types[0] == "fc":
       w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
       # Don't plot weights as images if input is not square
       w_input_sqrt = np.sqrt(w_enc.shape[0])
