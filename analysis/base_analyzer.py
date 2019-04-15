@@ -187,7 +187,9 @@ class Analyzer(object):
       self.model.build_graph_from_input(self.input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
-          self.recon_adv_module.build_adversarial_ops(self.model.reconstruction)#, self.model.a)
+          self.recon_adv_module.build_adversarial_ops(
+            recons=self.model.reconstruction,
+            latent_activities=self.model.get_encodings())
       # Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.recon_adv_module.ignore_load_var_list)
     else:
@@ -894,7 +896,8 @@ class Analyzer(object):
 
   def construct_recon_adversarial_stimulus(self, input_images, target_images):
     if(self.analysis_params.adversarial_attack_method == "kurakin_targeted" or
-      self.analysis_params.adversarial_attack_method == "marzi_untargeted"):
+      self.analysis_params.adversarial_attack_method == "marzi_untargeted" or
+      self.analysis_params.adversarial_attack_method == "marzi_latent"):
       #Not using recon_mult here, so set arbitrary value
       self.analysis_params.carlini_recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini_targeted"):
@@ -903,7 +906,7 @@ class Analyzer(object):
     else:
       assert False, (
         "Adversarial attack method must be"
-        +"\"kurakin_targeted\" or \"carlini_targeted\" or \"marzi_untargted\"")
+        +"'kurakin_targeted', 'carlini_targeted', 'marzi_untargted', or 'marzi_latent'.")
     input_target_mse = dp.mse(input_images, target_images)
     distances = {"input_target_mse":input_target_mse, "input_recon_mses":[],
     "input_adv_mses":[], "target_recon_mses":[],
@@ -920,10 +923,11 @@ class Analyzer(object):
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       for r_mult in self.analysis_params.carlini_recon_mult:
-        out_dict = self.recon_adv_module.construct_adversarial_examples(
-          feed_dict, recon_mult=r_mult, target_generation_method="specified",
+        out_dict = self.recon_adv_module.construct_adversarial_examples(feed_dict,
+          recon_mult=r_mult,
+          target_generation_method="specified",
           target_images=target_images,
-          #selection_vector=self.analysis_params.selection_vector,
+          selection_vector=self.analysis_params.selection_vector,
           save_int=self.analysis_params.adversarial_save_int)
         steps = out_dict["step"]
         distances["adv_loss"].append(out_dict["adv_loss"])

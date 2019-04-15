@@ -40,6 +40,7 @@ class ReconAdversarialModule(object):
     # List of vars to ignore in savers/loaders
     self.ignore_load_var_list = []
     self.variable_scope = str(variable_scope)
+    self.num_neurons = 768 #TODO: pass this as an argument?
     self.build_init_graph()
 
   def build_init_graph(self):
@@ -50,88 +51,101 @@ class ReconAdversarialModule(object):
           name="adversarial_target_data")
         self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
         if(self.attack_method == "marzi_untargeted"):
-          self.orig_recons = tf.placeholder(tf.float32, shape=self.input_shape,
-            name="orig_recons")
-
+          self.orig_recons = tf.placeholder(tf.float32, shape=self.input_shape, name="orig_recons")
+        if(self.attack_method == "marzi_latent"):
+          self.orig_latent_activities = tf.placeholder(tf.float32, shape=(None, self.num_neurons),
+            name="orig_latent_activities")
+          #TODO: Get num_neurons from model to set this shape
+          self.selection_vector = tf.placeholder(tf.float32, shape=(self.num_neurons, 1),
+            name="selection_vector")
       with tf.variable_scope("input_var"):
-        # Adversarial pertubation
-
-        # Initialize perturbation to data tensor
+        # Initialize adv_var to data tensor - this will make the perturbation init 0
         adv_init = tf.identity(self.data_tensor)
         if(self.carlini_change_variable):
           # adv_init is the inverse of the change-of-variable, so that the final pert init is 0
           adv_init = 2 * adv_init - 1 # Map adv_init to be between -1 and 1
           adv_init = 0.5 * tf.log((1 + adv_init) / (1 - adv_init)) # tanh^-1(x)
-
         self.adv_var = tf.Variable(adv_init, dtype=tf.float32, trainable=True,
           validate_shape=False, name="adv_var")
-
         self.ignore_load_var_list.append(self.adv_var)
         self.reset = self.adv_var.initializer
-
-        # Here, adv_var has a fully dynamic shape. We reshape it to give the variable
+        # adv_var starts with a fully dynamic shape. We reshape it to give the variable
         # a semi-dymaic shape (i.e., only batch dimension unknown)
         self.adv_var.set_shape([None,] + self.input_shape[1:])
-
-        if(self.carlini_change_variable):
+        # Below are several optional steps to perform to perturbation before adding it to the image
+        if(self.carlini_change_variable): # Forces adv_images to be bounded in [0, 1]
           carlini_change_pert = 0.5 * (tf.tanh(self.adv_var) + 1) - self.data_tensor
         else:
           carlini_change_pert = self.adv_var - self.data_tensor
-
-        # Clip pertubations by maximum amount of change allowed
-        if(self.max_adv_change is not None):
+        if(self.max_adv_change is not None): # Clip pertubations by maximum amount specified
           self.clipped_pert = tfc.upper_bound(tfc.lower_bound(
             carlini_change_pert, -self.max_adv_change), self.max_adv_change)
         else:
           self.clipped_pert = carlini_change_pert
 
         self.adv_images = self.clipped_pert + self.data_tensor
-
-        if(self.clip_adv):
+        if(self.clip_adv): # Clip final adverarial image to bound specified
           self.adv_images = tfc.upper_bound(tfc.lower_bound(
             self.adv_images, self.clip_range[0]), self.clip_range[1])
-
-      with tf.variable_scope("input_switch"):
+      with tf.variable_scope("input_switch"): # Switch based on input to use adv images or not
         self.adv_switch_input = tf.cond(self.use_adv_input,
           true_fn=lambda:self.adv_images, false_fn=lambda:self.data_tensor, strict=True)
 
   def get_adv_input(self):
     return self.adv_switch_input
 
-  def build_adversarial_ops(self, recons):
+  def build_adversarial_ops(self, recons, latent_activities=None):
+    """
+    Build loss & optimization ops into graph
+    Inputs:
+    recons: tf variable for network reconstructions
+    latent_activities: tf variable for latent activations, required for marzi_latent attack
+    """
     with tf.variable_scope(self.variable_scope) as scope:
       self.recons = recons
+      self.latent_activities = latent_activities
       with tf.variable_scope("loss") as scope:
-        """
-        TODO:
-        * When computing gratings wrt weights (e.g. madry defense), you would want to avg or sum across batch, because you want the weights to defend against all of the attacks.
-        * When coputing attacks for a batch, you want to compute the loss for each individual image, and optimize them independently. Otherwise, when you compute the average/sum loss then the gradients can find solutions where some of the images are successful attacks and others are not. The adv losses per image are independent of each other, so the solution for the summed loss might not be the same as the solution for each loss individually. We should do `tf.group([grad(loss(x1),x1), grad(loss(x2), x2), grad(loss(x3), x3), ...])` or we can make the loss `[batch, 1]` instead of a scalar and `tf.gradients` will take care of it? 
-        * The gradient wrt e.g. x0 is not going to be affected by whether there is a sum or not?
-        * update: giving the loss a batch dim does work for attacks, but we still need to build in a fix for the madry defense
-        """
-        #adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recons),
-        #  axis=list(range(1, len(self.adv_var.shape))))
         adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recons))
 
         if(self.attack_method == "kurakin_targeted"):
           self.adv_loss = adv_recon_loss
 
         elif(self.attack_method == "carlini_targeted"):
-          #input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.clipped_pert),
-          #  axis=list(range(1, len(self.clipped_pert.shape))))
           input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.clipped_pert))
 
+          #TODO: add recon_sweep bool param that uses Sheng's alternate loss
           #self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
           self.adv_loss =  input_pert_loss + self.recon_mult * adv_recon_loss
 
         elif(self.attack_method == "marzi_untargeted"):
           # optimizer uses grad descent, so we need negative loss to maximize
-          # add eps to avoid 0 solution
+          # add eps to avoid 0 initial solution, which will cause the optimizer to do nothing
           self.adv_loss = -tf.reduce_sum(tf.sqrt(tf.square(self.recons - self.orig_recons + 1e-12)))
 
+        elif(self.attack_method == "marzi_latent"):
+          assert latent_activities is not None, ("latent_activities input must be provided")
+
+          #noisy_selection = (self.selection_vector
+          #  + tf.random.normal(self.selection_vector.get_shape(),
+          #  mean=0.001, stddev=1e-4))
+          #self.selected_orig_activities = tf.matmul(self.orig_latent_activities + noisy_selection,
+          #  self.selection_vector, name="selected_orig_activities")
+          #self.selected_adv_activities = tf.matmul(self.latent_activities + noisy_selection,
+          #  self.selection_vector, name="selected_adv_activities")
+
+          self.selected_orig_activities = tf.matmul(self.orig_latent_activities,
+            self.selection_vector, name="selected_orig_activities")
+          self.selected_adv_activities = tf.matmul(self.latent_activities,
+            self.selection_vector, name="selected_adv_activities")
+
+          self.adv_loss = -tf.reduce_sum(
+            self.selected_adv_activities - self.selected_orig_activities + 1e-12)
+          #self.adv_loss = -tf.reduce_sum(self.selected_adv_activities + 1e-12)
+
         else:
-          assert False, ("attack_method " + self.attack_method +" not recognized. "+
-            "Options are \"kurakin_targeted\", \"carlini_targeted\", or \"marzi_untargeted\"")
+          assert False, ("attack_method " + self.attack_method +" not recognized.\n"+
+            "Options are 'kurakin_targeted', 'carlini_targeted', 'marzi_untargeted'"+
+            "or 'marzi_latent'.")
 
       with tf.variable_scope("optimizer") as scope:
         if(self.adv_optimizer == "adam"):
@@ -142,9 +156,10 @@ class ReconAdversarialModule(object):
         elif(self.adv_optimizer == "sgd"):
           self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
         else:
-          assert False, ("adv_optimizer must be 'adam' or 'sgd'")
+          assert False, ("optimizer must be 'adam' or 'sgd', not '"+str(self.adv_optimizer)+"'.")
 
         adv_grads_and_vars = self.adv_opt.compute_gradients(self.adv_loss, var_list=[self.adv_var])
+
         if(self.attack_method == "kurakin_targeted"):
           adv_grads_and_vars = [(tf.sign(gv[0]), gv[1]) for gv in adv_grads_and_vars]
 
@@ -158,6 +173,7 @@ class ReconAdversarialModule(object):
     recon_mult=None, # For carlini attack
     target_generation_method="specified",
     target_images=None,
+    selection_vector=None, #TODO: default should be ones vector
     save_int=None): # Will not save if None
     feed_dict = feed_dict.copy()
     feed_dict[self.use_adv_input] = True
@@ -172,6 +188,13 @@ class ReconAdversarialModule(object):
       else:
         feed_dict[self.adv_target] = target_images
       feed_dict[self.recon_mult] = recon_mult
+
+    elif(self.attack_method == "marzi_latent"):
+      assert selection_vector is not None, ("selection_vector must be provided.")
+      if selection_vector.ndim == 1:
+        selection_vector = selection_vector[:, None] # must be matrix of shape [num_neurons, 1]
+      feed_dict[self.selection_vector] = selection_vector
+
     # If save_int is none, don't save at all
     if(save_int is None):
       save_int = self.num_steps + 1
@@ -179,9 +202,18 @@ class ReconAdversarialModule(object):
     sess = tf.get_default_session()
     sess.run(self.reset, feed_dict=feed_dict)
     # Always store orig image
-    [orig_images, recons] = sess.run([self.data_tensor, self.recons], feed_dict)
+    eval_vect = [self.data_tensor, self.recons]
+    if self.latent_activities is not None:
+      eval_vect += [self.latent_activities]
+    eval_out = sess.run(eval_vect, feed_dict)
+    [orig_images, recons, orig_activity] = eval_out[:3]
     if(self.attack_method == "marzi_untargeted"):
       feed_dict[self.orig_recons] = recons
+
+    if(self.attack_method == "marzi_latent"):
+      orig_activity = eval_out[2]
+      feed_dict[self.orig_latent_activities] = orig_activity
+
     loss = sess.run(self.adv_loss, feed_dict)
     # Init vals ("adv" is input + perturbation)
     out_dict = {}
