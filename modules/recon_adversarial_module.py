@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_compression as tfc
 import utils.data_processing as dp
-import pdb
 
 class ReconAdversarialModule(object):
   def __init__(self, data_tensor, use_adv_input, num_steps, step_size, max_adv_change=None,
@@ -22,7 +21,7 @@ class ReconAdversarialModule(object):
         "kurakin_targeted", "carlini_targeted", "marzi_untargeted", "marzi_latent"
       carlini_change_variables: [bool] if True, follow the change of variable recommendation
         described in carlini & wagner (2017) Section V, subsection B, number 3
-      adv_optimizer: [str] specifying "sgd" or "adam" for the carlini optimizer
+      adv_optimizer: [str] specifying "sgd" or "adam" for the optimizer
       variable_scope: [str] scope for adv module graph operators
     """
     self.data_tensor = data_tensor
@@ -30,15 +29,13 @@ class ReconAdversarialModule(object):
     self.input_shape = self.data_tensor.get_shape().as_list()
     self.num_steps = num_steps
     self.step_size = step_size
-    # TODO: This is an upper and lower bound, so max_change is a better name
     self.max_adv_change = max_adv_change
     self.clip_adv = clip_adv
     self.clip_range = clip_range
     self.attack_method = attack_method
     self.carlini_change_variable = carlini_change_variable
     self.adv_optimizer = adv_optimizer.lower()
-    # List of vars to ignore in savers/loaders
-    self.ignore_load_var_list = []
+    self.ignore_load_var_list = [] # List of vars to ignore in savers/loaders
     self.variable_scope = str(variable_scope)
     self.num_neurons = 768 #TODO: pass this as an argument?
     self.build_init_graph()
