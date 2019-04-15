@@ -1,5 +1,6 @@
 import params.mlp_params as mlp
 import params.mlp_lca_params as mlp_lca
+import params.mlp_ae_params as mlp_ae
 import params.mlp_vae_params as mlp_vae
 import params.mlp_sae_params as mlp_sae
 import params.mlp_lista_params as mlp_lista
@@ -16,7 +17,7 @@ import params.fflista_params as fflista
 #import params.gdn_autoencoder_params as ga
 #import params.gdn_conv_autoencoder_params as cga
 #import params.gdn_conv_decoder_params as cgd
-import params.relu_autoencoder_params as ra
+#import params.relu_autoencoder_params as ra
 import params.ae_params as ae
 import params.dae_params as dae
 import params.dae_mem_params as dae_mem
@@ -36,6 +37,8 @@ def get_params(model_type):
     return mlp.params()
   if model_type.lower() == "mlp_lca":
     return mlp_lca.params()
+  if model_type.lower() == "mlp_ae":
+    return mlp_ae.params()
   if model_type.lower() == "mlp_vae":
     return mlp_vae.params()
   if model_type.lower() == "mlp_sae":
@@ -78,6 +81,6 @@ def get_params(model_type):
   #  return cga.params()
   #if model_type.lower() == "gdn_conv_decoder":
   #  return cgd.params()
-  if model_type.lower() == "relu_autoencoder":
-    return ra.params()
+  #if model_type.lower() == "relu_autoencoder":
+  #  return ra.params()
   assert False, (model_type+" is not a supported model_type")
