@@ -10,6 +10,7 @@ import tensorflow_compression as tfc
 import pdb
 from modules.class_adversarial_module import ClassAdversarialModule
 from modules.recon_adversarial_module import ReconAdversarialModule
+from modules.neuron_visualization_module import NeuronVisualizationModule
 
 class Analyzer(object):
   """
@@ -192,6 +193,31 @@ class Analyzer(object):
             latent_activities=self.model.get_encodings())
       # Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.recon_adv_module.ignore_load_var_list)
+    elif(self.analysis_params.do_neuron_visualization):
+      with tf.device(self.model.params.device):
+        with self.model.graph.as_default():
+          self.input_node = self.model.build_input_placeholder()
+          self.neuron_vis_module = NeuronVisualizationModule(
+            data_tensor=self.input_node,
+            num_steps=self.analysis_params.neuron_vis_num_steps, # int
+            step_size=self.analysis_params.neuron_vis_step_size, # int
+            clip_output=self.analysis_params.neuron_vis_clip, # bool
+            clip_range=self.analysis_params.neuron_vis_clip_range, # [float, float]
+            norm_constraint_mag=self.analysis_params.neuron_vis_norm_magnitude, # None or float
+            l2_regularize_coeff=self.analysis_params.neuron_vis_l2_regularize_coeff, # None or float
+            variation_coeff=self.analysis_params.neuron_vis_variation_coeff, # None or float
+            method=self.analysis_params.neuron_vis_method, # str
+            optimizer=self.analysis_params.neuron_vis_optimizer) # str
+      # Add vis module ops to the graph by passing the module outputs to the model graph as input
+      self.input_node = self.model.normalize_input(self.neuron_vis_module.vis_image)
+      self.model.build_graph_from_input(self.input_node)
+      with tf.device(self.model.params.device):
+        with self.model.graph.as_default():
+          # TODO: give all models get_layer_list() function
+          target_layer = self.model.module.u_list[self.analysis_params.neuron_vis_target_layer_idx]
+          self.neuron_vis_module.build_visualization_ops(target_layer)
+      # Add vis module ignore list to model ignore list
+      self.model.full_model_load_ignore.extend(self.neuron_vis_module.ignore_load_var_list)
     else:
       self.model.build_graph()
 
@@ -893,6 +919,29 @@ class Analyzer(object):
     v = np.squeeze((v / np.linalg.norm(v)).T)
     proj_matrix = np.stack([bf1, v], axis=0)
     return proj_matrix, v
+
+  def construct_optimal_stimulus(self, init_image):
+    """
+    Constructs optimal stimulus for a given neuron
+    Inputs:
+      init_image: [np.ndarray] image to initialize optimal search with
+    Outputs:
+      out_dict: [dictionary] with keys
+        "step" - step number for each output
+        "images" - optimal stimulus image at given step
+        "loss" - visualization loss at given step
+    """
+    input_shape = self.model.get_input_shape()[1:] # We don't need bach dim
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      feed_dict = self.model.get_feed_dict(init_image, is_test=True)
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
+      out_dict = self.neuron_vis_module.construct_optimal_stimulus(feed_dict,
+        selection_vector=self.analysis_params.neuron_vis_selection_vector,
+        save_int=self.analysis_params.neuron_vis_save_int)
+    return out_dict
 
   def construct_recon_adversarial_stimulus(self, input_images, target_images):
     if(self.analysis_params.adversarial_attack_method == "kurakin_targeted" or
