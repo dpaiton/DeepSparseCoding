@@ -25,7 +25,8 @@ class IcaSubspaceModel(IcaModel):
 
     # new params for subspace ica
     self.num_groups = self.params.num_groups
-    self.group_sizes = self.construct_group_sizes(self.params.group_sizes)
+    self.group_sizes = self.params.group_sizes
+    #self.group_sizes = self.construct_group_sizes(self.params.group_sizes)
     self.group_index = [sum(self.group_sizes[:i]) for i in range(self.num_groups)]
     self.sum_arr = self.construct_sum_arr() 
 
@@ -52,17 +53,21 @@ class IcaSubspaceModel(IcaModel):
         self.input_img = input_node
 
         with tf.variable_scope("weights") as scope:
-          Q, R = np.linalg.qr(np.random.standard_normal(self.w_analysis_shape))
-          self.w_synth = tf.get_variable(name="w_synth", 
+          Q, R = np.linalg.qr(np.random.standard_normal(self.w_analysis_shape), mode="complete")
+          #w_init = np.eye(self.params.num_neurons)[:, 48:self.params.num_neurons-48]
+          self.w_analy = tf.get_variable(name="w_analy", 
                                          dtype=tf.float32, 
                                          initializer=Q.astype(np.float32), 
                                          trainable=True)
-          self.w_analy = tf.transpose(self.w_synth, name="w_analy")
-          self.trainable_variables[self.w_synth.name] = self.w_synth
+ #         print(self.w_synth.shape)
+#          orthonormalize = lambda x: tf.linalg.qr(x, full_matrices=True, name="w_synth")[0]
+#          self.w_synth = tf.map_fn(orthonormalize, self.w_synth, name="orthnormal_w_synth")
+          self.w_synth = tf.transpose(self.w_analy, name="w_synth")
+#          self.w_synth = tf.matrix_inverse(self.w_analy, name="w_synth")
+          self.trainable_variables[self.w_analy.name] = self.w_analy
+#          self.trainable_variables[self.w_analy.name] = self.w_analy
 
         with tf.name_scope("inference") as scope:
-#         self.s = tf.matmul(tf.transpose(self.w_analy), self.input_img, name="latent_variables") 
-         #self.s = tf.matmul(tf.transpose(self.w_analy), input_node, name="latent_variables") 
           self.s = tf.matmul(self.w_synth, tf.transpose(input_node), name="latent_variables")
           self.a = tf.identity(self.s, name="activity")
           self.z = tf.sign(self.a)
@@ -75,17 +80,19 @@ class IcaSubspaceModel(IcaModel):
     self.graph_built = True
 
   def compute_single_weight_gradients(self, weight_op):
-    def nonlinearity(u):
-      return tf.math.pow(u, -0.5)
+    def nonlinearity(u, alpha=1):
+        return -1 * alpha * tf.math.pow(u, -0.5)
     
-    def compute_grad(img_path):
-      wI = tf.transpose(tf.matmul(img_patch, weight_op[0]))
-      group_scalars = tf.matmul(tf.transpose(tf.math.pow(wI, 2)), self.sum_arr) # [1, num_groups]
-      nonlinear_term = nonlinearity(tf.matmul(self.sum_arr, tf.transpose(group_scalars))) 
-      scalars = tf.math.multiply(wI, nonlinear_term)
-      img_tiled = tf.tile(img_patch, [self.num_neurons, 1])
-      gradient = tf.transpose(tf.multiply(tf.transpose(img_tiled), scalars), name="gradient")
-      return gradient
+    def compute_grad(img_patch):
+        img_patch = tf.reshape(img_patch, [self.params.num_pixels, 1])
+        wI = tf.transpose(tf.matmul(tf.transpose(img_patch), weight_op[0]))
+
+        group_scalars = tf.matmul(tf.transpose(tf.math.pow(wI, 2)), self.sum_arr)
+        nonlinear_term = tf.matmul(self.sum_arr, nonlinearity(tf.transpose(group_scalars)))
+        scalars = tf.math.multiply(wI, nonlinear_term)
+        img_tiled = tf.tile(img_patch, [1, self.num_neurons])
+        gradient = tf.transpose(tf.multiply(tf.transpose(img_tiled), scalars))
+        return gradient
     return compute_grad
 
 
@@ -95,8 +102,13 @@ class IcaSubspaceModel(IcaModel):
 
         assert len(weight_op) == 1, ("IcaModel should only have one weight matrix")
 
-        sum_gradients = tf.map_fn(self.compute_single_weight_gradients(weight_op), self.input_img)
-        avg_gradients = tf.reduce_mean(sum_gradients, axis=0)
+        gradients = []
+        for i in range(self.params.batch_size):
+            img = tf.slice(self.input_img, [i, 0], [1, self.params.patch_edge_size*self.params.patch_edge_size])
+            gradients.append(self.compute_single_weight_gradients(weight_op)(img))
+#        gradients = tf.map_fn(self.compute_single_weight_gradients(weight_op), self.input_img)
+        avg_gradient = - tf.reduce_mean(gradients, axis=0)
+        self.avg_grad = avg_gradient
         return [(avg_gradient, weight_op[0])]
 
 
@@ -128,15 +140,21 @@ class IcaSubspaceModel(IcaModel):
     subspace_index = self.group_index[g]
     return w[:, subspace_index:subspace_index+num_vec]
 
+  def orthonormalize(self, weight, norm=False, ortho=False):
+      if norm:
+          weight = weight / tf.norm(weight, ord=2, axis=0)  
+      q, r = tf.linalg.qr(weight, full_matrices=True)
+      return q
+
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     update_dict = super(IcaSubspaceModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.w_synth, self.w_analy, self.s, self.reconstruction]
+    eval_list = [self.global_step, self.w_synth, self.w_analy, self.avg_grad, self.s, self.reconstruction]
     stat_dict = {}
 
     # evaluate values
     out_vals = tf.get_default_session().run(eval_list, feed_dict)
-    global_step, w_synth, w_analy, latent_vars, recon = out_vals
+    global_step, w_synth, w_analy, avg_grad, latent_vars, recon = out_vals
 
     # meta info
     stat_dict["global_step"] = global_step
@@ -145,6 +163,12 @@ class IcaSubspaceModel(IcaModel):
     # weights
     stat_dict["w_synth"] = w_synth
     stat_dict["w_analy"] = w_analy
+    stat_dict["avg_grad"] = avg_grad
+    print("w_synth: \n")
+    print(w_synth)
+    print("avg_grad\n")
+    print(avg_grad)
+
     
     # activations
     stat_dict["latent_vars"] = latent_vars
@@ -152,6 +176,7 @@ class IcaSubspaceModel(IcaModel):
     # get subspace and store them in a list
     stat_dict["group_sizes"] = self.group_sizes
     stat_dict["group_index"] = self.group_index
+    stat_dict["sum_arr"] = self.sum_arr
 #    subspaces = []
 #    print("group_index: {}".format(self.group_index))
 #    for g_i in self.group_index: 

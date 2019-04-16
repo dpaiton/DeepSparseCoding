@@ -89,7 +89,7 @@ class IcaModel(Model):
     z_a_avg = tf.divide(tf.matmul(tf.transpose(self.z), self.a),
       tf.to_float(tf.shape(self.input_placeholder)[0]), name="avg_samples")
     gradient = -tf.subtract(tf.matmul(tf.transpose(z_a_avg), weight_op[0]), weight_op[0],
-      name=weight_name+"_gradient") # weight_op[0] is expected to be w_synth
+      name=weight_name+"_gradient") # weight_op[0] is expected to be w_synta
 
     # Bell & Sejnowsky 1997
     #z_a_avg = tf.divide(tf.matmul(tf.transpose(self.a), self.z),
@@ -137,7 +137,7 @@ class IcaModel(Model):
     z_vals_mean = np.mean(z_vals)
     z_vals_min = np.min(z_vals)
     z_frac_act = np.array(np.count_nonzero(z_vals)
-      / float(self.num_neurons * self.params.batch_size))
+      / float(self.num_neurons*self.params.batch_size))
     stat_dict = {"global_batch_index":current_step,
       "batch_step":batch_step,
       "number_of_batch_steps":self.get_schedule("num_batches"),
