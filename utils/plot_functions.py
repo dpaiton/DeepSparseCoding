@@ -799,6 +799,7 @@ def plot_phase_avg_power_spec(data, title="", save_filename=None):
   plt.show()
   return fig
 
+
 def plot_group_weights(weights, group_ids, title="", figsize=None,  save_filename=None):
   """
     weights: [np.ndarray] of shape [num_neurons, num_input_y, num_input_x]
@@ -841,6 +842,7 @@ def plot_group_weights(weights, group_ids, title="", figsize=None,  save_filenam
     return None
   plt.show()
   return fig
+
 
 def plot_weights(weights, title="", save_filename=None):
   """
