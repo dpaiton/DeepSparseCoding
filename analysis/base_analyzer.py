@@ -379,7 +379,7 @@ class Analyzer(object):
     # Optimal stimulus analysis
     neuron_visualization_file_loc = (
       self.analysis_out_dir+"savefiles/neuron_visualization_analysis_"+save_info+".npz")
-    if os.path.exists(optimal_stim_file_loc):
+    if os.path.exists(neuron_visualization_file_loc):
       self.neuron_vis_output = np.load(neuron_visualization_file_loc)["data"].item()
 
   def load_basis_stats(self, save_info):
