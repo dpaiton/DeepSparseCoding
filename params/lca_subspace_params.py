@@ -12,6 +12,7 @@ class params(BaseParams):
     self.norm_data = False
     self.center_data = True
     self.standardize_data = False
+    self.tf_standardize_data = False
     self.contrast_normalize = False
     self.whiten_data = True
     self.whiten_method = "FT"
