@@ -22,9 +22,6 @@ class LcaModel(Model):
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
-  def get_input_shape(self):
-    return self.input_shape
-
   def build_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
@@ -68,6 +65,12 @@ class LcaModel(Model):
 
   def compute_recon_from_encoding(self, a_in):
     return self.module.build_decoder(a_in, name="reconstruction")
+
+  def get_input_shape(self):
+    return self.input_shape
+
+  def get_num_latent(self):
+    return self.params.num_neurons
 
   def get_encodings(self):
     return self.module.a

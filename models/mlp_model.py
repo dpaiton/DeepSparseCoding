@@ -20,9 +20,6 @@ class MlpModel(Model):
     self.input_shape = [None,] + self.params.data_shape
     self.label_shape = [None, self.params.num_classes]
 
-  def get_input_shape(self):
-    return self.input_shape
-
   def build_adv_module(self, input_node):
     #Placeholders for using adv or clean examples
     with tf.variable_scope("placeholders") as scope:
@@ -94,7 +91,15 @@ class MlpModel(Model):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
+  def get_input_shape(self):
+    return self.input_shape
+
+  def get_num_latent(self):
+    # returns the size of the logit (pre softmax) layer
+    return self.params.mlp_output_channels[-1]
+
   def get_encodings(self):
+    # returns the logit (pre softmax) layer
     return self.mlp_module.layer_list[-1]
 
   def get_total_loss(self):

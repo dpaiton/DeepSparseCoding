@@ -361,11 +361,20 @@ class Model(object):
       feed_dict.update(dict_args)
     return feed_dict
 
-  #subclass must overwrite this class, or overwrite build_graph
-  # TODO: Why can't this be done here?
-  #  if dependency is on having self.input_shape then that could also be done here.
+  # Functions that expose specific variables to outer classes
+  # Subclass must overwrite this class
+  # TODO: is it possible to compute these here in the base class?
   def get_input_shape(self):
     return NotImplementedError
+
+  def get_num_latent(self):
+    return NotImplementedError
+
+  def get_total_loss(self):
+    raise NotImplementedError
+
+  def get_encodings(self):
+    raise NotImplementedError
 
   def build_input_placeholder(self):
     with tf.device(self.params.device):
@@ -628,14 +637,6 @@ class Model(object):
     for key, val in evals.items():
       evals[key] = np.concatenate(val, axis=0)
     return evals
-
-  #Functions that expose specific variables to outer classes
-  #Defaults to raising not implemented error
-  def get_total_loss(self):
-    raise NotImplementedError
-
-  def get_encodings(self):
-    raise NotImplementedError
 
   def modify_input(self, feed_dict, train_on_adversarial):
     return feed_dict

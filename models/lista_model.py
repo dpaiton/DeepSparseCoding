@@ -26,9 +26,6 @@ class ListaModel(Model):
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
-  def get_input_shape(self):
-    return self.input_shape
-
   def build_lca_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
@@ -88,6 +85,12 @@ class ListaModel(Model):
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
             MSE)), name="recon_quality")
+
+  def get_input_shape(self):
+    return self.input_shape
+
+  def get_num_latent(self):
+    return self.params.num_neurons
 
   def get_encodings(self):
     return self.a

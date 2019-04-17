@@ -41,3 +41,5 @@ class AeAnalyzer(Analyzer):
         target_method=self.analysis_params.adversarial_target_method,
         target_id=self.analysis_params.adversarial_target_id,
         save_info=save_info)
+    elif self.analysis_params.do_neuron_visualization:
+      self.neuron_visualization_analysis(save_info=save_info)

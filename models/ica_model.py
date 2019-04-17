@@ -24,9 +24,6 @@ class IcaModel(Model):
     self.w_synth_shape = [self.num_neurons, self.params.num_pixels]
     self.w_analysis_shape = [self.params.num_pixels, self.num_neurons]
 
-  def get_input_shape(self):
-    return self.input_shape
-
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
@@ -99,6 +96,15 @@ class IcaModel(Model):
     #gradient = -tf.add(weight_op[0], tf.multiply(self.z, tf.matmul(self.a, weight_op[0])
     return [(gradient, weight_op[0])]
 
+  def get_input_shape(self):
+    return self.input_shape
+
+  def get_num_latent(self):
+    return self.num_neurons
+
+  def get_encodings(self):
+    return self.a
+
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
     Generates a dictionary to be logged in the print_update function
@@ -156,7 +162,6 @@ class IcaModel(Model):
       stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
     update_dict.update(stat_dict) # stat_dict vals overwrite
     return update_dict
-
 
   def generate_plots(self, input_data, input_labels=None):
     """

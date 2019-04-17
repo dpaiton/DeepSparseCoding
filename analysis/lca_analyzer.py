@@ -40,13 +40,6 @@ class LcaAnalyzer(Analyzer):
     if self.analysis_params.do_inference:
       self.inference_stats = self.inference_analysis(images, save_info,
         self.analysis_params.num_inference_images, self.analysis_params.num_inference_steps)
-    if self.analysis_params.do_recon_adversaries:
-      self.recon_adversary_analysis(images,
-        labels=labels, batch_size=self.analysis_params.eval_batch_size,
-        input_id=self.analysis_params.adversarial_input_id,
-        target_method=self.analysis_params.adversarial_target_method,
-        target_id=self.analysis_params.adversarial_target_id,
-        save_info=save_info)
     if self.analysis_params.do_orientation_analysis:
       if not self.analysis_params.do_basis_analysis:
         try:
@@ -56,6 +49,15 @@ class LcaAnalyzer(Analyzer):
           "Basis analysis must have been previously run, or do_basis_analysis must be True.")
       self.ot_grating_responses, self.co_grating_responses = self.grating_analysis(self.bf_stats,
         save_info)
+    if self.analysis_params.do_recon_adversaries:
+      self.recon_adversary_analysis(images,
+        labels=labels, batch_size=self.analysis_params.eval_batch_size,
+        input_id=self.analysis_params.adversarial_input_id,
+        target_method=self.analysis_params.adversarial_target_method,
+        target_id=self.analysis_params.adversarial_target_id,
+        save_info=save_info)
+    elif self.analysis_params.do_neuron_visualization:
+      self.neuron_visualization_analysis(save_info=save_info)
 
   def load_analysis(self, save_info=""):
     super(LcaAnalyzer, self).load_analysis(save_info)

@@ -141,6 +141,12 @@ class Analyzer(object):
   def build_graph(self):
     # We want to overwrite model adversarial params with what we have in analysis
     if(self.analysis_params.do_class_adversaries):
+      assert self.analysis_params.do_recon_adversaries is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
+      assert self.analysis_params.do_neuron_visualization is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.input_node = self.model.build_input_placeholder()
@@ -166,6 +172,12 @@ class Analyzer(object):
       # Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
     elif(self.analysis_params.do_recon_adversaries):
+      assert self.analysis_params.do_class_adversaries is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
+      assert self.analysis_params.do_neuron_visualization is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.input_node = self.model.build_input_placeholder()
@@ -194,6 +206,12 @@ class Analyzer(object):
       # Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.recon_adv_module.ignore_load_var_list)
     elif(self.analysis_params.do_neuron_visualization):
+      assert self.analysis_params.do_class_adversaries is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
+      assert self.analysis_params.do_recon_adversaries is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.input_node = self.model.build_input_placeholder()
@@ -213,8 +231,10 @@ class Analyzer(object):
       self.model.build_graph_from_input(self.input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
-          # TODO: give all models get_layer_list() function
-          target_layer = self.model.module.u_list[self.analysis_params.neuron_vis_target_layer_idx]
+          if self.analysis_params.neuron_vis_target_layer is None:
+            target_layer = self.model.get_encodings()
+          else:
+            target_layer = self.model.module.u_list[self.analysis_params.neuron_vis_target_layer]
           self.neuron_vis_module.build_visualization_ops(target_layer)
       # Add vis module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.neuron_vis_module.ignore_load_var_list)
@@ -302,8 +322,8 @@ class Analyzer(object):
 
     #TODO: Smarter naming scheme for save_info (e.g. how it is done for models)
     # Recon Adversarial analysis
-    recon_adversarial_stats_file_loc = \
-      self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz"
+    recon_adversarial_stats_file_loc = (
+      self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz")
     if os.path.exists(recon_adversarial_stats_file_loc):
       data = np.load(recon_adversarial_stats_file_loc)["data"].item()
       self.steps_idx = data["steps_idx"]
@@ -325,15 +345,15 @@ class Analyzer(object):
       self.adversarial_input_adv_cos_similarities = data["input_adv_cos_similarities"]
       self.adversarial_target_pert_cos_similarities = data["target_pert_cos_similarities"]
       self.adversarial_input_pert_cos_similarities = data["input_pert_cos_similarities"]
-    recon_adversarial_file_loc = \
-      self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz"
+    recon_adversarial_file_loc = (
+      self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz")
     if os.path.exists(recon_adversarial_file_loc):
       data = np.load(recon_adversarial_file_loc)["data"].item()
       self.adversarial_recons = data["adversarial_recons"]
 
     #Class adversarial analysis
-    class_adversarial_file_loc = \
-      self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
+    class_adversarial_file_loc = (
+      self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz")
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.steps_idx = data["steps_idx"]
@@ -355,6 +375,12 @@ class Analyzer(object):
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.adversarial_images = data["adversarial_images"]
+
+    # Optimal stimulus analysis
+    neuron_visualization_file_loc = (
+      self.analysis_out_dir+"savefiles/neuron_visualization_analysis_"+save_info+".npz")
+    if os.path.exists(optimal_stim_file_loc):
+      self.neuron_vis_output = np.load(neuron_visualization_file_loc)["data"].item()
 
   def load_basis_stats(self, save_info):
     bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
@@ -920,14 +946,36 @@ class Analyzer(object):
     proj_matrix = np.stack([bf1, v], axis=0)
     return proj_matrix, v
 
-  def construct_optimal_stimulus(self, init_image):
+  def neuron_visualization_analysis(self, save_info=""):
+    vis_data_init = np.random.normal(loc=0.0, scale=1e-2, size=self.model.get_input_shape()[1:])
+    vis_data_init /= np.linalg.norm(vis_data_init)
+    vis_data_init[vis_data_init > 1.0] = 1.0
+    vis_data_init[vis_data_init < 0.0] = 0.0
+    vis_data_init = vis_data_init[None,:]
+    self.neuron_vis_output = {
+      "data_init":vis_data_init,
+      "steps":[],
+      "optimal_stims":[],
+      "loss":[]}
+    for target_neuron_idx in self.analysis_params.neuron_vis_targets:
+      selection_vector = np.zeros(self.model.get_num_latent())
+      selection_vector[target_neuron_idx] = 1
+      optimal_stim_outputs = self.construct_optimal_stimulus(vis_data_init, selection_vector)
+      self.neuron_vis_output["steps"].append(optimal_stim_outputs["steps"])
+      self.neuron_vis_output["optimal_stims"].append(optimal_stim_outputs["images"])
+      self.neuron_vis_output["loss"].append(optimal_stim_outputs["loss"])
+    np.savez(self.analysis_out_dir+"savefiles/neuron_visualization_analysis_"+save_info+".npz",
+      data=self.neuron_vis_output)
+    self.analysis_logger.log_info("Neuron visualization analysis is complete.")
+
+  def construct_optimal_stimulus(self, init_image, selection_vector):
     """
     Constructs optimal stimulus for a given neuron
     Inputs:
       init_image: [np.ndarray] image to initialize optimal search with
     Outputs:
       out_dict: [dictionary] with keys
-        "step" - step number for each output
+        "steps" - step number for each output
         "images" - optimal stimulus image at given step
         "loss" - visualization loss at given step
     """
@@ -939,7 +987,8 @@ class Analyzer(object):
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       out_dict = self.neuron_vis_module.construct_optimal_stimulus(feed_dict,
-        selection_vector=self.analysis_params.neuron_vis_selection_vector,
+        selection_vector=selection_vector,
+        stim_save_int=self.analysis_params.neuron_vis_stim_save_int,
         save_int=self.analysis_params.neuron_vis_save_int)
     return out_dict
 

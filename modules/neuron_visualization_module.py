@@ -110,7 +110,8 @@ class NeuronVisualizationModule(object):
         # add optimizer vars to ignore list because the graph was not checkpointed with them
         self.ignore_load_var_list.extend(self.vis_opt.variables())
 
-  def construct_optimal_stimulus(self, feed_dict, selection_vector, save_int=None):
+  def construct_optimal_stimulus(self, feed_dict, selection_vector, stim_save_int=None,
+    save_int=None):
     """
     Construct optimal stimulus
     Inputs:
@@ -126,9 +127,10 @@ class NeuronVisualizationModule(object):
     else:
       assert False, ("method " + self.method +" not recognized.\n"+
         "Options are 'erhan'.")
-
     if(save_int is None): # If save_int is none, don't save at all
       save_int = self.num_steps + 1
+    if(stim_save_int is None): # If stim_save_int is none, don't save at all
+      stim_save_int = self.num_steps + 1
     sess = tf.get_default_session()
     sess.run(self.reset, feed_dict=feed_dict) # Reset input to orig image
     # Always store orig image
@@ -137,18 +139,19 @@ class NeuronVisualizationModule(object):
     [orig_images, orig_activity, loss] = eval_out
     # Init vals ("adv" is input + perturbation)
     out_dict = {}
-    out_dict["step"] = [0]
+    out_dict["steps"] = [0]
     out_dict["images"] = [orig_images]
     out_dict["loss"] = [loss]
     # Calculate adversarial examples
     for step in range(self.num_steps):
       sess.run(self.vis_update_op, feed_dict)
       if((step+1) % save_int == 0):
-        run_list = [self.vis_image, self.vis_loss]
-        [vis_images, loss] = sess.run(run_list, feed_dict)
+        loss = sess.run(self.vis_loss, feed_dict)
         # +1 since this is post update
         # We do this here since we want to store the last step
-        out_dict["step"].append(step+1)
-        out_dict["images"].append(vis_images)
+        out_dict["steps"].append(step+1)
         out_dict["loss"].append(loss)
+      if((step+1) % stim_save_int == 0):
+        vis_images = sess.run(self.vis_image, feed_dict)[0]
+        out_dict["images"].append(vis_images)
     return out_dict
