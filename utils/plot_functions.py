@@ -864,7 +864,7 @@ def plot_group_weights(weights, group_ids, title="", figsize=None,  save_filenam
   plt.show()
   return fig
 
-def plot_weights(weights, title="", save_filename=None):
+def plot_weights(weights, title="", figsize=None, save_filename=None):
   """
     weights: [np.ndarray] of shape [num_outputs, num_input_y, num_input_x]
     The matrices are renormalized before plotting.
@@ -876,7 +876,7 @@ def plot_weights(weights, title="", save_filename=None):
   num_plots = weights.shape[0]
   num_plots_y = int(np.ceil(np.sqrt(num_plots))+1)
   num_plots_x = int(np.floor(np.sqrt(num_plots)))
-  fig, sub_ax = plt.subplots(num_plots_y, num_plots_x, figsize=(18,18))
+  fig, sub_ax = plt.subplots(num_plots_y, num_plots_x, figsize=figsize)
   filter_total = 0
   for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
     if filter_total < num_plots:
@@ -884,7 +884,7 @@ def plot_weights(weights, title="", save_filename=None):
       filter_total += 1
     clear_axis(sub_ax[plot_id])
     sub_ax[plot_id].set_aspect("equal")
-  fig.suptitle(title, y=0.9, x=0.5, fontsize=20)
+  fig.suptitle(title, y=0.95, x=0.5, fontsize=20)
   if save_filename is not None:
       fig.savefig(save_filename)
       plt.close(fig)
