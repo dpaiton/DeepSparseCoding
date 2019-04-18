@@ -21,6 +21,8 @@ class params(BaseParams):
     self.version = "0.0"
     self.optimizer = "annealed_sgd"
     self.vectorize_data = False
+    self.standardize_data = False
+    self.tf_standardize_data = False
     self.batch_size = 100
     self.num_classes = 10
     self.mlp_layer_types = ["conv", "fc"]
