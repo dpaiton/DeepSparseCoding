@@ -3,6 +3,7 @@ from analysis.base_analyzer import Analyzer
 class MlpAnalyzer(Analyzer):
   def __init__(self):
     super(MlpAnalyzer, self).__init__()
+    self.var_names = ["mlp/layer0/conv_w_0:0"]
 
   def run_analysis(self, images, labels, save_info=""):
     super(MlpAnalyzer, self).run_analysis(images, labels, save_info=save_info)
@@ -15,3 +16,5 @@ class MlpAnalyzer(Analyzer):
         target_method = self.analysis_params.adversarial_target_method,
         target_labels = self.analysis_params.adversarial_target_labels,
         save_info=save_info)
+    elif self.analysis_params.do_neuron_visualization:
+      self.neuron_visualization_analysis(save_info=save_info)
