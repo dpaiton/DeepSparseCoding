@@ -79,7 +79,7 @@ class NeuronVisualizationModule(object):
         stddev=0.001)
       with tf.variable_scope("loss") as scope:
         if(self.method == "erhan"):
-          self.selected_activities = tf.matmul(layer_activity, self.selection_vector,
+          self.selected_activities = tf.matmul(self.layer_activity, self.selection_vector,
             name="selected_activities")
           self.vis_loss = -tf.reduce_sum(self.selected_activities)
         if(self.l2_regularize_coeff is not None):
@@ -87,10 +87,14 @@ class NeuronVisualizationModule(object):
           #self.vis_loss += self.l2_regularize_coeff * tf.reduce_sum(tf.norm(self.vis_pert,
           #  ord="euclidean", axis=1, keepdims=False))
         if(self.variation_coeff is not None):
-          vis_img_shape = (tf.shape(self.vis_pert)[0], int(np.sqrt(self.input_shape[1])),
-            int(np.sqrt(self.input_shape[1])), 1)
-          self.vis_loss = (self.vis_loss + self.variation_coeff
-            * tf.reduce_sum(tf.image.total_variation(tf.reshape(self.vis_pert, vis_img_shape))))
+          if len(self.input_shape) == 2: # vectorize input - fully connected model
+            vis_img_shape = (tf.shape(self.vis_pert)[0], int(np.sqrt(self.input_shape[1])),
+              int(np.sqrt(self.input_shape[1])), 1)
+            self.vis_loss = (self.vis_loss + self.variation_coeff
+              * tf.reduce_sum(tf.image.total_variation(tf.reshape(self.vis_pert, vis_img_shape))))
+          else: # unvectorized input - conv model
+            self.vis_loss = (self.vis_loss + self.variation_coeff
+              * tf.reduce_sum(tf.image.total_variation(self.vis_pert)))
         else:
           assert False, ("method " + self.method +" not recognized.\n"+
             "Options are 'erhan'.")
