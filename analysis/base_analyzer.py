@@ -510,7 +510,7 @@ class Analyzer(object):
     self.analysis_logger.log_info("Noise analysis is complete.")
     return (noise_activity, noise_atas, noise_atcs)
 
-  def compute_activations(self, images):
+  def compute_activations(self, images, batch_size=None):
     """
     Computes the output code for a set of images.
     Outputs:
@@ -521,10 +521,27 @@ class Analyzer(object):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
-      feed_dict = self.model.get_feed_dict(images, is_test=True)
-      sess.run(self.model.init_op, feed_dict)
-      self.model.load_full_model(sess, self.analysis_params.cp_loc)
-      activations = sess.run(self.model.get_encodings(), feed_dict)
+      if batch_size is not None: # TODO: causes neuron ordering to be off?
+        images_shape = list(images.shape)
+        num_images = images_shape[0]
+        assert num_images % batch_size == 0, (
+          "batch_size=%g must divide evenly into num_images=%g"%(batch_size, num_images))
+        num_batches = int(num_images/batch_size)
+        images = images.reshape([num_batches, batch_size]+images_shape[1:])
+        feed_dict = self.model.get_feed_dict(np.zeros([batch_size]+images_shape[1:]))
+        sess.run(self.model.init_op, feed_dict)
+        self.model.load_full_model(sess, self.analysis_params.cp_loc)
+        activations = np.zeros([num_batches, batch_size, self.model.get_num_latent()])
+        for image_batch_idx in range(num_batches):
+          images_batch = images[image_batch_idx, ...]
+          feed_dict = self.model.get_feed_dict(images_batch, is_test=True)
+          activations[image_batch_idx, ...] = sess.run(self.model.get_encodings(), feed_dict)
+        activations = activations.reshape([num_images, self.model.get_num_latent()])
+      else:
+        feed_dict = self.model.get_feed_dict(images, is_test=True)
+        sess.run(self.model.init_op, feed_dict)
+        self.model.load_full_model(sess, self.analysis_params.cp_loc)
+        activations = sess.run(self.model.get_encodings(), feed_dict)
     return activations
 
   def compute_atas(self, activities, images, batch_size=100):
