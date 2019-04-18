@@ -182,7 +182,7 @@ class MlpModule(object):
     # Conv is always before FC
     for layer_id in range(self.num_conv_layers):
       a_out, w, b = self.conv_layer_maker(layer_id, act_list[layer_id],
-      self.conv_w_shapes[layer_id], self.conv_strides[layer_id], self.output_channels[layer_id])
+        self.conv_w_shapes[layer_id], self.conv_strides[layer_id], self.output_channels[layer_id])
       act_list.append(a_out)
       w_list.append(w)
       b_list.append(b)
