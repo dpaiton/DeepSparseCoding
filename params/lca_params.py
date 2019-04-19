@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "lca"
-    self.model_name = "lca_1568"
+    self.model_name = "lca_768"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -24,6 +24,7 @@ class params(BaseParams):
     self.rescale_data = False
     self.center_data = False
     self.standardize_data = False
+    self.tf_standardize_data = False
     self.contrast_normalize = False
     self.whiten_data = True
     self.whiten_method = "FT"
@@ -94,6 +95,9 @@ class params(BaseParams):
       self.extract_patches = True
       self.num_neurons = 768
       self.thresh_type = "soft"
+      self.cp_int = int(1e5)
+      self.log_int = int(1e2)
+      self.gen_plot_int = int(2e4)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.8
         self.schedule[sched_idx]["weight_lr"] = 0.01

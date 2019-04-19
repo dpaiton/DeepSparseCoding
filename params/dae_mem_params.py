@@ -34,6 +34,8 @@ class params(BaseParams):
     self.layer_types = ["fc", "fc", "fc"]
     self.output_channels = [1500, 1000, 50]
     self.tie_decoder_weights = False
+    self.norm_weights = False
+    self.norm_w_init = False
     self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
     self.dropout = [1.0]*6
     self.num_triangles = 30
@@ -70,6 +72,7 @@ class params(BaseParams):
       "weights": None,
       "entropy_mult": 0.1,
       "decay_mult": 0.03,
+      "norm_mult": 0.0,
       "noise_variance_mult": 0.08,
       "weight_lr": 1e-5,
       "decay_steps": int(1e6*0.4),

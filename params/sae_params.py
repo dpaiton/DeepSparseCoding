@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "sae"
-    self.model_name = "sae_conv"
+    self.model_name = "sae_768"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -29,14 +29,14 @@ class params(BaseParams):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
+    self.tie_decoder_weights = False
+    self.norm_weights = False
+    self.norm_w_init = False
     self.batch_size = 100
-
     self.layer_types = ["fc"]
     self.output_channels = [768]
     self.patch_size = []
     self.conv_strides = []
-
-    self.tie_decoder_weights = False
     self.activation_functions = ["sigmoid", "identity"]
     self.dropout = [1.0]*2
     self.optimizer = "annealed_sgd"#"adam"
@@ -55,6 +55,7 @@ class params(BaseParams):
       {"weights": None,
       "num_batches": int(1e5),
       "decay_mult": 0.01,
+      "norm_mult": 0.0,
       "sparse_mult": 5.0, # How important is the sparse loss (tradeoff parameter)
       "target_act": 0.05, # Target firing rate for neurons
       "weight_lr": 0.002,
@@ -75,13 +76,15 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.output_channels = [768]
-      self.activation_functions = ["sigmoid", "identity"]
+      self.norm_w_init = False
+      self.activation_functions = ["sigmoid", "relu"]
       self.dropout = [1.0]*2*len(self.output_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
-        self.schedule[sched_idx]["weight_lr"] = 0.0001
-        self.schedule[sched_idx]["decay_mult"] = 0.02
-        self.schedule[sched_idx]["target_act"] = 0.15
+        self.schedule[sched_idx]["weight_lr"] = 0.0002
+        self.schedule[sched_idx]["decay_mult"] = 0.00
+        self.schedule[sched_idx]["norm_mult"] = 2e-3
+        self.schedule[sched_idx]["target_act"] = 0.20
         self.schedule[sched_idx]["sparse_mult"] = 0.10
         self.schedule[sched_idx]["decay_steps"] = int(0.6*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.50

@@ -20,9 +20,6 @@ class MlpModel(Model):
     self.input_shape = [None,] + self.params.data_shape
     self.label_shape = [None, self.params.num_classes]
 
-  def get_input_shape(self):
-    return self.input_shape
-
   def build_adv_module(self, input_node):
     #Placeholders for using adv or clean examples
     with tf.variable_scope("placeholders") as scope:
@@ -48,6 +45,7 @@ class MlpModel(Model):
     with tf.device(self.params.device):
       with self.graph.as_default():
         input_node = self.build_adv_module(input_node)
+    input_node = self.normalize_input(input_node)
     self.build_graph_from_input(input_node)
     with tf.device(self.params.device):
       with self.graph.as_default():
@@ -60,8 +58,8 @@ class MlpModel(Model):
     self.full_model_load_ignore.extend(self.adv_module.ignore_load_var_list)
 
   def build_mlp_module(self, input_node):
-    module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
-      self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
+    module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
+      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size, self.params.conv_strides, self.params.eps, lrn=self.params.lrn,
       loss_type="softmax_cross_entropy")
@@ -93,7 +91,15 @@ class MlpModel(Model):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
+  def get_input_shape(self):
+    return self.input_shape
+
+  def get_num_latent(self):
+    # returns the size of the logit (pre softmax) layer
+    return self.params.mlp_output_channels[-1]
+
   def get_encodings(self):
+    # returns the logit (pre softmax) layer
     return self.mlp_module.layer_list[-1]
 
   def get_total_loss(self):
@@ -221,7 +227,7 @@ class MlpModel(Model):
       save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
 
     w_enc = eval_out[2]
-    if self.params.layer_types[0] == "fc":
+    if self.params.mlp_layer_types[0] == "fc":
       w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
       # Don't plot weights as images if input is not square
       w_input_sqrt = np.sqrt(w_enc.shape[0])

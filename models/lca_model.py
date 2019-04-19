@@ -22,9 +22,6 @@ class LcaModel(Model):
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
-  def get_input_shape(self):
-    return self.input_shape
-
   def build_module(self, input_node):
     module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
       self.eta, self.params.thresh_type, self.params.rectify_a,
@@ -38,14 +35,15 @@ class LcaModel(Model):
         with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-        with tf.variable_scope("placeholders") as sess:
-          self.latent_input = tf.placeholder(tf.float32, name="latent_input")
-
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
         with tf.variable_scope("inference") as scope:
           self.a = tf.identity(self.get_encodings(), name="activity")
+
+        with tf.variable_scope("placeholders") as sess:
+          self.latent_input = tf.placeholder(tf.float32, shape=self.a.get_shape().as_list(),
+            name="latent_input")
 
         with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
@@ -67,6 +65,12 @@ class LcaModel(Model):
 
   def compute_recon_from_encoding(self, a_in):
     return self.module.build_decoder(a_in, name="reconstruction")
+
+  def get_input_shape(self):
+    return self.input_shape
+
+  def get_num_latent(self):
+    return self.params.num_neurons
 
   def get_encodings(self):
     return self.module.a

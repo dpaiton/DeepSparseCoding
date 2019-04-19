@@ -3,6 +3,8 @@ from tensorflow.python.framework import dtypes
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import linalg_ops_impl
+from tensorflow.python.ops import random_ops
+from tensorflow.python.ops import nn_impl
 
 class GDNGammaInitializer(init_ops.Initializer):
   """
@@ -28,3 +30,19 @@ class GDNGammaInitializer(init_ops.Initializer):
   def get_config(self):
     return {"diagonal_gain": self.diagonal_gain, "off_diagonal_gain": self.off_diagonal_gain,
       "dtype": self.dtype.name}
+
+class L2NormalizedTruncatedNormalInitializer(init_ops.TruncatedNormal):
+  """
+  Truncated Normal Initializer with an additional L2 normalization step
+  """
+  def __init__(self, mean=0.0, stddev=1.0, axis=None, epsilon=1e-12, seed=None, dtype=dtypes.float32):
+    self.axis = axis
+    self.epsilon = epsilon
+    super(L2NormalizedTruncatedNormalInitializer, self).__init__(mean, stddev, seed, dtype)
+
+  def __call__(self, shape, dtype=None, partition_info=None):
+    if dtype is None:
+      dtype = self.dtype
+    return nn_impl.l2_normalize(random_ops.truncated_normal(
+        shape, self.mean, self.stddev, dtype, seed=self.seed),
+        axis=self.axis, epsilon=self.epsilon)

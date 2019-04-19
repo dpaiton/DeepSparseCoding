@@ -16,9 +16,9 @@ class params(object):
     #Output directory file
     self.save_info = "analysis_" + self.analysis_dataset
     # If false, append to log file
-    self.overwrite_analysis_log = True
+    self.overwrite_analysis_log = False
     # Load in training run stats from log file
-    self.do_run_analysis = True
+    self.do_run_analysis = False
     # Evaluate model variables (specified in analysis class) on images
     self.do_evals = False
     # Dictionary fitting
@@ -28,9 +28,11 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = True # TODO: broken for rica
+    self.do_recon_adversaries = False # TODO: broken for rica
     #Classification adversarial image analysis
     self.do_class_adversaries = False
+    # Find optimal stimulus using gradient methods
+    self.do_neuron_visualization = True # adversaries must be False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -56,41 +58,28 @@ class params(object):
     self.num_inference_steps = None
     # Which dataset images to use for inference (None uses random)
     self.inference_img_indices = None
-
     #Adversarial params
     self.adversarial_num_steps = 5000 # Step size for adversarial attacks
-    #self.adversarial_attack_method = "kurakin_untargeted" # Only for class attack
-    #self.adversarial_attack_method = "kurakin_targeted"
     self.adversarial_attack_method = "carlini_targeted"
-
-    #To avoid overwriting
-    self.save_info += "_"+self.adversarial_attack_method
-
+    self.save_info += "_"+self.adversarial_attack_method # To avoid overwriting
     self.adversarial_step_size = 0.001
-    self.adversarial_max_change = 0.3
-    #TODO support specified
-    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
+    self.adversarial_max_change = 0.1
+    self.carlini_change_variable = True
+    self.adv_optimizer = "sgd"
+    self.adversarial_target_method = "random" # Not used if attack_method is untargeted#TODO support specified
     self.adversarial_clip = True
     self.adversarial_clip_range = [0.0, 1.0]
-    self.carlini_recon_mult = list(np.arange(.1, 1, .1))
-    #Interval at which to save adversarial examples to the npy file
-    self.adversarial_save_int = 100
-
-    self.eval_batch_size = 100
-
-    #Specify which adv to use here
-    #If none, use all
-    self.adversarial_input_id = list(range(100))
-
+    self.carlini_recon_mult = list(np.arange(.5, 1, .1))
+    self.adversarial_save_int = 1000#Interval at which to save adv examples to the npy file
+    self.eval_batch_size = 100 # batch size for computing adv examples
+    self.adversarial_input_id = list(range(100)) # Which adv images to use; None to use all
     #TODO
     #Parameter for "specified" target_method
     #Only for class attack
     #Need to be a list or numpy array of size [adv_batch_size]
     self.adversarial_target_labels = None
-
     # Rescale inputs to match dataset scales used during training
     self.input_scale = 1.0 # TODO: Get input_scale from log file
-
     # Which neurons to run tuning experiments on (None to do all)
     self.neuron_indices = None
     # Contrasts for orientation experiments
@@ -99,6 +88,24 @@ class params(object):
     self.phases = np.linspace(-np.pi, np.pi, 8)
     # Orientations for orientation experiments
     self.orientations = np.linspace(0.0, np.pi, 16)
+    # Optimal stimulus calculation
+    self.neuron_vis_num_steps = int(5e5)
+    self.neuron_vis_step_size = 1e-4
+    self.neuron_vis_save_int = 100
+    self.neuron_vis_stim_save_int = int(1e5)
+    self.neuron_vis_clip = True
+    self.neuron_vis_clip_range = [0.0, 1.0]
+    self.neuron_vis_method = "erhan"
+    self.neuron_vis_norm_magnitude = None
+    self.neuron_vis_l2_regularize_coeff = 0.001
+    self.neuron_vis_variation_coeff = 0.005
+    self.neuron_vis_optimizer = "sgd"
+    self.neuron_vis_target_layer = None
+    # TODO: we are temporarily assigning a 1-hot vector for analysis, but we could pass a specific
+    #   selection vector instead of a target_neuron_idx
+    self.neuron_vis_targets = list(range(64))
+    #self.neuron_vis_selection_vector = np.zeros(64) # TODO: avoid hard-coding num neurons
+    #self.neuron_vis_selection_vector[self.neuron_vis_target_neuron_idx] = 1
 
 parser = argparse.ArgumentParser()
 

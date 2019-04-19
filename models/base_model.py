@@ -30,6 +30,11 @@ class Model(object):
     self.add_initializer_to_graph()
     self.construct_savers()
 
+  def reset_graph(self):
+    self.graph = tf.Graph()
+    self.trainable_variables = TrainableVariableDict()
+    self.full_model_load_ignore = []
+
   def check_schedule_type(self, val, target_type, target_len):
     if (type(val) == list):
       assert len(val) == target_len
@@ -189,7 +194,7 @@ class Model(object):
                 staircase=sch["staircase"][w_idx],
                 name="annealing_schedule_"+weight_name)
               sch_lrs.append(learning_rates)
-              if self.params.optimizer == "annealed_sgd":
+              if self.params.optimizer == "annealed_sgd": # TODO: rename to "sgd"
                 optimizer = tf.train.GradientDescentOptimizer(learning_rates,
                   name="grad_optimizer_"+weight_name)
               elif self.params.optimizer == "adam":
@@ -356,11 +361,20 @@ class Model(object):
       feed_dict.update(dict_args)
     return feed_dict
 
-  #subclass must overwrite this class, or overwrite build_graph
-  # TODO: Why can't this be done here?
-  #  if dependency is on having self.input_shape then that could also be done here.
+  # Functions that expose specific variables to outer classes
+  # Subclass must overwrite this class
+  # TODO: is it possible to compute these here in the base class?
   def get_input_shape(self):
     return NotImplementedError
+
+  def get_num_latent(self):
+    return NotImplementedError
+
+  def get_total_loss(self):
+    raise NotImplementedError
+
+  def get_encodings(self):
+    raise NotImplementedError
 
   def build_input_placeholder(self):
     with tf.device(self.params.device):
@@ -368,6 +382,17 @@ class Model(object):
         self.input_placeholder = tf.placeholder(tf.float32,
           shape=self.get_input_shape(), name="input_data")
     return self.input_placeholder
+
+  def normalize_input(self, input_node):
+    with tf.device(self.params.device):
+      with self.graph.as_default():
+        #Normalize here if using tf_standardize_data
+        if(self.params.tf_standardize_data):
+          out_img = tf.map_fn(lambda img: tf.image.per_image_standardization(img),
+            input_node)
+        else:
+          out_img = input_node
+    return out_img
 
   def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
@@ -379,11 +404,13 @@ class Model(object):
   #will build placeholder first, then call build_graph_from_input
   #Subclasses can overwrite this function to ignore this functionality
   def build_graph(self):
-    self.build_graph_from_input(self.build_input_placeholder())
+    input_node = self.build_input_placeholder()
+    input_node = self.normalize_input(input_node)
+    self.build_graph_from_input(input_node)
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
-    return NotImplementedError
+    raise NotImplementedError
 
   def slice_features(self, input, indices):
     """
@@ -448,24 +475,28 @@ class Model(object):
           if params.whiten_method == "FT": # other methods require patching first
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
               dp.whiten_data(dataset[key].images, method=params.whiten_method)
-            print("Preprocessing: FT Whitened "+key+" data")
+            print("INFO:preprocessing:FT Whitened "+key+" data")
       if hasattr(params, "lpf_data") and params.lpf_data:
         dataset[key].images, dataset[key].data_mean, dataset[key].lpf_filter = \
           dp.lpf_data(dataset[key].images, cutoff=params.lpf_cutoff)
-        print("Preprocessing: Low pass filtered "+key+" data")
+        print("INFO:preprocessing:Low pass filtered "+key+" data")
       if hasattr(params, "contrast_normalize") and params.contrast_normalize:
         if hasattr(params, "gauss_patch_size"):
           dataset[key].images = dp.contrast_normalize(dataset[key].images,
             params.gauss_patch_size)
         else:
           dataset[key].images = dp.contrast_normalize(dataset[key].images)
-        print("Preprocessing: Contrast normalized "+key+" data")
+        print("INFO:preprocessing:Contrast normalized "+key+" data")
       if hasattr(params, "standardize_data") and params.standardize_data:
+        if params.data_type == "mnist":
+          eps = 1e-5
+        else:
+          eps = None
         dataset[key].images, dataset[key].data_mean, dataset[key].data_std = \
-          dp.standardize_data(dataset[key].images)
+          dp.standardize_data(dataset[key].images, eps)
         self.data_mean = dataset[key].data_mean
         self.data_std = dataset[key].data_std
-        print("Preprocessing: Standardized "+key+" data")
+        print("INFO:preprocessing:Standardized "+key+" data")
       if hasattr(params, "extract_patches") and params.extract_patches:
         assert all(key in params.__dict__.keys()
           for key in ["num_patches", "patch_edge_size", "overlapping_patches",
@@ -487,26 +518,26 @@ class Model(object):
         dataset[key].num_cols = dataset[key].shape[2]
         dataset[key].num_channels = dataset[key].shape[3]
         dataset[key].num_pixels = np.prod(dataset[key].shape[1:])
-        print("Preprocessing: Extracted patches from "+key+" data")
+        print("INFO:preprocessing:Extracted patches from "+key+" data")
         if hasattr(params, "whiten_data") and params.whiten_data:
           if hasattr(params, "whiten_method") and params.whiten_method != "FT":
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
               dp.whiten_data(dataset[key].images, method=params.whiten_method)
-            print("Preprocessing: Whitened "+key+" data")
+            print("INFO:preprocessing:Whitened "+key+" data")
       if hasattr(params, "norm_data") and params.norm_data:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
         self.data_max = dataset[key].data_max
-        print("Preprocessing: Normalized "+key+" data with maximum")
+        print("INFO:preprocessing:Normalized "+key+" data with maximum")
       if hasattr(params, "rescale_data") and params.rescale_data:
         dataset[key].images, dataset[key].data_min, dataset[key].data_max = dp.rescale_data_to_one(dataset[key].images)
         self.data_max = dataset[key].data_max
         self.data_min = dataset[key].data_min
-        print("Preprocessing: Normalized "+key+" data with maximum")
+        print("INFO:preprocessing:Rescaled each "+key+" datapoint to one")
       if hasattr(params, "center_data") and params.center_data:
         dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
           use_dataset_mean=True)
         self.data_mean = dataset[key].data_mean
-        print("Preprocessing: Centered "+key+" data")
+        print("INFO:preprocessing:Centered "+key+" data")
     return dataset
 
   def print_update(self, input_data, input_labels=None, batch_step=0):
@@ -610,14 +641,6 @@ class Model(object):
     for key, val in evals.items():
       evals[key] = np.concatenate(val, axis=0)
     return evals
-
-  #Functions that expose specific variables to outer classes
-  #Defaults to raising not implemented error
-  def get_total_loss(self):
-    raise NotImplementedError
-
-  def get_encodings(self):
-    raise NotImplementedError
 
   def modify_input(self, feed_dict, train_on_adversarial):
     return feed_dict

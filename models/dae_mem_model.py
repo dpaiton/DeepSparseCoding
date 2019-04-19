@@ -16,13 +16,13 @@ class DaeMemModel(DaeModel):
   def build_module(self, input_node):
     module = DaeMemModule(input_node, self.params.layer_types, self.params.output_channels,
       self.params.patch_size, self.params.conv_strides, self.ent_mult, self.decay_mult,
-      self.params.bounds_slope, self.params.latent_min, self.params.latent_max,
+      self.norm_mult, self.params.bounds_slope, self.params.latent_min, self.params.latent_max,
       self.params.num_triangles, self.params.mle_step_size, self.params.num_mle_steps,
       self.params.gdn_w_init_const, self.params.gdn_b_init_const, self.params.gdn_w_thresh_min,
       self.params.gdn_b_thresh_min, self.params.gdn_eps, self.params.memristor_data_loc,
       self.params.memristor_type, self.memristor_std_eps, self.params.synthetic_noise,
       self.params.mem_error_rate, self.act_funcs, self.dropout_keep_probs,
-      self.params.tie_decoder_weights, variable_scope="dae_mem")
+      self.params.tie_decoder_weights, self.params.norm_w_init, variable_scope="dae_mem")
     return module
 
   def build_graph_from_input(self, input_node):

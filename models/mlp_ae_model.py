@@ -3,45 +3,45 @@ import tensorflow as tf
 import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
+from modules.ae_module import AeModule
 from models.mlp_model import MlpModel
-from modules.vae_module import VaeModule
 from modules.mlp_module import MlpModule
 from modules.activations import activation_picker
 
-class MlpVaeModel(MlpModel):
+class MlpAeModel(MlpModel):
   def load_params(self, params):
     """
     Load parameters into object
     Inputs:
      params: [obj] model parameters
     """
-    super(MlpVaeModel, self).load_params(params)
+    super(MlpAeModel, self).load_params(params)
     # Network Size
     self.vector_inputs = True
     self.input_shape = [None, self.params.num_pixels]
     self.label_shape = [None, self.params.num_classes]
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.activation_functions]
-    if np.all([layer_type == "fc" for layer_type in self.params.vae_layer_types]):
-      self.params.vae_patch_size = []
-      self.params.vae_conv_strides = []
+    if np.all([layer_type == "fc" for layer_type in self.params.ae_layer_types]):
+      self.params.ae_patch_size = []
+      self.params.ae_conv_strides = []
+    if np.all([layer_type == "fc" for layer_type in self.params.mlp_layer_types]):
+      self.params.mlp_patch_size = []
+      self.params.mlp_conv_strides = []
 
-  def build_vae_module(self, input_node):
-    module = VaeModule(input_node, self.params.vae_layer_types, self.params.vae_output_channels,
-      self.params.vae_patch_size, self.params.vae_conv_strides, self.decay_mult, self.norm_mult,
-      self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
-      self.params.noise_level, self.params.recon_loss_type, self.params.norm_w_init,
-      variable_scope="vae")
+  def build_ae_module(self, input_node):
+    module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
+      self.params.ae_patch_size, self.params.ae_conv_strides, self.decay_mult, self.norm_mult,
+      self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
+      self.params.norm_w_init, variable_scope="ae")
     return module
 
   def build_mlp_module(self, input_node):
-    #The only parameter different here vs base class is mlp_output_channels vs output_channels
-    #TODO is there a better way to do this?
     module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
       self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.mlp_patch_size, self.params.mlp_conv_strides, self.params.eps,
-      loss_type="softmax_cross_entropy")
+      lrn=self.params.lrn, loss_type="softmax_cross_entropy")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -53,45 +53,44 @@ class MlpVaeModel(MlpModel):
             shape=self.label_shape, name="input_labels")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
           self.norm_mult = tf.placeholder(tf.float32, shape=(), name="norm_mult")
-          self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
-          self.train_vae = tf.placeholder(tf.bool, shape=(), name="train_vae")
+          self.train_ae = tf.placeholder(tf.bool, shape=(), name="train_ae")
 
-        with tf.variable_scope("placeholders") as scope:
+        with tf.variable_scope("placeholders") as sess:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
           self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="ae_dropout_keep_probs")
 
-        self.train_vae = tf.cast(self.train_vae, tf.float32)
+        self.train_ae = tf.cast(self.train_ae, tf.float32)
 
-        self.vae_module = self.build_vae_module(input_node)
-        self.trainable_variables.update(self.vae_module.trainable_variables)
+        self.ae_module = self.build_ae_module(input_node)
+        self.trainable_variables.update(self.ae_module.trainable_variables)
 
         if self.params.train_on_recon:
           if self.params.mlp_layer_types[0] == "conv":
             data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
-            mlp_input = tf.reshape(self.vae_module.reconstruction, shape=data_shape)
+            mlp_input = tf.reshape(self.ae_module.reconstruction, shape=data_shape)
           elif self.params.mlp_layer_types[0] == "fc":
-            mlp_input = self.vae_module.reconstruction
+            mlp_input = self.ae_module.reconstruction
           else:
             assert False, ("params.mlp_layer_types must be 'fc' or 'conv'")
         else: # train on VAE latent encoding
           assert self.params.mlp_layer_types[0] == "fc", (
-            "MLP must have FC layers to train on VAE activity")
-          mlp_input = self.vae_module.a
+            "MLP must have FC layers to train on SAE activity")
+          mlp_input = self.ae_module.a
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
         with tf.variable_scope("loss") as scope:
-          #Loss switches based on train_vae flag
-          self.total_loss = self.train_vae * self.vae_module.total_loss + \
-            (1-self.train_vae) * self.mlp_module.total_loss
+          #Loss switches based on train_ae flag
+          self.total_loss = self.train_ae * self.ae_module.total_loss + \
+            (1-self.train_ae) * self.mlp_module.total_loss
 
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
         with tf.variable_scope("performance_metrics") as scope:
           #VAE metrics
-          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.vae_module.reconstruction)),
+          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.ae_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
@@ -104,7 +103,8 @@ class MlpVaeModel(MlpModel):
               tf.float32), name="avg_accuracy")
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
-    feed_dict = super(MlpVaeModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
+    feed_dict = super(MlpAeModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
+    #TODO dropout_keep_probs should be mlp_dropout_keep_probs (getting set in base class)
     if(is_test): # Turn off dropout when not training
       feed_dict[self.ae_dropout_keep_probs] = [1.0,] * len(self.params.ae_dropout)
     else:
@@ -122,22 +122,18 @@ class MlpVaeModel(MlpModel):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(MlpVaeModel, self).generate_update_dict(input_data, input_labels,
+    update_dict = super(MlpAeModel, self).generate_update_dict(input_data, input_labels,
       batch_step)
 
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    train_on_adversarial = feed_dict[self.train_on_adversarial]
-    if(train_on_adversarial):
-      feed_dict[self.use_adv_input] = True
-    else:
-      feed_dict[self.use_adv_input] = False
 
-    eval_list = [self.vae_module.loss_dict["recon_loss"],
-      self.vae_module.a, self.vae_module.reconstruction, self.pSNRdB]
+    eval_list = [self.ae_module.loss_dict["recon_loss"],
+      self.ae_module.a, self.ae_module.reconstruction,
+      self.pSNRdB]
 
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    recon_loss, vae_a_vals, recon, pSNRdB\
-      = out_vals[0:4]
+    recon_loss, ae_a_vals, recon, pSNRdB\
+      = out_vals[0:5]
 
     input_max = np.max(input_data)
     input_mean = np.mean(input_data)
@@ -145,17 +141,17 @@ class MlpVaeModel(MlpModel):
     recon_max = np.max(recon)
     recon_mean = np.mean(recon)
     recon_min = np.min(recon)
-    vae_a_vals_max = np.array(vae_a_vals.max())
-    vae_a_vals_mean = np.array(vae_a_vals.mean())
-    vae_a_vals_min = np.array(vae_a_vals.min())
-    vae_a_frac_act = np.array(np.count_nonzero(vae_a_vals)
-      / float(vae_a_vals.size))
+    ae_a_vals_max = np.array(ae_a_vals.max())
+    ae_a_vals_mean = np.array(ae_a_vals.mean())
+    ae_a_vals_min = np.array(ae_a_vals.min())
+    ae_a_frac_act = np.array(np.count_nonzero(ae_a_vals)
+      / float(ae_a_vals.size))
 
     stat_dict = {
-      "vae_recon_loss":recon_loss,
+      "ae_recon_loss":recon_loss,
       "pSNRdB": np.mean(pSNRdB),
-      "vae_a_fraction_active":vae_a_frac_act,
-      "vae_a_max_mean_min":[vae_a_vals_max, vae_a_vals_mean, vae_a_vals_min],
+      "ae_a_fraction_active":ae_a_frac_act,
+      "ae_a_max_mean_min":[ae_a_vals_max, ae_a_vals_mean, ae_a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
     update_dict.update(stat_dict) #stat_dict overwrites for same keys
@@ -168,17 +164,16 @@ class MlpVaeModel(MlpModel):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(MlpVaeModel, self).generate_plots(input_data, input_labels)
+    super(MlpAeModel, self).generate_plots(input_data, input_labels)
 
     feed_dict = self.get_feed_dict(input_data, input_labels)
 
-    eval_list = [self.global_step, self.vae_module.w_list[0],
-      self.vae_module.reconstruction, self.vae_module.a]
+    eval_list = [self.global_step, self.ae_module.w_list[0],
+      self.ae_module.reconstruction, self.ae_module.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
-    weights, recon, vae_activity = eval_out[1:]
-
+    weights, recon, ae_activity = eval_out[1:]
     fig = pf.plot_activity_hist(input_data, title="Image Histogram",
       save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     fig = pf.plot_activity_hist(recon, title="Recon Histogram",
@@ -196,8 +191,8 @@ class MlpVaeModel(MlpModel):
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=self.params.disp_dir+"recons"+filename_suffix)
-    fig = pf.plot_activity_hist(vae_activity, title="VAE Activity Histogram",
-      save_filename=self.params.disp_dir+"vae_act_hist"+filename_suffix)
+    fig = pf.plot_activity_hist(ae_activity, title="AE Activity Histogram",
+      save_filename=self.params.disp_dir+"ae_act_hist"+filename_suffix)
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=self.params.disp_dir+"phi"+filename_suffix)

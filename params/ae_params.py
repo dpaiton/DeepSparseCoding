@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "ae"
-    self.model_name = "ae"
+    self.model_name = "ae_deep"#"ae_768"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -22,6 +22,9 @@ class params(BaseParams):
     self.lpf_cutoff = 0.7
     self.extract_patches = False
     self.batch_size = 100
+    self.tie_decoder_weights = False
+    self.norm_weights = False
+    self.norm_w_init = False
     #Specify number of neurons for encoder
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
@@ -29,8 +32,6 @@ class params(BaseParams):
     self.output_channels = [512, 50]
     self.patch_size = []
     self.conv_strides = []
-
-    self.tie_decoder_weights = False
     self.activation_functions = ["relu", "relu", "relu", "identity"]
     self.dropout = [1.0]*4
     self.optimizer = "annealed_sgd"
@@ -45,6 +46,7 @@ class params(BaseParams):
       {"num_batches": int(3e5),
       "weights": None,
       "decay_mult": 0.01,
+      "norm_mult": 0.00,
       "weight_lr": 1e-3,
       "decay_steps": int(3e5*0.4),
       "decay_rate": 0.9,
@@ -54,20 +56,23 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.layer_types = ["fc", "fc", "fc"]
-      self.output_channels = [768, 100, 20]
-      self.optimizer = "annealed_sgd"#"adam"
+      self.layer_types = ["fc", "fc", "fc"]#["fc"]#
+      self.output_channels = [768, 256, 64]#[768]
+      self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.activation_functions = ["relu", "relu", "relu", "relu", "relu", "identity"]
-      self.dropout = [0.4, 0.4, 1.0, 0.4, 0.4, 1.0]
-      self.cp_int = int(1e3)
-      self.gen_plot_int = int(1e3)
+      self.activation_functions = ["relu"]*(2*len(self.layer_types))
+      self.dropout = [0.5, 0.7, 1.0, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
+      self.cp_int = int(5e5)
+      self.gen_plot_int = int(5e5)
+      self.norm_weights = False
+      self.norm_w_init = False
       self.schedule = [
-        {"num_batches": int(5e3),
+        {"num_batches": int(1e6),
         "weights": None,
-        "decay_mult": 0.090,
-        "weight_lr": 0.02,# 0.020,
-        "decay_steps": int(4e3),
+        "decay_mult": 0.0,#1e-4,
+        "norm_mult": 3e-4,#2e-4,#0.0,
+        "weight_lr": 0.006,#0.003,
+        "decay_steps": int(6e5),
         "decay_rate": 0.5,
         "staircase": True,}]
 
@@ -91,6 +96,7 @@ class params(BaseParams):
         {"num_batches": int(1e6),
         "weights": None,
         "decay_mult": 0.001,
+        "norm_mult": 0.00,
         "weight_lr": 0.001,
         "decay_steps": int(800000),
         "decay_rate": 0.8,

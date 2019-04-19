@@ -1,22 +1,25 @@
 import numpy as np
 import tensorflow as tf
+from ops.init_ops import L2NormalizedTruncatedNormalInitializer
 from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
   def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides,
-    decay_mult, act_funcs, dropout, tie_decoder_weights, variable_scope="ae"):
+    decay_mult, norm_mult, act_funcs, dropout, tie_decoder_weights, norm_w_init, variable_scope="ae"):
     """
     Autoencoder module
     Inputs:
       data_tensor
       output_channels: a list of channels to make, also defines number of layers
       decay_mult: tradeoff multiplier for weight decay loss
+      norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       act_funcs: activation functions
       dropout: specifies the keep probability or None
       conv: if True, do convolution
       conv_strides: list of strides for convolution [batch, y, x, channels]
-      patch_y: number of y inputs for convolutional patches
-      patch_x: number of x inputs for convolutional patches
+      patch_size: number of (y, x) inputs for convolutional patches
+      norm_w_init: if True, l2 normalize w_init,
+        reducing over [0] axis on enc and [-1] axis on dec
       variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -33,6 +36,7 @@ class AeModule(object):
     self.conv_strides = conv_strides
     self.dropout = dropout
     self.decay_mult = decay_mult
+    self.norm_mult = norm_mult
     self.act_funcs = act_funcs
     self.tie_decoder_weights = tie_decoder_weights
 
@@ -76,6 +80,14 @@ class AeModule(object):
     self.conv_strides = self.conv_strides + [None]*(self.num_fc_layers*2) + self.conv_strides[::-1]
     self.build_graph()
 
+  def compute_weight_norm_loss(self):
+    with tf.variable_scope("unsupervised"):
+      num_neurons = self.output_channels + self.output_channels[::-1]
+      w_norm_list = [tf.square(num_neurons[w_idx] - tf.reduce_sum(tf.square(w)))
+        for w_idx, w in enumerate(self.w_list)]
+      norm_loss = tf.multiply(0.5*self.norm_mult, tf.add_n(w_norm_list))
+    return norm_loss
+
   def compute_weight_decay_loss(self):
     with tf.variable_scope("unsupervised"):
       w_decay_list = [tf.reduce_sum(tf.square(w)) for w in self.w_list]
@@ -93,7 +105,8 @@ class AeModule(object):
   def compute_total_loss(self):
     with tf.variable_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
-        "weight_decay_loss":self.compute_weight_decay_loss()}
+        "weight_decay_loss":self.compute_weight_decay_loss(),
+        "weight_norm_loss":self.compute_weight_norm_loss()}
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
   def compute_pre_activation(self, layer_id, input_tensor, w, b, conv, decode):
@@ -136,8 +149,17 @@ class AeModule(object):
 
       name_prefix = "conv_" if conv else "fc_"
       w_name = name_prefix+"w_"+str(w_read_id)
+      # TODO: params to switch init type
+      #w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      #  initializer=self.w_normal_init, trainable=True)
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-        initializer=self.w_init, trainable=True)
+        initializer=self.w_xavier_init, trainable=True)
+      #if decode:
+      #  w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      #    initializer=self.w_normed_dec_init, trainable=True)
+      #else:
+      #  w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      #    initializer=self.w_normed_enc_init, trainable=True)
 
       b_name = name_prefix+"b_"+str(layer_id)
       if conv and decode:
@@ -245,7 +267,12 @@ class AeModule(object):
   def build_graph(self):
     with tf.variable_scope(self.variable_scope) as scope:
       with tf.variable_scope("weight_inits") as scope:
-        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
+        self.w_normal_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.001, dtype=tf.float32)
+        self.w_xavier_init = tf.contrib.layers.xavier_initializer(uniform=False, dtype=tf.float32)
+        self.w_normed_enc_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
+          axis=0, epsilon=1e-12, dtype=tf.float32) #TODO: Fix axis to be general to conv layers
+        self.w_normed_dec_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
+          axis=-1, epsilon=1e-12, dtype=tf.float32)
         self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
 
       self.u_list = [self.data_tensor]
@@ -255,7 +282,7 @@ class AeModule(object):
         self.act_funcs[:self.num_encoder_layers])
       self.enc_u_list = enc_u_list # TODO: Remove the dependency for these member variables for build_decoder
       self.enc_w_list = enc_w_list
-      self.u_list += enc_u_list
+      self.u_list += enc_u_list[1:] # build_encoder() will place self.u_list[0] as enc_u_list[0]
       self.w_list += enc_w_list
       self.b_list += enc_b_list
 
@@ -265,10 +292,18 @@ class AeModule(object):
       dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
         self.act_funcs[self.num_encoder_layers:])
 
-      self.u_list += dec_u_list
+      self.u_list += dec_u_list[1:] # build_decoder() will place self.u_list[-1] as dec_u_list[0]
       if not self.tie_decoder_weights:
         self.w_list += dec_w_list
       self.b_list += dec_b_list
+
+      with tf.variable_scope("norm_weights") as scope:
+        w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
+        self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
+          axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
+        self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
+          axis=-1, epsilon=1e-8, name="col_l2_norm"))
+        self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
 
       for w,b in zip(self.w_list, self.b_list):
         self.trainable_variables[w.name] = w

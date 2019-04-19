@@ -668,7 +668,7 @@ def rescale_data_to_one(data):
   data_axis=tuple(range(data.ndim)[1:])
   data_min = np.min(data, axis=data_axis, keepdims=True)
   data_max = np.max(data, axis=data_axis, keepdims=True)
-  data = (data - data_min) / (data_max - data_min + 1e-6)
+  data = (data - data_min) / (data_max - data_min + 1e-8)
   if data.shape != orig_shape:
     data = reshape_data(data, out_shape=orig_shape)[0]
   return data, data_min, data_max
@@ -716,7 +716,7 @@ def center_data(data, use_dataset_mean=False):
       data = reshape_data(data, out_shape=orig_shape)[0]
   return data, data_mean
 
-def standardize_data(data):
+def standardize_data(data, eps=None):
   """
   Standardize each image data to have zero mean and unit standard-deviation (z-score)
   Inputs:
@@ -724,14 +724,15 @@ def standardize_data(data):
   Outputs:
     data: [np.ndarray] normalized data
   """
+  if eps is None:
+    eps = 1.0 / np.sqrt(data[0,...].size)
   data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
   num_examples = data.shape[0]
   data_axis = tuple(range(data.ndim)[1:]) # standardize each example individually
   data_mean = np.mean(data, axis=data_axis, keepdims=True)
   data_true_std = np.std(data, axis=data_axis, keepdims=True)
-  data_min_std = 1.0/np.sqrt(data[0,...].size)
-  data_std = np.where(data_true_std >= data_min_std, data_true_std,
-    data_min_std*np.ones_like(data_true_std))
+  data_std = np.where(data_true_std >= eps, data_true_std,
+    eps*np.ones_like(data_true_std))
   for idx in range(data.shape[0]): # TODO: Broadcasting should work here
     data[idx, ...] = (data[idx, ...] - data_mean[idx]) /  data_std[idx]
   if data.shape != orig_shape:
@@ -1063,6 +1064,21 @@ def cos_similarity(x, y):
     assert x_norm > 0, (
       "Error: input 'x' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, x_norm))
     assert y_norm > 0, (
-      "Error: input 'y' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, x_norm))
+      "Error: input 'y' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, y_norm))
     batch_similarity.append(np.dot(x_vect, y_vect.T) / (y_norm * x_norm))
   return np.stack(batch_similarity, axis=0)
+
+def bf_projections(bf1, bf2):
+  """
+  Find a projection basis that is orthogonal to bf1 and as close as possible to bf2
+  Usees a single step of the Gram-Schmidt process
+  Outputs:
+    projection_matrix [tuple] containing [ax_1, ax_2] for projecting data into the 2d array
+  Inputs
+    bf1 [np.ndarray] of shape [num_pixels,]
+    bf2 [np.ndarray] of shape [num_pixels,]
+  """
+  v = bf2 - np.dot(bf2[:,None].T, bf1[:,None]) * bf1
+  v = np.squeeze((v / np.linalg.norm(v)).T)
+  proj_matrix = np.stack([bf1, v], axis=0)
+  return proj_matrix, v

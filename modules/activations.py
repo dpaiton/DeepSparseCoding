@@ -35,7 +35,6 @@ def compute_gdn_mult(u_in, w_gdn, b_gdn, w_min, b_min, conv, eps=1e-6):
   w_bound = tf.sqrt(tf.add(w_min, tf.square(eps)))
   b_bound = tf.sqrt(tf.add(b_min, tf.square(eps)))
   w_threshold = tf.subtract(tf.square(tfc.lower_bound(w_gdn, w_bound)), tf.square(eps))
-  #import IPython; IPython.embed(); raise SystemExit
   b_threshold = tf.subtract(tf.square(tfc.lower_bound(b_gdn, b_bound)), tf.square(eps))
   if conv:
     u_in_shape = tf.shape(u_in)

@@ -7,9 +7,9 @@ import utils.data_processing as dp
 from data.dataset import Dataset
 import tensorflow as tf
 import tensorflow_compression as tfc
-import pdb
 from modules.class_adversarial_module import ClassAdversarialModule
 from modules.recon_adversarial_module import ReconAdversarialModule
+from modules.neuron_visualization_module import NeuronVisualizationModule
 
 class Analyzer(object):
   """
@@ -135,19 +135,25 @@ class Analyzer(object):
     """Load model object into analysis object"""
     self.model = mp.get_model(self.model_params.model_type)
 
-  #If build_graph gets called without parameters,
-  #build placeholders call build graph with default input
+  # If build_graph gets called without parameters,
+  # build placeholders call build graph with default input
   def build_graph(self):
-    #We want to overwrite model adversarial params with what we have in analysis
+    # We want to overwrite model adversarial params with what we have in analysis
     if(self.analysis_params.do_class_adversaries):
+      assert self.analysis_params.do_recon_adversaries is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
+      assert self.analysis_params.do_neuron_visualization is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
-          input_node = self.model.build_input_placeholder()
+          self.input_node = self.model.build_input_placeholder()
           with tf.variable_scope("placeholders") as scope:
-            #This is a switch used internally to use clean or adv examples
+            # This is a switch used internally to use clean or adv examples
             self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
-          #Building adv module here with adv_params
-          self.class_adv_module = ClassAdversarialModule(input_node, self.use_adv_input,
+          # Building adv module here with adv_params
+          self.class_adv_module = ClassAdversarialModule(self.input_node, self.use_adv_input,
             self.model_params.num_classes, self.analysis_params.adversarial_num_steps,
             self.analysis_params.adversarial_step_size,
             max_step=self.analysis_params.adversarial_max_change,
@@ -155,40 +161,82 @@ class Analyzer(object):
             clip_range=self.analysis_params.adversarial_clip_range,
             attack_method=self.analysis_params.adversarial_attack_method,
             eps=self.model_params.eps)
-
-      self.model.build_graph_from_input(self.class_adv_module.adv_image)
+      self.input_node = self.model.normalize_input(self.class_adv_module.adv_image)
+      self.model.build_graph_from_input(self.input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.class_adv_module.build_adversarial_ops(self.model.label_est,
             model_logits=self.model.get_encodings(),
             loss=self.model.mlp_module.sum_loss)
-      #Add adv module ignore list to model ignore list
+      # Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
-
     elif(self.analysis_params.do_recon_adversaries):
+      assert self.analysis_params.do_class_adversaries is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
+      assert self.analysis_params.do_neuron_visualization is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
-          input_node = self.model.build_input_placeholder()
+          self.input_node = self.model.build_input_placeholder()
           with tf.variable_scope("placeholders") as scope:
-            #This is a switch used internally to use clean or adv examples
+            # This is a switch used internally to use clean or adv examples
             self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
-
-          #Building adv module here with adv_params
-          self.recon_adv_module = ReconAdversarialModule(input_node, self.use_adv_input,
-            self.analysis_params.adversarial_num_steps,
-            self.analysis_params.adversarial_step_size,
-            adv_upper_bound=self.analysis_params.adversarial_max_change,
+          self.recon_adv_module = ReconAdversarialModule(
+            data_tensor=self.input_node,
+            use_adv_input=self.use_adv_input,
+            num_steps=self.analysis_params.adversarial_num_steps,
+            step_size=self.analysis_params.adversarial_step_size,
+            max_adv_change=self.analysis_params.adversarial_max_change,
             clip_adv=self.analysis_params.adversarial_clip,
             clip_range=self.analysis_params.adversarial_clip_range,
-            attack_method=self.analysis_params.adversarial_attack_method)
-
-      self.model.build_graph_from_input(self.recon_adv_module.adv_image)
+            attack_method=self.analysis_params.adversarial_attack_method,
+            carlini_change_variable=self.analysis_params.carlini_change_variable,
+            adv_optimizer=self.analysis_params.adv_optimizer)
+      # Add adv module ops to the graph by passing the module outputs to the model graph as input
+      self.input_node = self.model.normalize_input(self.recon_adv_module.adv_images)
+      self.model.build_graph_from_input(self.input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
-          self.recon_adv_module.build_adversarial_ops(self.model.reconstruction)
-      #Add adv module ignore list to model ignore list
+          self.recon_adv_module.build_adversarial_ops(
+            recons=self.model.reconstruction,
+            latent_activities=self.model.get_encodings())
+      # Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.recon_adv_module.ignore_load_var_list)
-
+    elif(self.analysis_params.do_neuron_visualization):
+      assert self.analysis_params.do_class_adversaries is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
+      assert self.analysis_params.do_recon_adversaries is False, (
+        "Only one of do_class_adversaries, do_recon_adversaries, do_neuron_visualization"
+        +" can be True.")
+      with tf.device(self.model.params.device):
+        with self.model.graph.as_default():
+          self.input_node = self.model.build_input_placeholder()
+          self.neuron_vis_module = NeuronVisualizationModule(
+            data_tensor=self.input_node,
+            num_steps=self.analysis_params.neuron_vis_num_steps, # int
+            step_size=self.analysis_params.neuron_vis_step_size, # int
+            clip_output=self.analysis_params.neuron_vis_clip, # bool
+            clip_range=self.analysis_params.neuron_vis_clip_range, # [float, float]
+            norm_constraint_mag=self.analysis_params.neuron_vis_norm_magnitude, # None or float
+            l2_regularize_coeff=self.analysis_params.neuron_vis_l2_regularize_coeff, # None or float
+            variation_coeff=self.analysis_params.neuron_vis_variation_coeff, # None or float
+            method=self.analysis_params.neuron_vis_method, # str
+            optimizer=self.analysis_params.neuron_vis_optimizer) # str
+      # Add vis module ops to the graph by passing the module outputs to the model graph as input
+      self.input_node = self.model.normalize_input(self.neuron_vis_module.vis_image)
+      self.model.build_graph_from_input(self.input_node)
+      with tf.device(self.model.params.device):
+        with self.model.graph.as_default():
+          if self.analysis_params.neuron_vis_target_layer is None:
+            target_layer = self.model.get_encodings()
+          else:
+            target_layer = self.model.module.u_list[self.analysis_params.neuron_vis_target_layer]
+          self.neuron_vis_module.build_visualization_ops(target_layer)
+      # Add vis module ignore list to model ignore list
+      self.model.full_model_load_ignore.extend(self.neuron_vis_module.ignore_load_var_list)
     else:
       self.model.build_graph()
 
@@ -210,10 +258,10 @@ class Analyzer(object):
     self.model.load_schedule(params.schedule)
     self.model.sched_idx = 0
     self.model.log_schedule()
-    self.model.construct_savers()
     self.add_pre_init_ops_to_graph()
     self.model.add_optimizers_to_graph()
     self.model.add_initializer_to_graph()
+    self.model.construct_savers()
 
   def add_pre_init_ops_to_graph(self):
     pass
@@ -273,8 +321,8 @@ class Analyzer(object):
 
     #TODO: Smarter naming scheme for save_info (e.g. how it is done for models)
     # Recon Adversarial analysis
-    recon_adversarial_stats_file_loc = \
-      self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz"
+    recon_adversarial_stats_file_loc = (
+      self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz")
     if os.path.exists(recon_adversarial_stats_file_loc):
       data = np.load(recon_adversarial_stats_file_loc)["data"].item()
       self.steps_idx = data["steps_idx"]
@@ -296,15 +344,15 @@ class Analyzer(object):
       self.adversarial_input_adv_cos_similarities = data["input_adv_cos_similarities"]
       self.adversarial_target_pert_cos_similarities = data["target_pert_cos_similarities"]
       self.adversarial_input_pert_cos_similarities = data["input_pert_cos_similarities"]
-    recon_adversarial_file_loc = \
-      self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz"
+    recon_adversarial_file_loc = (
+      self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz")
     if os.path.exists(recon_adversarial_file_loc):
       data = np.load(recon_adversarial_file_loc)["data"].item()
       self.adversarial_recons = data["adversarial_recons"]
 
     #Class adversarial analysis
-    class_adversarial_file_loc = \
-      self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
+    class_adversarial_file_loc = (
+      self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz")
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.steps_idx = data["steps_idx"]
@@ -326,6 +374,12 @@ class Analyzer(object):
     if os.path.exists(class_adversarial_file_loc):
       data = np.load(class_adversarial_file_loc)["data"].item()
       self.adversarial_images = data["adversarial_images"]
+
+    # Optimal stimulus analysis
+    neuron_visualization_file_loc = (
+      self.analysis_out_dir+"savefiles/neuron_visualization_analysis_"+save_info+".npz")
+    if os.path.exists(neuron_visualization_file_loc):
+      self.neuron_vis_output = np.load(neuron_visualization_file_loc)["data"].item()
 
   def load_basis_stats(self, save_info):
     bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
@@ -455,7 +509,7 @@ class Analyzer(object):
     self.analysis_logger.log_info("Noise analysis is complete.")
     return (noise_activity, noise_atas, noise_atcs)
 
-  def compute_activations(self, images):
+  def compute_activations(self, images, batch_size=None):
     """
     Computes the output code for a set of images.
     Outputs:
@@ -466,10 +520,27 @@ class Analyzer(object):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
-      feed_dict = self.model.get_feed_dict(images, is_test=True)
-      sess.run(self.model.init_op, feed_dict)
-      self.model.load_full_model(sess, self.analysis_params.cp_loc)
-      activations = sess.run(self.model.get_encodings(), feed_dict)
+      if batch_size is not None: # TODO: causes neuron ordering to be off?
+        images_shape = list(images.shape)
+        num_images = images_shape[0]
+        assert num_images % batch_size == 0, (
+          "batch_size=%g must divide evenly into num_images=%g"%(batch_size, num_images))
+        num_batches = int(num_images/batch_size)
+        images = images.reshape([num_batches, batch_size]+images_shape[1:])
+        feed_dict = self.model.get_feed_dict(np.zeros([batch_size]+images_shape[1:]))
+        sess.run(self.model.init_op, feed_dict)
+        self.model.load_full_model(sess, self.analysis_params.cp_loc)
+        activations = np.zeros([num_batches, batch_size, self.model.get_num_latent()])
+        for image_batch_idx in range(num_batches):
+          images_batch = images[image_batch_idx, ...]
+          feed_dict = self.model.get_feed_dict(images_batch, is_test=True)
+          activations[image_batch_idx, ...] = sess.run(self.model.get_encodings(), feed_dict)
+        activations = activations.reshape([num_images, self.model.get_num_latent()])
+      else:
+        feed_dict = self.model.get_feed_dict(images, is_test=True)
+        sess.run(self.model.init_op, feed_dict)
+        self.model.load_full_model(sess, self.analysis_params.cp_loc)
+        activations = sess.run(self.model.get_encodings(), feed_dict)
     return activations
 
   def compute_atas(self, activities, images, batch_size=100):
@@ -591,14 +662,25 @@ class Analyzer(object):
       for phase in phases], axis=0) #Array containing all stimulus that can be returned for testing
     phase_stims = {"test": Dataset(phase_stims[:,:,:,None], lbls=None, ignore_lbls=None,
       rand_state=self.rand_state)}
+    if not self.model_params.whiten_data:
+      self.model_params.whiten_method = None
     phase_stims = self.model.preprocess_dataset(phase_stims,
       params={"whiten_data":self.model_params.whiten_data,
       "whiten_method":self.model_params.whiten_method})
     phase_stims = self.model.reshape_dataset(phase_stims, self.model_params)
     phase_stims["test"].images /= np.max(np.abs(phase_stims["test"].images))
     phase_stims["test"].images *= scale
+
+    # compute_activations will give orientation tuning for whatever outputs are returned model.a
     activations = self.compute_activations(phase_stims["test"].images).reshape(num_neurons,
       num_contrasts, num_orientations, num_phases, tot_num_bfs)
+    # If you're running a deep network and want orientation tuning for the first layer:
+    # TODO: Make layer number a parameter & default to 'compute_activations'
+    #var_name = self.model.module.u_list[1].name
+    #activations = self.evaluate_model(phase_stims["test"].images,
+    #  [var_name])[var_name].reshape(num_neurons, num_contrasts, num_orientations, num_phases,
+    #  tot_num_bfs)
+
     for bf_idx, neuron_idx in enumerate(neuron_indices):
       activity_slice = activations[bf_idx, :, :, :, neuron_idx]
       max_responses[bf_idx, ...] = np.max(np.abs(activity_slice), axis=-1)
@@ -665,7 +747,13 @@ class Analyzer(object):
         base_stims = self.model.reshape_dataset(base_stims, self.model_params)
         base_stims["test"].images /= np.max(np.abs(base_stims["test"].images))
         base_stims["test"].images *= scale
+
         base_activity = self.compute_activations(base_stims["test"].images)[:, neuron_idx]
+        #TODO: param for this (see above TODO)
+        #var_name = self.model.module.u_list[1].name
+        #base_activity = self.evaluate_model(base_stims["test"].images,
+        #  [var_name])[var_name][:, neuron_idx]
+
         base_max_responses[bf_idx, bco_idx] = np.max(np.abs(base_activity))
         base_mean_responses[bf_idx, bco_idx] = np.mean(np.abs(base_activity))
         base_rect_responses[bf_idx, 0, bco_idx] = np.mean(np.maximum(0, base_activity))
@@ -686,7 +774,13 @@ class Analyzer(object):
               mask_stims["test"].images *= scale
               test_stims[or_idx, ...] = base_stims["test"].images[:,None,:] + mask_stims["test"].images[None,:,:]
             test_stims = test_stims.reshape(num_orientations*num_phases*num_phases, num_pixels)
+
             test_activity = self.compute_activations(test_stims)[:, neuron_idx]
+            #TODO: param for this (see above TODO)
+            #var_name = self.model.module.u_list[1].name
+            #test_activity = self.evaluate_model(test_stims,
+            #  [var_name])[var_name][:, neuron_idx]
+
             test_activity = np.reshape(test_activity, (num_orientations, num_phases**2))
             # peak-to-trough amplitude is computed across all base & mask phases
             test_max_responses[bf_idx, bco_idx, co_idx, :] = np.max(np.abs(test_activity), axis=1)
@@ -855,41 +949,78 @@ class Analyzer(object):
 
   def bf_projections(self, bf1, bf2):
     """
-    Find a projection basis that is orthogonal to bf1 and as close as possible to bf2
-    Usees a single step of the Gram-Schmidt process
-    Outputs:
-      projection_matrix [tuple] containing [ax_1, ax_2] for projecting data into the 2d array
-    Inputs
-      bf1 [np.ndarray] of shape [num_pixels,]
-      bf2 [np.ndarray] of shape [num_pixels,]
+    TODO: Deprecate this and use dp.bf_projections
     """
-    v = bf2 - np.dot(bf2[:,None].T, bf1[:,None]) * bf1
-    v = np.squeeze((v / np.linalg.norm(v)).T)
-    proj_matrix = np.stack([bf1, v], axis=0)
-    return proj_matrix, v
+    return dp.bf_projections(bf1, bf2)
+
+  def neuron_visualization_analysis(self, save_info=""):
+    vis_data_init = np.random.normal(loc=0.0, scale=1e-2, size=self.model.get_input_shape()[1:])
+    vis_data_init /= np.linalg.norm(vis_data_init)
+    vis_data_init[vis_data_init > 1.0] = 1.0
+    vis_data_init[vis_data_init < 0.0] = 0.0
+    vis_data_init = vis_data_init[None,:]
+    self.neuron_vis_output = {
+      "data_init":vis_data_init,
+      "steps":[],
+      "optimal_stims":[],
+      "loss":[]}
+    for target_neuron_idx in self.analysis_params.neuron_vis_targets:
+      selection_vector = np.zeros(self.model.get_num_latent())
+      selection_vector[target_neuron_idx] = 1
+      optimal_stim_outputs = self.construct_optimal_stimulus(vis_data_init, selection_vector)
+      self.neuron_vis_output["steps"].append(optimal_stim_outputs["steps"])
+      self.neuron_vis_output["optimal_stims"].append(optimal_stim_outputs["images"])
+      self.neuron_vis_output["loss"].append(optimal_stim_outputs["loss"])
+    np.savez(self.analysis_out_dir+"savefiles/neuron_visualization_analysis_"+save_info+".npz",
+      data=self.neuron_vis_output)
+    self.analysis_logger.log_info("Neuron visualization analysis is complete.")
+
+  def construct_optimal_stimulus(self, init_image, selection_vector):
+    """
+    Constructs optimal stimulus for a given neuron
+    Inputs:
+      init_image: [np.ndarray] image to initialize optimal search with
+    Outputs:
+      out_dict: [dictionary] with keys
+        "steps" - step number for each output
+        "images" - optimal stimulus image at given step
+        "loss" - visualization loss at given step
+    """
+    input_shape = self.model.get_input_shape()[1:] # We don't need bach dim
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      feed_dict = self.model.get_feed_dict(init_image, is_test=True)
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
+      out_dict = self.neuron_vis_module.construct_optimal_stimulus(feed_dict,
+        selection_vector=selection_vector,
+        stim_save_int=self.analysis_params.neuron_vis_stim_save_int,
+        save_int=self.analysis_params.neuron_vis_save_int)
+    return out_dict
 
   def construct_recon_adversarial_stimulus(self, input_images, target_images):
-
-    if(self.analysis_params.adversarial_attack_method == "kurakin_targeted"):
-      #Not using recon_mult here, so set arb value
+    if(self.analysis_params.adversarial_attack_method == "kurakin_targeted" or
+      self.analysis_params.adversarial_attack_method == "marzi_untargeted" or
+      self.analysis_params.adversarial_attack_method == "marzi_latent"):
+      #Not using recon_mult here, so set arbitrary value
       self.analysis_params.carlini_recon_mult = [0]
     elif(self.analysis_params.adversarial_attack_method == "carlini_targeted"):
       if(type(self.analysis_params.carlini_recon_mult) is not list):
         self.analysis_params.carlini_recon_mult = [self.analysis_params.carlini_recon_mult]
     else:
-      assert False, ("Adversarial attack method must be \"kurakin\" or \"carlini\"")
-
+      assert False, (
+        "Adversarial attack method must be"
+        +"'kurakin_targeted', 'carlini_targeted', 'marzi_untargted', or 'marzi_latent'.")
     input_target_mse = dp.mse(input_images, target_images)
     distances = {"input_target_mse":input_target_mse, "input_recon_mses":[],
     "input_adv_mses":[], "target_recon_mses":[],
     "target_adv_mses":[], "adv_recon_mses":[], "target_adv_cos_similarities":[],
     "input_adv_cos_similarities":[], "target_pert_cos_similarities": [],
-    "input_pert_cos_similarities":[]}
-
+    "input_pert_cos_similarities":[], "adv_loss":[]}
     steps=None
     all_adversarial_images = []
     all_recons = []
-
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
@@ -897,12 +1028,14 @@ class Analyzer(object):
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       for r_mult in self.analysis_params.carlini_recon_mult:
-        out_dict = self.recon_adv_module.construct_adversarial_examples(
-          feed_dict, recon_mult=r_mult, target_generation_method="specified",
+        out_dict = self.recon_adv_module.construct_adversarial_examples(feed_dict,
+          recon_mult=r_mult,
+          target_generation_method="specified",
           target_images=target_images,
+          selection_vector=self.analysis_params.selection_vector,
           save_int=self.analysis_params.adversarial_save_int)
-
         steps = out_dict["step"]
+        distances["adv_loss"].append(out_dict["adv_loss"])
         distances["input_recon_mses"].append(out_dict["input_recon_mses"])
         distances["input_adv_mses"].append(out_dict["input_adv_mses"])
         distances["target_recon_mses"].append(out_dict["target_recon_mses"])
@@ -918,21 +1051,17 @@ class Analyzer(object):
 
   def recon_adversary_analysis(self, images, labels=None, batch_size=1, input_id=None,
     target_method="random", target_id=None, save_info=""):
-
     #Default parameters
     if input_id is None:
       input_id = np.arange(images.shape[0]).astype(np.int32)
     else:
       input_id = np.array(input_id)
-
     self.num_data = input_id.shape[0]
     #If batch_size is None, do all in one batch
     if batch_size is None:
       batch_size = self.num_data
-
     input_images = images[input_id, ...].astype(np.float32)
     num_images = images.shape[0]
-
     #Define target label based on target method
     if(target_method == "random"):
       target_id = input_id.copy()
@@ -961,21 +1090,17 @@ class Analyzer(object):
     else:
       assert False, ("Allowed target methods for recon adversary are " +
         "\"random\" or \"specified\"")
-
     if(self.analysis_params.adversarial_attack_method == "kurakin_targeted"):
       num_recon_mults = 1
     elif(self.analysis_params.adversarial_attack_method == "carlini_targeted"):
       num_recon_mults = len(self.analysis_params.carlini_recon_mult)
     else:
       assert False
-
     #Make sure that the save interval is less than num steps, otherwise
     #it won't store the adv exmaples
     assert self.analysis_params.adversarial_save_int <= self.analysis_params.adversarial_num_steps,\
       ("Save interval must be <= adversarial_num_steps")
-
     num_stored_steps = ((self.analysis_params.adversarial_num_steps)//self.analysis_params.adversarial_save_int) + 1
-
     self.adversarial_input_target_mses = np.zeros((self.num_data))
     self.adversarial_input_recon_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
     self.adversarial_input_adv_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
@@ -984,20 +1109,15 @@ class Analyzer(object):
     self.adversarial_adv_recon_mses = np.zeros((num_recon_mults, num_stored_steps, self.num_data))
     self.adversarial_images = np.zeros((num_recon_mults, num_stored_steps,) + input_images.shape)
     self.adversarial_recons = np.zeros((num_recon_mults, num_stored_steps,) + input_images.shape)
-
     num_iterations = int(np.ceil(self.num_data / batch_size))
-
     target_images = images[target_id, ...].astype(np.float32)
-
     for it in range(num_iterations):
       batch_start_idx = int(it * batch_size)
       batch_end_idx = int(np.min([batch_start_idx + batch_size, self.num_data]))
       batch_input_images = input_images[batch_start_idx:batch_end_idx, ...]
       batch_target_images = target_images[batch_start_idx:batch_end_idx, ...]
-
       self.steps_idx, batch_adv_images, batch_adv_recons, distances = \
         self.construct_recon_adversarial_stimulus(batch_input_images, batch_target_images)
-
       #Store output variables
       self.adversarial_input_target_mses[batch_start_idx:batch_end_idx] = \
         np.array(distances["input_target_mse"])
@@ -1015,10 +1135,8 @@ class Analyzer(object):
         np.array(batch_adv_images)
       self.adversarial_recons[:, :, batch_start_idx:batch_end_idx, ...] = \
         np.array(batch_adv_recons)
-
     self.recon_adversarial_input_images = input_images
     self.adversarial_target_images = target_images
-
     #Store everything in out dictionaries
     out_dicts = [{}, {}]
     out_dicts[0]["steps_idx"] = self.steps_idx
@@ -1031,9 +1149,7 @@ class Analyzer(object):
     out_dicts[0]["input_id"] = input_id
     out_dicts[0]["target_id"] = target_id
     out_dicts[0].update(distances)
-
     out_dicts[1]["adversarial_recons"] = self.adversarial_recons
-
     np.savez(self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz",
       data=out_dicts[0])
     np.savez(self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz",
@@ -1042,7 +1158,6 @@ class Analyzer(object):
 
   def construct_class_adversarial_stimulus(self, input_images, input_labels,
     target_labels):
-
     if(self.analysis_params.adversarial_attack_method == "kurakin_untargeted"):
       assert(target_labels is not None)
       #Not using recon_mult here, so set arb value
@@ -1057,32 +1172,27 @@ class Analyzer(object):
     else:
       assert False, ("Adversarial attack method must be "+\
         "\"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
-
     mses = {"input_adv_mses":[], "target_output_losses":[]}
     steps = None
     all_adv_images = []
     all_adv_outputs = []
-
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(input_images, input_labels, is_test=True)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
-
       for r_mult in self.analysis_params.carlini_recon_mult:
         out_dict = self.class_adv_module.construct_adversarial_examples(
           feed_dict, labels=input_labels, recon_mult=r_mult,
           rand_state=self.rand_state, target_generation_method="specified",
           target_labels=target_labels,
           save_int=self.analysis_params.adversarial_save_int)
-
         steps = out_dict["step"]
         all_adv_images.append(out_dict["adv_images"])
         all_adv_outputs.append(out_dict["adv_outputs"])
         mses["input_adv_mses"].append(out_dict["input_adv_mses"])
         mses["target_output_losses"].append(out_dict["adv_losses"])
-
     return steps, all_adv_images, all_adv_outputs, mses
 
   def class_adversary_analysis(self, images, labels, batch_size=1, input_id=None,

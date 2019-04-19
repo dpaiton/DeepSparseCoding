@@ -7,9 +7,10 @@ from modules.activations import activation_picker
 
 class DaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides, ent_mult,
-    decay_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size, num_mle_steps,
-    num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min,
-    gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights, variable_scope="dae"):
+    decay_mult, norm_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size,
+    num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
+    gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights,
+    norm_w_init, variable_scope="dae"):
     """
     Divisive Autoencoder module
     Inputs:
@@ -17,6 +18,7 @@ class DaeModule(AeModule):
       output_channels: a list of channels to make, also defines number of layers
       ent_mult: tradeoff multiplier for latent entropy loss
       decay_mult: tradeoff multiplier for weight decay loss
+      norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       bounds_slope: slope for out of bounds loss (two relus back to back)
       latent_min: min value you want for latent variable (max value for left relu)
       latent_max: max value you want for latent variable (max value for right relu)
@@ -37,8 +39,9 @@ class DaeModule(AeModule):
       dropout: specifies the keep probability or None
       conv: if True, do convolution
       conv_strides: list of strides for convolution [batch, y, x, channels]
-      patch_y: number of y inputs for convolutional patches
-      patch_x: number of x inputs for convolutional patches
+      patch_size: number of (y, x) inputs for convolutional patches
+      norm_w_init: if True, l2 normalize w_init,
+        reducing over [0] axis on enc and [-1] axis on dec
       variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -63,7 +66,8 @@ class DaeModule(AeModule):
     else:
       self.latent_conv = False
     super(DaeModule, self).__init__(data_tensor, layer_types, output_channels, patch_size,
-      conv_strides, decay_mult, act_funcs, dropout, tie_decoder_weights, variable_scope)
+      conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_decoder_weights, norm_w_init,
+      variable_scope)
 
   def compute_entropies(self, a_in):
     a_probs = ef.prob_est(a_in, self.mle_thetas, self.triangle_centers)
@@ -92,6 +96,7 @@ class DaeModule(AeModule):
     with tf.variable_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "weight_decay_loss":self.compute_weight_decay_loss(),
+        "weight_norm_loss":self.compute_weight_norm_loss(),
         "entropy_loss":self.compute_entropy_loss(self.a),
         "ramp_loss":self.compute_ramp_loss(self.a)}
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
