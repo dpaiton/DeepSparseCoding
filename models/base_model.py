@@ -475,24 +475,28 @@ class Model(object):
           if params.whiten_method == "FT": # other methods require patching first
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
               dp.whiten_data(dataset[key].images, method=params.whiten_method)
-            print("Preprocessing: FT Whitened "+key+" data")
+            print("INFO:preprocessing:FT Whitened "+key+" data")
       if hasattr(params, "lpf_data") and params.lpf_data:
         dataset[key].images, dataset[key].data_mean, dataset[key].lpf_filter = \
           dp.lpf_data(dataset[key].images, cutoff=params.lpf_cutoff)
-        print("Preprocessing: Low pass filtered "+key+" data")
+        print("INFO:preprocessing:Low pass filtered "+key+" data")
       if hasattr(params, "contrast_normalize") and params.contrast_normalize:
         if hasattr(params, "gauss_patch_size"):
           dataset[key].images = dp.contrast_normalize(dataset[key].images,
             params.gauss_patch_size)
         else:
           dataset[key].images = dp.contrast_normalize(dataset[key].images)
-        print("Preprocessing: Contrast normalized "+key+" data")
+        print("INFO:preprocessing:Contrast normalized "+key+" data")
       if hasattr(params, "standardize_data") and params.standardize_data:
+        if params.data_type == "mnist":
+          eps = 1e-5
+        else:
+          eps = None
         dataset[key].images, dataset[key].data_mean, dataset[key].data_std = \
-          dp.standardize_data(dataset[key].images)
+          dp.standardize_data(dataset[key].images, eps)
         self.data_mean = dataset[key].data_mean
         self.data_std = dataset[key].data_std
-        print("Preprocessing: Standardized "+key+" data")
+        print("INFO:preprocessing:Standardized "+key+" data")
       if hasattr(params, "extract_patches") and params.extract_patches:
         assert all(key in params.__dict__.keys()
           for key in ["num_patches", "patch_edge_size", "overlapping_patches",
@@ -514,26 +518,26 @@ class Model(object):
         dataset[key].num_cols = dataset[key].shape[2]
         dataset[key].num_channels = dataset[key].shape[3]
         dataset[key].num_pixels = np.prod(dataset[key].shape[1:])
-        print("Preprocessing: Extracted patches from "+key+" data")
+        print("INFO:preprocessing:Extracted patches from "+key+" data")
         if hasattr(params, "whiten_data") and params.whiten_data:
           if hasattr(params, "whiten_method") and params.whiten_method != "FT":
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
               dp.whiten_data(dataset[key].images, method=params.whiten_method)
-            print("Preprocessing: Whitened "+key+" data")
+            print("INFO:preprocessing:Whitened "+key+" data")
       if hasattr(params, "norm_data") and params.norm_data:
         dataset[key].images, dataset[key].data_max = dp.normalize_data_with_max(dataset[key].images)
         self.data_max = dataset[key].data_max
-        print("Preprocessing: Normalized "+key+" data with maximum")
+        print("INFO:preprocessing:Normalized "+key+" data with maximum")
       if hasattr(params, "rescale_data") and params.rescale_data:
         dataset[key].images, dataset[key].data_min, dataset[key].data_max = dp.rescale_data_to_one(dataset[key].images)
         self.data_max = dataset[key].data_max
         self.data_min = dataset[key].data_min
-        print("Preprocessing: Normalized "+key+" data with maximum")
+        print("INFO:preprocessing:Rescaled each "+key+" datapoint to one")
       if hasattr(params, "center_data") and params.center_data:
         dataset[key].images, dataset[key].data_mean = dp.center_data(dataset[key].images,
           use_dataset_mean=True)
         self.data_mean = dataset[key].data_mean
-        print("Preprocessing: Centered "+key+" data")
+        print("INFO:preprocessing:Centered "+key+" data")
     return dataset
 
   def print_update(self, input_data, input_labels=None, batch_step=0):
