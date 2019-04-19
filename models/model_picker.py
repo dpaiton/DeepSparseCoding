@@ -1,4 +1,5 @@
 import params.param_picker as pp
+from models.lambda_model import LambdaModel as lamb
 from models.mlp_model import MlpModel as mlp
 from models.mlp_lca_model import MlpLcaModel as mlp_lca
 from models.mlp_ae_model import MlpAeModel as mlp_ae
@@ -13,8 +14,8 @@ from models.lca_pca_model import LcaPcaModel as lca_pca
 from models.lca_pca_fb_model import LcaPcaFbModel as lca_pca_fb
 from models.lca_subspace_model import LcaSubspaceModel as lca_subspace
 from models.lca_conv_model import LcaConvModel as lca_conv
-from models.fflista_model import FfListaModel as fflista
 from models.lista_model import ListaModel as lista
+#from models.fflista_model import FfListaModel as fflista
 #from models.gdn_autoencoder_model import GdnAutoencoderModel as ga
 #from models.gdn_conv_autoencoder_model import GdnConvAutoencoderModel as ga_conv
 #from models.gdn_conv_decoder_model import GdnConvDecoderModel as gd_conv
@@ -26,6 +27,8 @@ from models.vae_model import VaeModel as vae
 from models.sae_model import SaeModel as sae
 
 def get_model(model_type):
+  if model_type.lower() == "lambda":
+    return lamb()
   if model_type.lower() == "mlp":
     return mlp()
   if model_type.lower() == "mlp_lca":
@@ -56,8 +59,8 @@ def get_model(model_type):
     return lca_subspace()
   if model_type.lower() == "lista":
     return lista()
-  if model_type.lower() == "fflista":
-    return fflista()
+  #if model_type.lower() == "fflista":
+  #  return fflista()
   #if model_type.lower() == "gdn_autoencoder":
   #  return ga()
   #if model_type.lower() == "gdn_conv_autoencoder":
@@ -78,7 +81,7 @@ def get_model(model_type):
     return vae()
 
 def get_model_list():
-  model_list = ["mlp", "mlp_lca", "mlp_ae", "mlp_vae", "mlp_sae", "mlp_lista", "ica", "ica_pca",
-    "rica", "lca", "lca_pca", "lca_pca_fb", "lca_conv", "lca_subspace", "lista", "fflista",
-    "ae", "dae", "dae_mem", "sae", "vae"]
+  model_list = ["lambda", "mlp", "mlp_lca", "mlp_ae", "mlp_vae", "mlp_sae", "mlp_lista", "ica",
+    "ica_pca", "rica", "lca", "lca_pca", "lca_pca_fb", "lca_conv", "lca_subspace", "lista",
+    "fflista", "ae", "dae", "dae_mem", "sae", "vae"]
   return model_list

@@ -1,3 +1,4 @@
+import params.lambda_params as lamb
 import params.mlp_params as mlp
 import params.mlp_lca_params as mlp_lca
 import params.mlp_ae_params as mlp_ae
@@ -33,6 +34,8 @@ Outputs:
   schedule: [list] of [dict] containing the learning schedule from the same file
 """
 def get_params(model_type):
+  if model_type.lower() == "lambda":
+    return lamb.params()
   if model_type.lower() == "mlp":
     return mlp.params()
   if model_type.lower() == "mlp_lca":
