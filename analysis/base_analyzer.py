@@ -7,7 +7,6 @@ import utils.data_processing as dp
 from data.dataset import Dataset
 import tensorflow as tf
 import tensorflow_compression as tfc
-import pdb
 from modules.class_adversarial_module import ClassAdversarialModule
 from modules.recon_adversarial_module import ReconAdversarialModule
 from modules.neuron_visualization_module import NeuronVisualizationModule
@@ -950,18 +949,9 @@ class Analyzer(object):
 
   def bf_projections(self, bf1, bf2):
     """
-    Find a projection basis that is orthogonal to bf1 and as close as possible to bf2
-    Usees a single step of the Gram-Schmidt process
-    Outputs:
-      projection_matrix [tuple] containing [ax_1, ax_2] for projecting data into the 2d array
-    Inputs
-      bf1 [np.ndarray] of shape [num_pixels,]
-      bf2 [np.ndarray] of shape [num_pixels,]
+    TODO: Deprecate this and use dp.bf_projections
     """
-    v = bf2 - np.dot(bf2[:,None].T, bf1[:,None]) * bf1
-    v = np.squeeze((v / np.linalg.norm(v)).T)
-    proj_matrix = np.stack([bf1, v], axis=0)
-    return proj_matrix, v
+    return dp.bf_projections(bf1, bf2)
 
   def neuron_visualization_analysis(self, save_info=""):
     vis_data_init = np.random.normal(loc=0.0, scale=1e-2, size=self.model.get_input_shape()[1:])
