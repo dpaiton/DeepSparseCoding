@@ -22,7 +22,6 @@ class LcaSubspaceAnalyzer(LcaAnalyzer):
         save_info)
       self.noise_activity, self.noise_atas, self.noise_atcs = self.run_noise_analysis(save_info)
     if self.analysis_params.do_inference:
-      print("\n\n\n----\n\n\nbleh\n\n\n---\n\n\n")
       self.inference_stats = self.inference_analysis(images, save_info,
         self.analysis_params.num_inference_images, self.analysis_params.num_inference_steps)
     if self.analysis_params.do_orientation_analysis:
