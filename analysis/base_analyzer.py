@@ -1080,7 +1080,7 @@ class Analyzer(object):
       else:
         #Resample until target_id is not input_id
         #Also check labels if set
-        while(np.any(target_id == input_id):# or has_same_labels): # TODO: has_same_labels was not defined anywhere?
+        while(np.any(target_id == input_id)):# or has_same_labels): # TODO: has_same_labels was not defined anywhere?
           resample_idx = np.nonzero(target_id == input_id)
           target_id[resample_idx] = self.rand_state.randint(
             0, num_images, size=resample_idx[0].shape)
