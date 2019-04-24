@@ -418,21 +418,20 @@ class Analyzer(object):
     """
     num_data = images.shape[0]
     num_iterations = int(np.ceil(num_data / batch_size))
-
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     evals = {}
     for name in var_names:
       evals[name] = []
-
     with tf.Session(config=config, graph=self.model.graph) as sess:
       image_shape = (batch_size,) + images.shape[1:]
       sess.run(self.model.init_op, {self.model.input_placeholder:np.zeros(image_shape)})
-
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
       for it in range(num_iterations):
         batch_start_idx = int(it * batch_size)
+        # TODO: I think this will break if batch_size does not divide evenly into num_data
+        #   because the init op has set a batch_size
         batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))
         batch_images = images[batch_start_idx:batch_end_idx, ...]
         feed_dict = self.model.get_feed_dict(batch_images, is_test=True)
@@ -516,26 +515,28 @@ class Analyzer(object):
       evaluated model.get_encodings() on the input images
     Inputs:
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
+    TODO: batch_size is not working...
     """
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
-      if batch_size is not None: # TODO: causes neuron ordering to be off?
+      if batch_size is not None:
         images_shape = list(images.shape)
         num_images = images_shape[0]
         assert num_images % batch_size == 0, (
-          "batch_size=%g must divide evenly into num_images=%g"%(batch_size, num_images))
-        num_batches = int(num_images/batch_size)
-        images = images.reshape([num_batches, batch_size]+images_shape[1:])
-        feed_dict = self.model.get_feed_dict(np.zeros([batch_size]+images_shape[1:]))
-        sess.run(self.model.init_op, feed_dict)
+          "batch_size=%g must divide evenly into num_images=%g"%(num_images, batch_size))
+        num_batches = int(np.ceil(num_images / batch_size))
+        batch_image_shape = [batch_size] + images_shape[1:]
+        sess.run(self.model.init_op, {self.model.input_placeholder:np.zeros(batch_image_shape)})
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
-        activations = np.zeros([num_batches, batch_size, self.model.get_num_latent()])
-        for image_batch_idx in range(num_batches):
-          images_batch = images[image_batch_idx, ...]
-          feed_dict = self.model.get_feed_dict(images_batch, is_test=True)
-          activations[image_batch_idx, ...] = sess.run(self.model.get_encodings(), feed_dict)
-        activations = activations.reshape([num_images, self.model.get_num_latent()])
+        activations = np.zeros([num_images, self.model.get_num_latent()])
+        for batch_idx in range(num_batches):
+          im_batch_start_idx = int(batch_idx * batch_size)
+          im_batch_end_idx = int(np.min([im_batch_start_idx + batch_size, num_images]))
+          batch_images = images[im_batch_start_idx:im_batch_end_idx, ...]
+          feed_dict = self.model.get_feed_dict(batch_images, is_test=True)
+          outputs = sess.run(self.model.get_encodings(), feed_dict)
+          activations[im_batch_start_idx:im_batch_end_idx, ...] = outputs.copy()
       else:
         feed_dict = self.model.get_feed_dict(images, is_test=True)
         sess.run(self.model.init_op, feed_dict)
@@ -926,7 +927,7 @@ class Analyzer(object):
       "recon_frac_act":self.recon_frac_act})
     self.analysis_logger.log_info("Patch recon analysis is complete.")
 
-  def neuron_angles(self, bf_stats):
+  def get_neuron_angles(self, bf_stats):
     """
     Compute the angle between all pairs of basis functions in bf_stats
     Outputs:
@@ -1079,7 +1080,7 @@ class Analyzer(object):
       else:
         #Resample until target_id is not input_id
         #Also check labels if set
-        while(np.any(target_id == input_id) or has_same_labels):
+        while(np.any(target_id == input_id):# or has_same_labels): # TODO: has_same_labels was not defined anywhere?
           resample_idx = np.nonzero(target_id == input_id)
           target_id[resample_idx] = self.rand_state.randint(
             0, num_images, size=resample_idx[0].shape)

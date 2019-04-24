@@ -797,6 +797,23 @@ def lpf_data(data, cutoff=0.7):
     data_lpf = reshape_data(data_lpf, out_shape=orig_shape)[0]
   return data_lpf, data_mean, lpf
 
+def whiten_data_batch(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False, batch_size=None):
+  if batch_size is not None:
+    data_shape = list(data.shape)
+    num_data = data_shape[0]
+    assert num_data % batch_size == 0, (
+      "batch_size=%g must divide evenly into num_data=%g"%(batch_size, num_data))
+    num_batches = int(num_data / batch_size)
+    output = np.zeros(data_shape)
+    for batch_idx in range(num_batches):
+      batch_start_idx = int(batch_idx * batch_size)
+      batch_end_idx = int(batch_start_idx + batch_size)
+      batch_data = data[batch_start_idx:batch_end_idx, ...]
+      output[batch_start_idx:batch_end_idx, ...], data_mean, w_filter  = whiten_data(batch_data,
+        method, lpf_cutoff, subtract_pixel_mean)
+    return output, data_mean, w_filter
+  return whiten_data(data, method, lpf_cutoff, subtract_pixel_mean)
+
 def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
   """
   Whiten data
@@ -817,7 +834,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=False)[0:4]
     if subtract_pixel_mean:
       data, pixel_data_mean = center_data(data, use_dataset_mean=False)
-    data, batch_data_mean = center_data(data, use_dataset_mean=True)
+    data, data_mean = center_data(data, use_dataset_mean=True)
     # TODO: Buffer fft to an even number of pixels so that fftshift always behaves as expected
     #   better idea is to use the filter shape as the s parameter to FFT2, and then you can
     #   reshape filter to whatever you need by specifying num_rows
@@ -830,7 +847,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     if subtract_pixel_mean:
       data, pixel_data_mean = center_data(data, use_dataset_mean=False)
-    data, batch_data_mean = center_data(data, use_dataset_mean=True)
+    data, data_mean = center_data(data, use_dataset_mean=True)
     cov = np.divide(np.dot(data.T, data), num_examples)
     d, u = np.linalg.eig(cov)
     sqrt_inv_d = np.diag(np.sqrt(1./(d+1e-8)))
@@ -840,7 +857,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     if subtract_pixel_mean:
       data, pixel_data_mean = center_data(data, use_dataset_mean=False)
-    data, batch_data_mean = center_data(data, use_dataset_mean=True)
+    data, data_mean = center_data(data, use_dataset_mean=True)
     cov = np.divide(np.dot(data.T, data), num_examples)
     d, u = np.linalg.eig(cov)
     sqrt_inv_d = np.diag(np.sqrt(1./(d+1e-8)))
@@ -851,7 +868,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     assert False, ("whitening method must be 'FT', 'ZCA', or 'PCA'")
   if data_wht.shape != orig_shape:
     data_wht = reshape_data(data_wht, out_shape=orig_shape)[0]
-  return data_wht, batch_data_mean, w_filter
+  return data_wht, data_mean, w_filter
 
 def unwhiten_data(data, data_mean, w_filter, method="FT"):
   """

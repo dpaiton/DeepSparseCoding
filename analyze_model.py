@@ -12,38 +12,39 @@ class params(object):
   def __init__(self):
     self.device = "/gpu:0"
     #Which dataset to run analysis on, options are "train", "val", or "test"
-    self.analysis_dataset = "test"
+    self.analysis_dataset = "train"
     #Output directory file
     self.save_info = "analysis_" + self.analysis_dataset
     # If false, append to log file
-    self.overwrite_analysis_log = False
+    self.overwrite_analysis_log = True
     # Load in training run stats from log file
-    self.do_run_analysis = False
+    self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = False
+    self.do_evals = True
     # Dictionary fitting
-    self.do_basis_analysis = False
+    self.do_basis_analysis = True
     # LCA Inference analysis
-    self.do_inference = False
+    self.do_inference = True #TODO: Does not work for lca_subspace
     # Activity triggered averages
-    self.do_atas = False
+    self.do_atas = False #TODO: this can produce outputs that are too big for npz; need to batch?
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False # TODO: broken for rica
+    self.do_recon_adversaries = True # TODO: broken for rica
     #Classification adversarial image analysis
     self.do_class_adversaries = False
     # Find optimal stimulus using gradient methods
-    self.do_neuron_visualization = True # adversaries must be False
+    self.do_neuron_visualization = False # adversaries must be False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
-    self.do_orientation_analysis = False
+    self.do_orientation_analysis = False # TODO: broken for ae_deep
     # How many images to use for analysis, patches are generated from these
     self.num_analysis_images = 1000
+    self.whiten_batch_size = 100 # for VH dataset
     # How many input patches to create - only used if model calls for patching
     self.num_patches = 1e4
     # How many images to use in the ATA analysis
     # NOTE: No warning is given if this is greater than the number of available images
-    self.num_ata_images = 1e3
+    self.num_ata_images = 5e2
     # How many noise images to compute noise ATAs
     self.num_noise_images = 1e3
     # How many random images to average over for inference statistics
@@ -89,11 +90,11 @@ class params(object):
     # Orientations for orientation experiments
     self.orientations = np.linspace(0.0, np.pi, 16)
     # Optimal stimulus calculation
-    self.neuron_vis_num_steps = int(5e5)
-    self.neuron_vis_step_size = 1e-4
+    self.neuron_vis_num_steps = int(4e5)
+    self.neuron_vis_step_size = 2e-4
     self.neuron_vis_save_int = 100
     self.neuron_vis_stim_save_int = int(1e5)
-    self.neuron_vis_clip = True
+    self.neuron_vis_clip = False
     self.neuron_vis_clip_range = [0.0, 1.0]
     self.neuron_vis_method = "erhan"
     self.neuron_vis_norm_magnitude = None
@@ -103,7 +104,7 @@ class params(object):
     self.neuron_vis_target_layer = None
     # TODO: we are temporarily assigning a 1-hot vector for analysis, but we could pass a specific
     #   selection vector instead of a target_neuron_idx
-    self.neuron_vis_targets = list(range(64))
+    self.neuron_vis_targets = np.random.choice(range(64), 30, replace=False)
     #self.neuron_vis_selection_vector = np.zeros(64) # TODO: avoid hard-coding num neurons
     #self.neuron_vis_selection_vector[self.neuron_vis_target_neuron_idx] = 1
 
@@ -137,6 +138,8 @@ analyzer = ap.get_analyzer(analysis_params.model_type)
 analyzer.setup(analysis_params)
 
 analysis_params.data_type = analyzer.model_params.data_type
+if(analyzer.model_params.data_type == "vanhateren"):
+  analyzer.model_params.whiten_batch_size = analysis_params.whiten_batch_size
 analyzer.model_params.num_images = analysis_params.num_analysis_images
 if hasattr(analyzer.model_params, "extract_patches") and analyzer.model_params.extract_patches:
   analyzer.model_params.num_patches = analysis_params.num_patches
