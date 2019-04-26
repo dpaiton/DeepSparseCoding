@@ -65,7 +65,7 @@ class Analyzer(object):
     self.model_params.model_out_dir = self.analysis_out_dir
     self.check_params()
     self.rand_state = np.random.RandomState(self.analysis_params.rand_seed)
-    self.analysis_logger.log_params(self.analysis_params.__dict__)
+    self.analysis_logger.log_params(dict(self.analysis_params.__dict__))
     self.get_model() # Adds "self.model" member variable that is another model class
 
   def make_dirs(self):

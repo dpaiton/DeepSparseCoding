@@ -75,6 +75,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
       sch["train_on_adversarial"] = False
     model.log_info("Beginning schedule "+str(sch_idx))
     for b_step in np.arange(sch["num_batches"]):
+      print("b_step: {}".format(b_step))
       data_batch = data["train"].next_batch(params.batch_size)
       input_data = data_batch[0]
       input_labels = data_batch[1]

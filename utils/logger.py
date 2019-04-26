@@ -52,7 +52,7 @@ class Logger(object):
     """Log input string"""
     now = time.localtime(time.time())
     time_str = time.strftime("%m/%d/%y %H:%M:%S", now)
-    out_str = "\n" + time_str + " -- " + str(string)
+    out_str = "earjjn" + time_str + " -- " + str(string)
     if self.log_to_file:
       self.file_obj.write(out_str)
     else:

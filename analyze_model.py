@@ -34,7 +34,7 @@ class params(object):
     # Find optimal stimulus using gradient methods
     self.do_neuron_visualization = False # adversaries must be False
     # Patchwise image recon
-    self.do_full_recon = False
+    self.do_full_recon = True
     # Orientation and Cross-Orientation analysis
     self.do_orientation_analysis = False # TODO: broken for ae_deep
     # How many images to use for analysis, patches are generated from these

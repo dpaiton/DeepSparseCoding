@@ -11,11 +11,11 @@ class params(ica_params):
         # model config
         self.model_type = "ica_subspace"
         self.model_name = "ica_subspace"
-        self.version = "0.0"
+        self.version = "0.1"
 
         # data config
-        self.data_type = "mnist"
-        self.batch_size = 500
+        self.data_type = "vanHateren"
+        self.batch_size = 50
         self.norm_data = False
         
 
@@ -24,9 +24,9 @@ class params(ica_params):
         self.group_sizes = [4 for _ in range(self.num_groups)]
 
         # data preprocessing
-        self.center_data = True #False
-        self.whiten_data = True #False
-        self.lpf_data = True # False
+        self.center_data = True 
+        self.whiten_data = True 
+        self.lpf_data = True
         self.whiten_method = "ZCA"
 
         # model output intervals
@@ -39,8 +39,8 @@ class params(ica_params):
 
         self.schedule = [
             {"weights": None, 
-             "num_batches": 2000,# int(1e4),
-             "weight_lr": float(0.01), 
+             "num_batches": 10,# int(1e4),
+             "weight_lr": float(1), 
              "decay_steps": 1,
              "decay_rate": 1.0,
              "staircase": False}
