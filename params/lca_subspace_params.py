@@ -85,7 +85,7 @@ class params(BaseParams):
       self.model_name += "_vh"
       self.num_images = 150
       self.vectorize_data = True
-      self.norm_data = False
+      self.norm_data = Fals
       self.rescale_data = False
       self.center_data = False
       self.whiten_data = True

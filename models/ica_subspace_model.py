@@ -96,7 +96,7 @@ class IcaSubspaceModel(IcaModel):
     return compute_grad
 
 
-  def compute_weight_gradients(self, optimizer, weight_op=None):
+  def compute_weight_gradients1(self, optimizer, weight_op=None):
         if(type(weight_op) is not list):
             weight_op = [weight_op]
 
@@ -110,6 +110,44 @@ class IcaSubspaceModel(IcaModel):
         avg_gradient = - tf.reduce_mean(gradients, axis=0)
         self.avg_grad = avg_gradient
         return [(avg_gradient, weight_op[0])]
+
+  def compute_weight_gradients(self, optimizer, weight_op=None):
+
+    def nonlinearity(u, alpha=1):
+        return -1 * alpha * tf.math.pow(u, -0.5)
+ 
+    p = []
+    for j in range(64):
+        for _ in range(4):
+            p.append((j*4, (j*4)+4))
+
+    weight_grads = []
+    for img_i in range(self.params.batch_size):
+        img = tf.slice(self.input_img, [img_i, 0], [1, 256])
+        img = tf.reshape(img, (256, 1))
+
+        wI = tf.matmul(tf.transpose(weight_op), img)
+        wI2 = tf.pow(wI, 2)
+
+        weight_mat = []
+        for w_i in range(self.params.num_pixels):
+            g1, g2 = p[w_i][0], p[w_i][1]
+            inner_prod_term = wI[w_i][0]
+            nonlinear_term = nonlinearity(tf.reduce_sum(wI2[g1:g2]))
+            
+            img = tf.reshape(img, [-1])
+            weight_mat.append(img * inner_prod_term * nonlinear_term)
+        weight_mat = tf.stack(weight_mat, axis=0)
+        weight_grads.append(weight_mat)
+        
+    avg_grad = - tf.reduce_mean(weight_grads, axis=0) 
+    self.avg_grad = avg_grad
+
+    return [(avg_grad, weight_op)]
+        
+
+          
+
 
 
   def construct_group_sizes(self, params_group_sizes):
