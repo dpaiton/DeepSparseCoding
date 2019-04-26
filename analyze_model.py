@@ -36,7 +36,11 @@ class params(object):
     # Patchwise image recon
     self.do_full_recon = True
     # Orientation and Cross-Orientation analysis
+<<<<<<< Updated upstream
     self.do_orientation_analysis = False # TODO: broken for ae_deep
+=======
+    self.do_orientation_analysis = True
+>>>>>>> Stashed changes
     # How many images to use for analysis, patches are generated from these
     self.num_analysis_images = 1000
     self.whiten_batch_size = 100 # for VH dataset
