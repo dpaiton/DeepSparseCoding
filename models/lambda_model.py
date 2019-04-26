@@ -36,8 +36,9 @@ class LambdaModel(Model):
   def get_input_shape(self):
     return self.input_shape
 
+  # TODO: this will only work on a session call - not the same as other models
   def get_num_latent(self):
-    return self.params.data_dim
+    return tf.get_shape(self.a)
 
   def get_encodings(self):
     return self.a

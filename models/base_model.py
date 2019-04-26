@@ -473,8 +473,13 @@ class Model(object):
       if hasattr(params, "whiten_data") and params.whiten_data:
         if hasattr(params, "whiten_method"):
           if params.whiten_method == "FT": # other methods require patching first
+            if hasattr(params, "whiten_batch_size"):
+              batch_size = params.whiten_batch_size
+            else:
+              batch_size = None
             dataset[key].images, dataset[key].data_mean, dataset[key].w_filter = \
-              dp.whiten_data(dataset[key].images, method=params.whiten_method)
+              dp.whiten_data_batch(dataset[key].images, method=params.whiten_method,
+              batch_size=batch_size)
             print("INFO:preprocessing:FT Whitened "+key+" data")
       if hasattr(params, "lpf_data") and params.lpf_data:
         dataset[key].images, dataset[key].data_mean, dataset[key].lpf_filter = \
