@@ -5,7 +5,6 @@ import utils.data_processing as dp
 import utils.entropy_functions as ef
 from models.mlp_model import MlpModel
 from modules.lca_module import LcaModule
-from modules.mlp_module import MlpModule
 from modules.lca_conv_module import LcaConvModule
 
 
@@ -65,9 +64,8 @@ class MlpLcaModel(MlpModel):
           else:
             assert False, ("params.layer_types must be 'fc' or 'conv'")
         else: # train on LCA latent encoding
-          assert self.params.layer_types[0] == "fc", (
-            "MLP must have FC layers to train on LCA activity")
           mlp_input = self.lca_module.a
+          data_shape = mlp_input.get_shape().as_list()
 
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
@@ -204,7 +202,6 @@ class MlpLcaModel(MlpModel):
     fig = pf.plot_activity_hist(np.reshape(recon, [batch_size, -1]), title="Recon Histogram",
       save_filename=self.params.disp_dir+"recon_hist"+filename_suffix)
 
-    weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     #Scale image by max and min of images and/or recon
@@ -223,8 +220,9 @@ class MlpLcaModel(MlpModel):
     fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
       save_filename=self.params.disp_dir+"lca_act_hist"+filename_suffix)
 
-    if(len(weights.shape) == 4):
-      weights = np.transpose(weights, (0, 2, 3, 1))
-    fig = pf.plot_data_tiled(weights, normalize=False,
-      title="Dictionary at step "+current_step, vmin=None, vmax=None,
-      save_filename=self.params.disp_dir+"phi"+filename_suffix)
+    if(self.params.train_on_recon):
+      if(len(weights.shape) == 4):
+        weights = np.transpose(weights, (0, 2, 3, 1))
+      fig = pf.plot_data_tiled(weights, normalize=False,
+        title="Dictionary at step "+current_step, vmin=None, vmax=None,
+        save_filename=self.params.disp_dir+"phi"+filename_suffix)

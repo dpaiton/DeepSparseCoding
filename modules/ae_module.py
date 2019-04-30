@@ -149,7 +149,7 @@ class AeModule(object):
 
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       output_tensor = activation_function(pre_act)
-      output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
+      output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
     return output_tensor, w, b
 
   def build_encoder(self, input_tensor, activation_functions):

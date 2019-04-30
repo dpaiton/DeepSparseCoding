@@ -162,7 +162,8 @@ class Analyzer(object):
         with self.model.graph.as_default():
           self.class_adv_module.build_adversarial_ops(self.model.label_est,
             model_logits=self.model.get_encodings(),
-            loss=self.model.mlp_module.sum_loss)
+            label_gt = self.model.label_placeholder
+            )
       #Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
 

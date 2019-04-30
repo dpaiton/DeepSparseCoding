@@ -6,7 +6,7 @@ from modules.batch_normalization_module import BatchNormalizationModule
 class MlpModule(object):
   def __init__(self, data_tensor, label_tensor, layer_types, output_channels, batch_norm,
       dropout, max_pool, max_pool_ksize, max_pool_strides, patch_size, conv_strides,
-      eps, lrn=None, loss_type="softmax_cross_entropy", variable_scope="mlp"):
+      eps, lrn=None, loss_type="softmax_cross_entropy", variable_scope="mlp", decay_mult=None):
     """
     Multi Layer Perceptron module for 1-hot labels
     Inputs:
@@ -56,6 +56,7 @@ class MlpModule(object):
     label_batch, self.num_classes = label_tensor.get_shape()
 
     # load params
+    self.decay_mult = decay_mult
     self.layer_types = layer_types
     self.max_pool = max_pool
     self.max_pool_ksize = max_pool_ksize
@@ -132,7 +133,7 @@ class MlpModule(object):
           reduc_axes=[0,1,2], variable_scope="batch_norm_"+str(layer_id))
         conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
-      conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
+      conv_out = tf.nn.dropout(conv_out, rate=1-self.dropout[layer_id])
 
       if self.lrn[layer_id] is not None:
         if self.lrn[layer_id] == "pre":
@@ -169,7 +170,7 @@ class MlpModule(object):
           variable_scope="batch_norm_"+str(layer_id))
         fc_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
-      fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
+      fc_out = tf.nn.dropout(fc_out, rate=1-self.dropout[layer_id])
       if self.max_pool[layer_id]:
         fc_out = tf.nn.max_pool(fc_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
@@ -198,6 +199,12 @@ class MlpModule(object):
       w_list.append(w)
       b_list.append(b)
     return act_list, w_list, b_list
+
+  def compute_weight_decay_loss(self):
+    with tf.variable_scope("w_decay"):
+      w_decay_list = [tf.reduce_sum(tf.square(w)) for w in self.weight_list]
+      decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n(w_decay_list))
+    return decay_loss
 
   def build_graph(self):
     """
@@ -243,4 +250,4 @@ class MlpModule(object):
               self.sum_loss = tf.reduce_sum(self.l2_loss)
               self.mean_loss = tf.reduce_mean(self.l2_loss)
           self.supervised_loss = self.mean_loss
-        self.total_loss = self.supervised_loss
+        self.total_loss = self.supervised_loss + self.compute_weight_decay_loss()

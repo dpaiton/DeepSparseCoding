@@ -56,7 +56,7 @@ class MlpModel(Model):
         #Use sum loss here for untargted
         self.adv_module.build_adversarial_ops(self.label_est,
           model_logits=self.get_encodings(),
-          loss=self.mlp_module.sum_loss)
+          label_gt=self.label_placeholder)
     #Add adv module ignore list to model ignore list
     self.full_model_load_ignore.extend(self.adv_module.ignore_load_var_list)
 
@@ -65,7 +65,7 @@ class MlpModel(Model):
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.patch_size, self.params.conv_strides, self.params.eps, lrn=self.params.lrn,
-      loss_type="softmax_cross_entropy")
+      loss_type="softmax_cross_entropy", decay_mult=self.params.mlp_decay_mult)
     return module
 
   def build_graph_from_input(self, input_node):
@@ -181,21 +181,24 @@ class MlpModel(Model):
 
     eval_list = []
     grad_name_list = []
-    learning_rate_dict = {}
+    learning_rate_list = []
+
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
       eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name(1)]
       grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] # 2nd is np.split
       grad_name_list.append(grad_name)
-      learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
+      learning_rate_list.append(self.learning_rates[self.sched_idx][w_idx])
 
     stat_dict = {}
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    for grad, name in zip(out_vals, grad_name_list):
-      grad_max = learning_rate_dict[name]*np.array(grad.max())
-      grad_min = learning_rate_dict[name]*np.array(grad.min())
-      grad_mean = learning_rate_dict[name]*np.mean(np.array(grad))
+    out_lr = tf.get_default_session().run(learning_rate_list, feed_dict)
+
+    for grad, name, lr in zip(out_vals, grad_name_list, out_lr):
+      grad_max = np.array(grad.max())
+      grad_min = np.array(grad.min())
+      grad_mean = np.mean(np.array(grad))
       stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
-      stat_dict[name+"_learning_rate"] = learning_rate_dict[name]
+      stat_dict[name+"_learning_rate"] = lr
     update_dict.update(stat_dict) #stat_dict overwrites for same keys
 
     return update_dict
@@ -207,7 +210,7 @@ class MlpModel(Model):
     """
     super(MlpModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.get_encodings(), self.mlp_module.weight_list[0]]
+    eval_list = [self.global_step, self.get_encodings()]
     train_on_adversarial = feed_dict[self.train_on_adversarial]
     if(train_on_adversarial):
       eval_list += [self.adv_module.get_adv_input()]
@@ -221,9 +224,12 @@ class MlpModel(Model):
     fig = pf.plot_activity_hist(activity, title="Logit Histogram",
       save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
 
-    w_enc = eval_out[2]
+    mlp_weights = tf.get_default_session().run(self.mlp_module.weight_list, feed_dict)
+
+    #First layer weights
+    w_enc = mlp_weights[0]
+
     if self.params.layer_types[0] == "fc":
-      w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
       # Don't plot weights as images if input is not square
       w_input_sqrt = np.sqrt(w_enc.shape[0])
       if(np.floor(w_input_sqrt) == np.ceil(w_input_sqrt)):
@@ -231,16 +237,25 @@ class MlpModel(Model):
         fig = pf.plot_data_tiled(w_enc, normalize=False,
           title="Weights at step "+current_step, vmin=None, vmax=None,
           save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
-      fig = pf.plot_bar(w_enc_norm, num_xticks=5,
-        title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-        save_filename=self.params.disp_dir+"w_enc_norm"+filename_suffix)
     else: # conv
       w_enc = np.transpose(dp.rescale_data_to_one(w_enc.T)[0].T, axes=(3,0,1,2))
-      pf.plot_data_tiled(w_enc, normalize=False, title="Weights at step "+current_step,
-        save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
+      if(w_enc.shape[-1] == 1 or w_enc.shape[-1] == 3):
+        pf.plot_data_tiled(w_enc, normalize=False, title="Weights at step "+current_step,
+          save_filename=self.params.disp_dir+"w_enc"+filename_suffix)
+
+    for (w, tf_w) in zip(mlp_weights, self.mlp_module.weight_list):
+      #simplify tensorflow node name to only be the last one
+      w_name = tf_w.name.split("/")[-1].split(":")[0]
+      num_f = w.shape[-1]
+      w_reshape = np.reshape(w, [-1, num_f])
+
+      w_norm = np.linalg.norm(w_reshape, axis=0, keepdims=False)
+      fig = pf.plot_bar(w_norm, num_xticks=5,
+        title=w_name+" l2 norm", xlabel="w index", ylabel="L2 Norm",
+        save_filename=self.params.disp_dir+"w_norm_"+w_name+filename_suffix)
 
     if(train_on_adversarial):
-      adv_input = eval_out[3]
+      adv_input = eval_out[-1]
       adv_input = dp.reshape_data(adv_input, flatten=False)[0]
       fig = pf.plot_data_tiled(adv_input, normalize=False,
         title="Adv inputs at "+current_step,

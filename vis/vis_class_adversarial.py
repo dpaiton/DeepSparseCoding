@@ -31,6 +31,7 @@ analysis_list = [
     #("mlp", "mlp_mnist"),
     ("mlp", "mlp_cifar10"),
     ("mlp_lca", "mlp_lca_conv_recon_cifar10"),
+    ("mlp_lca", "mlp_lca_conv_latent_cifar10"),
     ]
 
 #colors for analysis_list
@@ -60,21 +61,24 @@ colors = [
 title_font_size = 16
 axes_font_size = 16
 
-save_info = "analysis_test_carlini_targeted"
+#save_info = "analysis_test_carlini_targeted"
 #TODO pick best recon mult for here
-recon_mult_idx = 4
+#recon_mult_idx = 0
 
-##save_info = "analysis_test_kurakin_untargeted"
-#save_info = "analysis_test_kurakin_targeted"
+#save_info = "analysis_test_kurakin_untargeted"
+save_info = "analysis_test_kurakin_targeted"
 recon_mult_idx = 0
 
-construct_heatmap = True
-construct_adv_examples = True
+construct_heatmap = False
+construct_adv_examples = False
 construct_class_mult_tradeoff = False
 construct_over_time = False
+construct_conf_control = True
+
+conf_thresh = .9
 
 eval_batch_size = 100
-num_output_batches = 3
+num_output_batches = 16
 
 #Base outdir for multi-network plot
 outdir = "/home/slundquist/Work/Projects/vis/"
@@ -178,6 +182,21 @@ if(construct_heatmap):
   fig.savefig(outdir + "/transfer_accuracy_"+analysis_params.save_info+".png")
   plt.close("all")
 
+#For cifar, TODO make this general
+#Idx to string class names
+cifar10_class_label_str = {
+    0: "airplane",
+    1: "automobile",
+    2: "bird",
+    3: "cat",
+    4: "deer",
+    5: "dog",
+    6: "frog",
+    7: "horse",
+    8: "ship",
+    9: "truck",
+}
+
 ###Examples of adv inputs
 if construct_adv_examples:
   imgs = []
@@ -188,12 +207,11 @@ if construct_adv_examples:
     analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
     analyzer = setup(analysis_params)
 
-    num_data = analyzer.num_data
-
     #Get adv examples from source
     #If last dimension is flat
     #TODO is there a better way to check this?
     if(len(analyzer.adversarial_images.shape) == 4):
+      num_data = analyzer.num_data
       adv_examples = analyzer.adversarial_images[recon_mult_idx, -1, ...].reshape(
         int(num_data),
         int(np.sqrt(analyzer.model.params.num_pixels)),
@@ -207,19 +225,20 @@ if construct_adv_examples:
       adv_examples = analyzer.adversarial_images[recon_mult_idx, -1]
       orig_image = analyzer.adversarial_images[recon_mult_idx, 0]
 
-    output = np.argmax(analyzer.adversarial_outputs[recon_mult_idx, -1], axis=-1)
+    adv_output = np.argmax(analyzer.adversarial_outputs[recon_mult_idx, -1], axis=-1)
     orig_output = np.argmax(analyzer.adversarial_outputs[recon_mult_idx, 0], axis=-1)
     pert = adv_examples - orig_image
-    imgs.append([pert, adv_examples, output])
+    imgs.append([pert, adv_examples, orig_output, adv_output])
 
   for batch_id in range(num_output_batches):
     #Construct img table
-    fig, ax = plt.subplots(len(analysis_list)+1, 4)
+    fig, ax = plt.subplots(len(analysis_list)+1, 5)
     plt.suptitle(analysis_params.save_info)
 
     ax[0, 1].set_title("pert")
     ax[0, 2].set_title("adv_image")
-    ax[0, 3].set_title("output_class")
+    ax[0, 3].set_title("clean_output")
+    ax[0, 4].set_title("adv_output")
 
     ax[0, 0].text(1, .5, "orig", horizontalalignment="right", verticalalignment="center")
 
@@ -227,17 +246,26 @@ if construct_adv_examples:
     orig_img = (orig_image[batch_id] - orig_image[batch_id].min())/\
       (orig_image[batch_id].max() - orig_image[batch_id].min())
     ax[0, 2].imshow(orig_img)
-    orig_output = np.argmax(analyzer.adversarial_outputs[recon_mult_idx, 0, batch_id], axis=-1)
-    ax[0, 3].text(0.5, 0.5, str(orig_output),
+
+    orig_label = np.argmax(analyzer.adversarial_input_labels[batch_id])
+    ax[0, 3].text(0.5, 0.5, cifar10_class_label_str[orig_label],
       horizontalalignment="center", verticalalignment="center")
 
-    for i in range(4):
+    #Only print out target if attack is targeted
+    if("_targeted" in save_info):
+      target_label = np.argmax(analyzer.adversarial_target_labels[batch_id])
+      ax[0, 4].text(0.5, 0.5, cifar10_class_label_str[target_label],
+        horizontalalignment="center", verticalalignment="center")
+
+    for i in range(5):
       pf.clear_axis(ax[0, i])
 
     for model_idx, (model_type, model_name) in enumerate(analysis_list):
       ax[model_idx+1, 0].text(1, 0.5, model_name, horizontalalignment="right", verticalalignment="center")
       pert_img = imgs[model_idx][0][batch_id]
       adv_img = imgs[model_idx][1][batch_id]
+      orig_output = imgs[model_idx][2][batch_id]
+      adv_output = imgs[model_idx][3][batch_id]
 
       pert_range = [pert_img.min(), pert_img.max()]
       pert_img = (pert_img - pert_img.min()) / (pert_img.max() - pert_img.min())
@@ -254,11 +282,12 @@ if construct_adv_examples:
 
       ax[model_idx+1, 2].imshow(adv_img)
       ax[model_idx+1, 2].set_title("[%4.2f , %4.2f]"% (adv_range[0], adv_range[1]))
-
-      ax[model_idx+1, 3].text(0.5, 0.5, str(imgs[model_idx][2][batch_id]),
+      ax[model_idx+1, 3].text(0.5, 0.5, cifar10_class_label_str[orig_output],
+        horizontalalignment="center", verticalalignment="center")
+      ax[model_idx+1, 4].text(0.5, 0.5, cifar10_class_label_str[adv_output],
         horizontalalignment="center", verticalalignment="center")
 
-      for i in range(4):
+      for i in range(5):
         pf.clear_axis(ax[model_idx+1, i])
 
     fig.savefig(outdir+"/adv_class_example_"+analysis_params.save_info+"_batch_" + str(batch_id)+ ".png")
@@ -345,23 +374,29 @@ if construct_over_time:
     assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
 
     num_data = analyzer.num_data
-    orig_imgs = analyzer.class_adversarial_input_images.reshape(
-      int(num_data),
-      int(np.sqrt(analyzer.model.params.num_pixels)),
-      int(np.sqrt(analyzer.model.params.num_pixels)))
-    for idx in range(num_data):
-      pf.plot_image(orig_imgs[idx], title="Input Image",
-        save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+\
-        "_adversarial_input_batch_"+str(idx)+".png")
+
+    #orig_imgs = analyzer.class_adversarial_input_images.reshape(
+    #  int(num_data),
+    #  int(np.sqrt(analyzer.model.params.num_pixels)),
+    #  int(np.sqrt(analyzer.model.params.num_pixels)))
+    orig_imgs = analyzer.class_adversarial_input_images
+
+    #for idx in range(num_data):
+    #  pf.plot_image(orig_imgs[idx], title="Input Image",
+    #    save_filename=analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+\
+    #    "_adversarial_input_batch_"+str(idx)+".png")
+
+    #TODO plot loss over time
 
     target_classes = np.argmax(analyzer.adversarial_target_labels, axis=-1)
     steps = analyzer.steps_idx
 
     for (step, stim, output) in zip(steps, analyzer.adversarial_images[0], analyzer.adversarial_outputs[0]):
-      adv_imgs = stim.reshape(
-        int(num_data),
-        int(np.sqrt(analyzer.model.params.num_pixels)),
-        int(np.sqrt(analyzer.model.params.num_pixels)))
+      #adv_imgs = stim.reshape(
+      #  int(num_data),
+      #  int(np.sqrt(analyzer.model.params.num_pixels)),
+      #  int(np.sqrt(analyzer.model.params.num_pixels)))
+      adv_imgs = stim
       for idx in range(num_data):
         f, axarr = plt.subplots(2, 1)
         axarr[0].imshow(adv_imgs[idx], cmap='gray')
@@ -371,8 +406,89 @@ if construct_over_time:
         mse_val = np.mean((adv_imgs[idx] - orig_imgs[idx]) ** 2)
         output_class = np.argmax(output[idx])
         target_class = target_classes[idx]
-        axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_val))
+
+        if("_targeted" in save_info):
+          axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_val))
+        else:
+          axarr[0].set_title("output_class:"+str(output_class) + "  mse:" + str(mse_val))
         f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
           +"stim_batch_"+str(idx)+"_step_"+str(step)+".png")
         plt.close('all')
+
+
+if(construct_conf_control):
+  #saved_info is a list of length num_models, with an inner list saving
+  #[target_adv_mses, num_failed]
+  saved_info = []
+  for model_idx, (model_type, model_name) in enumerate(analysis_list):
+    analysis_params = params()
+    analysis_params.model_type = model_type
+    analysis_params.model_name = model_name
+    analysis_params.plot_title_name = analysis_params.model_name.replace("_", " ").title()
+    analyzer = setup(analysis_params)
+
+    target_labels = np.argmax(analyzer.adversarial_target_labels, axis=-1)
+    #adv_output is in [time, batch, classes]
+    adv_output = analyzer.adversarial_outputs[recon_mult_idx]
+    input_adv_mses = analyzer.adversarial_input_adv_mses[recon_mult_idx]
+
+    num_time, num_batch, num_class = adv_output.shape
+
+
+    target_adv_conf = adv_output[:, np.arange(num_batch), target_labels]
+
+    #Get index of first timestep that reaches across threshold
+    #Note that argmax here stops at first occurance
+    target_conf_idx = np.argmax(target_adv_conf >= conf_thresh, axis=0)
+
+    #Mark number of failed attacks
+    num_failed = np.nonzero(target_conf_idx == 0)[0].shape[0]
+
+    #Save the indices of succesful attacks
+    success_idx = np.nonzero(target_conf_idx)
+
+    #Get mse from target_conf_idx
+    target_adv_mses = input_adv_mses[target_conf_idx, np.arange(num_batch)]
+
+    #Pull out only successful ones
+    target_adv_mses = target_adv_mses[success_idx]
+
+    saved_info.append([target_adv_mses, num_failed])
+
+  #Plot bar of ave mse per model
+  fig, ax = plt.subplots()
+
+  x_label_ticks = []
+  vals = []
+  errs = []
+  color = []
+  for model_idx, (model_type, model_name) in enumerate(analysis_list):
+    target_adv_mses, num_failed = saved_info[model_idx]
+    vals.append(np.mean(target_adv_mses))
+    errs.append(np.std(target_adv_mses))
+    color.append(colors[model_idx])
+    x_label_ticks.append(model_name+":"+str(num_failed))
+
+  ax.bar(np.arange(len(analysis_list)), vals, yerr=errs,
+    align='center', tick_label=x_label_ticks, color=color)
+
+  plt.xticks(rotation='vertical')
+
+  ax.set_xlabel("Model")
+  ax.set_ylabel("Input Adv MSE")
+  ax.set_title("Average MSE at confidence level "+str(conf_thresh))
+  plt.tight_layout()
+
+  fig.savefig(outdir + "/conf_control_mse_" + analysis_params.save_info+".png")
+  plt.close("all")
+
+
+
+
+
+
+
+
+
+
 
