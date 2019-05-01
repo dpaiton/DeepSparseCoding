@@ -24,6 +24,7 @@ class params(BaseParams):
     self.batch_size = 100
     self.num_classes = 10
     self.layer_types = ["conv", "fc"]
+    self.mlp_activation_functions = ["relu", "identity"]
     self.output_channels = [300, self.num_classes]
     self.patch_size = [(8, 8)]
     self.conv_strides = [(1,1,1,1)]
@@ -44,9 +45,10 @@ class params(BaseParams):
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["w1"] #None means load everything
     self.log_to_file = True
-    self.gen_plot_int = 5e3
+    self.gen_plot_int = 1e3
     self.save_plots = True
-    self.mlp_decay_mult = 1e-4
+    self.mlp_decay_mult = 0
+    self.mlp_norm_mult = 1e-4
     #Adversarial params
     self.adversarial_num_steps = 40
     self.adversarial_attack_method = "kurakin_untargeted"
@@ -89,6 +91,7 @@ class params(BaseParams):
       self.num_classes = 10
       self.optimizer = "adam"
       self.layer_types = ["conv", "conv", "fc", "fc"]
+      self.mlp_activation_functions = ["relu", "relu", "relu", "identity"]
       self.output_channels = [32, 64, 1024, self.num_classes]
       self.patch_size = [(5, 5), (5, 5)]
       self.conv_strides = [(1,1,1,1), (1,1,1,1)]
@@ -117,10 +120,11 @@ class params(BaseParams):
       self.extract_patches = False
       self.log_int = 100
       self.cp_int = 500
-      self.gen_plot_int = 5e3
+      self.gen_plot_int = 1e3
       self.num_classes = 10
       self.optimizer = "adam"
       self.layer_types = ["conv", "conv", "fc", "fc", "fc"]
+      self.mlp_activation_functions = ["lrelu", "lrelu", "lrelu", "lrelu", "identity"]
       #TF model does lrn after pool in conv1, lrn before pool in conv2
       #TODO test if this matters
       #String can be post or pre, depending on applying LRN before or after pooling
@@ -143,7 +147,7 @@ class params(BaseParams):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["weight_lr"] = 1e-3
         #Decay steps is in terms of epochs, (num_epochs_per_batch * 350 per decay)
-        self.schedule[sched_idx]["decay_steps"] = 80000
+        self.schedule[sched_idx]["decay_steps"] = 50000
         self.schedule[sched_idx]["decay_rate"] = 0.9
       if(TRAIN_ADV):
         self.schedule[0]["num_batches"] = int(5e3)

@@ -5,6 +5,7 @@ import utils.data_processing as dp
 from models.base_model import Model
 from modules.mlp_module import MlpModule
 from modules.class_adversarial_module import ClassAdversarialModule
+from modules.activations import activation_picker
 
 class MlpModel(Model):
   def __init__(self):
@@ -19,6 +20,8 @@ class MlpModel(Model):
     super(MlpModel, self).load_params(params)
     self.input_shape = [None,] + self.params.data_shape
     self.label_shape = [None, self.params.num_classes]
+    self.mlp_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.mlp_activation_functions]
 
   def get_input_shape(self):
     return self.input_shape
@@ -64,8 +67,9 @@ class MlpModel(Model):
     module = MlpModule(input_node, self.label_placeholder, self.params.layer_types,
       self.params.output_channels, self.params.batch_norm, self.dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-      self.params.patch_size, self.params.conv_strides, self.params.eps, lrn=self.params.lrn,
-      loss_type="softmax_cross_entropy", decay_mult=self.params.mlp_decay_mult)
+      self.params.patch_size, self.params.conv_strides, self.mlp_act_funcs,
+      self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy",
+      decay_mult=self.params.mlp_decay_mult, norm_mult=self.params.mlp_norm_mult)
     return module
 
   def build_graph_from_input(self, input_node):

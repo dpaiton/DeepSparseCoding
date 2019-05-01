@@ -1,7 +1,7 @@
 import os
 from params.base_params import BaseParams
 
-TRAIN_ON_RECON = True
+TRAIN_ON_RECON = False
 
 class params(BaseParams):
   def __init__(self):
@@ -68,7 +68,8 @@ class params(BaseParams):
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
-    self.mlp_decay_mult = 1e-4
+    self.mlp_decay_mult = 0
+    self.mlp_norm_mult = 1e-4
     #Adversarial params
     self.adversarial_num_steps = 40
     self.adversarial_attack_method = "kurakin_untargeted"
@@ -139,6 +140,7 @@ class params(BaseParams):
         self.num_classes = 10
         self.optimizer = "adam"
         self.layer_types = ["conv", "conv", "fc", "fc"]
+        self.mlp_activation_functions = ["relu", "relu", "relu", "identity"]
         self.output_channels = [32, 64, 1024, self.num_classes]
         self.patch_size = [(5, 5), (5, 5)]
         self.conv_strides = [(1,1,1,1), (1,1,1,1)]
@@ -169,7 +171,8 @@ class params(BaseParams):
         self.schedule[-1]["num_batches"] = int(1e5)
       else:
         self.output_channels = [128, self.num_classes]
-        self.layer_types = ["conv", "fc"]*len(self.output_channels)
+        self.layer_types = ["conv", "fc"]
+        self.mlp_activation_functions = ["relu", "identity"]
         self.optimizer = "adam"
         self.patch_size = []
         self.conv_strides = []
@@ -229,6 +232,7 @@ class params(BaseParams):
 
         #mlp_params
         self.layer_types = ["conv", "conv", "fc", "fc", "fc"]
+        self.mlp_activation_functions = ["lrelu", "lrelu", "lrelu", "lrelu", "identity"]
         self.output_channels = [256, 64, 384, 192, self.num_classes]
         self.patch_size = [(12, 12), (5, 5)]
         self.conv_strides = [(1,2,2,1), (1,1,1,1)]
@@ -262,6 +266,7 @@ class params(BaseParams):
       else:
         self.output_channels = [64, 384, 192, self.num_classes]
         self.layer_types = ["conv", "fc", "fc", "fc"]
+        self.mlp_activation_functions = ["lrelu", "lrelu", "lrelu", "identity"]
         self.optimizer = "adam"
         self.patch_size = [(5, 5)]
         self.conv_strides = [(1, 1, 1, 1)]
