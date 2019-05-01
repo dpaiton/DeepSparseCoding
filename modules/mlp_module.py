@@ -222,7 +222,6 @@ class MlpModule(object):
 
   def compute_weight_norm_loss(self):
     with tf.variable_scope("w_norm"):
-      num_neurons = self.output_channels
       w_norm_list = []
       for w in self.weight_list:
         reduc_axis = np.arange(1, len(w.get_shape().as_list()))
