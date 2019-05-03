@@ -6,7 +6,7 @@ class params(BaseParams):
     super(params, self).__init__()
     self.model_type = "lca_subspace"
     self.model_name = "lca_subspace"
-    self.version = "0.0"
+    self.version = "0.8"
     self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
@@ -85,24 +85,25 @@ class params(BaseParams):
       self.model_name += "_vh"
       self.num_images = 150
       self.vectorize_data = True
-      self.norm_data = Fals
+      self.norm_data = False
       self.rescale_data = False
       self.center_data = False
       self.whiten_data = True
       self.whiten_method = "FT"
       self.extract_patches = True
+      self.whiten_batch_size = 10
       self.num_patches = 1e6
       self.patch_edge_size = 16
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
       self.num_neurons = 768
-      self.num_groups = 192
+      self.num_groups = 768 // 8
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 0.01
         self.schedule[sched_idx]["group_orth_mult"] = 0.1
-        self.schedule[sched_idx]["sparse_mult"] = 5.0
+        self.schedule[sched_idx]["sparse_mult"] = 4.0
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
@@ -137,7 +138,7 @@ class params(BaseParams):
       self.lpf_cutoff = 0.7
       self.extract_patches = False
       self.num_neurons = 128
-      self.num_groups = 32
+      self.num_groups = self.num_neurons // 4
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["group_orth_mult"] = 0.001
