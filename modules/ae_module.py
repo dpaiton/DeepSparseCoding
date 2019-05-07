@@ -81,10 +81,17 @@ class AeModule(object):
     self.build_graph()
 
   def compute_weight_norm_loss(self):
-    with tf.variable_scope("unsupervised"):
-      num_neurons = self.output_channels + self.output_channels[::-1]
-      w_norm_list = [tf.square(num_neurons[w_idx] - tf.reduce_sum(tf.square(w)))
-        for w_idx, w in enumerate(self.w_list)]
+    #with tf.variable_scope("w_norm"):
+    #  num_neurons = self.output_channels + self.output_channels[::-1]
+    #  w_norm_list = [tf.square(num_neurons[w_idx] - tf.reduce_sum(tf.square(w)))
+    #    for w_idx, w in enumerate(self.w_list)]
+    with tf.variable_scope("w_norm"):
+      num_neurons = self.output_channels
+      w_norm_list = []
+      for w in self.weight_list:
+        reduc_axis = np.arange(1, len(w.get_shape().as_list()))
+        w_norm = tf.reduce_sum(tf.square(1 - tf.reduce_sum(tf.square(w), axis=reduc_axis)))
+        w_norm_list.append(w_norm)
       norm_loss = tf.multiply(0.5*self.norm_mult, tf.add_n(w_norm_list))
     return norm_loss
 
@@ -152,8 +159,10 @@ class AeModule(object):
       # TODO: params to switch init type
       #w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
       #  initializer=self.w_normal_init, trainable=True)
+
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_xavier_init, trainable=True)
+
       #if decode:
       #  w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
       #    initializer=self.w_normed_dec_init, trainable=True)
