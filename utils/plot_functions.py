@@ -381,9 +381,9 @@ def plot_bf_stats(bf_stats, num_bf=2):
   plt.show()
   return fig
 
-def plot_loc_freq_summary(bf_stats, fontsize=16):
+def plot_loc_freq_summary(bf_stats, figsize=(15, 5), fontsize=16):
   plt.rc('text', usetex=True)
-  fig = plt.figure(figsize=(15, 5))
+  fig = plt.figure(figsize=figsize)
   gs = fig.add_gridspec(1, 3, wspace=0.3)
   ax = fig.add_subplot(gs[0])
   x_pos = [x for (y,x) in bf_stats["gauss_centers"]]
@@ -396,38 +396,39 @@ def plot_loc_freq_summary(bf_stats, fontsize=16):
   ax.set_aspect("equal")
   ax.set_ylabel("Pixels", fontsize=fontsize)
   ax.set_xlabel("Pixels", fontsize=fontsize)
-  ax.set_title("Basis Function Centers", fontsize=fontsize, pad=32)
+  ax.set_title("Centers", fontsize=fontsize, pad=32)
   ax = fig.add_subplot(gs[1])
-  x_sf = [x for (y,x) in bf_stats["fourier_centers"]]
-  y_sf = [y for (y,x) in bf_stats["fourier_centers"]]
+  x_sf = [np.abs(x) for (y,x) in bf_stats["fourier_centers"]]
+  y_sf = [np.abs(y) for (y,x) in bf_stats["fourier_centers"]]
   max_sf = np.max(np.abs(x_sf+y_sf))
   ax.scatter(x_sf, y_sf, color='k', s=10)
-  ax.set_xlim([-max_sf, max_sf])
-  ax.set_ylim([-max_sf, max_sf])
+  ax.set_xlim([0, max_sf])
+  ax.set_ylim([0, max_sf])
   ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
   ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
   ax.set_aspect("equal")
   ax.set_ylabel("Cycles / Patch", fontsize=fontsize)
   ax.set_xlabel("Cycles / Patch", fontsize=fontsize)
-  ax.set_title("Basis Function Spatial Frequencies", fontsize=fontsize, pad=32)
-  orientations = [(np.pi + orientation)
-    for orientation in bf_stats["ellipse_orientations"]]
+  ax.set_title("Spatial Frequencies", fontsize=fontsize, pad=32)
   num_bins = 360
-  bins = np.linspace(-np.pi, np.pi, num_bins)
+  orientations = [np.pi + orientation
+    for orientation in [np.arctan2(*fyx[::-1]) for fyx in bf_stats["fourier_centers"]]]
+  bins = np.linspace(0, 2*np.pi, num_bins)
   count, bin_edges = np.histogram(orientations, bins)
+  count = count / np.max(count)
   bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
   bin_centers = bin_left + (bin_right - bin_left)/2
   ax = fig.add_subplot(gs[2], polar=True)
   ax.plot(bin_centers, count, linewidth=3, color='k')
-  ax.set_thetamin(0)
-  ax.set_thetamax(360)
   ax.set_yticks([])
+  ax.set_thetamin(0)
+  ax.set_thetamax(2*np.pi)
   ax.set_xticks([0, np.pi/4, 2*np.pi/4, 3*np.pi/4, 4*np.pi/4,
-    5*np.pi/4, 6*np.pi/4, 7*np.pi/4])
-  ax.set_xticklabels([r"0", r"$\frac{\pi}{4}$", r"$\frac{pi}{2}$",
+    5*np.pi/4, 6*np.pi/4, 7*np.pi/4, 2*np.pi])
+  ax.set_xticklabels([r"0", r"$\frac{\pi}{4}$", r"$\frac{\pi}{2}$",
     r"$\frac{3\pi}{4}$", r"$\pi$", r"$\frac{5\pi}{4}$", r"$\frac{3\pi}{2}$",
     r"$\frac{7\pi}{4}$"], fontsize=fontsize)
-  ax.set_title("Basis Function Orientaitons", fontsize=fontsize, pad=20)
+  ax.set_title("Orientaitons", fontsize=fontsize, pad=23)
   plt.show()
   return fig
 
@@ -1005,7 +1006,7 @@ def plot_inference_stats(data, title="", save_filename=None):
   TODO: Add a 4th plot that shows the % change in active coefficients (inactive-to-active + active-to-inactive)
         e.g. in bottom left of figure 7 in rozell et al 2008 LCA paper
   """
-  labels = [key for key in data["losses"].keys()]
+  labels = [key.title() for key in data["losses"].keys()]
   losses = [val for val in data["losses"].values()]
   num_im, num_steps = losses[0].shape
   means = [None,]*len(labels)
@@ -1016,7 +1017,7 @@ def plot_inference_stats(data, title="", save_filename=None):
   num_plots_y = np.int32(np.ceil(np.sqrt(len(labels))))+1
   num_plots_x = np.int32(np.ceil(np.sqrt(len(labels))))
   gs = gridspec.GridSpec(num_plots_y, num_plots_x)
-  fig = plt.figure(figsize=(10,10))
+  fig = plt.figure(figsize=(12,12))
   loss_id = 0
   for plot_id in np.ndindex((num_plots_y, num_plots_x)):
     (y_id, x_id) = plot_id
@@ -1037,7 +1038,7 @@ def plot_inference_stats(data, title="", save_filename=None):
   fig.tight_layout()
   fig.suptitle(title, y=1.03, x=0.5, fontsize=20)
   if save_filename is not None:
-    fig.savefig(save_filename, transparent=True)
+    fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad=0.1)
     plt.close(fig)
     return None
   plt.show()
@@ -1160,9 +1161,12 @@ def plot_weight_angle_heatmap(weight_angles, angle_min=0, angle_max=180, title="
   plt.show()
   return fig
 
-def plot_weight_angle_histogram(weight_angles, num_bins=50, angle_min=0, angle_max=180, figsize=None, save_filename=None):
+def plot_weight_angle_histogram(weight_angles, num_bins=50, angle_min=0, angle_max=180,
+  y_max=None, figsize=None, save_filename=None):
   bins = np.linspace(angle_min, angle_max, num_bins)
   hist, bin_edges = np.histogram(weight_angles.flatten(), bins)
+  if y_max is None:
+    y_max = np.max(hist)
   bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
   bin_centers = bin_left + (bin_right - bin_left)/2
   fig, ax = plt.subplots(1, figsize=figsize)
@@ -1170,10 +1174,14 @@ def plot_weight_angle_histogram(weight_angles, num_bins=50, angle_min=0, angle_m
   ax.set_xticks(bin_left, minor=True)
   ax.set_xticks(bin_left[::4], minor=False)
   ax.xaxis.set_major_formatter(FormatStrFormatter("%0.0f"))
+  ax.tick_params("both", labelsize=16)
   ax.set_xlim([angle_min, angle_max])
-  ax.set_title("Neuron Angle Histogram")
-  ax.set_xlabel("Angle (Degrees)")
-  ax.set_ylabel("Count")
+  ax.set_xticks([angle_min, int(np.floor(angle_max/4)), int(2*np.floor(angle_max/4)),
+    int(3*np.floor(angle_max/4)), angle_max])
+  ax.set_ylim([1, y_max])
+  ax.set_title("Neuron Angle Histogram", fontsize=18)
+  ax.set_xlabel("Angle (Degrees)", fontsize=18)
+  ax.set_ylabel("Log Count", fontsize=18)
   if save_filename is not None:
     fig.savefig(save_filename)
     plt.close(fig)
@@ -1182,23 +1190,30 @@ def plot_weight_angle_histogram(weight_angles, num_bins=50, angle_min=0, angle_m
   return fig
 
 def plot_weight_nearest_neighbor_histogram(weight_angles, num_bins=25, angle_min=0, angle_max=90,
-  figsize=None, save_filename=None):
+  y_max=None, figsize=None, save_filename=None):
   nn_angles = np.zeros(weight_angles.shape[0])
   for neuron_id in range(weight_angles.shape[0]):
-    neighbors = weight_angles[neuron_id,:]
-    nn_angles[neuron_id] = np.min(np.delete(neighbors, neuron_id))
+    neighbors = np.delete(weight_angles[neuron_id,:], neuron_id)
+    nn_angles[neuron_id] = np.min(neighbors[neighbors>=0])
   bins = np.linspace(angle_min, angle_max, num_bins)
   hist, bin_edges = np.histogram(nn_angles.flatten(), bins)
+  if y_max is None:
+    y_max = np.max(hist)
   bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
   bin_centers = bin_left + (bin_right - bin_left)/2
   fig, ax = plt.subplots(1, figsize=figsize)
-  ax.bar(bin_centers, hist, width=2.0, log=True, align="center")
-  ax.set_xticks(bin_left, minor=False)
+  ax.bar(bin_centers, hist, width=1.0, log=True, align="center")
+  ax.set_xticks(bin_left, minor=True)
+  ax.set_xticks(bin_left[::4], minor=False)
   ax.xaxis.set_major_formatter(FormatStrFormatter("%0.0f"))
+  ax.tick_params("both", labelsize=16)
   ax.set_xlim([angle_min, angle_max])
-  ax.set_title("Neuron Nearest Neighbor Angle")
-  ax.set_xlabel("Angle (Degrees)")
-  ax.set_ylabel("Count")
+  ax.set_xticks([angle_min, int(np.floor(angle_max/4)), int(2*np.floor(angle_max/4)),
+    int(3*np.floor(angle_max/4)), angle_max])
+  ax.set_ylim([1, y_max])
+  ax.set_title("Neuron Nearest Neighbor Angle", fontsize=18)
+  ax.set_xlabel("Angle (Degrees)", fontsize=18)
+  ax.set_ylabel("Log Count", fontsize=18)
   if save_filename is not None:
     fig.savefig(save_filename)
     plt.close(fig)
