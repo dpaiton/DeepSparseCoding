@@ -90,6 +90,7 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = True
       self.whiten_method = "FT"
+      self.whiten_batch_size = 10
       self.extract_patches = True
       self.num_patches = 1e6
       self.patch_edge_size = 16
@@ -98,11 +99,14 @@ class params(BaseParams):
       self.patch_variance_threshold = 0.0
       self.num_neurons = 768
       self.num_groups = 192
+      self.cp_int = int(5e3)
+      self.log_int = 100
+      self.gen_plot_int = int(5e3)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["num_batches"] = int(2e4)
         self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["group_orth_mult"] = 0.1
-        self.schedule[sched_idx]["sparse_mult"] = 5.0
+        self.schedule[sched_idx]["group_orth_mult"] = 1.5
+        self.schedule[sched_idx]["sparse_mult"] = 4.0
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
