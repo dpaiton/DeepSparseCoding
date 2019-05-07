@@ -931,28 +931,34 @@ class Analyzer(object):
     """
     Compute the angle between all pairs of basis functions in bf_stats
     Outputs:
-      neuron_angles [np.ndarray] of shape [num_neurons, num_neurons] with all angles
+      plot_matrix [np.ndarray] of shape [num_neurons, num_neurons] with all angles between
+        basis functions in the lower triangle and upper triangle is set to -1
+      neuron_angles [np.ndarray] lower triangle of plot matrix only, as a vector in raster order
     Inputs:
       bf_stats [dict] returned from utils/data_processing.get_dictionary_stats()
     """
     num_pixels = bf_stats["patch_edge_size"]**2
-    neuron_angles = np.zeros((bf_stats["num_outputs"], bf_stats["num_outputs"]))
-    for neuron1 in range(bf_stats["num_outputs"]):
-      for neuron2 in range(bf_stats["num_outputs"]):
-        bf1 = bf_stats["basis_functions"][neuron1].reshape((num_pixels,1))
-        bf2 = bf_stats["basis_functions"][neuron2].reshape((num_pixels,1))
-        inner_products = np.dot((bf1/np.linalg.norm(bf1)).T, bf2/np.linalg.norm(bf2))
-        inner_products[inner_products>1.0] = 1.0
-        inner_products[inner_products<-1.0] = -1.0
-        angle = np.arccos(inner_products)
-        neuron_angles[neuron1, neuron2] = angle
-    return neuron_angles
+    indices = np.tril_indices(bf_stats["num_outputs"], 1)
+    vect_size = len(indices[0])
+    neuron_angles = np.zeros(vect_size)
+    plot_matrix = np.zeros((bf_stats["num_outputs"], bf_stats["num_outputs"]))
+    for angleid, (nid0, nid1) in enumerate(zip(*indices)):
+      bf0 = bf_stats["basis_functions"][nid0].reshape((num_pixels, 1))
+      bf1 = bf_stats["basis_functions"][nid1].reshape((num_pixels, 1))
+      inner_products = np.dot((bf0 / np.linalg.norm(bf0)).T, (bf1 / np.linalg.norm(bf1)))
+      inner_products[inner_products>1.0] = 1.0
+      inner_products[inner_products<-1.0] = -1.0
+      angle = np.arccos(inner_products)
+      neuron_angles[angleid] = angle * (180/np.pi)
+      plot_matrix[nid0, nid1] = angle * (180/np.pi)
+    plot_matrix[plot_matrix==0] = -1
+    return neuron_angles, plot_matrix
 
-  def bf_projections(self, bf1, bf2):
+  def bf_projections(self, bf0, bf1):
     """
     TODO: Deprecate this and use dp.bf_projections
     """
-    return dp.bf_projections(bf1, bf2)
+    return dp.bf_projections(bf0, bf1)
 
   def neuron_visualization_analysis(self, save_info=""):
     vis_data_init = np.random.normal(loc=0.0, scale=1e-2, size=self.model.get_input_shape()[1:])
