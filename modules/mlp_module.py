@@ -223,6 +223,7 @@ class MlpModule(object):
               self.cross_entropy_loss = (self.label_mult
                 * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
                 self.label_est, self.eps, 1.0))), axis=[1])) # vector with len [batch]
+              self.sum_loss = self.cross_entropy_loss
               #Doing this to avoid divide by zero
               label_count = tf.reduce_sum(self.label_mult) # number of non-ignore labels in batch
               f1 = lambda: tf.zeros_like(self.cross_entropy_loss)
@@ -230,7 +231,6 @@ class MlpModule(object):
               pred_fn_pairs = {
                 tf.equal(label_count, tf.constant(0.0)): f1, # all labels are 'ignore'
                 tf.greater(label_count, tf.constant(0.0)): f2} # mean over non-ignore labels
-              self.sum_loss = self.cross_entropy_loss
               self.mean_loss = tf.case(pred_fn_pairs,
                 default=f2, exclusive=True, name="mean_cross_entropy_loss")
             elif(self.loss_type == "l2"):
