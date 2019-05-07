@@ -35,9 +35,6 @@ class LcaSubspaceModule(LcaModule):
     Reshape sigmas from [num_batch, num_groups] to [num_batch, num_neurons]
     Each neuron index is assigned the group amplitude for its corresponding group
     """
-    ##TODO optimize this; remove the for loop
-    #sigmas = tf.squeeze(tf.stack([sigmas[:, group_index]
-    #  for group_index in self.group_assignments], axis=-1, name=name))
     out_sigmas = tf.gather(tf.squeeze(sigmas), self.group_assignments, axis=-1)
     return out_sigmas
 
