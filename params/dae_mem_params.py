@@ -86,7 +86,7 @@ class params(BaseParams):
       self.layer_types = ["fc", "fc", "fc"]
       self.output_channels = [1568, 784, 50]
       self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-      self.dropout = [1.0]*len(self.activation_funtions)
+      self.dropout = [1.0]*len(self.activation_functions)
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vanhateren"

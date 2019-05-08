@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp_vae"
-    self.model_name = "mlp_vae_adv"
+    self.model_name = "mlp_vae"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -31,12 +31,12 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     # VAE Params
-    self.vae_layer_types = ["fc"]
-    self.vae_output_channels = [768]
-    self.vae_patch_size = []
-    self.vae_conv_strides = []
-    self.activation_functions = ["lrelu", "sigmoid"]
-    self.ae_dropout = [1.0]*2*len(self.vae_output_channels)
+    self.ae_layer_types = ["fc"]
+    self.ae_output_channels = [768]
+    self.ae_patch_size = []
+    self.ae_conv_strides = []
+    self.ae_activation_functions = ["lrelu", "sigmoid"]
+    self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
     self.noise_level = 0.01 # variance of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_decoder_weights = False
@@ -50,6 +50,7 @@ class params(BaseParams):
     self.num_classes = 10
     self.mlp_layer_types = ["fc", "fc", "fc"]
     self.mlp_output_channels = [300, 500, self.num_classes]
+    self.mlp_activation_functions = ["lrelu", "lrelu", "sigmoid"]
     self.mlp_patch_size = []
     self.mlp_conv_strides = []
     self.batch_norm = [None, None, None]
@@ -57,6 +58,9 @@ class params(BaseParams):
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
+    self.lrn = [None]*len(self.mlp_output_channels)
+    self.mlp_decay_mult = 0
+    self.mlp_norm_mult = 1e-4
     #Adversarial params
     self.adversarial_num_steps = 40
     self.adversarial_attack_method = "kurakin_untargeted"
@@ -114,7 +118,7 @@ class params(BaseParams):
         "mlp/layer2/fc_b_2:0",
         "mlp/layer3/fc_w_3:0",
         "mlp/layer3/fc_b_3:0"],
-      "train_on_adversarial": True,
+      "train_on_adversarial": False,
       "train_vae": False,
       "num_batches": int(1e4),
       "decay_mult": 0.0,
@@ -139,9 +143,9 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.cp_load = True
-      self.vae_layer_types = ["fc"]
-      self.vae_output_channels = [768]
-      self.activation_functions = ["lrelu", "sigmoid"]
+      self.ae_layer_types = ["fc"]
+      self.ae_output_channels = [768]
+      self.ae_activation_functions = ["lrelu", "sigmoid"]
       # MLP params
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [28, 28, 1]
@@ -149,6 +153,7 @@ class params(BaseParams):
       self.optimizer = "adam"
       self.mlp_layer_types = ["conv", "conv", "fc", "fc"]
       self.mlp_output_channels = [32, 64, 1024, self.num_classes]
+      self.mlp_activation_functions = ["lrelu"]*len(self.mlp_output_channels)
       self.mlp_patch_size = [(5, 5), (5, 5)]
       self.mlp_conv_strides = [(1,1,1,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None]
@@ -156,6 +161,7 @@ class params(BaseParams):
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
+      self.lrn = [None]*len(self.mlp_output_channels)
       # NOTE schedule index will change if vae training is happening
       self.schedule[1]["num_batches"] = int(2e4)
       for sched_idx in range(len(self.schedule)):
@@ -172,15 +178,16 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.ae_dropout = [1.0]*2*len(self.vae_output_channels)
+      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [16, 16, 1]
       self.num_classes = 2
-      self.vae_layer_types = ["fc"]
-      self.vae_output_channels = [768]
-      self.activation_functions = ["lrelu", "sigmoid"]
+      self.ae_layer_types = ["fc"]
+      self.ae_output_channels = [768]
+      self.ae_activation_functions = ["lrelu", "sigmoid"]
       self.mlp_layer_types = ["conv", "fc", "fc"]
       self.mlp_output_channels = [128, 768, self.num_classes]
+      self.mlp_activation_functions = ["lrelu"]*len(self.mlp_output_channels)
       self.mlp_patch_size = [(5, 5)]
       self.mlp_conv_strides = [(1,1,1,1)]
       self.batch_norm = [None, None, None]
@@ -188,6 +195,7 @@ class params(BaseParams):
       self.max_pool = [True, False, False]
       self.max_pool_ksize = [(1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), None, None]
+      self.lrn = [None]*len(self.mlp_output_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["num_batches"] = int(1e5)

@@ -88,7 +88,8 @@ class DaeMemModule(DaeModule):
       norm_min=self.latent_min, norm_max=self.latent_max, synthetic_noise=self.synthetic_noise)
     v_clip = tf.clip_by_value(u_in, clip_value_min=self.latent_min, clip_value_max=self.latent_max)
     r = mem_utils.memristor_output(v_clip, memristor_std_eps, vs_data, mus_data, sigs_data,
-      interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'), error_rate = self.mem_error_rate)
+      interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'),
+      error_rate = self.mem_error_rate)
     u_out = tf.reshape(r, shape=tf.shape(u_in), name="mem_r")
     return u_out
 
@@ -150,6 +151,14 @@ class DaeMemModule(DaeModule):
       self.b_list += dec_b_list
       self.w_gdn_list += dec_w_gdn_list
       self.b_gdn_list += dec_b_gdn_list
+
+      with tf.variable_scope("norm_weights") as scope:
+        w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
+        self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
+          axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
+        self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
+          axis=-1, epsilon=1e-8, name="col_l2_norm"))
+        self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
 
       for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
         self.trainable_variables[w_gdn.name] = w_gdn

@@ -62,7 +62,7 @@ class params(BaseParams):
       self.layer_types = ["fc"]*len(self.output_channels)
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.activation_functions = ["relu"]*(2*len(self.layer_types))
+      self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
       self.dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
       self.cp_int = int(5e5)
       self.gen_plot_int = int(5e5)
@@ -124,8 +124,9 @@ class params(BaseParams):
       self.layer_types = ["fc"]*len(self.output_channels)
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.activation_functions = ["relu"]*(2*len(self.layer_types)-1) + ["identity"]
-      self.dropout = [0.8]*(len(self.activation_functions)-1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
+      self.layer_types = ["conv"]*len(self.output_channels)
+      self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
+      self.dropout = [0.8] * (len(self.activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
       self.cp_int = int(5e5)
       self.gen_plot_int = int(1e3)
       self.norm_weights = False
@@ -159,8 +160,6 @@ class params(BaseParams):
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.activation_functions = ["relu", "relu", "relu", "relu", "relu", "identity"]
-    self.dropout = [1.0]*len(self.activation_functions)
     # Test 1
     #self.layer_types = ["fc", "fc", "fc"]
     #self.vectorize_data = True
@@ -177,3 +176,5 @@ class params(BaseParams):
     self.output_channels = [30, 20, 10]
     self.patch_size = [(8,8), (4,4)]
     self.conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
+    self.activation_functions = ["relu"] * (2 * len(self.output_channels) - 1) + ["identity"]
+    self.dropout = [1.0] * len(self.activation_functions)

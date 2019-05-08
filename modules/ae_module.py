@@ -88,7 +88,7 @@ class AeModule(object):
     with tf.variable_scope("w_norm"):
       num_neurons = self.output_channels
       w_norm_list = []
-      for w in self.weight_list:
+      for w in self.w_list:
         reduc_axis = np.arange(1, len(w.get_shape().as_list()))
         w_norm = tf.reduce_sum(tf.square(1 - tf.reduce_sum(tf.square(w), axis=reduc_axis)))
         w_norm_list.append(w_norm)
@@ -180,7 +180,8 @@ class AeModule(object):
 
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       output_tensor = activation_function(pre_act)
-      output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
+      #output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
+      output_tensor = tf.nn.dropout(output_tensor, keep_prob=1-self.dropout[layer_id])
     return output_tensor, w, b
 
   def build_encoder(self, input_tensor, activation_functions):

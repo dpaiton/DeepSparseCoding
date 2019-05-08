@@ -5,7 +5,9 @@ import utils.data_processing as dp
 import utils.entropy_functions as ef
 import ops.init_ops as init_ops
 from models.mlp_model import MlpModel
+from modules.mlp_module import MlpModule
 from modules.activations import lca_threshold
+from modules.activations import activation_picker
 
 class MlpListaModel(MlpModel):
   def load_params(self, params):
@@ -20,13 +22,22 @@ class MlpListaModel(MlpModel):
     self.w_shape = [self.params.num_pixels, self.params.num_neurons]
     self.s_shape = [self.params.num_neurons, self.params.num_neurons]
     self.label_shape = [None, self.params.num_classes]
-    # Hyper Parameters
+    # Hyper parameters
     self.eta = self.params.dt / self.params.tau
+    # MLP params
+    self.mlp_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.mlp_activation_functions]
 
   def build_mlp_module(self, input_node):
-    assert self.params.layer_types[0] == "fc", (
+    assert self.params.mlp_layer_types[0] == "fc", (
       "MLP must have FC layers to train on LISTA activity")
-    return super(MlpListaModel, self).build_mlp_module(input_node)
+    module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
+      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+      self.params.mlp_patch_size, self.params.mlp_conv_strides, self.mlp_act_funcs,
+      self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy",
+      decay_mult=self.params.mlp_decay_mult, norm_mult=self.params.mlp_norm_mult)
+    return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""

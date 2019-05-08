@@ -155,6 +155,7 @@ class DaeModule(AeModule):
           self.gdn_b_thresh_min, self.gdn_eps, decode, conv)
       else:
         output_tensor = activation_function(pre_act)
+      #output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
       output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, trainable_variables
 
@@ -330,6 +331,14 @@ class DaeModule(AeModule):
       self.b_list += dec_b_list
       self.w_gdn_list += dec_w_gdn_list
       self.b_gdn_list += dec_b_gdn_list
+
+      with tf.variable_scope("norm_weights") as scope:
+        w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
+        self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
+          axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
+        self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
+          axis=-1, epsilon=1e-8, name="col_l2_norm"))
+        self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
 
       for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
         self.trainable_variables[w_gdn.name] = w_gdn

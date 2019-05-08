@@ -97,16 +97,17 @@ def memristor_output(v, eps, vs, mus, sigs, interp_width, error_rate=0.0):
     """
     mean = gauss_interp(v, vs, mus, interp_width)
     sdev = gauss_interp(v, vs, sigs, interp_width)
-    
     #if error_rate > 0.0:
         #num_corrupt = tf.cast(tf.multiply(error_rate,tf.size(mean)), tf.int32)
         #mask = np.zeros(n_mem)
         #mask[:num_corrupt] = 1
             #mask = mask.astype(bool)
-        #indices  = tf.boolean_mask(tf.shuffle(tf.range(tf.size(mean))), mask) 
+        #indices  = tf.boolean_mask(tf.shuffle(tf.range(tf.size(mean))), mask)
         #indices = np.random.permutation(mean.size)[:num_corrupt]
         #mean[np.unravel_index(indeces,mean.shape)] = 1.1*np.amin(mean)
-    mean_drop = tf.nn.dropout(mean, 1-error_rate)
+    # NOTE: dropout takes rate term in 1.13, not keep_probs
+    #mean_drop = tf.nn.dropout(mean, rate=error_rate)
+    mean_drop = tf.nn.dropout(mean, keep_prob=1-error_rate)
     drop_val = tf.multiply(1.1, tf.reduce_min(mean))
     drop_val_tensor = tf.multiply(drop_val, tf.ones_like(mean))
     mean = tf.where(tf.equal(mean_drop, tf.constant(0.0)), drop_val_tensor, mean)
