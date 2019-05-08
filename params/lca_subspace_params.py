@@ -104,8 +104,8 @@ class params(BaseParams):
       self.gen_plot_int = int(5e3)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(2e4)
-        self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["group_orth_mult"] = 1.5
+        self.schedule[sched_idx]["weight_lr"] = 0.02
+        self.schedule[sched_idx]["group_orth_mult"] = 0.1
         self.schedule[sched_idx]["sparse_mult"] = 4.0
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5

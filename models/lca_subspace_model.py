@@ -19,7 +19,6 @@ class LcaSubspaceModel(LcaModel):
       with self.graph.as_default():
         with tf.variable_scope("auto_placeholders") as scope:
           self.group_orth_mult = tf.placeholder(tf.float32, shape=(), name="group_orth_mult")
-
     super(LcaSubspaceModel, self).build_graph_from_input(input_node)
 
   def build_module(self, input_node):
@@ -27,6 +26,15 @@ class LcaSubspaceModel(LcaModel):
       self.eta, self.params.num_steps, self.params.num_groups, self.group_orth_mult,
       self.params.eps)
     return module
+
+  def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
+    update_dict = super(LcaSubspaceModel, self).generate_update_dict(input_data, input_labels,
+    batch_step)
+    feed_dict = self.get_feed_dict(input_data, input_labels)
+    eval_list = [self.module.loss_dict["orthogonalization_loss"]]
+    orth_loss =  tf.get_default_session().run(eval_list, feed_dict)[0]
+    update_dict.update({"orthogonalization_loss":orth_loss})
+    return update_dict
 
   def generate_plots(self, input_data, input_labels=None):
     """

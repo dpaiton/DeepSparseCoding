@@ -79,7 +79,7 @@ class LcaSubspaceModule(LcaModule):
         name="group_sparse_loss")
     return sparse_loss
 
-  def compute_group_orthogonalization_loss(self, a_in):
+  def compute_group_orthogonalization_loss(self):
     with tf.variable_scope("unsupervised"):
       # For each group
         # assemble matrix of W = [num_pixels, num_neurons_in_group]
@@ -88,14 +88,17 @@ class LcaSubspaceModule(LcaModule):
       group_weights = tf.reshape(self.w,
         shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group], name="group_weights")
       w_orth_list = [
-        tf.reduce_sum(tf.abs(tf.subtract(tf.matmul(tf.transpose(group_weights[:,group_idx,:]),
-        group_weights[:,group_idx,:]), tf.eye(num_rows=self.num_neurons_per_group))))
+        tf.reduce_sum(tf.abs(tf.matmul(tf.transpose(group_weights[:, group_idx, :]),
+        group_weights[:, group_idx, :]) - tf.eye(num_rows=self.num_neurons_per_group)))
         for group_idx in range(self.num_groups)]
       group_orthogonalization_loss = tf.multiply(self.group_orth_mult, tf.add_n(w_orth_list),
         name="group_orth_loss")
     return group_orthogonalization_loss
 
   def get_loss_funcs(self):
+    #TODO: Should be able to rewrite this to have a tuple as its value where the second
+    # entry in the tuple is the argument it needs (e.g. self.a or self.recon) or at least a label
+    # to choose from a preset list of args
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss,
       "orthogonalization_loss":self.compute_group_orthogonalization_loss}
 
@@ -111,3 +114,8 @@ class LcaSubspaceModule(LcaModule):
         self.group_weights = tf.reshape(self.w,
           shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group],
           name="group_weights")
+      with tf.variable_scope("loss") as scope:
+        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+          "sparse_loss":self.compute_sparse_loss(self.a),
+          "orthogonalization_loss":self.compute_group_orthogonalization_loss()}
+        self.total_loss = tf.add_n([val for val in self.loss_dict.values()], name="total_loss")
