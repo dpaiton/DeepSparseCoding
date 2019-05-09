@@ -45,7 +45,7 @@ class IcaSubspaceModel(Model):
                     self.s = tf.matmul(self.w_synth, tf.transpose(input_node), name="latent_vars")
 
                 with tf.variable_scope("log_liklihood") as scope:
-                    self.log_lik = self.compute_log_lik() 
+                    self.log_lik = self.compute_log_lik(input_node) 
 
                 with tf.varaible_scope("output") as scope:
                     self.recon = tf.matmul(self.w_synth, self.s, name="recon")
@@ -72,17 +72,18 @@ class IcaSubspaceModel(Model):
         self.sum_grad = sum_grad
         return [(sum_grad, weight_op)] # or sum grad
 
-    def compute_log_lik(self):
+    def compute_log_lik(self, input_node):
         """Compute log liklihood. """
         det_term = self.params.batch_size * tf.linalg.det(self.w_analy)
         def per_img(I):
             I = tf.reshape(I, [self.params.num_neurons, 1])
-            wI = tf.matmul(self.w_analy, I)
+            wI = tf.matmul(I, self.w_analy)
             k = tf.matmul(tf.math.pow(wI, 2), self.Q)
             sun_k = tf.reduce_sum(self.log_p(k))
             return sum_k
-        ll_list = tf.map_fn(per_img, self.input_placeholder)
+        ll_list = tf.map_fn(per_img, input_node, back_prop=False)
         sum_ll = tf.reduce_sum(ll_list, axis=0)
+
         return sum_ll + det_term
         
     def log_p(self, x):
