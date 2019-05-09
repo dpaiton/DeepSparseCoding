@@ -36,7 +36,7 @@ class params(BaseParams):
     self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
     self.ae_patch_size = []
     self.ae_conv_strides = []
-    self.activation_functions = ["relu"]*2*len(self.ae_output_channels)
+    self.ae_activation_functions = ["relu"] * 2 * len(self.ae_output_channels)
     self.ae_dropout = [0.5, 0.7, 1.0, 0.7, 0.7, 1.0]
     self.tie_decoder_weights = False
     self.norm_weights = False
@@ -49,14 +49,17 @@ class params(BaseParams):
     self.num_classes = 10
     self.mlp_layer_types = ["fc", "fc", "fc"]
     self.mlp_output_channels = [300, 500, self.num_classes]
+    self.mlp_activation_functions = ["relu"]*len(self.ae_output_channels)
     self.mlp_patch_size = []
     self.mlp_conv_strides = []
     self.batch_norm = [None, None, None]
-    self.lrn = [None, None, None, None]
     self.dropout = [0.5, 0.5, 1.0]
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
+    self.lrn = [None]*len(self.mlp_output_channels)
+    self.mlp_decay_mult = 0
+    self.mlp_norm_mult = 1e-4
     #Adversarial params
     self.adversarial_num_steps = 40
     self.adversarial_attack_method = "kurakin_untargeted"
@@ -140,7 +143,7 @@ class params(BaseParams):
       self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
       self.ae_patch_size = []
       self.ae_conv_strides = []
-      self.activation_functions = ["relu"]*2*len(self.ae_output_channels)
+      self.ae_activation_functions = ["relu"] * 2 * len(self.ae_output_channels)
       self.ae_dropout = [0.5, 0.7, 1.0, 0.7, 0.7, 1.0]
       self.cp_load = True
       self.train_on_recon = False  # if False, train on latent activations
@@ -151,6 +154,7 @@ class params(BaseParams):
         self.optimizer = "adam"
         self.mlp_layer_types = ["conv", "conv", "fc", "fc"]
         self.mlp_output_channels = [32, 64, 1024, self.num_classes]
+        self.mlp_activation_functions = ["relu"]*len(self.mlp_output_channels)
         self.mlp_patch_size = [(5, 5), (5, 5)]
         self.mlp_conv_strides = [(1,1,1,1), (1,1,1,1)]
         self.batch_norm = [None, None, None, None]
@@ -158,6 +162,7 @@ class params(BaseParams):
         self.max_pool = [True, True, False, False]
         self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
         self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]
+        self.lrn = [None]*len(self.mlp_output_channels)
         # NOTE schedule index will change if ae training is happening
         self.schedule[-1]["num_batches"] = int(1e5)
         for sched_idx in range(len(self.schedule)):
@@ -185,6 +190,7 @@ class params(BaseParams):
         self.max_pool = [False]*len(self.mlp_output_channels)
         self.max_pool_ksize = [None]*len(self.mlp_output_channels)
         self.max_pool_strides = [None]*len(self.mlp_output_channels)
+        self.lrn = [None]*len(self.mlp_output_channels)
         self.schedule[-1]["num_batches"] = int(2e5)
         for sched_idx in range(len(self.schedule)):
           self.schedule[sched_idx]["weights"] = [
@@ -207,16 +213,16 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.sae_layer_types = ["fc"]
-      self.sae_output_channels = [768]
-      self.activation_functions = ["relu", "relu"]
-      self.mlp_layer_types = ["fc"]
-      self.ae_dropout = [1.0]*2*len(self.sae_output_channels)
+      self.ae_layer_types = ["fc"]
+      self.ae_output_channels = [768]
+      self.ae_activation_functions = ["relu", "relu"]
+      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [16, 16, 1]
       self.num_classes = 2
       self.mlp_layer_types = ["conv", "fc", "fc"]
       self.mlp_output_channels = [128, 768, self.num_classes]
+      self.mlp_activation_functions = ["relu"]*len(self.mlp_output_channels)
       self.mlp_patch_size = [(5, 5)]
       self.mlp_conv_strides = [(1,1,1,1)]
       self.batch_norm = [None, None, None]
@@ -224,6 +230,7 @@ class params(BaseParams):
       self.max_pool = [True, False, False]
       self.max_pool_ksize = [(1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), None, None]
+      self.lrn = [None]*len(self.mlp_output_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["num_batches"] = int(1e5)

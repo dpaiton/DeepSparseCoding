@@ -61,10 +61,10 @@ class DaeModule(AeModule):
     self.gdn_w_thresh_min = gdn_w_thresh_min
     self.gdn_b_thresh_min = gdn_b_thresh_min
     self.gdn_eps = gdn_eps
-    if layer_types[-1] == "conv":
-      self.latent_conv = True
-    else:
-      self.latent_conv = False
+    #if layer_types[-1] == "conv":
+    #  self.latent_conv = True
+    #else:
+    #  self.latent_conv = False
     super(DaeModule, self).__init__(data_tensor, layer_types, output_channels, patch_size,
       conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_decoder_weights, norm_w_init,
       variable_scope)
@@ -137,7 +137,8 @@ class DaeModule(AeModule):
 
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       if activation_function == activation_picker("gdn"):
-        if self.latent_conv and decode:
+        #if self.latent_conv and decode:
+        if conv and decode:
           w_gdn_shape = [w_shape[-2], w_shape[-2]]
         else:
           w_gdn_shape = [w_shape[-1], w_shape[-1]]
@@ -147,11 +148,14 @@ class DaeModule(AeModule):
         b_gdn = tf.get_variable(name="b_gdn_"+str(layer_id), shape=b_shape,
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
         trainable_variables.append(b_gdn)
-        gdn_inverse = True if layer_id >= self.num_encoder_layers else False
+        #gdn_inverse = True if layer_id >= self.num_encoder_layers else False
+        #output_tensor, gdn_mult = activation_function(pre_act, w_gdn, b_gdn, self.gdn_w_thresh_min,
+        #  self.gdn_b_thresh_min, self.gdn_eps, gdn_inverse, conv=self.latent_conv)
         output_tensor, gdn_mult = activation_function(pre_act, w_gdn, b_gdn, self.gdn_w_thresh_min,
-          self.gdn_b_thresh_min, self.gdn_eps, gdn_inverse, conv=self.latent_conv)
+          self.gdn_b_thresh_min, self.gdn_eps, decode, conv)
       else:
         output_tensor = activation_function(pre_act)
+      #output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
       output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, trainable_variables
 
@@ -198,8 +202,8 @@ class DaeModule(AeModule):
         in_tensor = enc_u_list[layer_id]
 
       w_shape = [int(prev_input_features), int(self.output_channels[layer_id])]
-      u_out, trainable_variables = self.layer_maker(layer_id, in_tensor, activation_functions[layer_id],
-        w_shape, conv=False, decode=False)
+      u_out, trainable_variables = self.layer_maker(layer_id, in_tensor,
+        activation_functions[layer_id], w_shape, conv=False, decode=False)
       if activation_functions[layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
         enc_w_gdn_list.append(w_gdn)
@@ -327,6 +331,14 @@ class DaeModule(AeModule):
       self.b_list += dec_b_list
       self.w_gdn_list += dec_w_gdn_list
       self.b_gdn_list += dec_b_gdn_list
+
+      with tf.variable_scope("norm_weights") as scope:
+        w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
+        self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
+          axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
+        self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
+          axis=-1, epsilon=1e-8, name="col_l2_norm"))
+        self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
 
       for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
         self.trainable_variables[w_gdn.name] = w_gdn

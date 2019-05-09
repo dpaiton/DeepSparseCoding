@@ -5,8 +5,8 @@ import utils.data_processing as dp
 import utils.entropy_functions as ef
 from models.mlp_model import MlpModel
 from modules.lca_module import LcaModule
-from modules.mlp_module import MlpModule
 from modules.lca_conv_module import LcaConvModule
+from modules.activations import activation_picker
 
 
 class MlpLcaModel(MlpModel):
@@ -21,6 +21,9 @@ class MlpLcaModel(MlpModel):
     self.label_shape = [None, self.params.num_classes]
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
+    # MLP params
+    self.mlp_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.mlp_activation_functions]
 
   def build_lca_module(self, input_node):
     if(self.params.lca_conv):
@@ -34,13 +37,14 @@ class MlpLcaModel(MlpModel):
         self.params.num_steps, self.params.eps)
     return module
 
-  def build_mlp_module(self, input_node):
-    module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
-      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-      self.params.mlp_patch_size, self.params.mlp_conv_strides, self.params.eps,
-      lrn=self.params.lrn, loss_type="softmax_cross_entropy")
-    return module
+  #def build_mlp_module(self, input_node):
+  #  module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
+  #    self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+  #    self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+  #    self.params.mlp_patch_size, self.params.mlp_conv_strides, self.mlp_act_funcs,
+  #    self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy",
+  #    decay_mult=self.params.mlp_decay_mult, norm_mult=self.params.mlp_norm_mult)
+  #  return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
@@ -51,19 +55,14 @@ class MlpLcaModel(MlpModel):
             tf.float32, shape=self.label_shape, name="input_labels")
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
-
         with tf.variable_scope("placeholders") as scope:
           self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
-
         self.train_lca = tf.cast(self.train_lca, tf.float32)
-
         with tf.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
-
         self.lca_module = self.build_lca_module(input_node)
         self.trainable_variables.update(self.lca_module.trainable_variables)
-
         if self.params.train_on_recon:
           if self.params.mlp_layer_types[0] == "conv":
             data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
@@ -76,20 +75,16 @@ class MlpLcaModel(MlpModel):
           assert self.params.mlp_layer_types[0] == "fc", (
             "MLP must have FC layers to train on LCA activity")
           mlp_input = self.lca_module.a
-
+          data_shape = mlp_input.get_shape().as_list()
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
-
         with tf.variable_scope("loss") as scope:
           #Loss switches based on train_lca flag
           self.total_loss = self.train_lca * self.lca_module.total_loss + \
             (1-self.train_lca) * self.mlp_module.total_loss
-
         with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.lca_module.norm_w, name="l2_normalization")
-
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
-
         with tf.variable_scope("performance_metrics") as scope:
           #LCA metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
@@ -120,41 +115,30 @@ class MlpLcaModel(MlpModel):
     """
     update_dict = super(MlpLcaModel, self).generate_update_dict(input_data, input_labels,
       batch_step)
-
     feed_dict = self.get_feed_dict(input_data, input_labels)
-
     eval_list = [self.lca_module.loss_dict["recon_loss"],
       self.lca_module.loss_dict["sparse_loss"],
       self.lca_module.a,
       self.lca_module.reconstruction,
       self.pSNRdB]
-
-
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-
     recon_loss, sparse_loss, lca_a_vals, recon, pSNRdB\
       = out_vals[0:5]
-
     train_on_adversarial = feed_dict[self.train_on_adversarial]
     if(train_on_adversarial):
       orig_img = feed_dict[self.input_placeholder]
       adv_feed_dict = feed_dict.copy()
       adv_feed_dict[self.use_adv_input] = True
       adv_img = tf.get_default_session().run(self.adv_module.get_adv_input(), adv_feed_dict)
-
       reduc_dims = tuple(range(1, len(orig_img.shape)))
       orig_adv_linf = np.max(np.abs(orig_img - adv_img), axis=reduc_dims)
       orig_recon_linf = np.max(np.abs(orig_img - recon), axis=reduc_dims)
-
       orig_adv_linf_max = np.max(orig_adv_linf)
       orig_adv_linf_mean = np.mean(orig_adv_linf)
       orig_adv_linf_min = np.min(orig_adv_linf)
-
       orig_recon_linf_max = np.max(orig_recon_linf)
       orig_recon_linf_mean = np.mean(orig_recon_linf)
       orig_recon_linf_min = np.min(orig_recon_linf)
-
-
     input_max = np.max(input_data)
     input_mean = np.mean(input_data)
     input_min = np.min(input_data)
@@ -166,7 +150,6 @@ class MlpLcaModel(MlpModel):
     lca_a_vals_min = np.array(lca_a_vals.min())
     lca_a_frac_act = np.array(np.count_nonzero(lca_a_vals)
       / float(lca_a_vals.size))
-
     stat_dict = {
       "lca_recon_loss":recon_loss,
       "lca_sparse_loss":sparse_loss,
@@ -175,16 +158,12 @@ class MlpLcaModel(MlpModel):
       "lca_a_max_mean_min":[lca_a_vals_max, lca_a_vals_mean, lca_a_vals_min],
       "x_max_mean_min":[input_max, input_mean, input_min],
       "x_hat_max_mean_min":[recon_max, recon_mean, recon_min]}
-
     if(train_on_adversarial):
       stat_dict["orig_adv_linf_max_mean_min"] = [orig_adv_linf_max,
         orig_adv_linf_mean, orig_adv_linf_min]
-
       stat_dict["orig_recon_linf_max_mean_min"] = [orig_recon_linf_max,
         orig_recon_linf_mean, orig_recon_linf_min]
-
     update_dict.update(stat_dict) #stat_dict overwrites for same keys
-
     return update_dict
 
   def generate_plots(self, input_data, input_labels=None):
@@ -195,24 +174,18 @@ class MlpLcaModel(MlpModel):
       input_labels: data object containing the current label batch
     """
     super(MlpLcaModel, self).generate_plots(input_data, input_labels)
-
     feed_dict = self.get_feed_dict(input_data, input_labels)
-
     eval_list = [self.global_step, self.lca_module.w,
       self.lca_module.reconstruction, self.lca_module.a]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, lca_activity = eval_out[1:]
-
     batch_size = input_data.shape[0]
     fig = pf.plot_activity_hist(np.reshape(input_data, [batch_size, -1]), title="Image Histogram",
       save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
-
     fig = pf.plot_activity_hist(np.reshape(recon, [batch_size, -1]), title="Recon Histogram",
       save_filename=self.params.disp_dir+"recon_hist"+filename_suffix)
-
-    weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     #Scale image by max and min of images and/or recon
     r_max = np.max([np.max(input_data), np.max(recon)])
@@ -224,12 +197,10 @@ class MlpLcaModel(MlpModel):
     fig = pf.plot_data_tiled(recon, normalize=False,
       title="Recons at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=self.params.disp_dir+"recons"+filename_suffix)
-
     num_features = lca_activity.shape[-1]
     lca_activity = np.reshape(lca_activity, [-1, num_features])
     fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
       save_filename=self.params.disp_dir+"lca_act_hist"+filename_suffix)
-
     if(len(weights.shape) == 4): # conv
       weights = np.transpose(weights, (0, 2, 3, 1))
     else: # fc

@@ -20,29 +20,31 @@ class MlpSaeModel(MlpModel):
     self.vector_inputs = True
     self.input_shape = [None, self.params.num_pixels]
     self.label_shape = [None, self.params.num_classes]
-    self.act_funcs = [activation_picker(act_func_str)
-      for act_func_str in self.params.activation_functions]
-    if np.all([layer_type == "fc" for layer_type in self.params.sae_layer_types]):
-      self.params.sae_patch_size = []
-      self.params.sae_conv_strides = []
+    self.ae_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.ae_activation_functions]
+    self.mlp_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.mlp_activation_functions]
+    if np.all([layer_type == "fc" for layer_type in self.params.ae_layer_types]):
+      self.params.ae_patch_size = []
+      self.params.ae_conv_strides = []
     if np.all([layer_type == "fc" for layer_type in self.params.mlp_layer_types]):
       self.params.mlp_patch_size = []
       self.params.mlp_conv_strides = []
 
   def build_sae_module(self, input_node):
-    module = SaeModule(input_node, self.params.sae_layer_types, self.params.sae_output_channels,
-      self.params.sae_patch_size, self.params.sae_conv_strides, self.sparse_mult, self.decay_mult,
-      self.norm_mult, self.target_act, self.act_funcs, self.ae_dropout_keep_probs,
+    module = SaeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
+      self.params.ae_patch_size, self.params.ae_conv_strides, self.sparse_mult, self.decay_mult,
+      self.norm_mult, self.target_act, self.ae_act_funcs, self.ae_dropout_keep_probs,
       self.params.tie_decoder_weights, self.params.norm_w_init, variable_scope="sae")
     return module
 
-  def build_mlp_module(self, input_node):
-    module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
-      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-      self.params.mlp_patch_size, self.params.mlp_conv_strides, self.params.eps,
-      loss_type="softmax_cross_entropy")
-    return module
+  #def build_mlp_module(self, input_node):
+  #  module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
+  #    self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+  #    self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
+  #    self.params.mlp_patch_size, self.params.mlp_conv_strides, self.params.eps,
+  #    loss_type="softmax_cross_entropy")
+  #  return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""

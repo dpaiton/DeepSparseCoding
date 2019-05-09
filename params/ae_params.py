@@ -47,7 +47,7 @@ class params(BaseParams):
       "weights": None,
       "decay_mult": 0.01,
       "norm_mult": 0.00,
-      "weight_lr": 1e-3,
+      "weight_lr": 1e-4,
       "decay_steps": int(3e5*0.4),
       "decay_rate": 0.9,
       "staircase": True,}]
@@ -56,12 +56,14 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.layer_types = ["fc", "fc", "fc"]#["fc"]#
-      self.output_channels = [768, 256, 64]#[768]
+      self.rescale_data = False
+      self.standardize_data = True
+      self.output_channels = [768, 256, 256, 128, 64]#[768]
+      self.layer_types = ["fc"]*len(self.output_channels)
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.activation_functions = ["relu"]*(2*len(self.layer_types))
-      self.dropout = [0.5, 0.7, 1.0, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
+      self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
+      self.dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
       self.cp_int = int(5e5)
       self.gen_plot_int = int(5e5)
       self.norm_weights = False
@@ -70,8 +72,8 @@ class params(BaseParams):
         {"num_batches": int(1e6),
         "weights": None,
         "decay_mult": 0.0,#1e-4,
-        "norm_mult": 3e-4,#2e-4,#0.0,
-        "weight_lr": 0.006,#0.003,
+        "norm_mult": 1e-4,#2e-4,#0.0,
+        "weight_lr": 0.0001,#0.003,
         "decay_steps": int(6e5),
         "decay_rate": 0.5,
         "staircase": True,}]
@@ -85,7 +87,6 @@ class params(BaseParams):
       self.output_channels = [256]
       self.patch_size = [(12, 12)]
       self.conv_strides = [(1, 2, 2, 1)]
-
       self.optimizer = "adam"
       self.batch_size = 100
       self.activation_functions = ["relu", "identity"]
@@ -100,6 +101,44 @@ class params(BaseParams):
         "weight_lr": 0.001,
         "decay_steps": int(800000),
         "decay_rate": 0.8,
+        "staircase": True,}]
+
+    elif data_type.lower() == "vanhateren":
+      self.model_name += "_vh"
+      self.num_images = 150
+      self.rescale_data = False
+      self.whiten_data = True
+      self.tf_standardize_data = False
+      self.standardize_data = False
+      self.whiten_method = "FT"
+      self.lpf_data = False
+      self.lpf_cutoff = 0.7
+      self.extract_patches = True
+      self.num_patches = 1e6
+      self.patch_edge_size = 16
+      self.overlapping_patches = True
+      self.randomize_patches = True
+      self.patch_variance_threshold = 0.0
+      #self.output_channels = [1536, 768, 256, 64]
+      self.output_channels = [768, 256, 32]
+      self.layer_types = ["fc"]*len(self.output_channels)
+      self.optimizer = "annealed_sgd"
+      self.batch_size = 100
+      self.layer_types = ["conv"]*len(self.output_channels)
+      self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
+      self.dropout = [0.8] * (len(self.activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
+      self.cp_int = int(5e5)
+      self.gen_plot_int = int(1e3)
+      self.norm_weights = False
+      self.norm_w_init = False
+      self.schedule = [
+        {"num_batches": int(1e4),
+        "weights": None,
+        "decay_mult": 0.0,#1e-4,
+        "norm_mult": 0.0,#,8e-5,#2e-4,#0.0,
+        "weight_lr": 1e-4,
+        "decay_steps": int(6e5),
+        "decay_rate": 0.5,
         "staircase": True,}]
 
     elif data_type.lower() == "synthetic":
@@ -121,8 +160,6 @@ class params(BaseParams):
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.activation_functions = ["relu", "relu", "relu", "relu", "relu", "identity"]
-    self.dropout = [1.0]*len(self.activation_functions)
     # Test 1
     #self.layer_types = ["fc", "fc", "fc"]
     #self.vectorize_data = True
@@ -139,3 +176,5 @@ class params(BaseParams):
     self.output_channels = [30, 20, 10]
     self.patch_size = [(8,8), (4,4)]
     self.conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
+    self.activation_functions = ["relu"] * (2 * len(self.output_channels) - 1) + ["identity"]
+    self.dropout = [1.0] * len(self.activation_functions)

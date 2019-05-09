@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from ops.init_ops import L2NormalizedTruncatedNormalInitializer
 import utils.entropy_functions as ef
 from utils.trainable_variable_dict import TrainableVariableDict
 from modules.ae_module import AeModule
@@ -63,9 +64,14 @@ class VaeModule(AeModule):
   def build_graph(self):
     with tf.variable_scope(self.variable_scope) as scope:
       with tf.variable_scope("weight_inits") as scope:
-        #self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
-        self.w_init = tf.contrib.layers.variance_scaling_initializer(dtype=tf.float32)
-        self.b_init = tf.initializers.constant(1e-8, dtype=tf.float32)
+        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01, dtype=tf.float32)
+        self.w_normal_init = tf.contrib.layers.variance_scaling_initializer(dtype=tf.float32)
+        self.w_xavier_init = tf.contrib.layers.xavier_initializer(uniform=False, dtype=tf.float32)
+        self.w_normed_enc_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
+          axis=0, epsilon=1e-12, dtype=tf.float32) #TODO: Fix axis to be general to conv layers
+        self.w_normed_dec_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
+          axis=-1, epsilon=1e-12, dtype=tf.float32)
+        self.b_init = tf.initializers.constant(1e-5, dtype=tf.float32)
 
       self.u_list = [self.corrupt_data]
       self.w_list = []
@@ -83,7 +89,8 @@ class VaeModule(AeModule):
       w_shape = self.w_list[-1].get_shape().as_list()
       self.w_enc_std = tf.get_variable(name="w_enc_"+str(self.num_encoder_layers)+"_std",
         shape=w_shape, dtype=tf.float32,
-        initializer=self.w_init, trainable=True)
+        initializer=self.w_xavier_init, trainable=True)
+        #initializer=self.w_init, trainable=True)
       if self.layer_types[-1] == "conv":
         b_shape = w_shape[-2]
       else:
@@ -126,6 +133,14 @@ class VaeModule(AeModule):
       for w,b in zip(self.w_list, self.b_list):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
+
+      with tf.variable_scope("norm_weights") as scope:
+        w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
+        self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
+          axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
+        self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
+          axis=-1, epsilon=1e-8, name="col_l2_norm"))
+        self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
 
       with tf.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")

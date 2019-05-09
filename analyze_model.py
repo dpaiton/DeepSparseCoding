@@ -24,11 +24,11 @@ class params(object):
     # Dictionary fitting
     self.do_basis_analysis = True
     # LCA Inference analysis
-    self.do_inference = True #TODO: Does not work for lca_subspace
+    self.do_inference = False #TODO: Does not work for lca_subspace
     # Activity triggered averages
     self.do_atas = False #TODO: this can produce outputs that are too big for npz; need to batch?
     # Recon adversarial image analysis
-    self.do_recon_adversaries = True # TODO: broken for rica
+    self.do_recon_adversaries = False # TODO: broken for rica
     #Classification adversarial image analysis
     self.do_class_adversaries = False
     # Find optimal stimulus using gradient methods
@@ -38,8 +38,8 @@ class params(object):
     # Orientation and Cross-Orientation analysis
     self.do_orientation_analysis = True
     # How many images to use for analysis, patches are generated from these
-    self.num_analysis_images = 1000
-    self.whiten_batch_size = 100 # for VH dataset
+    self.num_analysis_images = 150#1000
+    self.whiten_batch_size = 10 # for VH dataset
     # How many input patches to create - only used if model calls for patching
     self.num_patches = 1e4
     # How many images to use in the ATA analysis
@@ -54,7 +54,7 @@ class params(object):
     # Edge size of full (square) image (for full_recon)
     self.image_edge_size = 128
     # Fourier analysis padding for weight fitting
-    self.ft_padding = 32
+    self.ft_padding = 128
     # How many inference steps to perform (None uses model params)
     self.num_inference_steps = None
     # Which dataset images to use for inference (None uses random)

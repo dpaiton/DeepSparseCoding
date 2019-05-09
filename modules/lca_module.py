@@ -73,7 +73,7 @@ class LcaModule(object):
    for step in range(self.num_steps-1):
      u = self.step_inference(u_list[step], a_list[step], lca_b, lca_g, step)[0]
      u_list.append(u)
-     a_list.append(self.threshold_units(u_list[step+1]))
+     a_list.append(self.threshold_units(u))
    return (u_list, a_list)
 
   def build_decoder(self, input_tensor, name=None):
@@ -99,8 +99,8 @@ class LcaModule(object):
       with tf.variable_scope("constants") as scope:
         u_full_shape = tf.stack([tf.shape(self.data_tensor)[0]]+self.u_shape)
         self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
-        self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
-          dtype=tf.float32, name="u_noise")
+        #self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
+        #  dtype=tf.float32, name="u_noise")
 
       w_norm_dim = list(range(len(self.w_shape)-1)) # normalize across input dim(s)
       with tf.variable_scope("weights") as scope:

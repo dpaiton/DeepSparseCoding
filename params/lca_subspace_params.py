@@ -91,6 +91,7 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = True
       self.whiten_method = "FT"
+      self.whiten_batch_size = 10
       self.extract_patches = True
       self.whiten_batch_size = 10
       self.num_patches = 1e6

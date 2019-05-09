@@ -1,7 +1,7 @@
 import os
 from params.base_params import BaseParams
 
-train_adv = True
+TRAIN_ADV = False
 
 class params(BaseParams):
   def __init__(self):
@@ -14,7 +14,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "mlp"
-    if(train_adv):
+    if(TRAIN_ADV):
       self.model_name = "mlp_adv"
     else:
       self.model_name = "mlp"
@@ -26,9 +26,10 @@ class params(BaseParams):
     self.batch_size = 100
     self.num_classes = 10
     self.mlp_layer_types = ["conv", "fc"]
+    self.mlp_activation_functions = ["relu", "identity"]
     self.mlp_output_channels = [300, self.num_classes]
-    self.patch_size = [(8, 8)]
-    self.conv_strides = [(1,1,1,1)]
+    self.mlp_patch_size = [(8, 8)]
+    self.mlp_conv_strides = [(1,1,1,1)]
     self.num_val = 10000
     self.num_labeled = 50000
     self.batch_norm = [0.4, None]
@@ -46,8 +47,10 @@ class params(BaseParams):
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["w1"] #None means load everything
     self.log_to_file = True
-    self.gen_plot_int = 1e4
+    self.gen_plot_int = 1e3
     self.save_plots = True
+    self.mlp_decay_mult = 0
+    self.mlp_norm_mult = 1e-4
     #Adversarial params
     self.adversarial_num_steps = 40
     self.adversarial_attack_method = "kurakin_untargeted"
@@ -69,7 +72,7 @@ class params(BaseParams):
       "decay_steps": int(1e4*0.5),
       "decay_rate": 0.8,
       "staircase": True}]
-    if(train_adv):
+    if(TRAIN_ADV):
       self.schedule = [self.schedule[0].copy()] + self.schedule
       self.schedule[0]["train_on_adversarial"] = False
       self.schedule[1]["train_on_adversarial"] = True
@@ -90,8 +93,9 @@ class params(BaseParams):
       self.num_classes = 10
       self.optimizer = "adam"
       self.mlp_layer_types = ["conv", "conv", "fc", "fc"]
+      self.mlp_activation_functions = ["relu", "relu", "relu", "identity"]
       self.mlp_output_channels = [32, 64, 1024, self.num_classes]
-      self.patch_size = [(5, 5), (5, 5)]
+      self.mlp_patch_size = [(5, 5), (5, 5)]
       self.conv_strides = [(1,1,1,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None]
       self.dropout = [1.0, 1.0, 1.0, 1.0] # TODO: Set dropout defaults somewhere
@@ -104,7 +108,7 @@ class params(BaseParams):
         self.schedule[sched_idx]["weight_lr"] = 1e-4
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.90
-      if(train_adv):
+      if(TRAIN_ADV):
         self.schedule[0]["num_batches"] = int(1e4)
 
     elif data_type.lower() == "cifar10":
@@ -122,25 +126,32 @@ class params(BaseParams):
       self.num_classes = 10
       self.optimizer = "adam"
       self.mlp_layer_types = ["conv", "conv", "fc", "fc", "fc"]
+      self.mlp_activation_functions = ["lrelu", "lrelu", "lrelu", "lrelu", "identity"]
+      self.mlp_output_channels = [256, 64, 384, 192, self.num_classes]
       #TF model does lrn after pool in conv1, lrn before pool in conv2
       #TODO test if this matters
       #String can be post or pre, depending on applying LRN before or after pooling
-      self.lrn = ["post", "post", None, None, None]
-      self.mlp_output_channels = [64, 64, 384, 192, self.num_classes]
-      self.patch_size = [(5, 5), (5, 5)]
-      self.conv_strides = [(1,1,1,1), (1,1,1,1)]
+      self.lrn = [None, None, None, None, None]
+      self.mlp_patch_size = [(12, 12), (5, 5)]
+      self.conv_strides = [(1,2,2,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None, None]
-      self.dropout = [1.0, 1.0, 1.0, 1.0, 1.0] # TODO: Set dropout defaults somewhere
-      self.max_pool = [True, True, False, False, False]
-      self.max_pool_ksize = [(1,3,3,1), (1,3,3,1), None, None, None]
-      self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None, None]
+      self.dropout = [0.5, 0.5, 0.5, 0.5, 1.0] # TODO: Set dropout defaults somewhere
+      self.max_pool = [False, True, False, False, False]
+      self.max_pool_ksize = [None, (1,3,3,1), None, None, None]
+      self.max_pool_strides = [None, (1,2,2,1), None, None, None]
       self.batch_size = 128
+
+      self.adversarial_num_steps = 10
+      self.adversarial_step_size = 0.01
+      self.adversarial_max_change = 0.03
+
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(5e5)
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["weight_lr"] = 1e-3
-        self.schedule[sched_idx]["decay_steps"] = int(.8*self.schedule[sched_idx]["num_batches"])
-        self.schedule[sched_idx]["decay_rate"] = 0.1
-      if(train_adv):
+        #Decay steps is in terms of epochs, (num_epochs_per_batch * 350 per decay)
+        self.schedule[sched_idx]["decay_steps"] = 50000
+        self.schedule[sched_idx]["decay_rate"] = 0.9
+      if(TRAIN_ADV):
         self.schedule[0]["num_batches"] = int(5e3)
 
     elif data_type.lower() == "synthetic":
@@ -164,7 +175,8 @@ class params(BaseParams):
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.mlp_output_channels = [20]+[self.mlp_output_channels[-1]]
     self.mlp_layer_types = ["conv", "fc"]
-    self.patch_size = [(2, 2)]
+    self.mlp_activation_functions = ["lrelu"]*len(self.mlp_output_channels)
+    self.mlp_patch_size = [(2, 2)]
     self.conv_strides = [(1,1,1,1)]
     self.batch_norm = [None, None]
     self.dropout = [1.0, 1.0]

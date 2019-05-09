@@ -133,7 +133,7 @@ class LcaAnalyzer(Analyzer):
         self.lca_g = self.model.module.compute_inhibitory_connectivity()
         self.u_list = [self.model.module.u_zeros]
         self.a_list = [self.model.module.threshold_units(self.u_list[0])]
-        self.ga_list = [self.model.module.u_zeros]
+        self.ga_list = [tf.matmul(self.a_list[0], self.lca_g)]
         self.psnr_list = [tf.constant(0.0, dtype=tf.float32)]
         current_recon = self.model.compute_recon_from_encoding(self.a_list[0])
         current_loss_list = [
@@ -146,8 +146,8 @@ class LcaAnalyzer(Analyzer):
           u, ga = self.model.module.step_inference(self.u_list[step], self.a_list[step],
             self.lca_b, self.lca_g, step)
           self.u_list.append(u)
-          self.a_list.append(self.model.module.threshold_units(self.u_list[step+1]))
           self.ga_list.append(ga)
+          self.a_list.append(self.model.module.threshold_units(u))
           current_recon = self.model.compute_recon_from_encoding(self.a_list[-1])
           current_loss_list = [
             self.model.module.compute_recon_loss(current_recon),
@@ -183,8 +183,8 @@ class LcaAnalyzer(Analyzer):
         evals = sess.run(run_list, feed_dict)
         b[img_idx, :] = evals[0]
         u[img_idx, ...] = np.stack(np.squeeze(evals[1]), axis=0)
-        ga[img_idx, ...] = np.stack(np.squeeze(evals[2]), axis=0)
-        a[img_idx, ...] = np.stack(np.squeeze(evals[3]), axis=0)
+        a[img_idx, ...] = np.stack(np.squeeze(evals[2]), axis=0)
+        ga[img_idx, ...] = np.stack(np.squeeze(evals[3]), axis=0)
         psnr[img_idx, ...] = np.stack(np.squeeze(evals[4]), axis=0)
         losses[img_idx].update(evals[5])
     # Reformat list_images(dict(list_steps) to dict(array_images_steps)

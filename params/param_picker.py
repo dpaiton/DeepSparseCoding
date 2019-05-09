@@ -15,7 +15,7 @@ import params.lca_pca_fb_params as lca_pca_fb
 import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
 import params.lista_params as lista
-import params.fflista_params as fflista
+#import params.fflista_params as fflista
 #import params.gdn_autoencoder_params as ga
 #import params.gdn_conv_autoencoder_params as cga
 #import params.gdn_conv_decoder_params as cgd
@@ -69,8 +69,8 @@ def get_params(model_type):
     return lca_conv.params()
   if model_type.lower() == "lista":
     return lista.params()
-  if model_type.lower() == "fflista":
-    return fflista.params()
+  #if model_type.lower() == "fflista":
+  #  return fflista.params()
   if model_type.lower() == "ae":
     return ae.params()
   if model_type.lower() == "dae":

@@ -244,7 +244,8 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     fy_cen = (max_fys[max_fx] - (N/2)) * (patch_edge_size/N)
     fx_cen = (max_fx - (N/2)) * (patch_edge_size/N)
     fourier_centers[bf_idx] = [fy_cen, fx_cen]
-    ellipse_orientations[bf_idx] = np.arctan2(*fourier_centers[bf_idx])
+    # NOTE: we flip fourier_centers because fx_cen is the peak of the x frequency, which would be an y coordinate
+    ellipse_orientations[bf_idx] = np.arctan2(*fourier_centers[bf_idx][::-1])
     spatial_frequencies[bf_idx] = np.sqrt(fy_cen**2 + fx_cen**2)
     areas[bf_idx] = np.pi * np.prod(evals)
     phases[bf_idx] = np.angle(bffs[bf_idx])[y_cen, x_cen]
