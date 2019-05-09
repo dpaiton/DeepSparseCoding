@@ -6,7 +6,7 @@ class params(BaseParams):
     super(params, self).__init__()
     self.model_type = "lca_subspace"
     self.model_name = "lca_subspace"
-    self.version = "0.8"
+    self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
@@ -83,6 +83,7 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
+      self.version = "4_4.0_0.3"
       self.num_images = 150
       self.vectorize_data = True
       self.norm_data = False
@@ -98,11 +99,11 @@ class params(BaseParams):
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
       self.num_neurons = 768
-      self.num_groups = 768 // 8
+      self.num_groups = 768 // 4
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["group_orth_mult"] = 0.1
+        self.schedule[sched_idx]["group_orth_mult"] = 0.3
         self.schedule[sched_idx]["sparse_mult"] = 4.0
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
