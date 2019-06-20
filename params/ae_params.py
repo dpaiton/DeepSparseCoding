@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "ae"
-    self.model_name = "ae_deep"#"ae_768"
+    self.model_name = "ae_768"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -107,10 +107,13 @@ class params(BaseParams):
       self.model_name += "_vh"
       self.num_images = 150
       self.rescale_data = False
+      self.vectorize_data = True
       self.whiten_data = True
       self.tf_standardize_data = False
       self.standardize_data = False
+      self.whiten_data = True
       self.whiten_method = "FT"
+      self.whiten_batch_size = 10
       self.lpf_data = False
       self.lpf_cutoff = 0.7
       self.extract_patches = True
@@ -120,26 +123,28 @@ class params(BaseParams):
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
       #self.output_channels = [1536, 768, 256, 64]
-      self.output_channels = [768, 256, 32]
+      #self.output_channels = [768, 256, 32]
+      self.output_channels = [768]
       self.layer_types = ["fc"]*len(self.output_channels)
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.layer_types = ["conv"]*len(self.output_channels)
+      self.layer_types = ["fc"]*len(self.output_channels)
       self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
-      self.dropout = [0.8] * (len(self.activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
+      self.dropout = [0.4] * (len(self.activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
+      self.log_int = 100
       self.cp_int = int(5e5)
-      self.gen_plot_int = int(1e3)
+      self.gen_plot_int = int(5e5)
       self.norm_weights = False
       self.norm_w_init = False
-      self.schedule = [
-        {"num_batches": int(1e4),
-        "weights": None,
-        "decay_mult": 0.0,#1e-4,
-        "norm_mult": 0.0,#,8e-5,#2e-4,#0.0,
-        "weight_lr": 1e-4,
-        "decay_steps": int(6e5),
-        "decay_rate": 0.5,
-        "staircase": True,}]
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(5e6)
+        self.schedule[sched_idx]["weights"] = None
+        self.schedule[sched_idx]["decay_mult"] = 0.0#1e-4
+        self.schedule[sched_idx]["norm_mult"] = 3e-4
+        self.schedule[sched_idx]["weight_lr"] = 4e-4
+        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["num_batches"]*0.8)
+        self.schedule[sched_idx]["decay_rate"] = 0.5
+        self.schedule[sched_idx]["staircase"] = True
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
