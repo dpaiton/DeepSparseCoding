@@ -1040,7 +1040,7 @@ class Analyzer(object):
           recon_mult=r_mult,
           target_generation_method="specified",
           target_images=target_images,
-          selection_vector=self.analysis_params.selection_vector,
+          selection_vector=self.analysis_params.neuron_vis_selection_vector,
           save_int=self.analysis_params.adversarial_save_int)
         steps = out_dict["step"]
         distances["adv_loss"].append(out_dict["adv_loss"])

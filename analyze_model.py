@@ -28,7 +28,7 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False #TODO: this can produce outputs that are too big for npz; need to batch?
     # Recon adversarial image analysis
-    self.do_recon_adversaries = False # TODO: broken for rica
+    self.do_recon_adversaries = True # TODO: broken for rica
     #Classification adversarial image analysis
     self.do_class_adversaries = False
     # Find optimal stimulus using gradient methods
@@ -36,7 +36,7 @@ class params(object):
     # Patchwise image recon
     self.do_full_recon = True
     # Orientation and Cross-Orientation analysis
-    self.do_orientation_analysis = False # TODO: broken for ae_deep
+    self.do_orientation_analysis = True # TODO: broken for ae_deep
     # How many images to use for analysis, patches are generated from these
     self.num_analysis_images = 150#1000
     self.whiten_batch_size = 10 # for VH dataset
@@ -61,7 +61,7 @@ class params(object):
     self.inference_img_indices = None
     #Adversarial params
     self.adversarial_num_steps = 5000 # Step size for adversarial attacks
-    self.adversarial_attack_method = "carlini_targeted"
+    self.adversarial_attack_method = "kurakin_targeted"#"carlini_targeted"
     self.save_info += "_"+self.adversarial_attack_method # To avoid overwriting
     self.adversarial_step_size = 0.001
     self.adversarial_max_change = 0.1
@@ -104,9 +104,10 @@ class params(object):
     self.neuron_vis_target_layer = None
     # TODO: we are temporarily assigning a 1-hot vector for analysis, but we could pass a specific
     #   selection vector instead of a target_neuron_idx
-    self.neuron_vis_targets = np.random.choice(range(64), 30, replace=False)
-    #self.neuron_vis_selection_vector = np.zeros(64) # TODO: avoid hard-coding num neurons
-    #self.neuron_vis_selection_vector[self.neuron_vis_target_neuron_idx] = 1
+    self.neuron_vis_targets = np.random.choice(range(768), 30, replace=False)
+    self.neuron_vis_target_neuron_idx = self.neuron_vis_targets[0] # TODO: Clean this up...
+    self.neuron_vis_selection_vector = np.zeros(768) # TODO: avoid hard-coding num neurons
+    self.neuron_vis_selection_vector[self.neuron_vis_target_neuron_idx] = 1
 
 parser = argparse.ArgumentParser()
 
