@@ -5,7 +5,7 @@ class params(BaseParams):
   def __init__(self):
     super(params, self).__init__()
     self.model_type = "lca_subspace"
-    self.model_name = "lca_subspace"
+    self.model_name = "lca_subspace_1024"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -68,15 +68,16 @@ class params(BaseParams):
       self.lpf_cutoff = 0.7
       self.extract_patches = False
       self.batch_size = 100
-      self.num_neurons = 512
-      self.num_groups = 128
+      self.num_neurons = 1024
+      self.num_groups = 256
       self.thresh_type = "soft"
-      self.cp_int = int(1e5)
+      self.log_int = 100
+      self.cp_int = int(5e5)
       self.gen_plot_int = int(1e5)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["num_batches"] = int(7e5)
         self.schedule[sched_idx]["weight_lr"] = 0.08
-        self.schedule[sched_idx]["group_orth_mult"] = 0.04
+        self.schedule[sched_idx]["group_orth_mult"] = 0.06
         self.schedule[sched_idx]["sparse_mult"] = 0.45
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.7
@@ -97,8 +98,8 @@ class params(BaseParams):
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      self.num_neurons = 768
-      self.num_groups = 192
+      self.num_neurons = 1024
+      self.num_groups = 256
       self.cp_int = int(5e3)
       self.log_int = 100
       self.gen_plot_int = int(5e3)
