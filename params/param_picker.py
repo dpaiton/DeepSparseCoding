@@ -1,5 +1,6 @@
 import params.lambda_params as lamb
 import params.mlp_params as mlp
+import params.mlp_lca_subspace_params as mlp_lca_subspace
 import params.mlp_lca_params as mlp_lca
 import params.mlp_ae_params as mlp_ae
 import params.mlp_vae_params as mlp_vae
@@ -38,6 +39,8 @@ def get_params(model_type):
     return lamb.params()
   if model_type.lower() == "mlp":
     return mlp.params()
+  if model_type.lower() == "mlp_lca_subspace":
+    return mlp_lca_subspace.params()
   if model_type.lower() == "mlp_lca":
     return mlp_lca.params()
   if model_type.lower() == "mlp_ae":
