@@ -33,7 +33,8 @@ class MlpModule(object):
 
     data_ndim = len(data_shape)
     assert (data_ndim == 2 or data_ndim == 4), (
-      "Model requires data_tensor to have shape [batch, num_features] or [batch, y, x, features]")
+      "Model requires data_tensor to have shape [batch, num_features]"+
+      "or [batch, y, x, features], not "+str(data_shape))
     label_ndim = len(label_tensor.get_shape().as_list())
     assert label_ndim == 2, (
       "Model requires label_tensor to have shape [batch, num_classes]")
