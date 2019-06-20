@@ -50,7 +50,7 @@ class LcaSubspaceModel(LcaModel):
     current_step = str(eval_out[0])
     weights = np.reshape(eval_out[1].T, [self.params.num_neurons,
       int(np.sqrt(self.params.num_pixels)), int(np.sqrt(self.params.num_pixels))])
+    filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     fig = pf.plot_group_weights(np.squeeze(weights), self.module.group_ids,
       title="Dictionary at step "+current_step, figsize=(18,18),
-      save_filename=(self.params.disp_dir+"group_phi_v"+self.params.version+"-"+
-        current_step.zfill(6)+".png"))
+      save_filename=self.params.disp_dir+"group_phi_v"+filename_suffix)
