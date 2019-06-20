@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 from modules.lca_module import LcaModule
-import pdb
 
 class LcaSubspaceModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size,
@@ -35,7 +34,7 @@ class LcaSubspaceModule(LcaModule):
     Reshape sigmas from [num_batch, num_groups] to [num_batch, num_neurons]
     Each neuron index is assigned the group amplitude for its corresponding group
     """
-    out_sigmas = tf.gather(tf.squeeze(sigmas), self.group_assignments, axis=-1)
+    out_sigmas = tf.gather(sigmas, self.group_assignments, axis=-1)
     return out_sigmas
 
   def group_amplitudes(self, a_in, name=None):
@@ -45,9 +44,10 @@ class LcaSubspaceModule(LcaModule):
     a_in shape is [num_batch, num_neurons]
     sigmas shape is [num_batch, num_groups]
     """
-    new_shape = tf.stack([tf.shape(self.data_tensor)[0]]+[self.num_groups, self.num_neurons_per_group])
+    new_shape = tf.stack([tf.shape(self.data_tensor)[0]]+[self.num_groups,
+      self.num_neurons_per_group])
     a_resh = tf.reshape(a_in, shape=new_shape)
-    sigmas = tf.sqrt(tf.reduce_sum(tf.square(a_resh), axis=2, keepdims=True), name=name)
+    sigmas = tf.sqrt(tf.reduce_sum(tf.square(a_resh), axis=2, keepdims=False), name=name)
     return sigmas
 
   def group_directions(self, a_in, sigmas, name=None):
