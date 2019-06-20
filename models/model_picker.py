@@ -2,6 +2,7 @@ import params.param_picker as pp
 from models.lambda_model import LambdaModel as lamb
 from models.mlp_model import MlpModel as mlp
 from models.mlp_lca_model import MlpLcaModel as mlp_lca
+from models.mlp_lca_subspace_model import MlpLcaSubspaceModel as mlp_lca_subspace
 from models.mlp_ae_model import MlpAeModel as mlp_ae
 from models.mlp_vae_model import MlpVaeModel as mlp_vae
 from models.mlp_sae_model import MlpSaeModel as mlp_sae
@@ -31,6 +32,8 @@ def get_model(model_type):
     return lamb()
   if model_type.lower() == "mlp":
     return mlp()
+  if model_type.lower() == "mlp_lca_subspace":
+    return mlp_lca_subspace()
   if model_type.lower() == "mlp_lca":
     return mlp_lca()
   if model_type.lower() == "mlp_ae":
@@ -81,7 +84,7 @@ def get_model(model_type):
     return vae()
 
 def get_model_list():
-  model_list = ["lambda", "mlp", "mlp_lca", "mlp_ae", "mlp_vae", "mlp_sae", "mlp_lista", "ica",
-    "rica", "lca", "lca_pca", "lca_pca_fb", "lca_conv", "lca_subspace", "lista",
+  model_list = ["lambda", "mlp", "mlp_lca", "mlp_lca_subspace", "mlp_ae", "mlp_vae", "mlp_sae",
+    "mlp_lista", "ica", "rica", "lca", "lca_pca", "lca_pca_fb", "lca_conv", "lca_subspace", "lista",
      "ae", "dae", "dae_mem", "sae", "vae"]
   return model_list
