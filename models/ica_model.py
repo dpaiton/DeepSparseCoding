@@ -62,8 +62,7 @@ class IcaModel(Model):
             self.z = (2*self.a) / (1 + tf.pow(self.a, 2.0))
 
         with tf.variable_scope("output") as scope:
-          with tf.variable_scope("image_estimate"):
-            self.reconstruction = tf.matmul(self.a, self.w_synth, name="reconstruction")
+          self.reconstruction = tf.matmul(self.a, self.w_synth, name="reconstruction")
 
     self.graph_built = True
 
@@ -95,6 +94,9 @@ class IcaModel(Model):
     #  name=weight_name+"_gradient") # weight_op[0] is expected to be w_analysis
     #gradient = -tf.add(weight_op[0], tf.multiply(self.z, tf.matmul(self.a, weight_op[0])
     return [(gradient, weight_op[0])]
+
+  def compute_recon_from_placeholder(self):
+    return self.reconstruction
 
   def get_input_shape(self):
     return self.input_shape
