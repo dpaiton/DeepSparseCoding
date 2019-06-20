@@ -91,22 +91,18 @@ class params(BaseParams):
 
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
-
       self.vectorize_data = False
       self.standardize_data = True
       self.rescale_data = False
-
       self.cp_int = int(1e4)
       self.gen_plot_int = int(1e4)
       self.batch_size = 100
       self.whiten_data = False
       self.extract_patches = False
-
       self.layer_types = ["conv"]
       self.output_channels = [256]
       self.patch_size = [(12, 12)]
       self.conv_strides = [(1, 2, 2, 1)]
-
       self.activation_functions = ["sigmoid", "identity"]
       self.optimizer = "adam"
       self.dropout = [1.0]*2*len(self.output_channels)
@@ -114,6 +110,7 @@ class params(BaseParams):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 0.001
         self.schedule[sched_idx]["decay_mult"] = 0.05
+        self.schedule[sched_idx]["norm_mult"] = 0.0
         self.schedule[sched_idx]["target_act"] = 0.10
         self.schedule[sched_idx]["sparse_mult"] = 100.0
         self.schedule[sched_idx]["decay_steps"] = int(0.6*self.schedule[sched_idx]["num_batches"])
@@ -122,23 +119,29 @@ class params(BaseParams):
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
       self.num_images = 150
+      self.batch_size = 100
       self.vectorize_data = True
       self.rescale_data = False
       self.standardize_data = True
       self.whiten_data = True
       self.whiten_method = "FT"
+      self.whiten_batch_size = 10
       self.extract_patches = True
       self.output_channels = [768]
       self.activation_functions = ["sigmoid", "identity"]
       self.dropout = [1.0]*2
+      self.log_int = 100
+      self.cp_int = int(5e5)
+      self.gen_plot_int = int(2e5)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
-        self.schedule[sched_idx]["decay_mult"] = 0.02
-        self.schedule[sched_idx]["sparse_mult"] = 5.0
-        self.schedule[sched_idx]["target_act"] = 0.01
-        self.schedule[sched_idx]["weight_lr"] = 0.002
-        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["num_batches"]*0.8)
-        self.schedule[sched_idx]["decay_rate"] = 0.90
+        self.schedule[sched_idx]["decay_mult"] = 0.00
+        self.schedule[sched_idx]["norm_mult"] = 0.01
+        self.schedule[sched_idx]["target_act"] = 0.20
+        self.schedule[sched_idx]["sparse_mult"] = 0.1
+        self.schedule[sched_idx]["weight_lr"] = 0.003
+        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["num_batches"]*0.5)
+        self.schedule[sched_idx]["decay_rate"] = 0.50
 
     elif data_type.lower() == "field":
       self.model_name += "_field"
@@ -160,6 +163,7 @@ class params(BaseParams):
       self.dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["decay_mult"] = 0.008
+        self.schedule[sched_idx]["norm_mult"] = 0.0
         self.schedule[sched_idx]["sparse_mult"] = 5.0
         self.schedule[sched_idx]["target_act"] = 0.05
         self.schedule[sched_idx]["weight_lr"] = 0.002
