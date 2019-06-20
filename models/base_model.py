@@ -235,21 +235,27 @@ class Model(object):
             tf.local_variables_initializer())
 
   def get_load_vars(self):
-    """Get variables for loading"""
+    """
+    Get variables for loading
+    TODO: add option to load train_vars from cp logfile
+    """
     all_vars = tf.global_variables()
     if self.params.cp_load_var is None:
       load_v = [v for v in all_vars if v not in self.full_model_load_ignore]
     else:
       load_v = []
+      error_string = "\n"
       for weight in self.params.cp_load_var:
         found=False
         for var in all_vars:
+          error_string += "\t" + var.name + "\n"
           if var.name == weight:
             load_v.append(var)
             found=True
             break
         if not found:
-          assert False, ("Weight specified in cp_load_var "+str(weight)+" not found")
+          assert False, (
+            "Weight specified in cp_load_var "+str(weight)+" not found. All variables:"+error_string)
     return load_v
 
   def construct_savers(self):
