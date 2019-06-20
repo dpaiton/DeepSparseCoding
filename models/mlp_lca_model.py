@@ -74,8 +74,9 @@ class MlpLcaModel(MlpModel):
         else: # train on LCA latent encoding
           assert self.params.mlp_layer_types[0] == "fc", (
             "MLP must have FC layers to train on LCA activity")
-          mlp_input = self.lca_module.a
+          mlp_input = self.get_encodings()
           data_shape = mlp_input.get_shape().as_list()
+          #data_shape = tf.shape(mlp_input)
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
         with tf.variable_scope("loss") as scope:
@@ -104,6 +105,9 @@ class MlpLcaModel(MlpModel):
 
   def compute_recon_from_encoding(self, a_in):
     return self.lca_module.build_decoder(a_in, name="reconstruction")
+
+  def get_encodings(self):
+    return self.lca_module.a
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
