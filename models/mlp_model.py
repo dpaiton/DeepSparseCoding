@@ -200,11 +200,10 @@ class MlpModel(Model):
     """
     super(MlpModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.get_encodings()]
+    eval_list = [self.global_step, self.get_encodings(), self.mlp_module.weight_list]
     train_on_adversarial = feed_dict[self.train_on_adversarial]
     if(train_on_adversarial):
       eval_list += [self.adv_module.get_adv_input()]
-    eval_list += [self.mlp_module.weight_list]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
@@ -212,8 +211,9 @@ class MlpModel(Model):
     fig = pf.plot_activity_hist(activity, title="Logit Histogram",
       save_filename=self.params.disp_dir+"act_hist"+filename_suffix)
     #First layer weights
-    w_enc = eval_out[-1][0]
-    if self.params.layer_types[0] == "fc":
+    mlp_weights = eval_out[2]
+    w_enc = mlp_weights[0]
+    if self.params.mlp_layer_types[0] == "fc":
       w_enc_norm = np.linalg.norm(w_enc, axis=0, keepdims=False)
       # Don't plot weights as images if input is not square
       w_input_sqrt = np.sqrt(w_enc.shape[0])
