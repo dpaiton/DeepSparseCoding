@@ -10,7 +10,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "sae"
-    self.model_name = "sae_conv"
+    self.model_name = "sae_conv_tied_weights"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -90,8 +90,13 @@ class params(BaseParams):
       self.model_name += "_cifar10"
 
       self.vectorize_data = False
-      self.standardize_data = True
+      self.standardize_data = False
+      self.tf_standardize_data = True
       self.rescale_data = False
+      self.center_data = False
+      self.whiten_data = False
+
+      self.tie_decoder_weights = True
 
       self.cp_int = int(1e4)
       self.gen_plot_int = int(1e4)
@@ -110,9 +115,9 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 0.001
-        self.schedule[sched_idx]["decay_mult"] = 0.05
-        self.schedule[sched_idx]["target_act"] = 0.10
-        self.schedule[sched_idx]["sparse_mult"] = 100.0
+        self.schedule[sched_idx]["decay_mult"] = 0.0 # 0.05
+        self.schedule[sched_idx]["target_act"] = 0.10 #0.10
+        self.schedule[sched_idx]["sparse_mult"] = 10.0
         self.schedule[sched_idx]["decay_steps"] = int(0.6*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.50
 

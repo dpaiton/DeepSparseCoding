@@ -1,7 +1,7 @@
 import os
 from params.base_params import BaseParams
 
-TRAIN_ON_RECON = False
+TRAIN_ON_RECON = True
 
 class params(BaseParams):
   def __init__(self):
@@ -68,8 +68,8 @@ class params(BaseParams):
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
-    self.mlp_decay_mult = 0
-    self.mlp_norm_mult = 1e-4
+    self.mlp_decay_mult = 5e-5
+    self.mlp_norm_mult = 0
     #Adversarial params
     self.adversarial_num_steps = 40
     self.adversarial_attack_method = "kurakin_untargeted"
@@ -232,7 +232,7 @@ class params(BaseParams):
 
         #mlp_params
         self.layer_types = ["conv", "conv", "fc", "fc", "fc"]
-        self.mlp_activation_functions = ["lrelu", "lrelu", "lrelu", "lrelu", "identity"]
+        self.mlp_activation_functions = ["relu", "relu", "relu", "relu", "identity"]
         self.output_channels = [256, 64, 384, 192, self.num_classes]
         self.patch_size = [(12, 12), (5, 5)]
         self.conv_strides = [(1,2,2,1), (1,1,1,1)]
@@ -258,7 +258,7 @@ class params(BaseParams):
             ]
           self.schedule[sched_idx]["train_on_adversarial"] = False
           self.schedule[sched_idx]["sparse_mult"] = 0.07
-          self.schedule[sched_idx]["weight_lr"] = 1e-3
+          self.schedule[sched_idx]["weight_lr"] = 5e-4
           #Decay steps is in terms of epochs, (num_epochs_per_batch * 350 per decay)
           self.schedule[sched_idx]["decay_steps"] = 80000
           self.schedule[sched_idx]["decay_rate"] = 0.9
@@ -266,7 +266,7 @@ class params(BaseParams):
       else:
         self.output_channels = [64, 384, 192, self.num_classes]
         self.layer_types = ["conv", "fc", "fc", "fc"]
-        self.mlp_activation_functions = ["lrelu", "lrelu", "lrelu", "identity"]
+        self.mlp_activation_functions = ["relu", "relu", "relu", "identity"]
         self.optimizer = "adam"
         self.patch_size = [(5, 5)]
         self.conv_strides = [(1, 1, 1, 1)]
@@ -288,7 +288,7 @@ class params(BaseParams):
             "mlp/layer3/fc_b_3:0",
             ]
           self.schedule[sched_idx]["sparse_mult"] = 0.07
-          self.schedule[sched_idx]["weight_lr"] = 1e-3
+          self.schedule[sched_idx]["weight_lr"] = 5e-4
           #Decay steps is in terms of epochs, (num_epochs_per_batch * 350 per decay)
           self.schedule[sched_idx]["decay_steps"] = 80000
           self.schedule[sched_idx]["decay_rate"] = 0.9

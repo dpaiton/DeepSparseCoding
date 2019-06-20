@@ -18,7 +18,7 @@ class params(object):
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
-    self.do_run_analysis = True
+    self.do_run_analysis = False
     # Evaluate model variables (specified in analysis class) on images
     self.do_evals = False
     # Dictionary fitting
@@ -28,9 +28,9 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False
     # Recon adversarial image analysis
-    self.do_recon_adversaries = True # TODO: broken for rica
+    self.do_recon_adversaries = False # TODO: broken for rica
     #Classification adversarial image analysis
-    self.do_class_adversaries = False
+    self.do_class_adversaries = True
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -58,25 +58,34 @@ class params(object):
     self.inference_img_indices = None
 
     #Adversarial params
-    self.adversarial_num_steps = 5000 # Step size for adversarial attacks
+    #self.adversarial_num_steps = 500 # Step size for adversarial attacks
     #self.adversarial_attack_method = "kurakin_untargeted" # Only for class attack
+
     #self.adversarial_attack_method = "kurakin_targeted"
+    #self.carlini_recon_mult = [.5]
+
     self.adversarial_attack_method = "carlini_targeted"
+    self.carlini_recon_mult = [.5]
+    self.adversarial_num_steps = 1000
+    #self.carlini_recon_mult = list(np.arange(.1, 1, .1))
 
     #To avoid overwriting
     self.save_info += "_"+self.adversarial_attack_method
 
     self.adversarial_step_size = 0.001
-    self.adversarial_max_change = 0.3
+    #self.adversarial_max_change = None #0.03 #0.3 #For cifar10/mnist
+    self.adversarial_max_change = 0.03 #0.3 #For cifar10/mnist
     #TODO support specified
     self.adversarial_target_method = "random" #Not used if attach_method is untargeted
     self.adversarial_clip = True
     self.adversarial_clip_range = [0.0, 1.0]
-    self.carlini_recon_mult = list(np.arange(.1, 1, .1))
+
+
     #Interval at which to save adversarial examples to the npy file
+    #self.adversarial_save_int = 1
     self.adversarial_save_int = 100
 
-    self.eval_batch_size = 100
+    self.eval_batch_size = 10
 
     #Specify which adv to use here
     #If none, use all
@@ -134,8 +143,8 @@ analyzer.model_params.num_images = analysis_params.num_analysis_images
 if hasattr(analyzer.model_params, "extract_patches") and analyzer.model_params.extract_patches:
   analyzer.model_params.num_patches = analysis_params.num_patches
 
-# Load data for analysis
 data = ds.get_data(analyzer.model_params)
+
 data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
 data = analyzer.model.reshape_dataset(data, analyzer.model_params)
 analyzer.model_params.data_shape = list(data["train"].shape[1:])
