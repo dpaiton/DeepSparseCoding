@@ -157,11 +157,11 @@ class AeModule(object):
       name_prefix = "conv_" if conv else "fc_"
       w_name = name_prefix+"w_"+str(w_read_id)
       # TODO: params to switch init type
-      #w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-      #  initializer=self.w_normal_init, trainable=True)
-
       w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-        initializer=self.w_xavier_init, trainable=True)
+        initializer=self.w_normal_init, trainable=True)
+
+      #w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      #  initializer=self.w_xavier_init, trainable=True)
 
       #if decode:
       #  w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
@@ -181,7 +181,7 @@ class AeModule(object):
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       output_tensor = activation_function(pre_act)
       #output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
-      output_tensor = tf.nn.dropout(output_tensor, keep_prob=1-self.dropout[layer_id])
+      output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, w, b
 
   def build_encoder(self, input_tensor, activation_functions):
