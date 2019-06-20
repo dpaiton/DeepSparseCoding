@@ -23,8 +23,7 @@ class params(BaseParams):
     else:
       self.model_name = "mlp_lca_conv_latent"
     self.version = "0.0"
-    #Is this var doing anything?
-    self.num_images = 150
+    self.num_images = 150 # How many images to use from the VH dataset
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = False
@@ -134,7 +133,7 @@ class params(BaseParams):
       self.gen_plot_int = 1e4
       # LCA params
       self.lca_conv = False
-      self.num_neurons = 1568
+      self.num_neurons = 768
       self.train_on_recon = TRAIN_ON_RECON # if False, train on activations
       if self.train_on_recon:
         self.full_data_shape = [28, 28, 1]
@@ -170,21 +169,21 @@ class params(BaseParams):
           self.schedule[sched_idx]["decay_rate"] = 0.9
       else:
         self.mlp_output_channels = [128, self.num_classes]
-        self.mlp_layer_types = ["conv", "fc"]
+        self.mlp_layer_types = ["fc", "fc"]
         self.mlp_activation_functions = ["relu", "identity"]
         self.optimizer = "adam"
         self.mlp_patch_size = []
         self.mlp_conv_strides = []
-        self.batch_norm = [None]*len(self.output_channels)
+        self.batch_norm = [None]*len(self.mlp_output_channels)
         self.dropout = [1.0, 1.0]
-        self.max_pool = [True, False]
-        self.max_pool_ksize = [5, None]
-        self.max_pool_strides = [4, None]
+        self.max_pool = [False, False]
+        self.max_pool_ksize = [None, None]
+        self.max_pool_strides = [None, None]
         self.lrn = [None]*len(self.mlp_output_channels)
         for sched_idx in range(len(self.schedule)):
           self.schedule[sched_idx]["weights"] = [
-            "mlp/layer0/conv_w_0:0",
-            "mlp/layer0/conv_b_0:0",
+            "mlp/layer0/fc_w_0:0",
+            "mlp/layer0/fc_b_0:0",
             "mlp/layer1/fc_w_1:0",
             "mlp/layer1/fc_b_1:0"]
           self.schedule[sched_idx]["train_on_adversarial"] = False
@@ -262,7 +261,7 @@ class params(BaseParams):
         self.optimizer = "adam"
         self.mlp_patch_size = [(5, 5)]
         self.mlp_conv_strides = [(1, 1, 1, 1)]
-        self.batch_norm = [None]*len(self.output_channels)
+        self.batch_norm = [None]*len(self.mlp_output_channels)
         self.dropout = [0.5, 0.5, 0.5, 1.0]
         self.max_pool = [True, False, False, False]
         self.max_pool_ksize = [(1,3,3,1), None, None, None]
