@@ -49,8 +49,8 @@ class params(BaseParams):
     self.log_to_file = True
     self.gen_plot_int = 1e3
     self.save_plots = True
-    self.mlp_decay_mult = 0
-    self.mlp_norm_mult = 1e-4
+    self.mlp_decay_mult = 0 # TODO: make an auto-placeholder
+    self.mlp_norm_mult = 1e-4 # TODO: make an auto-placeholder
     #Adversarial params
     self.adversarial_num_steps = 40
     self.adversarial_attack_method = "kurakin_untargeted"
