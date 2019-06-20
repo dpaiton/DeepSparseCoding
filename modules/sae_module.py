@@ -44,9 +44,6 @@ class SaeModule(AeModule):
         ef.safe_log(avg_act), name="kl_p")
       q_dist = (1-self.target_act) * tf.subtract(ef.safe_log(1-self.target_act),
         ef.safe_log(1-avg_act), name="kl_q")
-      #p_dist = self.target_act * tf.subtract(tf.log(self.target_act), tf.log(avg_act), name="kl_p")
-      #q_dist = (1-self.target_act) * tf.subtract(tf.log(1-self.target_act), tf.log(1-avg_act),
-      #  name="kl_q")
       kl_divergence = tf.reduce_sum(tf.add(p_dist, q_dist), name="kld")
       sparse_loss = tf.multiply(self.sparse_mult, kl_divergence, name="sparse_loss")
     return sparse_loss
