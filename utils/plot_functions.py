@@ -855,7 +855,7 @@ def plot_group_weights(weights, group_ids, title="", figsize=None,  save_filenam
       ax = clear_axis(fig.add_subplot(gs_inner[inner_plot_id]))
       ax.set_aspect("equal")
       if neuron_index < num_neurons:
-        ax.imshow(weights[indices[neuron_index], ...], cmap="Greys_r")
+        ax.imshow(weights[indices[neuron_index], ...], cmap="Greys_r", vmin=vmin, vmax=vmax)
         neuron_index += 1
   fig.suptitle(title, y=0.9, x=0.5, fontsize=20)
   if save_filename is not None:
@@ -871,7 +871,6 @@ def plot_weights(weights, title="", figsize=None, save_filename=None):
     The matrices are renormalized before plotting.
   """
   weights = dp.norm_weights(weights)
-
   vmin = np.min(weights)
   vmax = np.max(weights)
   num_plots = weights.shape[0]
@@ -1151,7 +1150,7 @@ def plot_weight_angle_heatmap(weight_angles, angle_min=0, angle_max=180, title="
   scalarMap._A = []
   fig, ax = plt.subplots(1, figsize=figsize)
   im = ax.imshow(weight_angles, vmin=vmin, vmax=vmax)
-  ax.set_title(title)
+  ax.set_title(title, fontsize=18)
   cbar = add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, ticks=[vmin, vmax])
   cbar.ax.set_yticklabels(["{:.0f}".format(vmin), "{:.0f}".format(vmax)])
   if save_filename is not None:
