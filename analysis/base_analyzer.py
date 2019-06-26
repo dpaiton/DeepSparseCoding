@@ -138,6 +138,8 @@ class Analyzer(object):
   # If build_graph gets called without parameters,
   # build placeholders call build graph with default input
   def build_graph(self):
+    # TODO: adversaries & neuron vis should all be able to be True.
+    # Need to build in better abstraction for specifying these analyses
     # We want to overwrite model adversarial params with what we have in analysis
     if(self.analysis_params.do_class_adversaries):
       assert self.analysis_params.do_recon_adversaries is False, (
@@ -1087,7 +1089,7 @@ class Analyzer(object):
       else:
         #Resample until target_id is not input_id
         #Also check labels if set
-        while(np.any(target_id == input_id)):# or has_same_labels): # TODO: has_same_labels was not defined anywhere?
+        while(np.any(target_id == input_id)):
           resample_idx = np.nonzero(target_id == input_id)
           target_id[resample_idx] = self.rand_state.randint(
             0, num_images, size=resample_idx[0].shape)

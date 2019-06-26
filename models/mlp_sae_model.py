@@ -38,14 +38,6 @@ class MlpSaeModel(MlpModel):
       self.params.tie_decoder_weights, self.params.norm_w_init, variable_scope="sae")
     return module
 
-  #def build_mlp_module(self, input_node):
-  #  module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-  #    self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
-  #    self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-  #    self.params.mlp_patch_size, self.params.mlp_conv_strides, self.params.eps,
-  #    loss_type="softmax_cross_entropy")
-  #  return module
-
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):

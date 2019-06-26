@@ -37,15 +37,6 @@ class MlpLcaModel(MlpModel):
         self.params.num_steps, self.params.eps)
     return module
 
-  #def build_mlp_module(self, input_node):
-  #  module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-  #    self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
-  #    self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-  #    self.params.mlp_patch_size, self.params.mlp_conv_strides, self.mlp_act_funcs,
-  #    self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy",
-  #    decay_mult=self.params.mlp_decay_mult, norm_mult=self.params.mlp_norm_mult)
-  #  return module
-
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
