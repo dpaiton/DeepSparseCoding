@@ -12,27 +12,27 @@ from modules.recon_adversarial_module import ReconAdversarialModule
 from modules.neuron_visualization_module import NeuronVisualizationModule
 
 class Analyzer(object):
-  """
-  Clobbering:
-    if user wants to clobber:
-      remove old log file if it exists
-      create new log file object
-      log analysis params
-      set params member variable to input params
-    else:
-      if the file exists and is not empty
-        load previous text
-        extract previous params
-          (if there are multiple entries, extract the last one)
-        merge new params into previous params (new overwrites previous)
-        create log file object with append set (overwrite=False)
-        set params member variable to merged params
-      else:
-        create new log file object
-        set params member variable to input params
-      log merged analysis params
-  """
   def setup(self, input_params):
+    """
+    Clobbering:
+      if user wants to clobber:
+        remove old log file if it exists
+        create new log file object
+        log analysis params
+        set params member variable to input params
+      else:
+        if the file exists and is not empty
+          load previous text
+          extract previous params
+            (if there are multiple entries, extract the last one)
+          merge new params into previous params (new overwrites previous)
+          create log file object with append set (overwrite=False)
+          set params member variable to merged params
+        else:
+          create new log file object
+          set params member variable to input params
+        log merged analysis params
+    """
     # Load model parameters and schedule
     self.model_log_file = (input_params.model_dir+"/logfiles/"+input_params.model_name
       +"_v"+input_params.version+".log")
@@ -62,7 +62,7 @@ class Analyzer(object):
         self.analysis_params = input_params
     self.analysis_params.cp_loc = tf.train.latest_checkpoint(self.model_params.cp_save_dir,
       latest_filename="latest_checkpoint_v"+self.analysis_params.version)
-    self.model_params.model_out_dir = self.analysis_out_dir
+    self.model_params.model_out_dir = self.analysis_out_dir # prevent model from clobbering training
     self.check_params()
     self.rand_state = np.random.RandomState(self.analysis_params.rand_seed)
     self.analysis_logger.log_params(self.analysis_params.__dict__)
@@ -169,8 +169,7 @@ class Analyzer(object):
         with self.model.graph.as_default():
           self.class_adv_module.build_adversarial_ops(self.model.label_est,
             model_logits=self.model.get_encodings(),
-            label_gt = self.model.label_placeholder
-            )
+            label_gt = self.model.label_placeholder)
       #Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
     elif(self.analysis_params.do_recon_adversaries):
