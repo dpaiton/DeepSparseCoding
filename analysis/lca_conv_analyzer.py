@@ -24,7 +24,6 @@ class LcaConvAnalyzer(LcaAnalyzer):
         self.u_list = [self.model.module.u_zeros]
         self.a_list = [self.model.module.threshold_units(self.u_list[0])]
         self.psnr_list = [tf.constant(0.0, dtype=tf.float32)]
-        self.loss_list = {}
         current_recon = self.model.compute_recon_from_encoding(self.a_list[0])
         current_loss_list = [
           [self.model.module.compute_recon_loss(current_recon)],
@@ -64,7 +63,7 @@ class LcaConvAnalyzer(LcaAnalyzer):
       for img_idx in range(num_imgs):
         self.analysis_logger.log_info("Inference analysis on image "+str(img_idx))
         feed_dict = self.model.get_feed_dict(images[img_idx, None, ...])
-        run_list = [self.u_list, self.a_list, self.psnr_list, self.loss_list]
+        run_list = [self.u_list, self.a_list, self.psnr_list, self.loss_dict]
         evals = sess.run(run_list, feed_dict)
         u[img_idx, ...] = np.squeeze(np.stack(evals[0], axis=0))
         a[img_idx, ...] = np.squeeze(np.stack(evals[1], axis=0))
