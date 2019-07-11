@@ -8,16 +8,6 @@ import utils.data_processing as dp
 import utils.plot_functions as pf
 import analysis.analysis_picker as ap
 
-min_angle = 15
-max_angle = 65
-num_neurons = 2#768 # How many neurons to plot
-use_bf_stats = True # If false, then use optimal stimulus
-num_comparison_vects = 3#50 # How many planes to construct
-use_random_orth_vects = False
-x_range = [-2, 2]#[-0.1, 3.9]
-y_range = [-2, 2]
-num_images = int(10**2)
-
 def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stats):
   """
   Calculate all projection vectors for each target neuron
@@ -25,7 +15,7 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
   """
   # Get list of candidate target vectors
   if(use_bf_stats):
-    analyzer.neuron_angles, analyzer.plot_matrix = analyzer.get_neuron_angles(analyzer.bf_stats)
+    neuron_angles, plot_matrix = analyzer.get_neuron_angles(analyzer.bf_stats)
   else:
     optimal_stims_dict = {"patch_edge_size":int(np.sqrt(analyzer.model.params.data_shape)),
       "num_outputs":len(analyzer.analysis_params.neuron_vis_targets),
@@ -33,13 +23,13 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
     for target_id in range(len(analyzer.analysis_params.neuron_vis_targets)):
       bf = analyzer.neuron_vis_output["optimal_stims"][target_id][-1]
       optimal_stims_dict["basis_functions"].append(bf.reshape((optimal_stims_dict["patch_edge_size"],)*2))
-    analyzer.neuron_angles, analyzer.plot_matrix = analyzer.get_neuron_angles(optimal_stims_dict)
+    neuron_angles, plot_matrix = analyzer.get_neuron_angles(optimal_stims_dict)
   orig_min_angle = min_angle
   orig_max_angle = max_angle
-  vectors = []
+  vectors = np.argwhere(np.logical_and(plot_matrix<max_angle, plot_matrix>min_angle))
   num_tries=0
-  while len(vectors) <= num_neurons:
-    vectors = np.argwhere(np.logical_and(analyzer.plot_matrix<max_angle, analyzer.plot_matrix>min_angle))
+  while len(set(vectors[:,0])) <= num_neurons:
+    vectors = np.argwhere(np.logical_and(plot_matrix<max_angle, plot_matrix>min_angle))
     if min_angle > 5:
       min_angle -= 1
     if max_angle < 89:
@@ -50,30 +40,35 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
       import IPython; IPython.embed(); raise SystemExit
   if min_angle < orig_min_angle or max_angle > orig_max_angle:
     print("compute_iso_vectors:WARNING:"
-      +"The provided angle range was too small, the new angle range is [%g, %g]"%(min_angle, max_angle))
-  analyzer.target_neuron_ids = []
-  analyzer.comparison_neuron_ids = [] # list of lists [num_targets][num_comparisons_per_target]
-  analyzer.target_vectors = []
-  analyzer.rand_orth_vectors = []
-  analyzer.comparison_vectors = []
-  for vector_id in range(num_neurons):
-    target_neuron_id = vectors[vector_id, 0]
-    analyzer.target_neuron_ids.append(target_neuron_id)
+      +"The provided angle range was too small, the new angle range is [%g, %g]"%(min_angle,
+      max_angle))
+  target_neuron_ids = []
+  comparison_neuron_ids = [] # list of lists [num_targets][num_comparisons_per_target]
+  target_vectors = []
+  rand_orth_vectors = []
+  comparison_vectors = []
+  unique_vectors = list(set(vectors[:,0]))
+  for vector_set_id in range(num_neurons):
+    vector_id = np.argwhere(vectors[:,0] == unique_vectors[vector_set_id])[0]
+    target_neuron_id = vectors[vector_id, 0].item()
+    target_neuron_ids.append(target_neuron_id)
     # Reshape & rescale target vector
     target_vector = analyzer.bf_stats["basis_functions"][target_neuron_id]
     target_vector = target_vector.reshape(analyzer.model_params.num_pixels)
     target_vector = target_vector / np.linalg.norm(target_vector)
-    analyzer.target_vectors.append(target_vector)
+    target_vectors.append(target_vector)
     # Build matrix of random orthogonal vectors
-    analyzer.rand_orth_vectors.append(dp.get_rand_orth_vectors(target_vector, analyzer.model.params.num_pixels-1))
+    rand_orth_vectors.append(dp.get_rand_orth_vectors(target_vector,
+      analyzer.model.params.num_pixels-1))
     # Build matrix of comparison vectors (use all neurons)
     if(use_bf_stats):
-      sub_comparison_neuron_ids = [vectors[vector_id, 1]]
+      sub_comparison_neuron_ids = [vectors[vector_id, 1].item()]
       for index in range(analyzer.bf_stats["num_outputs"]):
         if index != target_neuron_id and index not in sub_comparison_neuron_ids:
           sub_comparison_neuron_ids.append(index)
     else:
-      sub_comparison_neuron_ids = [index for index in range(optimal_stims_dict["num_outputs"]) if index != target_neuron_id]
+      sub_comparison_neuron_ids = [index for index in range(optimal_stims_dict["num_outputs"])
+        if index != target_neuron_id]
     comparison_vector_matrix = target_vector.T[:,None] # matrix of alternate vectors
     for comparison_neuron_id in sub_comparison_neuron_ids:
       if(use_bf_stats):
@@ -82,10 +77,11 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
         comparison_vector = optimal_stims_dict["basis_functions"][comparison_neuron_id]
       comparison_vector = comparison_vector.reshape(analyzer.model_params.num_pixels)
       comparison_vector = np.squeeze((comparison_vector / np.linalg.norm(comparison_vector)).T)
-      comparison_vector_matrix = np.append(comparison_vector_matrix, comparison_vector[:,None], axis=1)
-    analyzer.comparison_neuron_ids.append(sub_comparison_neuron_ids)
-    analyzer.comparison_vectors.append(comparison_vector_matrix.T[1:,:])
-    return analyzer
+      comparison_vector_matrix = np.append(comparison_vector_matrix, comparison_vector[:,None],
+        axis=1)
+    comparison_neuron_ids.append(sub_comparison_neuron_ids)
+    comparison_vectors.append(comparison_vector_matrix.T[1:,:])
+  return (target_neuron_ids, comparison_neuron_ids, target_vectors, rand_orth_vectors, comparison_vectors)
 
 def get_contour_dataset(analyzer, num_comparison_vects, use_random_orth_vects, x_range, y_range, num_images):
   """
@@ -102,8 +98,8 @@ def get_contour_dataset(analyzer, num_comparison_vects, use_random_orth_vects, x
     "proj_orth_vect": [],
     "orth_vect": [],
     "proj_datapoints": proj_datapoints,
-    "X_mesh": X_mesh,
-    "Y_mesh": Y_mesh}
+    "x_pts": x_pts,
+    "y_pts": y_pts}
   if use_random_orth_vects:
     comparison_vectors = analyzer.rand_orth_vectors
   else:
@@ -160,7 +156,6 @@ def get_normalized_activations(analyzer, contour_dataset):
       activations = activations.reshape(int(np.sqrt(num_images)), int(np.sqrt(num_images)))
       activity_sub_list.append(activations)
     activations_list.append(np.stack(activity_sub_list, axis=0))
-  #import IPython; IPython.embed(); raise SystemExit
   return np.stack(activations_list, axis=0)
 
 class lca_512_vh_params(object):
@@ -226,6 +221,15 @@ class lca_768_mnist_params(object):
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
 
+class lca_1536_mnist_params(object):
+  def __init__(self):
+    self.model_type = "lca"
+    self.model_name = "lca_1536_mnist"
+    self.display_name = "Sparse Coding 1536"
+    self.version = "0.0"
+    self.save_info = "analysis_test_carlini_targeted"
+    self.overwrite_analysis_log = False
+
 class ae_768_mnist_params(object):
   def __init__(self):
     self.model_type = "ae"
@@ -263,8 +267,19 @@ class ae_deep_mnist_params(object):
     self.overwrite_analysis_log = False
 
 print("Loading models...")
-#params_list = [rica_768_vh_params(), ae_768_vh_params(), sae_768_vh_params(), lca_768_vh_params()]
-params_list = [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params(), lca_768_mnist_params()]
+min_angle = 15
+max_angle = 65
+num_neurons = 2 # How many neurons to plot
+use_bf_stats = True # If false, then use optimal stimulus
+num_comparison_vects = None # How many planes to construct (None is all of them)
+x_range = [-2, 2]
+y_range = [-2, 2]
+num_images = int(20**2)
+
+params_list = [lca_768_mnist_params(), lca_1536_mnist_params()]
+#params_list = [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params()]
+#params_list = [rica_768_vh_params(), ae_768_vh_params(), sae_768_vh_params()]#, lca_768_vh_params()]
+#params_list = [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params(), lca_768_mnist_params()]
 for params in params_list:
   params.model_dir = (os.path.expanduser("~")+"/Work/Projects/"+params.model_name)
 analyzer_list = [ap.get_analyzer(params.model_type) for params in params_list]
@@ -277,25 +292,35 @@ for analyzer, params in zip(analyzer_list, params_list):
 for analyzer, params in zip(analyzer_list, params_list):
   print(analyzer.analysis_params.display_name)
   print("Computing the iso-response vectors...")
-  compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stats)
-  print("Generating dataset...")
-  contour_dataset, datapoints = get_contour_dataset(analyzer, num_comparison_vects,
-    use_random_orth_vects, x_range, y_range, num_images)
-  print("Computing network activations...")
-  activations = get_normalized_activations(analyzer, datapoints)
-  print("Writing outputs...")
+  outputs = compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stats)
+  analyzer.target_neuron_ids = outputs[0]
+  analyzer.comparison_neuron_ids = outputs[1]
+  analyzer.target_vectors = outputs[2]
+  analyzer.rand_orth_vectors = outputs[3]
+  analyzer.comparison_vectors = outputs[4]
+  for use_random_orth_vects, rand_str in zip([True, False], "rand, comparison"):
+    print("Generating "+rand_str+" dataset...")
+    contour_dataset, datapoints = get_contour_dataset(analyzer, num_comparison_vects,
+      use_random_orth_vects, x_range, y_range, num_images)
+    print("Computing network activations for "+rand_str+" dataset...")
+    activations = get_normalized_activations(analyzer, datapoints)
+    if use_random_orth_vects:
+      np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_activations_"+params.save_info+".npz",
+        data=activations)
+      np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_contour_dataset_"+params.save_info+".npz",
+        data=contour_dataset)
+    else:
+      np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_activations_"+params.save_info+".npz",
+        data=activations)
+      np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_contour_dataset_"+params.save_info+".npz",
+        data=contour_dataset)
   params.min_angle = min_angle
   params.max_angle = max_angle
   params.num_neurons = num_neurons
   params.use_bf_stats = use_bf_stats
   params.num_comparison_vects = num_comparison_vects
-  params.use_random_orth_vects = use_random_orth_vects
   params.x_range = x_range
   params.y_range = y_range
   params.num_images = num_images
   np.savez(analyzer.analysis_out_dir+"savefiles/iso_params_"+params.save_info+".npz",
     data=params.__dict__)
-  np.savez(analyzer.analysis_out_dir+"savefiles/iso_normalized_activations_"+params.save_info+".npz",
-    data=activations)
-  np.savez(analyzer.analysis_out_dir+"savefiles/iso_contour_dataset_"+params.save_info+".npz",
-    data=contour_dataset)
