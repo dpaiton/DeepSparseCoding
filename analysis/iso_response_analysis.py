@@ -55,7 +55,7 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
     # Reshape & rescale target vector
     target_vector = analyzer.bf_stats["basis_functions"][target_neuron_id]
     target_vector = target_vector.reshape(analyzer.model_params.num_pixels)
-    target_vector = target_vector / np.linalg.norm(target_vector)
+    target_vector = target_vector / np.linalg.norm(target_vector) ## NORM
     target_vectors.append(target_vector)
     # Build matrix of random orthogonal vectors
     rand_orth_vectors.append(dp.get_rand_orth_vectors(target_vector,
@@ -76,7 +76,7 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
       else:
         comparison_vector = optimal_stims_dict["basis_functions"][comparison_neuron_id]
       comparison_vector = comparison_vector.reshape(analyzer.model_params.num_pixels)
-      comparison_vector = np.squeeze((comparison_vector / np.linalg.norm(comparison_vector)).T)
+      comparison_vector = np.squeeze((comparison_vector / np.linalg.norm(comparison_vector)).T) ## NORM
       comparison_vector_matrix = np.append(comparison_vector_matrix, comparison_vector[:,None],
         axis=1)
     comparison_neuron_ids.append(sub_comparison_neuron_ids)
@@ -149,7 +149,7 @@ def get_normalized_activations(analyzer, contour_dataset):
         if num_images%n == 0:
           batch_size = num_images // n # second greatest factor
           break
-      activations = analyzer.compute_activations(datapoints["test"].images, batch_size)
+      activations = analyzer.compute_activations(datapoints["test"].images)#, batch_size)
       activations = activations[:, neuron_index]
       activity_max = np.amax(np.abs(activations))
       activations = activations / (activity_max + 0.00001)
@@ -268,18 +268,18 @@ class ae_deep_mnist_params(object):
 
 print("Loading models...")
 min_angle = 15
-max_angle = 65
+max_angle = 60
 num_neurons = 2 # How many neurons to plot
 use_bf_stats = True # If false, then use optimal stimulus
 num_comparison_vects = None # How many planes to construct (None is all of them)
 x_range = [-2, 2]
 y_range = [-2, 2]
-num_images = int(20**2)
+num_images = int(30**2)
 
 params_list = [lca_768_mnist_params(), lca_1536_mnist_params()]
-#params_list = [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params()]
+params_list += [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params()]
 #params_list = [rica_768_vh_params(), ae_768_vh_params(), sae_768_vh_params()]#, lca_768_vh_params()]
-#params_list = [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params(), lca_768_mnist_params()]
+params_list += [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params()]
 for params in params_list:
   params.model_dir = (os.path.expanduser("~")+"/Work/Projects/"+params.model_name)
 analyzer_list = [ap.get_analyzer(params.model_type) for params in params_list]
@@ -298,7 +298,7 @@ for analyzer, params in zip(analyzer_list, params_list):
   analyzer.target_vectors = outputs[2]
   analyzer.rand_orth_vectors = outputs[3]
   analyzer.comparison_vectors = outputs[4]
-  for use_random_orth_vects, rand_str in zip([True, False], "rand, comparison"):
+  for use_random_orth_vects, rand_str in zip([True, False], ["rand", "comparison"]):
     print("Generating "+rand_str+" dataset...")
     contour_dataset, datapoints = get_contour_dataset(analyzer, num_comparison_vects,
       use_random_orth_vects, x_range, y_range, num_images)
