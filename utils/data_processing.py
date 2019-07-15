@@ -1031,12 +1031,12 @@ def norm_weights(weights):
 def one_hot_to_dense(one_hot_labels):
   """
   converts a matrix of one-hot labels to a list of dense labels
-  Parameters:
-      one_hot_labels: one-hot numpy array of shape [num_labels, num_classes]
-  Returns:
-      dense_labels: 1D numpy array of labels
-          The integer value indicates the class and 0 is assumed to be a class.
-          The integer class also indicates the index for the corresponding one-hot representation
+  Inputs:
+    one_hot_labels: one-hot numpy array of shape [num_labels, num_classes]
+  Outputs:
+    dense_labels: 1D numpy array of labels
+      The integer value indicates the class and 0 is assumed to be a class.
+      The integer class also indicates the index for the corresponding one-hot representation
   """
   one_hot_labels = np.asarray(one_hot_labels)
   num_labels, num_classes = one_hot_labels.shape
@@ -1086,17 +1086,86 @@ def cos_similarity(x, y):
     batch_similarity.append(np.dot(x_vect, y_vect.T) / (y_norm * x_norm))
   return np.stack(batch_similarity, axis=0)
 
-def bf_projections(bf1, bf2):
+def bf_projections(target_vector, comparison_vect):
   """
-  Find a projection basis that is orthogonal to bf1 and as close as possible to bf2
+  Find a projection basis that is orthogonal to target_vector and as close as possible to comparison_vect
   Usees a single step of the Gram-Schmidt process
+  Inputs:
+    target_vector [np.ndarray] of shape [num_pixels,]
+    comparison_vect [np.ndarray] of shape [num_pixels,]
   Outputs:
     projection_matrix [tuple] containing [ax_1, ax_2] for projecting data into the 2d array
-  Inputs
-    bf1 [np.ndarray] of shape [num_pixels,]
-    bf2 [np.ndarray] of shape [num_pixels,]
   """
-  v = bf2 - np.dot(bf2[:,None].T, bf1[:,None]) * bf1
-  v = np.squeeze((v / np.linalg.norm(v)).T)
-  proj_matrix = np.stack([bf1, v], axis=0)
+  # NORM ADJUSTMENT
+  normed_target_vector = target_vector / np.linalg.norm(target_vector)
+  normed_comparison_vect = comparison_vect / np.linalg.norm(comparison_vect)
+  v = normed_comparison_vect - np.dot(normed_comparison_vect[:,None].T, normed_target_vector[:,None]) * normed_target_vector
+  v_norm = np.linalg.norm(v)
+  v = np.squeeze((v / v_norm).T)
+  v = v * np.linalg.norm(target_vector) # rescale to target scale
+  proj_matrix = np.stack([target_vector, v], axis=0)
+
+  #v = comparison_vect - np.dot(comparison_vect[:,None].T, target_vector[:,None]) * target_vector
+  #v_norm = np.linalg.norm(v)
+  #v = np.squeeze((v / v_norm).T)
+  #proj_matrix = np.stack([target_vector, v], axis=0)
   return proj_matrix, v
+
+def find_orth_vect(matrix):
+  """
+  Given an orthonormal matrix, find a new unit vector that is orthogonal
+  Inputs:
+    matrix [np.ndarray] matrix whose columns are each orthonormal vectors
+  Outputs:
+    orth_vect [np.ndarray] unit vector that is orthogonal to all of the vectors in the input matrix
+  """
+  rand_vect = np.random.rand(matrix.shape[0], 1)
+  new_matrix = np.hstack((matrix, rand_vect))
+  candidate_vect = np.zeros(matrix.shape[1]+1)
+  candidate_vect[-1] = 1
+  orth_vect = np.linalg.lstsq(new_matrix.T, candidate_vect, rcond=None)[0] # [0] indexes lst-sqrs solution
+  orth_vect = np.squeeze((orth_vect / np.linalg.norm(orth_vect)).T)
+  return orth_vect
+
+def get_rand_orth_vectors(target_vector, num_orth_directions):
+  """
+  Given a vector, construct a matrix of shape [num_orth_directions, vector_length] of vectors
+  that are orthogonal to the input
+  Inputs:
+    target_vector [np.ndarray] initial vector
+    num_orth_directions [int] number of orthogonal vectors to construct
+  Outputs:
+    rand_vectors [np.ndarray] output matrix of shape [num_orth_directions, vector_length] containing vectors
+    that are all orthogonal to target_vector
+  """
+  # NORM ADJUSTMENT
+  target_norm = np.linalg.norm(target_vector)
+  normed_target_vector = target_vector / target_norm
+  normed_rand_vectors = normed_target_vector.T[:,None] # matrix of alternate vectors
+  rand_vectors = target_vector.T[:,None] # matrix of alternate vectors
+  for orth_idx in range(num_orth_directions):
+    normed_tmp_vect = find_orth_vect(normed_rand_vectors)
+    normed_rand_vectors = np.append(normed_rand_vectors, normed_tmp_vect[:,None], axis=1)
+    tmp_vect = normed_tmp_vect * target_norm
+    rand_vectors = np.append(rand_vectors, tmp_vect[:,None], axis=1)
+
+  #rand_vectors = target_vector.T[:,None] # matrix of alternate vectors
+  #for orth_idx in range(num_orth_directions):
+  #  tmp_vect = find_orth_vect(rand_vectors)
+  #  rand_vectors = np.append(rand_vectors, tmp_vect[:,None], axis=1)
+  return rand_vectors.T[1:, :]
+
+def normalize_vectors(vector_list):
+  """
+  Convert a list of vectors into a matrix of normalized vectors that is shape [num_vectors, vector_length],
+  where num_vectors = len(vector_list)
+  Inputs:
+    vector_list: [list of np.ndarray] list of equal length vectors
+  Outputs:
+    norm_vectors [np.ndarray] matrix of l2-normalized vectors that is shape [num_vectors, vector_length]
+  """
+  norm_vectors = vector_list[0].T[:,None] # matrix of alternate vectors
+  for tmp_vect in vector_list:
+    tmp_vect = np.squeeze((tmp_vect / np.linalg.norm(tmp_vect)).T)
+    norm_vectors = np.append(norm_vectors, tmp_vect[:,None], axis=1)
+  return norm_vectors.T[1:, :] # [num_vectors, vector_length]

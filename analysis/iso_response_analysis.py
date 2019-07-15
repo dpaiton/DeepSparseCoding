@@ -26,10 +26,10 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
     neuron_angles, plot_matrix = analyzer.get_neuron_angles(optimal_stims_dict)
   orig_min_angle = min_angle
   orig_max_angle = max_angle
-  vectors = np.argwhere(np.logical_and(plot_matrix<max_angle, plot_matrix>min_angle))
+  vectors = np.argwhere(np.logical_and(plot_matrix < max_angle, plot_matrix > min_angle))
   num_tries=0
   while len(set(vectors[:,0])) <= num_neurons:
-    vectors = np.argwhere(np.logical_and(plot_matrix<max_angle, plot_matrix>min_angle))
+    vectors = np.argwhere(np.logical_and(plot_matrix < max_angle, plot_matrix > min_angle))
     if min_angle > 5:
       min_angle -= 1
     if max_angle < 89:
@@ -42,6 +42,9 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
     print("compute_iso_vectors:WARNING:"
       +"The provided angle range was too small, the new angle range is [%g, %g]"%(min_angle,
       max_angle))
+  shuffle_indices = np.arange(vectors.shape[0])
+  np.random.shuffle(shuffle_indices)
+  vectors = vectors[shuffle_indices, :]
   target_neuron_ids = []
   comparison_neuron_ids = [] # list of lists [num_targets][num_comparisons_per_target]
   target_vectors = []
@@ -55,11 +58,16 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
     # Reshape & rescale target vector
     target_vector = analyzer.bf_stats["basis_functions"][target_neuron_id]
     target_vector = target_vector.reshape(analyzer.model_params.num_pixels)
-    target_vector = target_vector / np.linalg.norm(target_vector) ## NORM
+
+    # NORM ADJUSTMENT
+    #target_vector = target_vector / np.linalg.norm(target_vector)
+
     target_vectors.append(target_vector)
     # Build matrix of random orthogonal vectors
+
     rand_orth_vectors.append(dp.get_rand_orth_vectors(target_vector,
       analyzer.model.params.num_pixels-1))
+
     # Build matrix of comparison vectors (use all neurons)
     if(use_bf_stats):
       sub_comparison_neuron_ids = [vectors[vector_id, 1].item()]
@@ -76,7 +84,8 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
       else:
         comparison_vector = optimal_stims_dict["basis_functions"][comparison_neuron_id]
       comparison_vector = comparison_vector.reshape(analyzer.model_params.num_pixels)
-      comparison_vector = np.squeeze((comparison_vector / np.linalg.norm(comparison_vector)).T) ## NORM
+      # NORM ADJUSTMENT
+      #comparison_vector = np.squeeze((comparison_vector / np.linalg.norm(comparison_vector)).T)
       comparison_vector_matrix = np.append(comparison_vector_matrix, comparison_vector[:,None],
         axis=1)
     comparison_neuron_ids.append(sub_comparison_neuron_ids)
@@ -162,7 +171,7 @@ class lca_512_vh_params(object):
   def __init__(self):
     self.model_type = "lca"
     self.model_name = "lca_512_vh"
-    self.display_name = "Sparse Coding"
+    self.display_name = "Sparse Coding 512"
     self.version = "0.0"
     self.save_info = "analysis_train_carlini_targeted"
     self.overwrite_analysis_log = False
@@ -171,7 +180,7 @@ class lca_768_vh_params(object):
   def __init__(self):
     self.model_type = "lca"
     self.model_name = "lca_768_vh"
-    self.display_name = "Sparse Coding"
+    self.display_name = "Sparse Coding 768"
     self.version = "0.0"
     self.save_info = "analysis_train_carlini_targeted"
     self.overwrite_analysis_log = False
@@ -180,7 +189,7 @@ class lca_1024_vh_params(object):
   def __init__(self):
     self.model_type = "lca"
     self.model_name = "lca_1024_vh"
-    self.display_name = "Sparse Coding"
+    self.display_name = "Sparse Coding 1024"
     self.version = "0.0"
     self.save_info = "analysis_train_carlini_targeted"
     self.overwrite_analysis_log = False
@@ -189,7 +198,7 @@ class ae_768_vh_params(object):
   def __init__(self):
     self.model_type = "ae"
     self.model_name = "ae_768_vh"
-    self.display_name = "ReLU Autoencoder"
+    self.display_name = "ReLU Autoencoder 768"
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
@@ -198,7 +207,7 @@ class sae_768_vh_params(object):
   def __init__(self):
     self.model_type = "sae"
     self.model_name = "sae_768_vh"
-    self.display_name = "Sparse Autoencoder"
+    self.display_name = "Sparse Autoencoder 768"
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
@@ -207,7 +216,7 @@ class rica_768_vh_params(object):
   def __init__(self):
     self.model_type = "rica"
     self.model_name = "rica_768_vh"
-    self.display_name = "Linear Autoencoder"
+    self.display_name = "Linear Autoencoder 768"
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
@@ -216,7 +225,7 @@ class lca_768_mnist_params(object):
   def __init__(self):
     self.model_type = "lca"
     self.model_name = "lca_768_mnist"
-    self.display_name = "Sparse Coding"
+    self.display_name = "Sparse Coding 768"
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
@@ -234,7 +243,7 @@ class ae_768_mnist_params(object):
   def __init__(self):
     self.model_type = "ae"
     self.model_name = "ae_768_mnist"
-    self.display_name = "ReLU Autoencoder"
+    self.display_name = "ReLU Autoencoder 768"
     self.version = "0.0"
     self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
@@ -243,7 +252,7 @@ class sae_768_mnist_params(object):
   def __init__(self):
     self.model_type = "sae"
     self.model_name = "sae_768_mnist"
-    self.display_name = "Sparse Autoencoder"
+    self.display_name = "Sparse Autoencoder 768"
     self.version = "0.0"
     self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
@@ -252,7 +261,7 @@ class rica_768_mnist_params(object):
   def __init__(self):
     self.model_type = "rica"
     self.model_name = "rica_768_mnist"
-    self.display_name = "Linear Autoencoder"
+    self.display_name = "Linear Autoencoder 768"
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
@@ -261,7 +270,7 @@ class ae_deep_mnist_params(object):
   def __init__(self):
     self.model_type = "ae"
     self.model_name = "ae_deep_mnist"
-    self.display_name = "ReLU Autoencoder"
+    self.display_name = "ReLU Autoencoder 768"
     self.version = "0.0"
     self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
@@ -277,9 +286,9 @@ y_range = [-2, 2]
 num_images = int(30**2)
 
 params_list = [lca_768_mnist_params(), lca_1536_mnist_params()]
-params_list += [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params()]
+#params_list += [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params()]
 #params_list = [rica_768_vh_params(), ae_768_vh_params(), sae_768_vh_params()]#, lca_768_vh_params()]
-params_list += [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params()]
+#params_list += [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params()]
 for params in params_list:
   params.model_dir = (os.path.expanduser("~")+"/Work/Projects/"+params.model_name)
 analyzer_list = [ap.get_analyzer(params.model_type) for params in params_list]
@@ -298,6 +307,10 @@ for analyzer, params in zip(analyzer_list, params_list):
   analyzer.target_vectors = outputs[2]
   analyzer.rand_orth_vectors = outputs[3]
   analyzer.comparison_vectors = outputs[4]
+  outputs = dict(zip(["target_neuron_ids", "comparison_neuron_ids", "target_vectors",
+    "rand_orth_vectors", "comparison_vectors"], outputs))
+  np.savez(analyzer.analysis_out_dir+"savefiles/iso_vectors_nonorm_"+params.save_info+".npz",
+    data=outputs)
   for use_random_orth_vects, rand_str in zip([True, False], ["rand", "comparison"]):
     print("Generating "+rand_str+" dataset...")
     contour_dataset, datapoints = get_contour_dataset(analyzer, num_comparison_vects,
@@ -305,14 +318,14 @@ for analyzer, params in zip(analyzer_list, params_list):
     print("Computing network activations for "+rand_str+" dataset...")
     activations = get_normalized_activations(analyzer, datapoints)
     if use_random_orth_vects:
-      np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_activations_"+params.save_info+".npz",
+      np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_activations_nonorm_"+params.save_info+".npz",
         data=activations)
-      np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_contour_dataset_"+params.save_info+".npz",
+      np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_contour_dataset_nonorm_"+params.save_info+".npz",
         data=contour_dataset)
     else:
-      np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_activations_"+params.save_info+".npz",
+      np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_activations_nonorm_"+params.save_info+".npz",
         data=activations)
-      np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_contour_dataset_"+params.save_info+".npz",
+      np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_contour_dataset_nonorm_"+params.save_info+".npz",
         data=contour_dataset)
   params.min_angle = min_angle
   params.max_angle = max_angle
@@ -322,5 +335,5 @@ for analyzer, params in zip(analyzer_list, params_list):
   params.x_range = x_range
   params.y_range = y_range
   params.num_images = num_images
-  np.savez(analyzer.analysis_out_dir+"savefiles/iso_params_"+params.save_info+".npz",
+  np.savez(analyzer.analysis_out_dir+"savefiles/iso_params_nonorm_"+params.save_info+".npz",
     data=params.__dict__)
