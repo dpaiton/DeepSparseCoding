@@ -1096,19 +1096,21 @@ def bf_projections(target_vector, comparison_vect):
   Outputs:
     projection_matrix [tuple] containing [ax_1, ax_2] for projecting data into the 2d array
   """
-  # NORM ADJUSTMENT
-  normed_target_vector = target_vector / np.linalg.norm(target_vector)
-  normed_comparison_vect = comparison_vect / np.linalg.norm(comparison_vect)
-  v = normed_comparison_vect - np.dot(normed_comparison_vect[:,None].T, normed_target_vector[:,None]) * normed_target_vector
-  v_norm = np.linalg.norm(v)
-  v = np.squeeze((v / v_norm).T)
-  v = v * np.linalg.norm(target_vector) # rescale to target scale
-  proj_matrix = np.stack([target_vector, v], axis=0)
-
-  #v = comparison_vect - np.dot(comparison_vect[:,None].T, target_vector[:,None]) * target_vector
+  # NONORM ADJUSTMENT
+  #normed_target_vector = target_vector / np.linalg.norm(target_vector)
+  #normed_comparison_vect = comparison_vect / np.linalg.norm(comparison_vect)
+  #v = normed_comparison_vect - np.dot(normed_comparison_vect[:,None].T, normed_target_vector[:,None]) * normed_target_vector
   #v_norm = np.linalg.norm(v)
   #v = np.squeeze((v / v_norm).T)
+  #v = v * np.linalg.norm(target_vector) # rescale to target scale
   #proj_matrix = np.stack([target_vector, v], axis=0)
+
+  # NORM
+  v = comparison_vect - np.dot(comparison_vect[:,None].T, target_vector[:,None]) * target_vector
+  v_norm = np.linalg.norm(v)
+  v = np.squeeze((v / v_norm).T)
+  proj_matrix = np.stack([target_vector, v], axis=0)
+
   return proj_matrix, v
 
 def find_orth_vect(matrix):
@@ -1138,21 +1140,23 @@ def get_rand_orth_vectors(target_vector, num_orth_directions):
     rand_vectors [np.ndarray] output matrix of shape [num_orth_directions, vector_length] containing vectors
     that are all orthogonal to target_vector
   """
-  # NORM ADJUSTMENT
-  target_norm = np.linalg.norm(target_vector)
-  normed_target_vector = target_vector / target_norm
-  normed_rand_vectors = normed_target_vector.T[:,None] # matrix of alternate vectors
-  rand_vectors = target_vector.T[:,None] # matrix of alternate vectors
-  for orth_idx in range(num_orth_directions):
-    normed_tmp_vect = find_orth_vect(normed_rand_vectors)
-    normed_rand_vectors = np.append(normed_rand_vectors, normed_tmp_vect[:,None], axis=1)
-    tmp_vect = normed_tmp_vect * target_norm
-    rand_vectors = np.append(rand_vectors, tmp_vect[:,None], axis=1)
-
+  # NONORM ADJUSTMENT
+  #target_norm = np.linalg.norm(target_vector)
+  #normed_target_vector = target_vector / target_norm
+  #normed_rand_vectors = normed_target_vector.T[:,None] # matrix of alternate vectors
   #rand_vectors = target_vector.T[:,None] # matrix of alternate vectors
   #for orth_idx in range(num_orth_directions):
-  #  tmp_vect = find_orth_vect(rand_vectors)
+  #  normed_tmp_vect = find_orth_vect(normed_rand_vectors)
+  #  normed_rand_vectors = np.append(normed_rand_vectors, normed_tmp_vect[:,None], axis=1)
+  #  tmp_vect = normed_tmp_vect * target_norm
   #  rand_vectors = np.append(rand_vectors, tmp_vect[:,None], axis=1)
+
+  # NORM
+  rand_vectors = target_vector.T[:,None] # matrix of alternate vectors
+  for orth_idx in range(num_orth_directions):
+    tmp_vect = find_orth_vect(rand_vectors)
+    rand_vectors = np.append(rand_vectors, tmp_vect[:,None], axis=1)
+
   return rand_vectors.T[1:, :]
 
 def normalize_vectors(vector_list):

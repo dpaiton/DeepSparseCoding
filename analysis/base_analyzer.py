@@ -517,16 +517,15 @@ class Analyzer(object):
       evaluated model.get_encodings() on the input images
     Inputs:
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
-    TODO: batch_size is not working...
     """
+    images_shape = list(images.shape)
+    num_images = images_shape[0]
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
-      if batch_size is not None:
-        images_shape = list(images.shape)
-        num_images = images_shape[0]
+      if batch_size is not None and batch_size < num_images:
         assert num_images % batch_size == 0, (
-          "batch_size=%g must divide evenly into num_images=%g"%(num_images, batch_size))
+          "batch_size=%g must divide evenly into num_images=%g"%(batch_size, num_images))
         num_batches = int(np.ceil(num_images / batch_size))
         batch_image_shape = [batch_size] + images_shape[1:]
         sess.run(self.model.init_op, {self.model.input_placeholder:np.zeros(batch_image_shape)})
@@ -933,9 +932,9 @@ class Analyzer(object):
     """
     Compute the angle between all pairs of basis functions in bf_stats
     Outputs:
+      neuron_angles [np.ndarray] lower triangle of plot matrix only, as a vector in raster order
       plot_matrix [np.ndarray] of shape [num_neurons, num_neurons] with all angles between
         basis functions in the lower triangle and upper triangle is set to -1
-      neuron_angles [np.ndarray] lower triangle of plot matrix only, as a vector in raster order
     Inputs:
       bf_stats [dict] returned from utils/data_processing.get_dictionary_stats()
     """
@@ -963,10 +962,11 @@ class Analyzer(object):
     return dp.bf_projections(bf0, bf1)
 
   def neuron_visualization_analysis(self, save_info=""):
+    """
+    TODO: docstrings; incl data preprocessing pipeline?
+    """
     vis_data_init = np.random.normal(loc=0.0, scale=1e-2, size=self.model.get_input_shape()[1:])
     vis_data_init /= np.linalg.norm(vis_data_init)
-    vis_data_init[vis_data_init > 1.0] = 1.0
-    vis_data_init[vis_data_init < 0.0] = 0.0
     vis_data_init = vis_data_init[None,:]
     self.neuron_vis_output = {
       "data_init":vis_data_init,
