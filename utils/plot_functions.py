@@ -398,12 +398,12 @@ def plot_loc_freq_summary(bf_stats, figsize=(15, 5), fontsize=16):
   ax.set_xlabel("Pixels", fontsize=fontsize)
   ax.set_title("Centers", fontsize=fontsize, pad=32)
   ax = fig.add_subplot(gs[1])
-  x_sf = [np.abs(x) for (y,x) in bf_stats["fourier_centers"]]
-  y_sf = [np.abs(y) for (y,x) in bf_stats["fourier_centers"]]
+  x_sf = [x for (y,x) in bf_stats["fourier_centers"]]
+  y_sf = [y for (y,x) in bf_stats["fourier_centers"]]
   max_sf = np.max(np.abs(x_sf+y_sf))
   ax.scatter(x_sf, y_sf, color='k', s=10)
-  ax.set_xlim([0, max_sf])
-  ax.set_ylim([0, max_sf])
+  ax.set_xlim([-max_sf, max_sf])
+  ax.set_ylim([-max_sf, max_sf])
   ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
   ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
   ax.set_aspect("equal")
@@ -1262,6 +1262,26 @@ def bgr_colormap():
                     (1.0, 0.0, 0.0))
       }
   return LinearSegmentedColormap("bgr", cdict)
+
+def add_colorbar_to_ax(handle, ax, aspect=20, pad_fraction=0.5, labelsize=16, **kwargs):
+  """
+  Add a vertical color bar to an image plot.
+  Inputs:
+    ax: TODO
+    aspect: [int] aspect ratio of the colorbar
+    pad_fraction: [float] how much space to place between colorbar & plot
+    labelsize: [float] font size of the colorbar labels
+    **kwargs: [dict] other keyword arguments that would be passed to axes.figure.colorbar()
+  """
+  divider = axes_grid1.make_axes_locatable(ax)
+  width = axes_grid1.axes_size.AxesY(ax, aspect=1./aspect)
+  pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
+  current_ax = plt.gca()
+  cax = divider.append_axes("right", size=width, pad=pad)
+  plt.sca(current_ax)
+  cbar = ax.figure.colorbar(handle, cax=cax, **kwargs)
+  cbar.ax.tick_params(labelsize=labelsize)
+  return cbar
 
 def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, **kwargs):
   """
