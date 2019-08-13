@@ -26,6 +26,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
   cNorm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
   fig = plt.figure(figsize=figsize, dpi=dpi)
+  contour_handles = []
   curve_axes = []
   analyzer_index = 0
   for plot_id in np.ndindex((num_plots_y, num_plots_x)):
@@ -47,6 +48,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     x_mesh, y_mesh = np.meshgrid(analyzer.comp_contour_dataset["x_pts"], analyzer.comp_contour_dataset["y_pts"])
     contsf = curve_axes[-1].contourf(x_mesh, y_mesh, norm_activity,
       levels=levels, vmin=vmin, vmax=vmax, alpha=1.0, antialiased=True, cmap=cmap)
+    contour_handles.append(contsf)
     # plot target neuron arrow & label
     proj_target = analyzer.comp_contour_dataset["proj_target_neuron"][analyzer_neuron_index][analyzer_orth_index]
     target_vector_x = proj_target[0].item()
@@ -108,7 +110,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
   cbar.ax.tick_params(labelleft=False, labelright=True, left=False, right=True, labelsize=fontsize)
   cbar.ax.set_yticklabels(["{:.0f}".format(vmin), "{:.0f}".format(vmax)])
   plt.show()
-  return fig, contsf
+  return fig, contour_handles
 
 def plot_bf_curvature(analyzer, target_neuron_index=0, line_alpha=0.5, figsize=None, dpi=100, fontsize=12):
   fig = plt.figure(figsize=figsize, dpi=dpi)
