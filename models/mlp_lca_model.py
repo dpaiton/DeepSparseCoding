@@ -8,7 +8,6 @@ from modules.lca_module import LcaModule
 from modules.lca_conv_module import LcaConvModule
 from modules.activations import activation_picker
 
-
 class MlpLcaModel(MlpModel):
   def load_params(self, params):
     """
@@ -99,6 +98,10 @@ class MlpLcaModel(MlpModel):
 
   def get_encodings(self):
     return self.lca_module.a
+
+  def get_num_latent(self):
+    # returns the size of the LCA outputs
+    return self.params.num_neurons
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
