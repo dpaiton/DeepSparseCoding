@@ -24,7 +24,7 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
       bf = analyzer.neuron_vis_output["optimal_stims"][target_id][-1]
       optimal_stims_dict["basis_functions"].append(bf.reshape((optimal_stims_dict["patch_edge_size"],)*2))
     neuron_angles, plot_matrix = analyzer.get_neuron_angles(optimal_stims_dict)
-  num_above_min = np.count_nonzero(plot_matrix<min_angle)
+  num_above_min = np.count_nonzero(plot_matrix<min_angle) # many angles are -1 or 0
   sorted_angle_indices = np.stack(np.unravel_index(np.argsort(plot_matrix.ravel()),
     plot_matrix.shape), axis=1)[num_above_min:, :]
   target_neuron_ids = []
@@ -57,7 +57,8 @@ def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stat
           extra_indices.append(index)
     if len(extra_indices) > 0:
       try:
-        sub_comparison_neuron_ids = np.concatenate((low_angle_neuron_ids, np.array(extra_indices)))
+        sub_comparison_neuron_ids = np.concatenate((np.atleast_1d(low_angle_neuron_ids),
+          np.array(extra_indices)))
       except:
         print(
           "ERROR:iso_response_analysis: concatenation failed - likely one of the arrays is size 0")
@@ -278,83 +279,90 @@ class ae_deep_mnist_params(object):
     self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
 
-print("Loading models...")
-min_angle = 10
-max_angle = 60
-use_bf_stats = True # If false, then use optimal stimulus
-batch_size = 100
+if __name__ == "__main__":
+  print("Loading models...")
+  min_angle = 10
+  max_angle = 60
+  use_bf_stats = True # If false, then use optimal stimulus
+  batch_size = 100
 
-#num_neurons = 2 # How many neurons to plot
-#num_comparison_vects = 512 # How many planes to construct (None is all of them)
-#x_range = [-2, 2]
-#y_range = [-2, 2]
-#num_images = int(50**2)
+  #num_neurons = 2 # How many neurons to plot
+  #num_comparison_vects = 512 # How many planes to construct (None is all of them)
+  #x_range = [-2, 2]
+  #y_range = [-2, 2]
+  #num_images = int(50**2)
 
-num_neurons = 100 # How many neurons to plot
-num_comparison_vects = 300 # How many planes to construct (None is all of them)
-#TODO: Check that this isn't generating the same amount of data regardless of range?
-x_range = [0.0, 2.0]#[-2.0, 2.0]
-y_range = [-2.0, 2.0]
-num_images = int(10**2)
+  num_neurons = 100 # How many neurons to plot
+  num_comparison_vects = 20 # How many planes to construct (None is all of them)
+  x_range = [1.0, 3.0]
+  y_range = [-2.0, 2.0]
+  num_images = int(30**2)
 
-#params_list = [lca_768_mnist_params(), lca_1536_mnist_params()]
-params_list = [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params(), lca_2560_vh_params()]
-#params_list = [lca_2560_vh_params()]
-#params_list = [rica_768_vh_params(), ae_768_vh_params(), sae_768_vh_params()]
-#params_list = [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params()]
+  #num_neurons = 3
+  #num_comparison_vects = 3
+  #x_range = [1.0, 4.0]
+  #y_range = [-8.0, 8.0]
+  #num_images = int(200**2)
 
-iso_save_name = "iso_curvature_"
+  #params_list = [lca_768_mnist_params(), lca_1536_mnist_params()]
+  params_list = [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params(), lca_2560_vh_params()]
+  #params_list = [lca_2560_vh_params()]
+  #params_list = [rica_768_vh_params(), ae_768_vh_params(), sae_768_vh_params()]
+  #params_list = [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params()]
 
-for params in params_list:
-  params.model_dir = (os.path.expanduser("~")+"/Work/Projects/"+params.model_name)
-analyzer_list = [ap.get_analyzer(params.model_type) for params in params_list]
-for analyzer, params in zip(analyzer_list, params_list):
-  analyzer.setup(params)
-  analyzer.model.setup(analyzer.model_params)
-  analyzer.load_analysis(save_info=params.save_info)
-  analyzer.model_name = params.model_name
+  iso_save_name = "iso_curvature_xrange1.3_yrange-2.2_"
+  #iso_save_name = "iso_curvature_ryan_"
 
-for analyzer, params in zip(analyzer_list, params_list):
-  print(analyzer.analysis_params.display_name)
-  print("Computing the iso-response vectors...")
-  outputs = compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stats)
-  analyzer.target_neuron_ids = outputs[0]
-  analyzer.comparison_neuron_ids = outputs[1]
-  analyzer.target_vectors = outputs[2]
-  analyzer.rand_orth_vectors = outputs[3]
-  analyzer.comparison_vectors = outputs[4]
-  assert len(analyzer.comparison_neuron_ids) == num_neurons, (
-    "Incorrect number of comparison vectors")
-  for comparison_ids_list in analyzer.comparison_neuron_ids:
-    assert len(comparison_ids_list) >= num_comparison_vects, (
-      "Not enough comparison vectors.")
-  outputs = dict(zip(["target_neuron_ids", "comparison_neuron_ids", "target_vectors",
-    "rand_orth_vectors", "comparison_vectors"], outputs))
-  np.savez(analyzer.analysis_out_dir+"savefiles/iso_vectors_"+iso_save_name+params.save_info+".npz",
-    data=outputs)
-  for use_random_orth_vects, rand_str in zip([True, False], ["rand", "comparison"]):
-    print("Generating "+rand_str+" dataset...")
-    contour_dataset, datapoints = get_contour_dataset(analyzer, num_comparison_vects,
-      use_random_orth_vects, x_range, y_range, num_images)
-    print("Computing network activations for "+rand_str+" dataset...")
-    activations = get_normalized_activations(analyzer, datapoints, batch_size)
-    if use_random_orth_vects:
-      np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_activations_"+iso_save_name+params.save_info+".npz",
-        data=activations)
-      np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_contour_dataset_"+iso_save_name+params.save_info+".npz",
-        data=contour_dataset)
-    else:
-      np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_activations_"+iso_save_name+params.save_info+".npz",
-        data=activations)
-      np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_contour_dataset_"+iso_save_name+params.save_info+".npz",
-        data=contour_dataset)
-  params.min_angle = min_angle
-  params.max_angle = max_angle
-  params.num_neurons = num_neurons
-  params.use_bf_stats = use_bf_stats
-  params.num_comparison_vects = num_comparison_vects
-  params.x_range = x_range
-  params.y_range = y_range
-  params.num_images = num_images
-  np.savez(analyzer.analysis_out_dir+"savefiles/iso_params_"+iso_save_name+params.save_info+".npz",
-    data=params.__dict__)
+  for params in params_list:
+    params.model_dir = (os.path.expanduser("~")+"/Work/Projects/"+params.model_name)
+  analyzer_list = [ap.get_analyzer(params.model_type) for params in params_list]
+  for analyzer, params in zip(analyzer_list, params_list):
+    analyzer.setup(params)
+    analyzer.model.setup(analyzer.model_params)
+    analyzer.load_analysis(save_info=params.save_info)
+    analyzer.model_name = params.model_name
+
+  for analyzer, params in zip(analyzer_list, params_list):
+    print(analyzer.analysis_params.display_name)
+    print("Computing the iso-response vectors...")
+    outputs = compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stats)
+    analyzer.target_neuron_ids = outputs[0]
+    analyzer.comparison_neuron_ids = outputs[1]
+    analyzer.target_vectors = outputs[2]
+    analyzer.rand_orth_vectors = outputs[3]
+    analyzer.comparison_vectors = outputs[4]
+    assert len(analyzer.comparison_neuron_ids) == num_neurons, (
+      "Incorrect number of comparison vectors")
+    for comparison_ids_list in analyzer.comparison_neuron_ids:
+      assert len(comparison_ids_list) >= num_comparison_vects, (
+        "Not enough comparison vectors.")
+    outputs = dict(zip(["target_neuron_ids", "comparison_neuron_ids", "target_vectors",
+      "rand_orth_vectors", "comparison_vectors"], outputs))
+    np.savez(analyzer.analysis_out_dir+"savefiles/iso_vectors_"+iso_save_name+params.save_info+".npz",
+      data=outputs)
+    for use_random_orth_vects, rand_str in zip([True, False], ["rand", "comparison"]):
+      print("Generating "+rand_str+" dataset...")
+      contour_dataset, datapoints = get_contour_dataset(analyzer, num_comparison_vects,
+        use_random_orth_vects, x_range, y_range, num_images)
+      print("Computing network activations for "+rand_str+" dataset...")
+      activations = get_normalized_activations(analyzer, datapoints, batch_size)
+      if use_random_orth_vects:
+        np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_activations_"+iso_save_name+params.save_info+".npz",
+          data=activations)
+        np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_contour_dataset_"+iso_save_name+params.save_info+".npz",
+          data=contour_dataset)
+      else:
+        np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_activations_"+iso_save_name+params.save_info+".npz",
+          data=activations)
+        np.savez(analyzer.analysis_out_dir+"savefiles/iso_comp_contour_dataset_"+iso_save_name+params.save_info+".npz",
+          data=contour_dataset)
+    params.min_angle = min_angle
+    params.max_angle = max_angle
+    params.num_neurons = num_neurons
+    params.use_bf_stats = use_bf_stats
+    params.num_comparison_vects = num_comparison_vects
+    params.x_range = x_range
+    params.y_range = y_range
+    params.num_images = num_images
+    np.savez(analyzer.analysis_out_dir+"savefiles/iso_params_"+iso_save_name+params.save_info+".npz",
+      data=params.__dict__)
