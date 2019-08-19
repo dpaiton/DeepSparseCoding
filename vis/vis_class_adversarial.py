@@ -17,22 +17,17 @@ import pandas as pd
 
 #List of models for analysis
 analysis_list = [
-    ##MLP on latent
-    #("mlp_lca", "mlp_lca_768_latent_mnist"),
-    #("mlp_lca", "mlp_lca_1568_latent_mnist"),
-    #("mlp_lista", "mlp_lista_5_mnist"),
-    #("mlp_lista", "mlp_lista_20_mnist"),
-    #("mlp_lista", "mlp_lista_50_mnist"),
-    #    #MLP on pixels
-    #("mlp_lca", "mlp_lca_768_recon_mnist"),
-    ##("mlp_lca", "mlp_lca_1568_recon_mnist"),
-    #("mlp_sae", "mlp_sae_768_recon_mnist"),
-    #("mlp", "mlp_adv_mnist"),
-    #("mlp", "mlp_mnist"),
-    ("mlp", "mlp_cifar10"),
-    ("mlp_lca", "mlp_lca_conv_recon_cifar10"),
-    ("mlp_lca", "mlp_lca_conv_latent_cifar10"),
+    ("mlp_lca", "mlp_lca_latent_cifar10_gray_2layer"),
+    ("mlp_lca", "mlp_lca_latent_cifar10_gray_3layer"),
+    ("mlp", "mlp_cifar10_gray_2layer"),
+    ("mlp", "mlp_cifar10_gray_3layer"),
     ]
+
+
+#bar_groups = None
+bar_groups = [[0, 1], [2, 3]]
+inner_group_names = ["w/ LCA", "w/o LCA"]
+outer_group_names = ["2 layers", "3 layers"]
 
 #colors for analysis_list
 #colors = [
@@ -45,9 +40,9 @@ analysis_list = [
 #  ]
 colors = [
   [1.0, 0.0, 0.0], #"r"
+  [0.0, 0.0, 1.0], #"b"
   [1.0, 0.5, 0.5], #"dark r"
   [0.0, 0.0, 0.5], #"light b"
-  [0.0, 0.0, 1.0], #"b"
   [0.5, 0.5, 1.0], #"dark b"
 
   [0.0, 1.0, 0.0], #"g"
@@ -61,21 +56,23 @@ colors = [
 title_font_size = 16
 axes_font_size = 16
 
-save_info = "analysis_test_carlini_targeted"
+#save_info = "analysis_test_carlini_targeted"
 #TODO pick best recon mult for here
 #recon_mult_idx = 0
 
 #save_info = "analysis_test_kurakin_untargeted"
-#save_info = "analysis_test_kurakin_targeted"
+save_info = "analysis_test_kurakin_targeted"
 recon_mult_idx = 0
 
-construct_conf_control = False
-use_conf_idx = False
+construct_conf_control = True
+use_conf_idx = True
 
-construct_heatmap = True
-construct_adv_examples = True
+construct_heatmap = False
+construct_adv_examples = False
 construct_class_mult_tradeoff = False
-construct_over_time = False
+construct_over_time = True
+
+plot_num_over_time = 4
 
 
 conf_thresh = .9
@@ -150,9 +147,6 @@ if(construct_conf_control):
 
     conf_saved_info.append([target_adv_mses, num_failed, target_conf_idx])
 
-  #Plot bar of ave mse per model
-  fig, ax = plt.subplots()
-
   x_label_ticks = []
   vals = []
   errs = []
@@ -164,15 +158,35 @@ if(construct_conf_control):
     color.append(colors[model_idx])
     x_label_ticks.append(model_name+":"+str(num_failed))
 
-  ax.bar(np.arange(len(analysis_list)), vals, yerr=errs,
-    align='center', tick_label=x_label_ticks, color=color)
+  #Set position of bar on X axis
+  barWidth = .4
+  num_groups = len(bar_groups)
+  num_per_group = len(bar_groups[0])
 
-  plt.xticks(rotation='vertical')
+  bar_groups = np.array(bar_groups)
 
-  ax.set_xlabel("Model")
+  #Plot bar of ave mse per model
+  fig, ax = plt.subplots()
+  for i_g in range(num_per_group):
+    group_vals = [vals[i] for i in bar_groups[:, i_g]]
+    group_err = [errs[i] for i in bar_groups[:, i_g]]
+    x_pos = np.arange(num_groups) + i_g*barWidth
+    ax.bar(x_pos, group_vals, width=barWidth, yerr=group_err, label=inner_group_names[i_g], color=colors[i_g])
+
+  plt.xlabel('Layers')
+  plt.xticks([r + (barWidth)/2 for r in range(num_groups)], outer_group_names)
+  plt.legend()
+
+
+  #ax.bar(np.arange(len(analysis_list)), vals, yerr=errs,
+  #  align='center', tick_label=x_label_ticks, color=color)
+
+  #plt.xticks(rotation='vertical')
+
+  #ax.set_xlabel("Model")
   ax.set_ylabel("Input Adv MSE")
   ax.set_title("Average MSE at confidence level "+str(conf_thresh))
-  plt.tight_layout()
+  #plt.tight_layout()
 
   fig.savefig(outdir + "/conf_control_mse_" + analysis_params.save_info+".png")
   plt.close("all")
@@ -365,27 +379,33 @@ if construct_over_time:
 
     target_classes = np.argmax(analyzer.adversarial_target_labels, axis=-1)
     steps = analyzer.steps_idx
+    adv_mses = analyzer.adversarial_input_adv_mses[0, :, :]
 
-    for (step, stim, output) in zip(steps, analyzer.adversarial_images[0], analyzer.adversarial_outputs[0]):
+    for (step, stim, output, mse_vals) in zip(steps, analyzer.adversarial_images[0], analyzer.adversarial_outputs[0], adv_mses):
       #adv_imgs = stim.reshape(
       #  int(num_data),
       #  int(np.sqrt(analyzer.model.params.num_pixels)),
       #  int(np.sqrt(analyzer.model.params.num_pixels)))
       adv_imgs = stim
-      for idx in range(num_data):
+      if(adv_imgs.shape[-1] == 1):
+        adv_imgs = adv_imgs[:, :, :, 0]
+
+      adv_mses = analyzer.adversarial_input_adv_mses[0, :, :]
+
+      for idx in range(plot_num_over_time):
         f, axarr = plt.subplots(2, 1)
         axarr[0].imshow(adv_imgs[idx], cmap='gray')
         axarr[0] = pf.clear_axis(axarr[0])
         axarr[1].bar(list(range(analyzer.model.params.num_classes)), output[idx])
         axarr[1].set_ylim([0, 1])
-        mse_val = np.mean((adv_imgs[idx] - orig_imgs[idx]) ** 2)
+
         output_class = np.argmax(output[idx])
         target_class = target_classes[idx]
 
         if("_targeted" in save_info):
-          axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_val))
+          axarr[0].set_title("output_class:"+str(output_class) + "  target_class:"+str(target_class)+"  mse:" + str(mse_vals[idx]))
         else:
-          axarr[0].set_title("output_class:"+str(output_class) + "  mse:" + str(mse_val))
+          axarr[0].set_title("output_class:"+str(output_class) + "  mse:" + str(mse_vals[idx]))
         f.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.save_info+"_adversarial_stims/"
           +"stim_batch_"+str(idx)+"_step_"+str(step)+".png")
         plt.close('all')

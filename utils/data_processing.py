@@ -2,6 +2,8 @@ import numpy as np
 import scipy.signal
 import scipy.stats
 import scipy.ndimage
+import skimage.transform
+
 
 def reshape_data(data, flatten=None, out_shape=None):
   """
@@ -656,6 +658,34 @@ def downsample_data(data, scale_factor, order):
   """
   return scipy.ndimage.interpolation.zoom(data, scale_factor, order=order, mode="constant")
 
+def resize_images(data, size, preserve_range=True):
+  """
+  Resizes image data to the specified size
+  Inputs:
+    data: [np.ndarray] of shape:
+      (n, y, x, 3) - n color images
+      (n, y, x, 1) - n grayscale images
+      (n, y, x) - n grayscale images
+    size: [np.ndarray] of shape 2 corresponding to y and x size of output image
+  """
+  #TODO preserve range?
+  out_data = []
+  num_images = data.shape[0]
+  for i in range(num_images):
+    out_data.append(skimage.transform.resize(data[i], size, preserve_range=preserve_range, mode='reflect'))
+  return np.array(out_data)
+
+
+def rgb2gray(data):
+  """
+  Change rgb data to grayscale
+  Inputs:
+    data: [np.ndarray] with last dimension = 3 corresponding to rgb
+  """
+  assert(data.shape[-1] == 3)
+  return np.dot(data[...,:3], [0.2989, 0.5870, 0.1140])[..., np.newaxis]
+
+
 def rescale_data_to_one(data):
   """
   Rescale input data to be between 0 and 1, per example
@@ -967,7 +997,7 @@ def compute_power_spectrum(data):
 def phase_avg_pow_spec(data):
   """
   Compute phase average of power spectrum
-  Only works for greyscale imagery
+  Only works for grayscale imagery
   Inputs:
     data: [np.ndarray] of shape:
       (n, i, j) - n data points, each of shape (i,j)

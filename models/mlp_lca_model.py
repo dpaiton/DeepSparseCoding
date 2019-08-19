@@ -28,6 +28,7 @@ class MlpLcaModel(MlpModel):
         self.params.num_steps, self.params.lca_patch_size_y, self.params.lca_patch_size_x,
         self.params.lca_stride_y, self.params.lca_stride_x, self.params.eps)
     else:
+
       module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
         self.eta, self.params.thresh_type, self.params.rectify_a,
         self.params.num_steps, self.params.eps)
@@ -51,6 +52,16 @@ class MlpLcaModel(MlpModel):
 
         with tf.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
+
+        if(not self.params.lca_conv):
+          #Flatten input_node if not flat
+          data_shape = input_node.get_shape().as_list()
+          if len(data_shape) == 4:
+            self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
+            self.num_pixels = self.y_size * self.x_size * self.num_data_channels
+            input_node = tf.reshape(input_node, [-1, self.num_pixels])
+          else:
+            assert False, ("FC lca must have datashape of rank 2 or 4")
 
         self.lca_module = self.build_lca_module(input_node)
         self.trainable_variables.update(self.lca_module.trainable_variables)

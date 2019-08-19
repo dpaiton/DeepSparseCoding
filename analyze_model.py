@@ -13,6 +13,7 @@ class params(object):
     self.device = "/gpu:0"
     #Which dataset to run analysis on, options are "train", "val", or "test"
     self.analysis_dataset = "test"
+    #self.analysis_dataset = "train"
     #Output directory file
     self.save_info = "analysis_" + self.analysis_dataset
     # If false, append to log file
@@ -61,20 +62,21 @@ class params(object):
     #self.adversarial_num_steps = 500 # Step size for adversarial attacks
     #self.adversarial_attack_method = "kurakin_untargeted" # Only for class attack
 
-    #self.adversarial_attack_method = "kurakin_targeted"
+    self.adversarial_attack_method = "kurakin_targeted"
     #self.carlini_recon_mult = [.5]
 
-    self.adversarial_attack_method = "carlini_targeted"
-    self.carlini_recon_mult = [.5]
-    self.adversarial_num_steps = 1000
-    #self.carlini_recon_mult = list(np.arange(.1, 1, .1))
+    #self.adversarial_attack_method = "carlini_targeted"
+    #self.carlini_recon_mult = [.5]
+    self.adversarial_num_steps = 500
+    ##self.carlini_recon_mult = list(np.arange(.1, 1, .1))
 
     #To avoid overwriting
-    self.save_info += "_"+self.adversarial_attack_method
+    if(self.do_recon_adversaries or self.do_class_adversaries):
+      self.save_info += "_"+self.adversarial_attack_method
 
     self.adversarial_step_size = 0.001
-    #self.adversarial_max_change = None #0.03 #0.3 #For cifar10/mnist
-    self.adversarial_max_change = 0.03 #0.3 #For cifar10/mnist
+    self.adversarial_max_change = None #0.03 #0.3 #For cifar10/mnist
+    #self.adversarial_max_change = 0.03 #0.3 #For cifar10/mnist
     #TODO support specified
     self.adversarial_target_method = "random" #Not used if attach_method is untargeted
     self.adversarial_clip = True
@@ -83,7 +85,7 @@ class params(object):
 
     #Interval at which to save adversarial examples to the npy file
     #self.adversarial_save_int = 1
-    self.adversarial_save_int = 100
+    self.adversarial_save_int = 5
 
     self.eval_batch_size = 10
 
@@ -132,6 +134,7 @@ model_log_file = (analysis_params.model_dir+"/logfiles/"+analysis_params.model_n
 model_logger = Logger(model_log_file, overwrite=False)
 model_log_text = model_logger.load_file()
 model_params = model_logger.read_params(model_log_text)[-1]
+
 analysis_params.model_type = model_params.model_type
 
 # Initialize & setup analyzer

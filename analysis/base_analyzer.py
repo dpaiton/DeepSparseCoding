@@ -157,6 +157,7 @@ class Analyzer(object):
             eps=self.model_params.eps)
 
       input_node = self.model.normalize_input(self.class_adv_module.adv_image)
+      input_node = self.model.augment_input(input_node)
       self.model.build_graph_from_input(input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():

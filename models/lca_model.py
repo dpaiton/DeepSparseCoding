@@ -17,8 +17,11 @@ class LcaModel(Model):
      params: [obj] model parameters
     """
     super(LcaModel, self).load_params(params)
+
     # Network Size
-    self.input_shape = [None, self.params.num_pixels]
+    #self.input_shape = [None, self.params.num_pixels]
+    self.input_shape = [None,] + self.params.data_shape
+
     # Hyper Parameters
     self.eta = self.params.dt / self.params.tau
 
@@ -37,6 +40,17 @@ class LcaModel(Model):
       with self.graph.as_default():
         with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
+
+
+        #Flatten input_node if not flat
+        data_shape = input_node.get_shape().as_list()
+        if len(data_shape) == 4:
+          self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
+          self.num_pixels = self.y_size * self.x_size * self.num_data_channels
+          input_node = tf.reshape(input_node, [-1, self.num_pixels])
+
+        self.input_node = input_node
+
 
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
@@ -89,7 +103,7 @@ class LcaModel(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.loss_dict["recon_loss"],
       self.module.loss_dict["sparse_loss"], self.get_total_loss(), self.get_encodings(),
-      self.module.reconstruction, self.pSNRdB, self.module.w]
+      self.module.reconstruction, self.pSNRdB, self.module.w, self.input_node]
     grad_name_list = []
     learning_rate_dict = {}
     for w_idx, weight_grad_var in enumerate(self.grads_and_vars[self.sched_idx]):
@@ -98,10 +112,13 @@ class LcaModel(Model):
       grad_name_list.append(grad_name)
       learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    current_step, recon_loss, sparse_loss, total_loss, a_vals, recon, pSNRdB, weights = out_vals[0:8]
-    input_max = np.max(input_data)
-    input_mean = np.mean(input_data)
-    input_min = np.min(input_data)
+    current_step, recon_loss, sparse_loss, total_loss, a_vals, recon, pSNRdB, weights, input_node = out_vals[0:9]
+    #input_max = np.max(input_node)
+    #input_mean = np.mean(input_node)
+    #input_min = np.min(input_node)
+    input_max = np.max(input_node)
+    input_mean = np.mean(input_node)
+    input_min = np.min(input_node)
     recon_max = np.max(recon)
     recon_mean = np.mean(recon)
     recon_min = np.min(recon)
@@ -145,21 +162,21 @@ class LcaModel(Model):
     """
     super(LcaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encodings()]
+    eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encodings(), self.input_node]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
-    weights, recon, activity = eval_out[1:]
+    weights, recon, activity, input_node = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
-    fig = pf.plot_activity_hist(input_data, title="Image Histogram",
+    fig = pf.plot_activity_hist(input_node, title="Image Histogram",
       save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
     #Scale image by max and min of images and/or recon
-    r_max = np.max([np.max(input_data), np.max(recon)])
-    r_min = np.min([np.min(input_data), np.min(recon)])
-    input_data = dp.reshape_data(input_data, flatten=False)[0]
-    fig = pf.plot_data_tiled(input_data, normalize=False,
+    r_max = np.max([np.max(input_node), np.max(recon)])
+    r_min = np.min([np.min(input_node), np.min(recon)])
+    input_node = dp.reshape_data(input_node, flatten=False)[0]
+    fig = pf.plot_data_tiled(input_node, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_data_tiled(recon, normalize=False,

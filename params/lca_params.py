@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "lca"
-    self.model_name = "lca_1568"
+    self.model_name = "lca_3136"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -47,7 +47,7 @@ class params(BaseParams):
     self.cp_int = int(1e4)
     self.max_cp_to_keep = 1
     self.cp_load = False
-    self.cp_load_name = "pretrain"
+    self.cp_load_name = "lca_1568_cifar10_gray"
     self.cp_load_ver = "0.0"
     self.cp_load_step = None # latest checkpoint
     #self.cp_load_var = ["phi"]
@@ -84,7 +84,32 @@ class params(BaseParams):
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
-    elif data_type.lower() == "vanhateren":
+    if data_type.lower() == "cifar10_gray":
+      self.model_name += "_cifar10_gray"
+      self.vectorize_data = False
+      self.rescale_data = False
+      self.tf_standardize_data = True
+      self.tf_augment = True
+      self.tf_augment_crop_size = [28, 28]
+
+      self.whiten_data = False
+      self.extract_patches = False
+      self.rectify_a = True
+      self.num_neurons = 3136
+      self.thresh_type = "soft"
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e5)
+      self.dt = 0.001
+      self.tau = 0.03
+      self.num_steps = 75
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.35
+        self.schedule[sched_idx]["weight_lr"] = 1e-3
+        self.schedule[sched_idx]["num_batches"] = int(1e8)
+        self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.5
+#
+#    elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
       self.num_images = 150
       self.vectorize_data = True

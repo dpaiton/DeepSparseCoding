@@ -52,6 +52,9 @@ class MlpModel(Model):
       with self.graph.as_default():
         input_node = self.build_adv_module(input_node)
     input_node = self.normalize_input(input_node)
+    #TODO make this function optional
+    input_node = self.augment_input(input_node)
+
     self.build_graph_from_input(input_node)
     with tf.device(self.params.device):
       with self.graph.as_default():

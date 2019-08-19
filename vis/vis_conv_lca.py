@@ -29,8 +29,10 @@ data_dir = "/home/slundquist/Work/Datasets/"
 
 class Params(object):
   def __init__(self):
-    self.model_type = "lca_conv"
-    self.model_name = "lca_conv_cifar10"
+    #self.model_type = "lca_conv"
+    #self.model_name = "lca_conv_cifar10"
+    self.model_type = "lca"
+    self.model_name = "lca_1568_cifar10_gray"
     self.version = "0.0"
     self.save_info = "analysis_train"
     self.data_dir = data_dir
@@ -62,7 +64,6 @@ def plot_inference_stats(data, title="", save_filename=None):
   #Calculate nnz
   #act is in
   act = data["a"]
-  pdb.set_trace()
 
   labels = [key for key in data["losses"].keys()]
   losses = [val for val in data["losses"].values()]
@@ -103,10 +104,45 @@ def plot_inference_stats(data, title="", save_filename=None):
   return fig
 
 
-# In[ ]:
 out_dir = analyzer.analysis_out_dir+"/vis/"
+
+#Variable is [num_images, num_steps, y, x, neuron]
+u = analyzer.inference_stats['u']
+
+if(len(u.shape) == 5):
+  [num_images, num_steps, ny, nx, nn] = u.shape
+  u = u[:, :, int(ny/2), int(nx/2), :]
+else:
+  [num_images, num_steps, nn] = u.shape
+
+num_plot_side_y = int(np.round(np.sqrt(nn)))
+num_plot_side_x = int(np.ceil(nn/num_plot_side_y))
+
+fig, axarr = plt.subplots(num_plot_side_y, num_plot_side_x, figsize=(100, 100), sharex=True, sharey=True)
+
+for i_n in range(nn):
+  i_xn = i_n % num_plot_side_y
+  i_yn = int(i_n / num_plot_side_y)
+  data = u[0, :, i_n]
+  axarr[i_xn, i_yn].plot(data, linewidth=1)
+
+plt.savefig(out_dir + "u_over_time.pdf")
+plt.close("all")
+
+
+
+
+
+# In[ ]:
 fig = plot_inference_stats(analyzer.inference_stats, title="Loss During Inference",
     save_filename = out_dir + "loss_during_inference.png")
+
+act_indicator_threshold = 0.80
+inf_trace_fig = pf.plot_inference_traces(analyzer.inference_stats, analyzer.model_schedule[0]["sparse_mult"], act_indicator_threshold=act_indicator_threshold)
+
+inf_trace_fig.savefig(analyzer.analysis_out_dir+"/vis/"+analysis_params.model_name+"_inference_traces_dot_thresh-"+str(act_indicator_threshold)+"_"+analysis_params.save_info+".pdf", transparent=True, bbox_inches="tight", pad=0.1)
+
+
 
 
 ## In[ ]:

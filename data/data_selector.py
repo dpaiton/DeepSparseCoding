@@ -1,6 +1,7 @@
 from data.vanHateren import load_vanHateren
 from data.mnist import load_MNIST
 from data.cifar import load_CIFAR
+from data.cifar_gray import load_CIFAR_GRAY
 from data.synthetic import load_synthetic
 from data.field import load_field
 from data.tinyImages import load_tinyImages
@@ -41,6 +42,12 @@ def get_data(params):
       params.data_dir += "/CIFAR/"
     params.num_classes = int(params.data_type[5:len(params.data_type)])
     dataset = load_CIFAR(params)
+  elif params.data_type.lower() == "cifar10_gray":
+    if "CIFAR" not in params.data_dir:
+      params.data_dir += "/CIFAR/"
+    #
+    params.num_classes = 10
+    dataset = load_CIFAR_GRAY(params)
   elif params.data_type.lower() == "synthetic":
     assert "epoch_size" in params.__dict__.keys(), ("Params must include 'epoch_size'")
     dataset = load_synthetic(params)
@@ -57,5 +64,5 @@ def get_data(params):
   return dataset
 
 def get_dataset_list():
-  data_list = ["vanHateren", "field", "MNIST", "CIFAR10", "tinyImages", "synthetic"]
+  data_list = ["vanHateren", "field", "MNIST", "CIFAR10", "CIFAR10_gray",  "tinyImages", "synthetic"]
   return data_list

@@ -1,7 +1,7 @@
 import os
 from params.base_params import BaseParams
 
-TRAIN_ADV = True
+TRAIN_ADV = False
 
 class params(BaseParams):
   def __init__(self):
@@ -45,9 +45,9 @@ class params(BaseParams):
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["w1"] #None means load everything
     self.log_to_file = True
-    self.gen_plot_int = 1e3
+    self.gen_plot_int = 1e4
     self.save_plots = True
-    self.mlp_decay_mult = 5e-5
+    self.mlp_decay_mult = 1e-5
     self.mlp_norm_mult = 0
     #Adversarial params
     self.adversarial_num_steps = 40
@@ -110,7 +110,8 @@ class params(BaseParams):
         self.schedule[0]["num_batches"] = int(1e4)
 
     elif data_type.lower() == "cifar10":
-      self.model_name += "_cifar10"
+      self.model_name += "_cifar10_4stride_4layer"
+
       self.vectorize_data = False
       self.rescale_data = False
       self.standardize_data = False
@@ -123,20 +124,35 @@ class params(BaseParams):
       self.gen_plot_int = 1e3
       self.num_classes = 10
       self.optimizer = "adam"
-      self.layer_types = ["conv", "conv", "fc", "fc", "fc"]
-      self.mlp_activation_functions = ["relu", "relu", "relu", "relu", "identity"]
-      #TF model does lrn after pool in conv1, lrn before pool in conv2
-      #TODO test if this matters
-      #String can be post or pre, depending on applying LRN before or after pooling
+
+      #self.layer_types = ["conv", "conv", "fc"]
+      #self.mlp_activation_functions = ["relu", "relu", "identity"]
+      ##TF model does lrn after pool in conv1, lrn before pool in conv2
+      ##TODO test if this matters
+      ##String can be post or pre, depending on applying LRN before or after pooling
+      #self.lrn = [None, None, None, None]
+      #self.output_channels = [256, 128, self.num_classes]
+      #self.patch_size = [(12, 12), (5, 5)]
+      #self.conv_strides = [(1,2,2,1), (1,1,1,1)]
+      #self.batch_norm = [None, None, None]
+      #self.dropout = [0.5, 0.5, 1.0] # TODO: Set dropout defaults somewhere
+      #self.max_pool = [False, True, False]
+      #self.max_pool_ksize = [None, (1,5,5,1), None]
+      #self.max_pool_strides = [None, (1,4,4,1), None]
+
+      self.layer_types = ["conv", "conv", "conv", "fc"]
+      self.mlp_activation_functions = ["relu", "relu", "relu", "identity"]
       self.lrn = [None, None, None, None, None]
-      self.output_channels = [256, 64, 384, 192, self.num_classes]
-      self.patch_size = [(12, 12), (5, 5)]
-      self.conv_strides = [(1,2,2,1), (1,1,1,1)]
-      self.batch_norm = [None, None, None, None, None]
-      self.dropout = [0.5, 0.5, 0.5, 0.5, 1.0] # TODO: Set dropout defaults somewhere
-      self.max_pool = [False, True, False, False, False]
-      self.max_pool_ksize = [None, (1,3,3,1), None, None, None]
-      self.max_pool_strides = [None, (1,2,2,1), None, None, None]
+      self.output_channels = [256, 128, 128, self.num_classes]
+      self.patch_size = [(12, 12), (5, 5), (5, 5)]
+      self.conv_strides = [(1,2,2,1), (1,1,1,1), (1,1,1,1)]
+      self.batch_norm = [None, None, None, None]
+      self.dropout = [0.5, 0.5, 0.5, 1.0] # TODO: Set dropout defaults somewhere
+      self.max_pool = [False, False, True, False]
+      self.max_pool_ksize = [None, None, (1,5,5,1), None]
+      self.max_pool_strides = [None, None, (1,4,4,1), None]
+
+
       self.batch_size = 128
 
       self.adversarial_num_steps = 10
@@ -152,6 +168,48 @@ class params(BaseParams):
       if(TRAIN_ADV):
         self.schedule[0]["num_batches"] = int(5e3)
         self.schedule[1]["num_batches"] = int(3e5)
+
+    elif data_type.lower() == "cifar10_gray":
+      self.model_name += "_cifar10_gray_3136_2layer"
+
+      self.vectorize_data = False
+      self.rescale_data = False
+      self.standardize_data = False
+
+      self.tf_standardize_data = True
+      self.tf_augment = True
+      self.tf_augment_crop_size = [28, 28]
+
+      self.center_data = False
+      self.whiten_data = False
+      self.extract_patches = False
+      self.log_int = 100
+      self.cp_int = 500
+      self.gen_plot_int = 1e4
+      self.num_classes = 10
+      self.optimizer = "adam"
+
+      self.layer_types = ["fc", "fc"]
+      self.mlp_activation_functions = ["lrelu", "identity"]
+      self.lrn = [None, None]
+      #self.output_channels = [1536, 1024, self.num_classes]
+      self.output_channels = [3136, self.num_classes]
+      self.patch_size = []
+      self.conv_strides = []
+      self.batch_norm = [None, None]
+      self.dropout = [0.8, 1.0] # TODO: Set dropout defaults somewhere
+      self.max_pool = [False, False]
+      self.max_pool_ksize = [None, None]
+      self.max_pool_strides = [None, None]
+
+      self.batch_size = 128
+
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(3e6)
+        self.schedule[sched_idx]["weight_lr"] = 5e-4
+        #Decay steps is in terms of epochs, (num_epochs_per_batch * 350 per decay)
+        self.schedule[sched_idx]["decay_steps"] = 80000
+        self.schedule[sched_idx]["decay_rate"] = 0.9
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

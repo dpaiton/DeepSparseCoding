@@ -354,6 +354,7 @@ class Model(object):
         self.get_schedule(placeholder.split("/")[1]))
     if dict_args is not None:
       feed_dict.update(dict_args)
+    feed_dict[self.is_test] = is_test
     return feed_dict
 
   #subclass must overwrite this class, or overwrite build_graph
@@ -374,11 +375,51 @@ class Model(object):
       with self.graph.as_default():
         #Normalize here if using tf_standardize_data
         if(self.params.tf_standardize_data):
-          out_img = tf.map_fn(lambda img: tf.image.per_image_standardization(img),
-            input_node)
+          input_node_shape = input_node.shape.as_list()
+          axes = [i for i in range(1, len(input_node_shape))]
+          mean, var = tf.nn.moments(input_node, axes, keep_dims=True)
+          out_img = (input_node - mean)/tf.sqrt(var)
+
+          #out_img = tf.map_fn(lambda img: self.per_example_standardization(img),
+          #  input_node)
         else:
           out_img = input_node
     return out_img
+
+  def augment_input(self, input_node):
+    #Make boolean variable for train/test mode
+    with tf.device(self.params.device):
+      with self.graph.as_default():
+        with tf.variable_scope("is_test") as scope:
+          self.is_test = tf.placeholder(tf.bool, shape=(), name="is_test")
+        with tf.variable_scope("augmentation"):
+          if(self.params.tf_augment):
+            #Here, the first shape corresponds to the static shape, and second shape
+            #corresponds to the runtime shape
+            input_shape = input_node.get_shape()
+            unspec_shape = tf.shape(input_node)
+
+            #Note this is assuming that input is an image
+            assert(len(input_shape) == 4)
+
+            train_input_node = tf.image.random_flip_left_right(input_node)
+            train_input_node = tf.image.random_crop(train_input_node,
+              [unspec_shape[0], self.params.tf_augment_crop_size[0],
+              self.params.tf_augment_crop_size[1], input_shape[3]])
+
+            #Offsets for center crop
+            crop_offset = [(input_shape.as_list()[1] - self.params.tf_augment_crop_size[0])//2,
+              (input_shape.as_list()[2] - self.params.tf_augment_crop_size[1])//2]
+
+            test_input_node = tf.image.crop_to_bounding_box(input_node,
+              crop_offset[0], crop_offset[1], self.params.tf_augment_crop_size[0],
+              self.params.tf_augment_crop_size[1])
+
+            return tf.cond(self.is_test, true_fn=lambda: test_input_node,
+              false_fn=lambda:train_input_node)
+
+          else:
+            return input_node
 
   def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
@@ -392,6 +433,7 @@ class Model(object):
   def build_graph(self):
     input_node = self.build_input_placeholder()
     input_node = self.normalize_input(input_node)
+    input_node = self.augment_input(input_node)
     self.build_graph_from_input(input_node)
 
   def build_graph_from_input(self, input_node):
