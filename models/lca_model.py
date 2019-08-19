@@ -5,6 +5,7 @@ import utils.data_processing as dp
 import utils.entropy_functions as ef
 from models.base_model import Model
 from modules.lca_module import LcaModule
+import pdb
 
 class LcaModel(Model):
   def __init__(self):
@@ -45,9 +46,12 @@ class LcaModel(Model):
         #Flatten input_node if not flat
         data_shape = input_node.get_shape().as_list()
         if len(data_shape) == 4:
+          self.is_image = True
           self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
           self.num_pixels = self.y_size * self.x_size * self.num_data_channels
           input_node = tf.reshape(input_node, [-1, self.num_pixels])
+        else:
+          self.is_image = False
 
         self.input_node = input_node
 
@@ -168,14 +172,24 @@ class LcaModel(Model):
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, activity, input_node = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
-    recon = dp.reshape_data(recon, flatten=False)[0]
-    weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
-    fig = pf.plot_activity_hist(input_node, title="Image Histogram",
-      save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
+    if(self.is_image):
+      num_batch = recon.shape[0]
+      recon = dp.reshape_data(recon, out_shape=[num_batch, self.y_size, self.x_size, self.num_data_channels])[0]
+      num_weights = weights.shape[-1]
+      weights = dp.reshape_data(weights.T, out_shape=[num_weights, self.y_size, self.x_size, self.num_data_channels])[0] # [num_neurons, height, width]
+      input_node = dp.reshape_data(input_node, out_shape=[num_batch, self.y_size, self.x_size, self.num_data_channels])[0]
+    else:
+      recon = dp.reshape_data(recon, flatten=False)[0]
+      weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
+      input_node = dp.reshape_data(input_node, flatten=False)[0]
+
+    #fig = pf.plot_activity_hist(input_node, title="Image Histogram",
+    #  save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
+
     #Scale image by max and min of images and/or recon
     r_max = np.max([np.max(input_node), np.max(recon)])
     r_min = np.min([np.min(input_node), np.min(recon)])
-    input_node = dp.reshape_data(input_node, flatten=False)[0]
+
     fig = pf.plot_data_tiled(input_node, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=self.params.disp_dir+"images"+filename_suffix)
@@ -187,11 +201,24 @@ class LcaModel(Model):
     fig = pf.plot_data_tiled(weights, normalize=False,
       title="Dictionary at step "+current_step, vmin=None, vmax=None,
       save_filename=self.params.disp_dir+"phi"+filename_suffix)
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      grad = weight_grad_var[0][0].eval(feed_dict)
-      shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      grad = dp.reshape_data(grad.T, flatten=False)[0]
-      fig = pf.plot_data_tiled(grad, normalize=True,
-        title="Gradient for w at step "+current_step, vmin=None, vmax=None,
-        save_filename=self.params.disp_dir+"dphi"+filename_suffix)
+
+    #Plot loss over time
+    eval_list = [self.module.recon_loss_list, self.module.sparse_loss_list, self.module.total_loss_list]
+    (recon_losses, sparse_losses, total_losses) = tf.get_default_session().run(eval_list, feed_dict)
+    #TODO put this in plot functions
+    pf.plot_sc_losses(recon_losses, sparse_losses, total_losses,
+      save_filename=self.params.disp_dir+"losses"+filename_suffix)
+
+
+
+
+
+
+    #for weight_grad_var in self.grads_and_vars[self.sched_idx]:
+    #  grad = weight_grad_var[0][0].eval(feed_dict)
+    #  shape = grad.shape
+    #  name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
+    #  grad = dp.reshape_data(grad.T, flatten=False)[0]
+    #  fig = pf.plot_data_tiled(grad, normalize=True,
+    #    title="Gradient for w at step "+current_step, vmin=None, vmax=None,
+    #    save_filename=self.params.disp_dir+"dphi"+filename_suffix)

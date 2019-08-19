@@ -16,7 +16,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "lca"
-    self.model_name = "lca_3136"
+    self.model_name = "lca"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
@@ -35,7 +35,7 @@ class params(BaseParams):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
-    self.batch_size = 100
+    self.batch_size = 8
     self.num_neurons = 768
     self.num_steps = 50
     self.dt = 0.001
@@ -84,18 +84,57 @@ class params(BaseParams):
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
-    if data_type.lower() == "cifar10_gray":
-      self.model_name += "_cifar10_gray"
+    if data_type.lower() == "cifar10":
+      self.model_name += "_cifar10"
       self.vectorize_data = False
       self.rescale_data = False
       self.tf_standardize_data = True
       self.tf_augment = True
       self.tf_augment_crop_size = [28, 28]
 
+      self.tf_extract_patches = True
+      self.tf_extract_patch_size = [12, 12]
+      self.tf_extract_patch_stride = [2, 2]
+
       self.whiten_data = False
       self.extract_patches = False
       self.rectify_a = True
-      self.num_neurons = 3136
+      self.num_neurons = 1024
+      self.thresh_type = "soft"
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e5)
+      self.dt = 0.001
+      self.tau = 0.03
+      self.num_steps = 100
+
+      sparse_mult = 0.5
+
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = sparse_mult
+        self.schedule[sched_idx]["weight_lr"] = 1e-3
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.5
+
+      if(self.tf_extract_patches):
+        self.model_name += "_patches"
+      self.model_name += "_" + str(sparse_mult)
+
+    elif data_type.lower() == "cifar10_gray":
+      self.model_name += "3136_cifar10_gray"
+      self.vectorize_data = False
+      self.rescale_data = False
+      self.tf_standardize_data = True
+      self.tf_augment = True
+      self.tf_augment_crop_size = [28, 28]
+      self.tf_extract_patches = True
+      self.tf_extract_patch_size = [12, 12]
+      self.tf_extract_patch_stride = [2, 2]
+
+      self.whiten_data = False
+      self.extract_patches = False
+      self.rectify_a = True
+      self.num_neurons = 512
       self.thresh_type = "soft"
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
@@ -108,8 +147,8 @@ class params(BaseParams):
         self.schedule[sched_idx]["num_batches"] = int(1e8)
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
-#
-#    elif data_type.lower() == "vanhateren":
+
+    elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
       self.num_images = 150
       self.vectorize_data = True

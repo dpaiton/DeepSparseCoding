@@ -122,9 +122,26 @@ class LcaModule(object):
         self.a = tf.identity(a_list[-1], name="activity")
 
       with tf.variable_scope("output") as scope:
-        self.reconstruction = self.build_decoder(self.a, name="reconstruction")
+        self.reconstruction_list = []
+        for a in a_list:
+          self.reconstruction_list.append(self.build_decoder(a))
+        self.reconstruction = self.reconstruction_list[-1]
 
       with tf.variable_scope("loss") as scope:
-        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
-          "sparse_loss":self.compute_sparse_loss(self.a)}
-        self.total_loss = tf.add_n([val for val in self.loss_dict.values()], name="total_loss")
+        self.recon_loss_list = []
+        self.sparse_loss_list = []
+        self.total_loss_list = []
+        for recon, a in zip(self.reconstruction_list, a_list):
+          recon_loss = self.compute_recon_loss(recon)
+          sparse_loss = self.compute_sparse_loss(a)
+          total_loss = recon_loss + sparse_loss
+          self.recon_loss_list.append(recon_loss)
+          self.sparse_loss_list.append(sparse_loss)
+          self.total_loss_list.append(total_loss)
+
+        self.loss_dict = {"recon_loss":self.recon_loss_list[-1],
+          "sparse_loss":self.sparse_loss_list[-1]}
+        self.total_loss = self.total_loss_list[-1]
+
+
+

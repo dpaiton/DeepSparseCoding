@@ -1284,3 +1284,22 @@ def clear_axis(ax, spines="none"):
   ax.get_yaxis().set_visible(False)
   ax.tick_params(axis="both", bottom=False, top=False, left=False, right=False)
   return ax
+
+def plot_sc_losses(recon_losses, sparse_losses, total_losses, save_filename=None):
+  fig, axs = plt.subplots(3, 1, sharex=True)
+  axs[0].plot(recon_losses)
+  axs[0].set_title("Recon loss")
+  axs[1].plot(sparse_losses)
+  axs[1].set_title("Sparse loss")
+  axs[2].plot(total_losses)
+  axs[2].set_title("Total loss")
+  fig.tight_layout()
+  if(save_filename is not None):
+    fig.savefig(save_filename)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
+
+

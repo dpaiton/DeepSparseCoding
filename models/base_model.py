@@ -4,6 +4,7 @@ import tensorflow as tf
 from utils.logger import Logger
 import utils.data_processing as dp
 from utils.trainable_variable_dict import TrainableVariableDict
+import pdb
 
 class Model(object):
   def __init__(self):
@@ -415,11 +416,34 @@ class Model(object):
               crop_offset[0], crop_offset[1], self.params.tf_augment_crop_size[0],
               self.params.tf_augment_crop_size[1])
 
-            return tf.cond(self.is_test, true_fn=lambda: test_input_node,
+            out = tf.cond(self.is_test, true_fn=lambda: test_input_node,
               false_fn=lambda:train_input_node)
-
           else:
-            return input_node
+            out = input_node
+    return out
+
+  def extract_patches(self, input_node):
+    with tf.device(self.params.device):
+      with self.graph.as_default():
+        with tf.variable_scope("extract_patches"):
+          if(self.params.tf_extract_patches):
+            patch_size_f = input_node.shape.as_list()[-1]
+            out = tf.image.extract_image_patches(input_node,
+              ksizes=[1, self.params.tf_extract_patch_size[0], self.params.tf_extract_patch_size[1], 1],
+              strides=[1, self.params.tf_extract_patch_stride[0], self.params.tf_extract_patch_stride[1], 1],
+              rates=[1, 1, 1, 1],
+              padding="SAME"
+              )
+            #Out is in the shape (batch, num_patches_y, num_patches_x, patch_size_y * patch_size_x * patch_size_f)
+            #Reshape into batch * num_patches_y * num_pathces_x, patch_size_y, patch_size_x, patch_size_f
+            out = tf.reshape(out, [-1, self.params.tf_extract_patch_size[0], self.params.tf_extract_patch_size[1], patch_size_f])
+    return out
+
+  def preprocess_input(self, input_node):
+    input_node = self.normalize_input(input_node)
+    input_node = self.augment_input(input_node)
+    input_node = self.extract_patches(input_node)
+    return input_node
 
   def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
@@ -432,8 +456,7 @@ class Model(object):
   #Subclasses can overwrite this function to ignore this functionality
   def build_graph(self):
     input_node = self.build_input_placeholder()
-    input_node = self.normalize_input(input_node)
-    input_node = self.augment_input(input_node)
+    input_node = self.preprocess_input(input_node)
     self.build_graph_from_input(input_node)
 
   def build_graph_from_input(self, input_node):
