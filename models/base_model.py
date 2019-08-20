@@ -422,7 +422,9 @@ class Model(object):
             out = input_node
     return out
 
-  def extract_patches(self, input_node):
+  #Extract all patches from image.
+  #Padding should be "VALID" for training, but "SAME" for evaluation (for sparse coding)
+  def extract_patches(self, input_node, padding="VALID"):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.variable_scope("extract_patches"):
@@ -432,14 +434,18 @@ class Model(object):
               ksizes=[1, self.params.tf_extract_patch_size[0], self.params.tf_extract_patch_size[1], 1],
               strides=[1, self.params.tf_extract_patch_stride[0], self.params.tf_extract_patch_stride[1], 1],
               rates=[1, 1, 1, 1],
-              padding="SAME"
+              padding=padding
               )
             #Out is in the shape (batch, num_patches_y, num_patches_x, patch_size_y * patch_size_x * patch_size_f)
             #Reshape into batch * num_patches_y * num_pathces_x, patch_size_y, patch_size_x, patch_size_f
             out = tf.reshape(out, [-1, self.params.tf_extract_patch_size[0], self.params.tf_extract_patch_size[1], patch_size_f])
+          else:
+            out = input_node
     return out
 
   def preprocess_input(self, input_node):
+    #TODO make these functionality optional
+    #Right now, only augment_input is necessary because there is a "is_train" placeholder needed by augment_input
     input_node = self.normalize_input(input_node)
     input_node = self.augment_input(input_node)
     input_node = self.extract_patches(input_node)

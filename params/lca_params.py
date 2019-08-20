@@ -93,19 +93,19 @@ class params(BaseParams):
       self.tf_augment_crop_size = [28, 28]
 
       self.tf_extract_patches = True
-      self.tf_extract_patch_size = [12, 12]
+      self.tf_extract_patch_size = [8, 8]
       self.tf_extract_patch_stride = [2, 2]
 
       self.whiten_data = False
       self.extract_patches = False
       self.rectify_a = True
-      self.num_neurons = 1024
+      self.num_neurons = 512
       self.thresh_type = "soft"
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
       self.dt = 0.001
       self.tau = 0.03
-      self.num_steps = 100
+      self.num_steps = 75
 
       sparse_mult = 0.5
 
@@ -113,8 +113,8 @@ class params(BaseParams):
         self.schedule[sched_idx]["sparse_mult"] = sparse_mult
         self.schedule[sched_idx]["weight_lr"] = 1e-3
         self.schedule[sched_idx]["num_batches"] = int(1e6)
-        self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
-        self.schedule[sched_idx]["decay_rate"] = 0.5
+        self.schedule[sched_idx]["decay_steps"] = self.schedule[sched_idx]["num_batches"]
+        self.schedule[sched_idx]["decay_rate"] = 1.0
 
       if(self.tf_extract_patches):
         self.model_name += "_patches"

@@ -128,9 +128,13 @@ class params(BaseParams):
 
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
-      self.batch_size = 12
+      self.batch_size = 8
       self.standardize_data = False
       self.tf_standardize_data = True
+      self.tf_augment = True
+      self.tf_augment_crop_size = [28, 28]
+      self.tf_extract_patches = False
+
       self.rescale_data = False
       self.center_data = False
       self.whiten_data = False # True
@@ -140,10 +144,10 @@ class params(BaseParams):
       self.image_edge_size = 128
       self.stride_y = 2
       self.stride_x = 2
-      self.patch_size_y = 12 #8 # weight receptive field
-      self.patch_size_x = 12 #8
-      self.num_neurons = 256 # 128
-      self.num_steps = 100
+      self.patch_size_y = 8 # weight receptive field
+      self.patch_size_x = 8
+      self.num_neurons = 512 # 128
+      self.num_steps = 75
       self.dt = 0.001
       self.tau = 0.1
       self.rectify_a = True
