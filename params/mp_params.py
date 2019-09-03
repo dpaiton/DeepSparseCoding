@@ -8,12 +8,12 @@ class params(BaseParams):
       rectify_a    [bool] If set, rectify layer 1 activity
       norm_weights [bool] If set, l2 normalize weights after updates
       batch_size   [int] Number of images in a training batch
-      num_neurons  [int] Number of OMP neurons
-      num_k        [int] Number of non-zero elements for OMP
+      num_neurons  [int] Number of MP neurons
+      num_k        [int] Number of non-zero elements for MP
     """
     super(params, self).__init__()
-    self.model_type = "omp"
-    self.model_name = "omp"
+    self.model_type = "mp"
+    self.model_name = "mp"
     self.version = "0.0"
     self.num_images = 150
 
@@ -80,13 +80,13 @@ class params(BaseParams):
       self.extract_patches = False
       self.rectify_a = True
       self.num_neurons = 512
-      self.cp_int = int(1e4)
-      self.gen_plot_int = int(1e4)
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e5)
       self.num_k = 10
 
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["weight_lr"] = 1e-3
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["num_batches"] = int(3e6)
         self.schedule[sched_idx]["decay_steps"] = self.schedule[sched_idx]["num_batches"]
         self.schedule[sched_idx]["decay_rate"] = 1.0
 

@@ -4,12 +4,12 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
 from models.base_model import Model
-from modules.omp_module import OmpModule
+from modules.mp_module import MpModule
 import pdb
 
-class OmpModel(Model):
+class MpModel(Model):
   def __init__(self):
-    super(OmpModel, self).__init__()
+    super(MpModel, self).__init__()
 
   def load_params(self, params):
     """
@@ -17,7 +17,7 @@ class OmpModel(Model):
     Inputs:
      params: [obj] model parameters
     """
-    super(OmpModel, self).load_params(params)
+    super(MpModel, self).load_params(params)
 
     # Network Size
     self.input_shape = [None,] + self.params.data_shape
@@ -29,7 +29,7 @@ class OmpModel(Model):
     return self.input_shape
 
   def build_module(self, input_node):
-    module = OmpModule(input_node, self.params.num_neurons, self.num_k,
+    module = MpModule(input_node, self.params.num_neurons, self.num_k,
       self.params.eps)
     return module
 
@@ -53,6 +53,7 @@ class OmpModel(Model):
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
+        #This member variable must be set to normalize weights
         with tf.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
 
@@ -88,7 +89,7 @@ class OmpModel(Model):
       input_labels: data object containing the current label batch
       batch_step: current batch number within the schedule
     """
-    update_dict = super(OmpModel, self).generate_update_dict(input_data, input_labels, batch_step)
+    update_dict = super(MpModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.loss_dict["recon_loss"],
       self.get_encodings(),
@@ -136,7 +137,7 @@ class OmpModel(Model):
       input_data: data object containing the current image batch
       input_labels: data object containing the current label batch
     """
-    super(OmpModel, self).generate_plots(input_data, input_labels)
+    super(MpModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encodings(), self.input_node]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)

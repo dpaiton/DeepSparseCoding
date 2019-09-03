@@ -16,7 +16,7 @@ import params.fflista_params as fflista
 #import params.gdn_autoencoder_params as ga
 #import params.gdn_conv_autoencoder_params as cga
 #import params.gdn_conv_decoder_params as cgd
-import params.omp_params as omp
+import params.mp_params as mp
 import params.relu_autoencoder_params as ra
 import params.ae_params as ae
 import params.dae_params as dae
@@ -63,8 +63,8 @@ def get_params(model_type):
     return lista.params()
   if model_type.lower() == "fflista":
     return fflista.params()
-  if model_type.lower() == "omp":
-    return omp.params()
+  if model_type.lower() == "mp":
+    return mp.params()
   if model_type.lower() == "ae":
     return ae.params()
   if model_type.lower() == "dae":

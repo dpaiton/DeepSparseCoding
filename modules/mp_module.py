@@ -3,11 +3,11 @@ import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 import pdb
 
-class OmpModule(object):
+class MpModule(object):
   def __init__(self, data_tensor, num_neurons, num_k, eps,
-      variable_scope="omp"):
+      variable_scope="mp"):
     """
-    Orthogonal Matching Pursuit module
+    Matching Pursuit module
     Inputs:
       data_tensor
       num_neurons
