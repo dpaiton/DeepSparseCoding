@@ -40,12 +40,12 @@ class params(BaseParams):
     self.norm_weights = True
     self.thresh_type = "soft"
     self.optimizer = "annealed_sgd"
-    self.cp_int = 5000
+    self.cp_int = 1e5
     self.max_cp_to_keep = 1
     self.cp_load = False
-    self.log_int = 10
+    self.log_int = 1e2
     self.log_to_file = True
-    self.gen_plot_int = 1000
+    self.gen_plot_int = 1e5
     self.save_plots = True
     self.schedule = [
       {"weights": ["lca_conv/weights/w:0"],
@@ -130,6 +130,7 @@ class params(BaseParams):
       self.model_name += "_cifar10"
       self.batch_size = 8
       self.standardize_data = False
+
       self.tf_standardize_data = True
       self.tf_augment = True
       self.tf_augment_crop_size = [28, 28]
@@ -152,11 +153,16 @@ class params(BaseParams):
       self.tau = 0.1
       self.rectify_a = True
       self.thresh_type = "soft"
+      sparse_mult = 0.2
+
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.07 #0.1
-        self.schedule[sched_idx]["weight_lr"] = [0.001]
-        self.schedule[sched_idx]["num_batches"] = int(5e5)
-        self.schedule[sched_idx]["decay_steps"] = [int(0.8*self.schedule[sched_idx]["num_batches"])]
+        self.schedule[sched_idx]["sparse_mult"] = sparse_mult
+        self.schedule[sched_idx]["weight_lr"] = 1e-3
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["decay_steps"] = self.schedule[sched_idx]["num_batches"]
+        self.schedule[sched_idx]["decay_rate"] = 1.0
+
+      self.model_name += "_" + str(sparse_mult)
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

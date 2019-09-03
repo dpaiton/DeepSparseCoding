@@ -35,6 +35,19 @@ class LcaModel(Model):
       self.params.num_steps, self.params.eps)
     return module
 
+  def reshape_input(self, input_node):
+    #Flatten input_node if not flat
+    data_shape = input_node.get_shape().as_list()
+    if len(data_shape) == 4:
+      self.is_image = True
+      self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
+      self.num_pixels = self.y_size * self.x_size * self.num_data_channels
+      input_node = tf.reshape(input_node, [-1, self.num_pixels])
+    else:
+      self.is_image = False
+    return input_node
+
+
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
@@ -42,21 +55,10 @@ class LcaModel(Model):
         with tf.variable_scope("auto_placeholders") as scope:
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-
-        #Flatten input_node if not flat
-        data_shape = input_node.get_shape().as_list()
-        if len(data_shape) == 4:
-          self.is_image = True
-          self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
-          self.num_pixels = self.y_size * self.x_size * self.num_data_channels
-          input_node = tf.reshape(input_node, [-1, self.num_pixels])
-        else:
-          self.is_image = False
-
-        self.input_node = input_node
+        self.input_node = self.reshape_input(input_node)
 
 
-        self.module = self.build_module(input_node)
+        self.module = self.build_module(self.input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
         with tf.variable_scope("inference") as scope:
@@ -75,9 +77,9 @@ class LcaModel(Model):
             name="reconstruction")
 
         with tf.variable_scope("performance_metrics") as scope:
-          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.module.reconstruction)),
+          MSE = tf.reduce_mean(tf.square(tf.subtract(self.input_node, self.module.reconstruction)),
             name="mean_squared_error")
-          pixel_var = tf.nn.moments(input_node, axes=[1])[1]
+          pixel_var = tf.nn.moments(self.input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
             MSE)), name="recon_quality")
 
@@ -172,6 +174,7 @@ class LcaModel(Model):
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, activity, input_node = eval_out[1:]
     weights_norm = np.linalg.norm(weights, axis=0, keepdims=False)
+
     if(self.is_image):
       num_batch = recon.shape[0]
       recon = dp.reshape_data(recon, out_shape=[num_batch, self.y_size, self.x_size, self.num_data_channels])[0]

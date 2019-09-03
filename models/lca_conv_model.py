@@ -4,6 +4,7 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 from models.lca_model import LcaModel
 from modules.lca_conv_module import LcaConvModule
+import pdb
 
 class LcaConvModel(LcaModel):
   """
@@ -36,6 +37,13 @@ class LcaConvModel(LcaModel):
       self.params.stride_y, self.params.stride_x, self.params.eps)
     return module
 
+  def reshape_input(self, input_node):
+    data_shape = input_node.get_shape().as_list()
+    if len(data_shape) != 4:
+      ("LCA_conv requires datal_tensor to have shape " + \
+         "[batch, num_pixels_y, num_pixels_x, num_input_features]")
+    return input_node
+
   def generate_plots(self, input_data, input_labels=None):
     """
     Plot weights, reconstruction, and gradients
@@ -49,35 +57,41 @@ class LcaConvModel(LcaModel):
       cmap = "Greys_r"
     else:
       assert False, ("Input_data.shape[-1] should indicate color channel, and should be 1 or 3")
-    feed_dict = self.get_feed_dict(input_data, input_labels)
-    weights, recon, activity = tf.get_default_session().run(
-      [self.module.w, self.module.reconstruction, self.get_encodings()], feed_dict)
 
-    recon = dp.rescale_data_to_one(recon)[0]
-    weights = np.transpose(dp.rescale_data_to_one(weights.T)[0].T, axes=(3,0,1,2))
-    current_step = str(self.global_step.eval())
+    feed_dict = self.get_feed_dict(input_data, input_labels)
+    eval_list = [self.global_step, self.module.w, self.module.reconstruction, self.get_encodings(), self.input_node]
+
+    current_step, weights, recon, activity, input_node = tf.get_default_session().run(
+      eval_list, feed_dict)
+    current_step = str(current_step)
+
+    weights = np.transpose(weights, axes=(3,0,1,2))
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
-    input_data = dp.rescale_data_to_one(input_data)[0]
 
     num_features = activity.shape[-1]
     activity = np.reshape(activity, [-1, num_features])
     fig = pf.plot_activity_hist(activity, title="LCA Activity Histogram",
       save_filename=self.params.disp_dir+"lca_act_hist"+filename_suffix)
 
-    pf.plot_data_tiled(input_data[0,...], normalize=False,
-      title="Images at step "+current_step, vmin=None, vmax=None, cmap=cmap,
+    #Scale image by max and min of images and/or recon
+    r_max = np.max([np.max(input_node), np.max(recon)])
+    r_min = np.min([np.min(input_node), np.min(recon)])
+
+    pf.plot_data_tiled(input_node, normalize=False,
+      title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max, cmap=cmap,
       save_filename=self.params.disp_dir+"images"+filename_suffix)
-    pf.plot_data_tiled(recon[0,...], normalize=False,
-      title="Recons at step "+current_step, vmin=None, vmax=None, cmap=cmap,
+
+    pf.plot_data_tiled(recon, normalize=False,
+      title="Recons at step "+current_step, vmin=r_min, vmax=r_max, cmap=cmap,
       save_filename=self.params.disp_dir+"recons"+filename_suffix)
-    pf.plot_data_tiled(weights, normalize=False, title="Dictionary at step "+current_step,
-      vmin=np.min(weights), vmax=np.max(weights), cmap=cmap,
+
+    pf.plot_data_tiled(weights, normalize=True,
+      title="Dictionary at step "+current_step, cmap=cmap,
       save_filename=self.params.disp_dir+"phi"+filename_suffix)
-    for weight_grad_var in self.grads_and_vars[self.sched_idx]:
-      grad = weight_grad_var[0][0].eval(feed_dict)
-      shape = grad.shape
-      name = weight_grad_var[0][1].name.split('/')[1].split(':')[0]#np.split
-      #TODO this function is breaking due to the range of gradients
-      #pf.plot_data_tiled(np.transpose(grad, axes=(3,0,1,2)), normalize=True,
-      #  title="Gradient for phi at step "+current_step, vmin=None, vmax=None, cmap=cmap,
-      #  save_filename=self.params.disp_dir+"dphi"+filename_suffix)
+
+    #Plot loss over time
+    eval_list = [self.module.recon_loss_list, self.module.sparse_loss_list, self.module.total_loss_list]
+    (recon_losses, sparse_losses, total_losses) = tf.get_default_session().run(eval_list, feed_dict)
+    #TODO put this in plot functions
+    pf.plot_sc_losses(recon_losses, sparse_losses, total_losses,
+      save_filename=self.params.disp_dir+"losses"+filename_suffix)
