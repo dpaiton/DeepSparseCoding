@@ -313,7 +313,7 @@ class params(BaseParams):
         self.schedule[-1]["num_batches"] = int(1e5)
     elif data_type.lower() == "cifar10_gray":
       assert(not self.train_on_recon)
-      self.model_name = "mlp_lca_latent_cifar10_gray_2layer"
+      self.model_name = "mlp_lca_latent_cifar10_gray_3136_3layer"
 
       self.vectorize_data = False
       self.rescale_data = False
@@ -321,6 +321,7 @@ class params(BaseParams):
       self.tf_standardize_data = True
       self.tf_augment = True
       self.tf_augment_crop_size = [28, 28]
+      self.tf_extract_patches = False
 
       self.center_data = False
       self.whiten_data = False
@@ -332,7 +333,7 @@ class params(BaseParams):
       self.optimizer = "adam"
 
       # LCA params
-      self.num_neurons = 1568
+      self.num_neurons = 3136
       self.lca_conv = False
 
       self.dt = 0.001
@@ -340,18 +341,18 @@ class params(BaseParams):
       self.num_steps = 75
 
       self.cp_load = True
-      self.cp_load_name = "lca_1568_cifar10_gray"
+      self.cp_load_name = "lca_3136_cifar10_gray"
       self.cp_load_var = ["lca/weights/w:0"]
 
       # MLP params
-      self.output_channels = [self.num_classes]
-      self.layer_types = ["fc"]
-      self.mlp_activation_functions = ["identity"]
-      self.max_pool = [False]
-      self.max_pool_ksize = [None]
-      self.max_pool_strides = [None]
+      self.output_channels = [1024, self.num_classes]
+      self.layer_types = ["fc", "fc"]
+      self.mlp_activation_functions = ["lrelu", "identity"]
+      self.max_pool = [False, False]
+      self.max_pool_ksize = [None, None]
+      self.max_pool_strides = [None, None]
 
-      self.dropout = [1.0]
+      self.dropout = [0.8, 1.0]
 
       self.batch_norm = [None]*len(self.output_channels)
       self.lrn = [None]*len(self.output_channels)
@@ -360,8 +361,8 @@ class params(BaseParams):
         self.schedule[sched_idx]["weights"] = [
           "mlp/layer0/fc_w_0:0",
           "mlp/layer0/fc_b_0:0",
-          #"mlp/layer1/fc_w_1:0",
-          #"mlp/layer1/fc_b_1:0",
+          "mlp/layer1/fc_w_1:0",
+          "mlp/layer1/fc_b_1:0",
           ]
         self.schedule[sched_idx]["sparse_mult"] = 0.35
         self.schedule[sched_idx]["weight_lr"] = 5e-4

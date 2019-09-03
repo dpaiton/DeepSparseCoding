@@ -170,7 +170,7 @@ class params(BaseParams):
         self.schedule[1]["num_batches"] = int(3e5)
 
     elif data_type.lower() == "cifar10_gray":
-      self.model_name += "_cifar10_gray_3136_2layer"
+      self.model_name += "_cifar10_gray_3136_3layer"
 
       self.vectorize_data = False
       self.rescale_data = False
@@ -179,6 +179,7 @@ class params(BaseParams):
       self.tf_standardize_data = True
       self.tf_augment = True
       self.tf_augment_crop_size = [28, 28]
+      self.tf_extract_patches = False
 
       self.center_data = False
       self.whiten_data = False
@@ -189,18 +190,18 @@ class params(BaseParams):
       self.num_classes = 10
       self.optimizer = "adam"
 
-      self.layer_types = ["fc", "fc"]
-      self.mlp_activation_functions = ["lrelu", "identity"]
-      self.lrn = [None, None]
+      self.layer_types = ["fc", "fc",  "fc"]
+      self.mlp_activation_functions = ["lrelu", "lrelu", "identity"]
+      self.lrn = [None, None, None]
       #self.output_channels = [1536, 1024, self.num_classes]
-      self.output_channels = [3136, self.num_classes]
+      self.output_channels = [3136, 1024, self.num_classes]
       self.patch_size = []
       self.conv_strides = []
-      self.batch_norm = [None, None]
-      self.dropout = [0.8, 1.0] # TODO: Set dropout defaults somewhere
-      self.max_pool = [False, False]
-      self.max_pool_ksize = [None, None]
-      self.max_pool_strides = [None, None]
+      self.batch_norm = [None, None, None]
+      self.dropout = [0.8, 0.8, 1.0] # TODO: Set dropout defaults somewhere
+      self.max_pool = [False, False, False]
+      self.max_pool_ksize = [None, None, None]
+      self.max_pool_strides = [None, None, None]
 
       self.batch_size = 128
 

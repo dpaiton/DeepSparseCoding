@@ -18,16 +18,36 @@ import pandas as pd
 #List of models for analysis
 analysis_list = [
     ("mlp_lca", "mlp_lca_latent_cifar10_gray_2layer"),
-    ("mlp_lca", "mlp_lca_latent_cifar10_gray_3layer"),
     ("mlp", "mlp_cifar10_gray_2layer"),
+    ("mlp_lca", "mlp_lca_latent_cifar10_gray_3layer"),
     ("mlp", "mlp_cifar10_gray_3layer"),
+    ("mlp_lca", "mlp_lca_latent_cifar10_gray_3136_2layer"),
+    ("mlp", "mlp_cifar10_gray_3136_2layer"),
+    ("mlp_lca", "mlp_lca_latent_cifar10_gray_3136_3layer"),
+    ("mlp", "mlp_cifar10_gray_3136_3layer"),
     ]
+
+analysis_list_pretty_names = [
+    "w/ LCA 1568 2 layers",
+    "w/o LCA 1568 2 layers",
+    "w/ LCA 1568 3 layers",
+    "w/o LCA 1568 3 layers",
+    "w/ LCA 3136 2 layers",
+    "w/o LCA 3136 2 layers",
+    "w/ LCA 3136 3 layers",
+    "w/o LCA 3136 3 layers",
+]
 
 
 #bar_groups = None
-bar_groups = [[0, 1], [2, 3]]
+#Organized from left to right, with space between inner lists
+bar_groups = [[0, 1], [2, 3], [4, 5], [6, 7]]
+
+#Legend labels:
 inner_group_names = ["w/ LCA", "w/o LCA"]
-outer_group_names = ["2 layers", "3 layers"]
+
+#x axis labels
+outer_group_names = ["2 layers 1568", "3 layers 1568", "2 layers 3136", "3 layers 3136"]
 
 #colors for analysis_list
 #colors = [
@@ -67,10 +87,10 @@ recon_mult_idx = 0
 construct_conf_control = True
 use_conf_idx = True
 
-construct_heatmap = False
+construct_heatmap = True
 construct_adv_examples = False
 construct_class_mult_tradeoff = False
-construct_over_time = True
+construct_over_time = False
 
 plot_num_over_time = 4
 
@@ -147,16 +167,16 @@ if(construct_conf_control):
 
     conf_saved_info.append([target_adv_mses, num_failed, target_conf_idx])
 
-  x_label_ticks = []
   vals = []
   errs = []
+  failed = []
   color = []
   for model_idx, (model_type, model_name) in enumerate(analysis_list):
     target_adv_mses, num_failed, success_idx = conf_saved_info[model_idx]
     vals.append(np.mean(target_adv_mses))
     errs.append(np.std(target_adv_mses))
     color.append(colors[model_idx])
-    x_label_ticks.append(model_name+":"+str(num_failed))
+    failed.append(num_failed)
 
   #Set position of bar on X axis
   barWidth = .4
@@ -170,16 +190,19 @@ if(construct_conf_control):
   for i_g in range(num_per_group):
     group_vals = [vals[i] for i in bar_groups[:, i_g]]
     group_err = [errs[i] for i in bar_groups[:, i_g]]
+    group_n = [num_batch - failed[i] for i in bar_groups[:, i_g]]
     x_pos = np.arange(num_groups) + i_g*barWidth
+
     ax.bar(x_pos, group_vals, width=barWidth, yerr=group_err, label=inner_group_names[i_g], color=colors[i_g])
+    for i_gg in range(num_groups):
+      ax.text(x_pos[i_gg] + (barWidth/2.0), group_vals[i_gg],
+        "n="+str(group_n[i_gg]), ha='center', va='bottom')
+
+
 
   plt.xlabel('Layers')
   plt.xticks([r + (barWidth)/2 for r in range(num_groups)], outer_group_names)
   plt.legend()
-
-
-  #ax.bar(np.arange(len(analysis_list)), vals, yerr=errs,
-  #  align='center', tick_label=x_label_ticks, color=color)
 
   #plt.xticks(rotation='vertical')
 
@@ -207,9 +230,15 @@ if(construct_heatmap):
   #Store csv file with corresponding accuracy
   #Here, x axis of table is target network
   #y axis is source network
-  header_y = [a[1] for a in analysis_list]
+
+  header_y = [n for n in analysis_list_pretty_names]
   header_x = header_y[:]
+
+  #First element in header_y is clean accuracy
+  header_y = ["None (accuracy on clean set)"] + header_y
+
   output_table = np.zeros((len(header_y), len(header_x)))
+
   #Loop thorugh source network
   for source_model_idx, (model_type, model_name) in enumerate(analysis_list):
     analysis_params = params()
@@ -219,10 +248,9 @@ if(construct_heatmap):
     source_analyzer = setup(analysis_params)
 
     #Fill in clean accuracy
-    header_y[source_model_idx] = header_y[source_model_idx] + \
-      ": %.2f"%source_analyzer.adversarial_clean_accuracy[recon_mult_idx]
-
-    #output_table[source_model_idx, 0] = source_analyzer.adversarial_clean_accuracy[recon_mult_idx]
+    #header_y[source_model_idx] = header_y[source_model_idx] + \
+    #  ": %.2f"%source_analyzer.adversarial_clean_accuracy[recon_mult_idx]
+    output_table[0, source_model_idx] = source_analyzer.adversarial_clean_accuracy[recon_mult_idx]
 
     #Calculate true classes of provided images
     input_classes = np.argmax(source_analyzer.adversarial_input_labels, axis=-1)
@@ -234,11 +262,11 @@ if(construct_heatmap):
 
     #Loop through target networks
     for target_model_idx, (model_type, model_name) in enumerate(analysis_list):
-      ##If source == target, just grab accuracy from analysis
-      #if(source_model_idx == target_model_idx):
-      #  output_table[source_model_idx, target_model_idx] = \
-      #    source_analyzer.adversarial_adv_accuracy[recon_mult_idx]
-      #else:
+      #If source == target, just grab accuracy from analysis
+      if(source_model_idx == target_model_idx):
+        output_table[source_model_idx+1, target_model_idx] = \
+          source_analyzer.adversarial_adv_accuracy[recon_mult_idx]
+      else:
         analysis_params = params()
         analysis_params.model_type = model_type
         analysis_params.model_name = model_name
@@ -248,18 +276,19 @@ if(construct_heatmap):
         reshape_source_adv_examples = dp.reshape_data(source_adv_examples, target_analyzer.model_params.vectorize_data)[0]
 
         #Evaluate on target model
+
         label_est = target_analyzer.evaluate_model_batch(eval_batch_size,
             reshape_source_adv_examples, ["label_est:0"])["label_est:0"]
         classes_est = np.argmax(label_est, axis=-1)
-        output_table[source_model_idx, target_model_idx] = np.mean(classes_est == input_classes)
+        output_table[source_model_idx+1, target_model_idx] = np.mean(classes_est == input_classes)
 
-        #Sanity check, take out after
-        if(source_model_idx == target_model_idx):
-          try:
-            assert(np.abs(output_table[source_model_idx, target_model_idx] -
-              source_analyzer.adversarial_adv_accuracy[recon_mult_idx]) <= 0.01)
-          except:
-            pdb.set_trace()
+        ##Sanity check, take out after
+        #if(source_model_idx == target_model_idx):
+        #  try:
+        #    assert(np.abs(output_table[source_model_idx+1, target_model_idx] -
+        #      source_analyzer.adversarial_adv_accuracy[recon_mult_idx]) <= 0.01)
+        #  except:
+        #    pdb.set_trace()
 
   ##Construct big numpy array to convert to csv
   #csv_out_array = np.concatenate((np.array(header_y)[:, None], output_table), axis=1)
@@ -271,7 +300,7 @@ if(construct_heatmap):
   df_cm = pd.DataFrame(output_table, index = header_y, columns = header_x)
   fig = plt.figure(figsize = (10, 7))
   sn.heatmap(df_cm, annot=True)
-  plt.title(analysis_params.save_info)
+  plt.title("Adversarial Transfer")
   plt.ylabel("Adv Target Models")
   plt.xlabel("Eval Models")
   plt.tight_layout()
@@ -359,8 +388,8 @@ if construct_over_time:
 
     analyzer = setup(analysis_params)
 
-    class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversary_"+analysis_params.save_info+".npz"
-    assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
+    #class_adversarial_file_loc = analyzer.analysis_out_dir+"savefiles/class_adversary_"+analysis_params.save_info+".pkl"
+    #assert os.path.exists(class_adversarial_file_loc), (class_adversarial_file_loc+" must exist.")
 
     num_data = analyzer.num_data
 

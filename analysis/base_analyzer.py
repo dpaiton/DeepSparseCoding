@@ -10,6 +10,7 @@ import tensorflow_compression as tfc
 import pdb
 from modules.class_adversarial_module import ClassAdversarialModule
 from modules.recon_adversarial_module import ReconAdversarialModule
+import pickle
 
 class Analyzer(object):
   """
@@ -308,9 +309,15 @@ class Analyzer(object):
 
     #Class adversarial analysis
     class_adversarial_file_loc = \
-      self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
+      self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".pkl"
+      #self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz"
     if os.path.exists(class_adversarial_file_loc):
-      data = np.load(class_adversarial_file_loc)["data"].item()
+
+      #data = np.load(class_adversarial_file_loc)["data"].item()
+      #Loading via pickle to load very large files
+      with open(class_adversarial_file_loc, "rb") as f:
+        data = pickle.load(f)
+
       self.steps_idx = data["steps_idx"]
       self.class_adversarial_input_images = data["input_images"]
       self.adversarial_input_labels = data["input_labels"]
@@ -325,10 +332,15 @@ class Analyzer(object):
       self.adversarial_clean_accuracy = data["clean_accuracy"]
       self.adversarial_adv_accuracy = data["adv_accuracy"]
       self.adversarial_success_rate = data["attack_success_rate"]
+
     class_adversarial_file_loc = \
-      self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz"
+      self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".pkl"
+        #self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz"
+
     if os.path.exists(class_adversarial_file_loc):
-      data = np.load(class_adversarial_file_loc)["data"].item()
+      #data = np.load(class_adversarial_file_loc)["data"].item()
+      with open(class_adversarial_file_loc, "rb") as f:
+        data = pickle.load(f)
       self.adversarial_images = data["adversarial_images"]
 
   def load_basis_stats(self, save_info):
@@ -369,12 +381,12 @@ class Analyzer(object):
     num_data = images.shape[0]
     num_iterations = int(np.ceil(num_data / batch_size))
 
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
     evals = {}
     for name in var_names:
       evals[name] = []
 
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
       image_shape = (batch_size,) + images.shape[1:]
       sess.run(self.model.init_op, {self.model.input_placeholder:np.zeros(image_shape)})
@@ -1045,7 +1057,7 @@ class Analyzer(object):
     self.analysis_logger.log_info("Adversary analysis is complete.")
 
   def construct_class_adversarial_stimulus(self, input_images, input_labels,
-    target_labels):
+    target_labels, input_sess=None):
 
     if(self.analysis_params.adversarial_attack_method == "kurakin_untargeted"):
       assert(target_labels is not None)
@@ -1067,25 +1079,32 @@ class Analyzer(object):
     all_adv_images = []
     all_adv_outputs = []
 
-    config = tf.ConfigProto()
-    config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
-      feed_dict = self.model.get_feed_dict(input_images, input_labels, is_test=True)
-      sess.run(self.model.init_op, feed_dict)
-      self.model.load_full_model(sess, self.analysis_params.cp_loc)
+    if(input_sess is None):
+      config = tf.ConfigProto()
+      config.gpu_options.allow_growth = True
+      sess = tf.Session(config=config, graph=self.model.graph)
+    else:
+      sess = input_sess
 
-      for r_mult in self.analysis_params.carlini_recon_mult:
-        out_dict = self.class_adv_module.construct_adversarial_examples(
-          feed_dict, labels=input_labels, recon_mult=r_mult,
-          rand_state=self.rand_state, target_generation_method="specified",
-          target_labels=target_labels,
-          save_int=self.analysis_params.adversarial_save_int)
+    feed_dict = self.model.get_feed_dict(input_images, input_labels, is_test=True)
+    sess.run(self.model.init_op, feed_dict)
+    self.model.load_full_model(sess, self.analysis_params.cp_loc)
 
-        steps = out_dict["step"]
-        all_adv_images.append(out_dict["adv_images"])
-        all_adv_outputs.append(out_dict["adv_outputs"])
-        mses["input_adv_mses"].append(out_dict["input_adv_mses"])
-        mses["target_output_losses"].append(out_dict["adv_losses"])
+    for r_mult in self.analysis_params.carlini_recon_mult:
+      out_dict = self.class_adv_module.construct_adversarial_examples(
+        feed_dict, labels=input_labels, recon_mult=r_mult,
+        rand_state=self.rand_state, target_generation_method="specified",
+        target_labels=target_labels,
+        save_int=self.analysis_params.adversarial_save_int)
+
+      steps = out_dict["step"]
+      all_adv_images.append(out_dict["adv_images"])
+      all_adv_outputs.append(out_dict["adv_outputs"])
+      mses["input_adv_mses"].append(out_dict["input_adv_mses"])
+      mses["target_output_losses"].append(out_dict["adv_losses"])
+
+    if(input_sess is None):
+      sess.close()
 
     return steps, all_adv_images, all_adv_outputs, mses
 
@@ -1171,28 +1190,32 @@ class Analyzer(object):
     #Split data into batches
     num_iterations = int(np.ceil(self.num_data / batch_size))
 
-    for it in range(num_iterations):
-      batch_start_idx = int(it * batch_size)
-      batch_end_idx = int(np.min([batch_start_idx + batch_size, self.num_data]))
-      batch_input_images = input_images[batch_start_idx:batch_end_idx, ...]
-      batch_input_labels = input_labels[batch_start_idx:batch_end_idx, ...]
-      if(target_labels is not None):
-        batch_target_labels = target_labels[batch_start_idx:batch_end_idx, ...]
-      else:
-        batch_target_labels = None
+    #Use one session for construction
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      for it in range(num_iterations):
+        batch_start_idx = int(it * batch_size)
+        batch_end_idx = int(np.min([batch_start_idx + batch_size, self.num_data]))
+        batch_input_images = input_images[batch_start_idx:batch_end_idx, ...]
+        batch_input_labels = input_labels[batch_start_idx:batch_end_idx, ...]
+        if(target_labels is not None):
+          batch_target_labels = target_labels[batch_start_idx:batch_end_idx, ...]
+        else:
+          batch_target_labels = None
 
-      self.steps_idx, batch_adv_images, batch_adv_outputs, mses =  \
-        self.construct_class_adversarial_stimulus(batch_input_images, batch_input_labels,
-        batch_target_labels)
+        self.steps_idx, batch_adv_images, batch_adv_outputs, mses =  \
+          self.construct_class_adversarial_stimulus(batch_input_images, batch_input_labels,
+          batch_target_labels, input_sess=sess)
 
-      #Store output variables
-      self.adversarial_input_adv_mses[:, :, batch_start_idx:batch_end_idx] = \
-        np.array(mses["input_adv_mses"])
-      self.adversarial_target_output_losses[:, :] += np.array(mses["target_output_losses"])
-      self.adversarial_images[:, :, batch_start_idx:batch_end_idx, ...] = \
-        np.array(batch_adv_images)
-      self.adversarial_outputs[:, :, batch_start_idx:batch_end_idx, ...] = \
-        np.array(batch_adv_outputs)
+        #Store output variables
+        self.adversarial_input_adv_mses[:, :, batch_start_idx:batch_end_idx] = \
+          np.array(mses["input_adv_mses"])
+        self.adversarial_target_output_losses[:, :] += np.array(mses["target_output_losses"])
+        self.adversarial_images[:, :, batch_start_idx:batch_end_idx, ...] = \
+          np.array(batch_adv_images)
+        self.adversarial_outputs[:, :, batch_start_idx:batch_end_idx, ...] = \
+          np.array(batch_adv_outputs)
 
     #Calculate total accuracies
     clean_est_classes = np.argmax(self.adversarial_outputs[:, 0, :, :], axis=-1)
@@ -1226,9 +1249,21 @@ class Analyzer(object):
     out_dicts[0]["clean_accuracy"] = self.adversarial_clean_accuracy
     out_dicts[0]["adv_accuracy"] = self.adversarial_adv_accuracy
     out_dicts[0]["attack_success_rate"] = self.adversarial_success_rate
-    np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz",
-      data=out_dicts[0])
+
+    #Storing these as pickles with protocol 4 for saving very large files
+    #np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz",
+    #  data=out_dicts[0])
+
+    with open(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".pkl", "wb") as f:
+      #protocol 0 is highest protocol
+      pickle.dump(out_dicts[0], f, protocol=0)
+
     out_dicts[1]["adversarial_images"] = self.adversarial_images
-    np.savez(self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz",
-      data=out_dicts[1])
+
+    #np.savez(self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz",
+      #data=out_dicts[1])
+
+    with open(self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".pkl", "wb") as f:
+      pickle.dump(out_dicts[1], f, protocol=0)
+
     self.analysis_logger.log_info("Adversary analysis is complete.")

@@ -87,11 +87,12 @@ class params(object):
     #self.adversarial_save_int = 1
     self.adversarial_save_int = 5
 
-    self.eval_batch_size = 10
+    self.eval_batch_size = 100
 
     #Specify which adv to use here
     #If none, use all
-    self.adversarial_input_id = list(range(100))
+    #self.adversarial_input_id = list(range(100))
+    self.adversarial_input_id = None
 
     #TODO
     #Parameter for "specified" target_method
