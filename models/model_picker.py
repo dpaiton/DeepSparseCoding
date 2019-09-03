@@ -15,6 +15,7 @@ from models.lca_conv_model import LcaConvModel as lca_conv
 from models.fflista_model import FfListaModel as fflista
 from models.lista_model import ListaModel as lista
 from models.mp_model import MpModel as mp
+from models.mp_conv_model import MpConvModel as mp_conv
 #from models.gdn_autoencoder_model import GdnAutoencoderModel as ga
 #from models.gdn_conv_autoencoder_model import GdnConvAutoencoderModel as ga_conv
 #from models.gdn_conv_decoder_model import GdnConvDecoderModel as gd_conv
@@ -58,6 +59,8 @@ def get_model(model_type):
     return fflista()
   if model_type.lower() == "mp":
     return mp()
+  if model_type.lower() == "mp_conv":
+    return mp_conv()
   #if model_type.lower() == "gdn_autoencoder":
   #  return ga()
   #if model_type.lower() == "gdn_conv_autoencoder":

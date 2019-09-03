@@ -33,24 +33,26 @@ class MpModel(Model):
       self.params.eps)
     return module
 
+  def reshape_input(self, input_node):
+    #Flatten input_node if not flat
+    data_shape = input_node.get_shape().as_list()
+    if len(data_shape) == 4:
+      self.is_image = True
+      self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
+      self.num_pixels = self.y_size * self.x_size * self.num_data_channels
+      input_node = tf.reshape(input_node, [-1, self.num_pixels])
+    else:
+      self.is_image = False
+    return input_node
+
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
 
-        #Flatten input_node if not flat
-        data_shape = input_node.get_shape().as_list()
-        if len(data_shape) == 4:
-          self.is_image = True
-          self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
-          self.num_pixels = self.y_size * self.x_size * self.num_data_channels
-          input_node = tf.reshape(input_node, [-1, self.num_pixels])
-        else:
-          self.is_image = False
+        self.input_node = self.reshape_input(input_node)
 
-        self.input_node = input_node
-
-        self.module = self.build_module(input_node)
+        self.module = self.build_module(self.input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
         #This member variable must be set to normalize weights
@@ -64,9 +66,9 @@ class MpModel(Model):
             name="reconstruction")
 
         with tf.variable_scope("performance_metrics") as scope:
-          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.module.reconstruction)),
+          MSE = tf.reduce_mean(tf.square(tf.subtract(self.input_node, self.module.reconstruction)),
             name="mean_squared_error")
-          pixel_var = tf.nn.moments(input_node, axes=[1])[1]
+          pixel_var = tf.nn.moments(self.input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var),
             MSE)), name="recon_quality")
 
