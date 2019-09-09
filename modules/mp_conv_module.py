@@ -25,7 +25,6 @@ class MpConvModule(MpModule):
          "[batch, num_pixels_y, num_pixels_x, num_input_features]")
     self.batch_size, self.num_pixels_y, self.num_pixels_x, self.num_input_features = \
       self.data_tensor.get_shape().as_list()
-    self.num_pixels = self.num_pixels_y * self.num_pixels_x * self.num_input_features
 
   def calc_shapes(self):
     assert (self.num_pixels_y % self.stride_y == 0), (
@@ -33,7 +32,7 @@ class MpConvModule(MpModule):
     assert (self.num_pixels_x % self.stride_x == 0), (
       "Stride x must divide evenly into input shape")
 
-    self.w_shape = [self.num_pixels_y, self.num_pixels_x,
+    self.w_shape = [self.patch_size_y, self.patch_size_x,
       self.num_input_features, self.num_neurons]
 
     self.a_y = int(self.num_pixels_y/self.stride_y)
@@ -52,11 +51,13 @@ class MpConvModule(MpModule):
       error = self.data_tensor - recon
       ff_act = tf.nn.conv2d(error, self.w, strides=[1, self.stride_y, self.stride_x, 1],
         padding="SAME")
-      ff_act_flat = tf.reshape(ff_act, [-1, self.num_pixels])
+
+      num_a = self.a_shape[0] * self.a_shape[1] * self.a_shape[2]
+      ff_act_flat = tf.reshape(ff_act, [-1, num_a])
       max_idx = tf.argmax(ff_act_flat, axis=-1)
       max_act = tf.reduce_max(ff_act_flat, axis=-1)
-      new_a_flat = tf.one_hot(max_idx, depth=self.num_pixels) * max_act[..., tf.newaxis]
-      new_a = tf.reshape(ff_act, [-1,] + self.a_shape)
+      new_a_flat = tf.one_hot(max_idx, depth=num_a) * max_act[..., tf.newaxis]
+      new_a = tf.reshape(new_a_flat, [-1,] + self.a_shape)
       a_out = a_in + new_a
 
     return a_out

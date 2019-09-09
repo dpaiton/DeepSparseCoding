@@ -88,12 +88,10 @@ class params(BaseParams):
 
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["weight_lr"] = 1e-3
-        self.schedule[sched_idx]["num_batches"] = int(3e6)
+        self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["decay_steps"] = self.schedule[sched_idx]["num_batches"]
         self.schedule[sched_idx]["decay_rate"] = 1.0
 
-      if(self.tf_extract_patches):
-        self.model_name += "_patches"
       self.model_name += "_" + str(self.num_k)
 
     else:
