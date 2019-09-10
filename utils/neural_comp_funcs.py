@@ -14,7 +14,7 @@ import utils.data_processing as dp
 import utils.plot_functions as pf
 import analysis.analysis_picker as ap
 
-def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_levels, x_range, y_range, figsize=None, dpi=100, fontsize=12):
+def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_levels, x_range, y_range, show_contours=True, figsize=None, dpi=100, fontsize=12):
   num_models = len(analyzer_list)
   num_plots_y = np.int32(np.ceil(np.sqrt(num_models)))
   num_plots_x = np.int32(np.ceil(np.sqrt(num_models)))
@@ -46,8 +46,12 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     # plot colored mesh points
     norm_activity = analyzer.comp_activations[analyzer_neuron_index, analyzer_orth_index, ...]
     x_mesh, y_mesh = np.meshgrid(analyzer.comp_contour_dataset["x_pts"], analyzer.comp_contour_dataset["y_pts"])
-    contsf = curve_axes[-1].contourf(x_mesh, y_mesh, norm_activity,
-      levels=levels, vmin=vmin, vmax=vmax, alpha=1.0, antialiased=True, cmap=cmap)
+    if show_contours:
+      contsf = curve_axes[-1].contourf(x_mesh, y_mesh, norm_activity,
+        levels=levels, vmin=vmin, vmax=vmax, alpha=1.0, antialiased=True, cmap=cmap)
+    else:
+      contsf = curve_axes[-1].scatter(x_mesh, y_mesh,
+        vmin=vmin, vmax=vmax, cmap=cmap, marker="s", alpha=1.0, c=norm_activity, s=30.0)
     contour_handles.append(contsf)
     # plot target neuron arrow & label
     proj_target = analyzer.comp_contour_dataset["proj_target_neuron"][analyzer_neuron_index][analyzer_orth_index]
@@ -172,9 +176,9 @@ def plot_fit_curvature(analyzer, target_neuron_index=0, line_alpha=0.5, figsize=
   plt.show()
   return fig
 
-def plot_curvature_histograms(hist_list, label_list, color_list, bin_centers, figsize=None, dpi=100, fontsize=12):
-  num_y_plots = len(hist_list)
+def plot_curvature_histograms(hist_list, label_list, color_list, bin_centers, label_loc, title, xlabel, figsize=None, dpi=100, fontsize=12):
   fig = plt.figure(figsize=figsize, dpi=dpi)
+  num_y_plots = len(hist_list)
   gs0 = gridspec.GridSpec(num_y_plots, 1, hspace=0.05)
   axes = []
   axes.append(fig.add_subplot(gs0[0]))
@@ -186,6 +190,7 @@ def plot_curvature_histograms(hist_list, label_list, color_list, bin_centers, fi
   for axis_index, (axis_hists, axis_colors, axis_labels) in enumerate(zip(hist_list, color_list, label_list)):
     for hist, color, label in zip(axis_hists, axis_colors, axis_labels):
       axes[axis_index].plot(bin_centers, hist, color=color, linestyle="-", drawstyle="steps-mid", label=label)
+      axes[axis_index].set_yscale('log')
       if np.max(hist) > max_val:
         max_val = np.max(hist)
     axes[axis_index].axvline(0.0, color='k', linestyle='dashed', linewidth=1)
@@ -193,26 +198,27 @@ def plot_curvature_histograms(hist_list, label_list, color_list, bin_centers, fi
       tick.label.set_fontsize(fontsize) 
     for tick in axes[axis_index].yaxis.get_major_ticks():
       tick.label.set_fontsize(fontsize) 
-    axes[axis_index].set_ylabel("Density", fontsize=fontsize)
+    axes[axis_index].set_ylabel("Normalized Count", fontsize=fontsize)
     ax_handles, ax_labels = axes[axis_index].get_legend_handles_labels()
     handles += ax_handles
     labels += ax_labels
 
-  axes[0].set_ylim([0.0, max_val+1])
-  for axis_index in range(num_y_plots):
-    ticks = range(0, int(max_val), int(max_val/4))
-    axes[axis_index].set_yticks(ticks, minor=False)
+  #axes[0].set_ylim([0.0, max_val+1])
+  #for axis_index in range(num_y_plots):
+  #  ticks = range(0, int(max_val), int(max_val/4))
+  #  axes[axis_index].set_yticks(ticks, minor=False)
 
-  axes[0].set_xticks([], minor=True)
+  axes[0].set_xticks(bin_centers, minor=True)
   axes[0].set_xticks([], minor=False)
-  axes[-1].set_xticks(bin_centers[::2], minor=True)
+  axes[-1].set_xticks(bin_centers, minor=True)
+  axes[-1].set_xticks(bin_centers[::int(len(bin_centers)/5)], minor=False)
   axes[-1].xaxis.set_major_formatter(FormatStrFormatter("%0.3f"))
 
-  axes[0].set_title("Histogram of Curvatures", fontsize=fontsize)
-  axes[-1].set_xlabel("Curvature", fontsize=fontsize)
+  axes[0].set_title(title, fontsize=fontsize)
+  axes[-1].set_xlabel(xlabel, fontsize=fontsize)
 
-  legend = axes[0].legend(handles=handles, labels=labels, fontsize=fontsize,
-    borderaxespad=0., bbox_to_anchor=[0.42, 0.99], framealpha=0.0)
+  legend = axes[1].legend(handles=handles, labels=labels, fontsize=fontsize,
+    borderaxespad=0., bbox_to_anchor=label_loc, framealpha=0.0)
   legend.get_frame().set_linewidth(0.0)
   for text, color in zip(legend.get_texts(), [color for sublist in color_list for color in sublist]):
     text.set_color(color)
