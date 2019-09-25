@@ -1,18 +1,33 @@
 import re
 import numpy as np
+from skimage.measure import compare_psnr
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.ticker import FormatStrFormatter
-from skimage.measure import compare_psnr
+from matplotlib.patches import FancyArrowPatch
+from mpl_toolkits.mplot3d import proj3d
+import matplotlib.font_manager
 import tensorflow as tf
 from data.dataset import Dataset
 import data.data_selector as ds
 import utils.data_processing as dp
 import utils.plot_functions as pf
 import analysis.analysis_picker as ap
+
+
+class Arrow3D(FancyArrowPatch):
+    def __init__(self, xs, ys, zs, *args, **kwargs):
+        FancyArrowPatch.__init__(self, (0,0), (0,0), *args, **kwargs)
+        self._verts3d = xs, ys, zs
+
+    def draw(self, renderer):
+        xs3d, ys3d, zs3d = self._verts3d
+        xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, renderer.M)
+        self.set_positions((xs[0],ys[0]),(xs[1],ys[1]))
+        FancyArrowPatch.draw(self, renderer)
 
 def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_levels, x_range, y_range, show_contours=True, figsize=None, dpi=100, fontsize=12):
   num_models = len(analyzer_list)
@@ -176,53 +191,101 @@ def plot_fit_curvature(analyzer, target_neuron_index=0, line_alpha=0.5, figsize=
   plt.show()
   return fig
 
-def plot_curvature_histograms(hist_list, label_list, color_list, bin_centers, label_loc, title, xlabel, figsize=None, dpi=100, fontsize=12):
+def plot_curvature_histograms(activity, contour_pts, contour_angle, contour_text_loc, hist_list, label_list, color_list, bin_centers, title, xlabel, figsize=None, dpi=100, fontsize=12):
   fig = plt.figure(figsize=figsize, dpi=dpi)
-  num_y_plots = len(hist_list)
-  gs0 = gridspec.GridSpec(num_y_plots, 1, hspace=0.05)
+  num_y_plots = 4
+  num_x_plots = 4
+  gs0 = gridspec.GridSpec(num_y_plots, num_x_plots, wspace=0.5)
+
+  x, y = contour_pts
+  x_mesh, y_mesh = np.meshgrid(*contour_pts)
+  curve_ax = fig.add_subplot(gs0[:, 0:2], projection='3d')
+  curve_ax.set_zlim(0,1)
+  curve_ax.set_xlim3d(5,200)
+  x_ticks = curve_ax.get_xticks().tolist()
+  x_ticks = np.round(np.linspace(0.6, 4.4, 11), 1).astype(str)
+  a_x = [" "]*len(x_ticks)
+  a_x[1] = x_ticks[1]
+  a_x[-3] = x_ticks[-2]
+  curve_ax.set_xticklabels(a_x, size=fontsize)
+  y_ticks = curve_ax.get_yticks().tolist()
+  y_ticks = np.round(np.linspace(-10, 10, 11), 1).astype(str)
+  a_y = [" "]*len(y_ticks)
+  a_y[1] = y_ticks[1]
+  a_y[-2] = y_ticks[-2]
+  curve_ax.set_yticklabels(a_y, size=fontsize)
+  curve_ax.set_zticklabels([])
+  curve_ax.zaxis.set_rotate_label(False)
+  curve_ax.set_zlabel("Normalized Activity", rotation=90, size=fontsize)
+  curve_ax.scatter(x_mesh, y_mesh, activity, color="#A9A9A9",s=0.05)
+  loc0, loc1, loc2 = contour_text_loc[0]
+  curve_ax.text(loc0, loc1, loc2, "Iso-\nresponse", color='black', size=fontsize)
+  iso_line_offset = 165
+  curve_ax.plot(np.zeros_like(x)+iso_line_offset, y, activity[:, iso_line_offset], color="black", lw=5)
+  v = Arrow3D([-200/3., -200/3.], [200/2., 200/2.+200/16.], 
+              [0, 0.0], mutation_scale=10, 
+              lw=2, arrowstyle="-|>", color="r", linestyle="dashed")
+  curve_ax.add_artist(v)
+  curve_ax.text(-270/3., 300/3.0, 0.0, "v", color='red', size=fontsize)
+  phi_k = Arrow3D([-200/3., 0.], [200/2., 200/2.], 
+              [0, 0.0], mutation_scale=10, 
+              lw=2, arrowstyle="-|>", color="r", linestyle = "dashed")
+  curve_ax.add_artist(phi_k)
+  curve_ax.text(-175/3., 270/3.0, 0.0, r"${\phi}_{k}$", color='red', size=fontsize)
+  loc0, loc1, loc2 = contour_text_loc[1]
+  curve_ax.text(loc0, loc1, loc2, "Response\nAttenuation", color='black', size=fontsize)
+  lines = np.array([0.2, 0.203, 0.197]) - 0.1
+  for i in lines:
+      curve_ax.contour3D(x_mesh, y_mesh, activity, [i], colors="black")
+  curve_ax.view_init(30, contour_angle)
+  
+  sub_num_y_plots = 4#len(hist_list) #2
+  sub_num_x_plots = 1#len(hist_list[0]) #2
+  hist_gs = gridspec.GridSpecFromSubplotSpec(sub_num_y_plots, sub_num_x_plots, gs0[:, 2:], hspace=0.40, wspace=0.15)
+  all_lists = zip(hist_list, label_list, color_list, bin_centers, title, xlabel)
+  orig_ax = fig.add_subplot(hist_gs[0])
   axes = []
-  axes.append(fig.add_subplot(gs0[0]))
-  for plt_idx in range(1, num_y_plots):
-    axes.append(fig.add_subplot(gs0[plt_idx], sharey=axes[0]))
-  handles = []
-  labels = []
-  max_val = 0
-  for axis_index, (axis_hists, axis_colors, axis_labels) in enumerate(zip(hist_list, color_list, label_list)):
-    for hist, color, label in zip(axis_hists, axis_colors, axis_labels):
-      axes[axis_index].plot(bin_centers, hist, color=color, linestyle="-", drawstyle="steps-mid", label=label)
-      axes[axis_index].set_yscale('log')
-      if np.max(hist) > max_val:
-        max_val = np.max(hist)
-    axes[axis_index].axvline(0.0, color='k', linestyle='dashed', linewidth=1)
-    for tick in axes[axis_index].xaxis.get_major_ticks():
-      tick.label.set_fontsize(fontsize) 
-    for tick in axes[axis_index].yaxis.get_major_ticks():
-      tick.label.set_fontsize(fontsize) 
-    axes[axis_index].set_ylabel("Normalized Count", fontsize=fontsize)
-    ax_handles, ax_labels = axes[axis_index].get_legend_handles_labels()
-    handles += ax_handles
-    labels += ax_labels
-
-  #axes[0].set_ylim([0.0, max_val+1])
-  #for axis_index in range(num_y_plots):
-  #  ticks = range(0, int(max_val), int(max_val/4))
-  #  axes[axis_index].set_yticks(ticks, minor=False)
-
-  axes[0].set_xticks(bin_centers, minor=True)
-  axes[0].set_xticks([], minor=False)
-  axes[-1].set_xticks(bin_centers, minor=True)
-  axes[-1].set_xticks(bin_centers[::int(len(bin_centers)/5)], minor=False)
-  axes[-1].xaxis.set_major_formatter(FormatStrFormatter("%0.3f"))
-
-  axes[0].set_title(title, fontsize=fontsize)
-  axes[-1].set_xlabel(xlabel, fontsize=fontsize)
-
-  legend = axes[1].legend(handles=handles, labels=labels, fontsize=fontsize,
-    borderaxespad=0., bbox_to_anchor=label_loc, framealpha=0.0)
-  legend.get_frame().set_linewidth(0.0)
-  for text, color in zip(legend.get_texts(), [color for sublist in color_list for color in sublist]):
-    text.set_color(color)
-  for item in legend.legendHandles:
-    item.set_visible(False)
+  axis_index = 0
+  for sub_plt_x in range(0, sub_num_x_plots):
+    for sub_plt_y in range(0, sub_num_y_plots):
+      if (sub_plt_x, sub_plt_y) == (0,0):
+        axes.append(orig_ax)
+      else:
+        #axes.append(fig.add_subplot(hist_gs[sub_plt_y, sub_plt_x], sharey=orig_ax))
+        axes.append(fig.add_subplot(hist_gs[axis_index], sharey=orig_ax))
+      axis_index += 1
+  axis_index = 0
+  for axis_x, (sub_hist, sub_label, sub_color, sub_bins, sub_title, sub_xlabel) in enumerate(all_lists):
+    handles = []
+    labels = []
+    max_val = 0
+    for axis_y, (axis_hists, axis_labels, axis_colors) in enumerate(zip(sub_hist, sub_label, sub_color)):
+      axes[axis_index].set_xticks(sub_bins, minor=True)
+      axes[axis_index].set_xticks(sub_bins[::int(len(sub_bins)/5)], minor=False)
+      axes[axis_index].set_xlabel(sub_xlabel, fontsize=fontsize)
+      axes[axis_index].xaxis.set_major_formatter(FormatStrFormatter("%0.3f"))
+      for hist, label, color in zip(axis_hists, axis_labels, axis_colors):
+        axes[axis_index].plot(sub_bins, hist, color=color, linestyle="-", drawstyle="steps-mid", label=label)
+        axes[axis_index].set_yscale('log')
+        if np.max(hist) > max_val:
+          max_val = np.max(hist)
+      axes[axis_index].axvline(0.0, color='k', linestyle='dashed', linewidth=1)
+      for tick in axes[axis_index].xaxis.get_major_ticks():
+        tick.label.set_fontsize(fontsize) 
+      for tick in axes[axis_index].yaxis.get_major_ticks():
+        tick.label.set_fontsize(fontsize) 
+      axes[axis_index].set_ylabel("Normalized\nCount", fontsize=fontsize)
+      ax_handles, ax_labels = axes[axis_index].get_legend_handles_labels()
+      handles += ax_handles
+      labels += ax_labels
+      if axis_x == 0 and axis_y == 1:#sub_num_y_plots-1:
+        legend = axes[axis_index].legend(handles=handles, labels=labels, fontsize=fontsize, loc="upper right",
+          borderaxespad=0.5, borderpad=0., ncol=2)
+        legend.get_frame().set_linewidth(0.0)
+        for text, color in zip(legend.get_texts(), [color for sublist in sub_color for color in sublist]):
+          text.set_color(color)
+        for item in legend.legendHandles:
+          item.set_visible(False)
+      axis_index += 1
   plt.show()
   return fig
