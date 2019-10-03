@@ -281,11 +281,11 @@ class Analyzer(object):
     # Run statistics
     stats_file_loc = self.analysis_out_dir+"savefiles/run_stats_"+save_info+".npz"
     if os.path.exists(stats_file_loc):
-      self.run_stats = np.load(stats_file_loc)["data"].item()["run_stats"]
+      self.run_stats = np.load(stats_file_loc, allow_pickle=True)["data"].item()["run_stats"]
     # var_names evaluated
     eval_file_loc = self.analysis_out_dir+"savefiles/evals_"+save_info+".npz"
     if os.path.exists(eval_file_loc):
-      self.evals = np.load(eval_file_loc)["data"].item()["evals"]
+      self.evals = np.load(eval_file_loc, allow_pickle=True)["data"].item()["evals"]
     # Basis function fits
     try:
       self.load_basis_stats(save_info)
@@ -294,29 +294,29 @@ class Analyzer(object):
     # Activity triggered analysis
     ata_file_loc = self.analysis_out_dir+"savefiles/atas_"+save_info+".npz"
     if os.path.exists(ata_file_loc):
-      ata_analysis = np.load(ata_file_loc)["data"].item()
+      ata_analysis = np.load(ata_file_loc, allow_pickle=True)["data"].item()
       self.atas = ata_analysis["atas"]
       self.atcs = ata_analysis["atcs"]
     ata_noise_file_loc = self.analysis_out_dir+"savefiles/atas_noise_"+save_info+".npz"
     if os.path.exists(ata_noise_file_loc):
-      ata_noise_analysis = np.load(ata_noise_file_loc)["data"].item()
+      ata_noise_analysis = np.load(ata_noise_file_loc, allow_pickle=True)["data"].item()
       self.noise_atas = ata_noise_analysis["noise_atas"]
       self.noise_atcs = ata_noise_analysis["noise_atcs"]
     act_noise_file_loc = self.analysis_out_dir+"savefiles/noise_response_"+save_info+".npz"
     if os.path.exists(act_noise_file_loc):
-      noise_analysis = np.load(act_noise_file_loc)["data"].item()
+      noise_analysis = np.load(act_noise_file_loc, allow_pickle=True)["data"].item()
       self.noise_activity = noise_analysis["noise_activity"]
       self.analysis_params.num_noise_images = self.noise_activity.shape[0]
     # Orientation analysis
     tuning_file_locs = [self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz",
       self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz"]
     if os.path.exists(tuning_file_locs[0]):
-      self.ot_grating_responses = np.load(tuning_file_locs[0])["data"].item()
+      self.ot_grating_responses = np.load(tuning_file_locs[0], allow_pickle=True)["data"].item()
     if os.path.exists(tuning_file_locs[1]):
-      self.co_grating_responses = np.load(tuning_file_locs[1])["data"].item()
+      self.co_grating_responses = np.load(tuning_file_locs[1], allow_pickle=True)["data"].item()
     recon_file_loc = self.analysis_out_dir+"savefiles/full_recon_"+save_info+".npz"
     if os.path.exists(recon_file_loc):
-      recon_analysis = np.load(recon_file_loc)["data"].item()
+      recon_analysis = np.load(recon_file_loc, allow_pickle=True)["data"].item()
       self.full_image = recon_analysis["full_image"]
       self.full_recon = recon_analysis["full_recon"]
       self.recon_frac_act = recon_analysis["recon_frac_act"]
@@ -326,7 +326,7 @@ class Analyzer(object):
     recon_adversarial_stats_file_loc = (
       self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz")
     if os.path.exists(recon_adversarial_stats_file_loc):
-      data = np.load(recon_adversarial_stats_file_loc)["data"].item()
+      data = np.load(recon_adversarial_stats_file_loc, allow_pickle=True)["data"].item()
       self.steps_idx = data["steps_idx"]
       self.recon_adversarial_input_images = data["input_images"]
       self.adversarial_target_images = data["target_images"]
@@ -349,14 +349,14 @@ class Analyzer(object):
     recon_adversarial_file_loc = (
       self.analysis_out_dir+"savefiles/recon_adversary_recons_"+save_info+".npz")
     if os.path.exists(recon_adversarial_file_loc):
-      data = np.load(recon_adversarial_file_loc)["data"].item()
+      data = np.load(recon_adversarial_file_loc, allow_pickle=True)["data"].item()
       self.adversarial_recons = data["adversarial_recons"]
 
     #Class adversarial analysis
     class_adversarial_file_loc = (
       self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz")
     if os.path.exists(class_adversarial_file_loc):
-      data = np.load(class_adversarial_file_loc)["data"].item()
+      data = np.load(class_adversarial_file_loc, allow_pickle=True)["data"].item()
       self.steps_idx = data["steps_idx"]
       self.class_adversarial_input_images = data["input_images"]
       self.adversarial_input_labels = data["input_labels"]
@@ -374,18 +374,18 @@ class Analyzer(object):
     class_adversarial_file_loc = \
       self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz"
     if os.path.exists(class_adversarial_file_loc):
-      data = np.load(class_adversarial_file_loc)["data"].item()
+      data = np.load(class_adversarial_file_loc, allow_pickle=True)["data"].item()
       self.adversarial_images = data["adversarial_images"]
 
     # Optimal stimulus analysis
     neuron_visualization_file_loc = (
       self.analysis_out_dir+"savefiles/neuron_visualization_analysis_"+save_info+".npz")
     if os.path.exists(neuron_visualization_file_loc):
-      self.neuron_vis_output = np.load(neuron_visualization_file_loc)["data"].item()
+      self.neuron_vis_output = np.load(neuron_visualization_file_loc, allow_pickle=True)["data"].item()
 
   def load_basis_stats(self, save_info):
     bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
-    self.bf_stats = np.load(bf_file_loc)["data"].item()["bf_stats"]
+    self.bf_stats = np.load(bf_file_loc, allow_pickle=True)["data"].item()["bf_stats"]
 
   def stats_analysis(self, save_info):
     """Run stats extracted from the logfile"""
