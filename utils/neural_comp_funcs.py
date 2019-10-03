@@ -17,7 +17,6 @@ import utils.data_processing as dp
 import utils.plot_functions as pf
 import analysis.analysis_picker as ap
 
-
 class Arrow3D(FancyArrowPatch):
     def __init__(self, xs, ys, zs, *args, **kwargs):
         FancyArrowPatch.__init__(self, (0,0), (0,0), *args, **kwargs)
