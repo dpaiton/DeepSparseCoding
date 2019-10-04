@@ -1,7 +1,9 @@
 from analysis.base_analyzer import Analyzer
+import numpy as np
 
 class MlpAnalyzer(Analyzer):
-  def __init__(self):
+  def __init__(self, is_lca=False):
+    self.is_lca = is_lca
     super(MlpAnalyzer, self).__init__()
 
   def run_analysis(self, images, labels, save_info=""):
@@ -15,3 +17,15 @@ class MlpAnalyzer(Analyzer):
         target_method = self.analysis_params.adversarial_target_method,
         target_labels = self.analysis_params.adversarial_target_labels,
         save_info=save_info)
+    if self.analysis_params.do_evals:
+      out_evals = ["input_node:0", "label_est:0"]
+      if(self.is_lca):
+        out_evals.append("reconstruction:0")
+        out_evals.append("activations:0")
+
+      #Run model
+      out_dict = self.evaluate_model_batch(self.analysis_params.eval_batch_size,
+          images, out_evals)
+      out_dict["labels"] = labels
+      out_fn = self.analysis_out_dir+"savefiles/evals_"+save_info+".npz"
+      np.savez(out_fn, data={"evals":out_dict})

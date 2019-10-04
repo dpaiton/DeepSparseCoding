@@ -21,7 +21,7 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = False
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = False
+    self.do_evals = True
     # Dictionary fitting
     self.do_basis_analysis = False
     # LCA Inference analysis
@@ -31,7 +31,7 @@ class params(object):
     # Recon adversarial image analysis
     self.do_recon_adversaries = False # TODO: broken for rica
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
@@ -87,7 +87,7 @@ class params(object):
     #self.adversarial_save_int = 1
     self.adversarial_save_int = 5
 
-    self.eval_batch_size = 100
+    self.eval_batch_size = 50
 
     #Specify which adv to use here
     #If none, use all

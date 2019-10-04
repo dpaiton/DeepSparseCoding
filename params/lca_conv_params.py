@@ -150,9 +150,11 @@ class params(BaseParams):
       self.num_neurons = 512 # 128
       self.num_steps = 75
       self.dt = 0.001
-      self.tau = 0.1
+      self.tau = 0.2
       self.rectify_a = True
       self.thresh_type = "soft"
+      #sparse_mult = 0.05
+      #sparse_mult = 0.1
       sparse_mult = 0.2
 
       for sched_idx in range(len(self.schedule)):

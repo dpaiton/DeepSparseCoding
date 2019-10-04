@@ -12,8 +12,10 @@ from analysis.vae_analyzer import VaeAnalyzer as vae_analyzer
 from analysis.gdn_autoencoder_analyzer import GaAnalyzer as ga_analyzer
 
 def get_analyzer(model_type):
-  if model_type.lower() in ["mlp", "mlp_vae", "mlp_lca", "mlp_sae", "mlp_lista"]:
+  if model_type.lower() in ["mlp", "mlp_vae", "mlp_sae", "mlp_lista"]:
     return mlp_analyzer()
+  if model_type.lower() == "mlp_lca":
+    return mlp_analyzer(is_lca=True)
   if model_type.lower() == "ica":
     return ica_analyzer()
   if model_type.lower() == "rica":

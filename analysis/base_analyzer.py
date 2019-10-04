@@ -365,6 +365,12 @@ class Analyzer(object):
     self.analysis_logger.log_info("Image analysis is complete.")
     return evals
 
+  def eval_analysis_batch(self, images, var_names, save_info, batch_size):
+    evals = self.evaluate_model_batch(batch_size, images, var_names)
+    np.savez(self.analysis_out_dir+"savefiles/evals_"+save_info+".npz", data={"evals":evals})
+    self.analysis_logger.log_info("Image analysis is complete.")
+    return evals
+
   def evaluate_model_batch(self, batch_size, images, var_names):
     #TODO have this function call model's evaluate_model_batch
     """

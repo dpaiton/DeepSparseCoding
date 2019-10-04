@@ -28,11 +28,52 @@ class MlpLcaModel(MlpModel):
         self.params.num_steps, self.params.lca_patch_size_y, self.params.lca_patch_size_x,
         self.params.lca_stride_y, self.params.lca_stride_x, self.params.eps)
     else:
-
       module = LcaModule(input_node, self.params.num_neurons, self.sparse_mult,
         self.eta, self.params.thresh_type, self.params.rectify_a,
         self.params.num_steps, self.params.eps)
     return module
+
+  #We overwrite get_load_vars here to get a dict from str to variable
+  def get_load_vars(self):
+    """Get variables for loading"""
+    all_vars = tf.global_variables()
+    if self.params.cp_load_var is None:
+      load_v = [v for v in all_vars if v not in self.full_model_load_ignore]
+    else:
+      if(self.params.load_dict):
+        load_v = {}
+        #Can only load dictionary by itself here
+        assert(len(self.params.cp_load_var) == 1)
+        #Saver var_list can't take appended :0 as variable name
+        idx = self.params.cp_load_var[0].rfind(":")
+        assert idx != -1, ("cp_load_var name must contain \":\"")
+        offset = len(self.params.cp_load_var[0]) - idx
+        load_v[self.params.cp_load_var[0][:-offset]] = self.lca_module.w
+      else:
+        load_v = []
+        for weight in self.params.cp_load_var:
+          found=False
+          for var in all_vars:
+            if var.name == weight:
+              load_v.append(var)
+              found=True
+              break
+          if not found:
+            assert False, ("Weight specified in cp_load_var "+str(weight)+" not found")
+    return load_v
+
+  #We overwrite here to allow for the saver to reshape variables as necessary
+  def construct_savers(self):
+    """Add savers to graph"""
+    with self.graph.as_default():
+      #Loop through to find variables to ignore
+      all_vars = tf.global_variables()
+      load_vars = [v for v in all_vars if v not in self.full_model_load_ignore]
+      self.full_saver = tf.train.Saver(max_to_keep=self.params.max_cp_to_keep,
+        var_list=load_vars)
+      if self.params.cp_load:
+        self.loader = tf.train.Saver(var_list=self.get_load_vars(), reshape=True)
+    self.savers_constructed = True
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
@@ -63,12 +104,17 @@ class MlpLcaModel(MlpModel):
           else:
             assert False, ("FC lca must have datashape of rank 2 or 4")
 
-        self.lca_module = self.build_lca_module(input_node)
+        self.input_node = tf.identity(input_node, name="input_node")
+
+        self.lca_module = self.build_lca_module(self.input_node)
+        self.reconstruction = tf.identity(self.lca_module.reconstruction, name="reconstruction")
+        self.activations = tf.identity(self.lca_module.a, name="activations")
+
         self.trainable_variables.update(self.lca_module.trainable_variables)
 
         if self.params.train_on_recon:
           if self.params.layer_types[0] == "conv":
-            data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
+            data_shape = [tf.shape(self.input_node)[0]]+self.params.full_data_shape
             mlp_input = tf.reshape(self.lca_module.reconstruction, shape=data_shape)
           elif self.params.layer_types[0] == "fc":
             mlp_input = self.lca_module.reconstruction
@@ -77,6 +123,11 @@ class MlpLcaModel(MlpModel):
         else: # train on LCA latent encoding
           mlp_input = self.lca_module.a
           data_shape = mlp_input.get_shape().as_list()
+
+        #Add pooling layer to mlp_input if set
+        if(self.params.lca_max_pool):
+          mlp_input = tf.nn.max_pool(mlp_input, ksize=self.params.lca_max_pool_ksize,
+            strides=self.params.lca_max_pool_strides, padding="SAME")
 
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
@@ -93,9 +144,9 @@ class MlpLcaModel(MlpModel):
 
         with tf.variable_scope("performance_metrics") as scope:
           #LCA metrics
-          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
+          MSE = tf.reduce_mean(tf.square(tf.subtract(self.input_node, self.lca_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
-          pixel_var = tf.nn.moments(input_node, axes=[1])[1]
+          pixel_var = tf.nn.moments(self.input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
           with tf.variable_scope("prediction_bools"):
@@ -128,13 +179,12 @@ class MlpLcaModel(MlpModel):
       self.lca_module.loss_dict["sparse_loss"],
       self.lca_module.a,
       self.lca_module.reconstruction,
-      self.pSNRdB]
-
+      self.pSNRdB, self.input_node]
 
     out_vals =  tf.get_default_session().run(eval_list, feed_dict)
 
-    recon_loss, sparse_loss, lca_a_vals, recon, pSNRdB\
-      = out_vals[0:5]
+    recon_loss, sparse_loss, lca_a_vals, recon, pSNRdB, input_node\
+      = out_vals[0:6]
 
     train_on_adversarial = feed_dict[self.train_on_adversarial]
     if(train_on_adversarial):
@@ -155,10 +205,9 @@ class MlpLcaModel(MlpModel):
       orig_recon_linf_mean = np.mean(orig_recon_linf)
       orig_recon_linf_min = np.min(orig_recon_linf)
 
-
-    input_max = np.max(input_data)
-    input_mean = np.mean(input_data)
-    input_min = np.min(input_data)
+    input_max = np.max(input_node)
+    input_mean = np.mean(input_node)
+    input_min = np.min(input_node)
     recon_max = np.max(recon)
     recon_mean = np.mean(recon)
     recon_min = np.min(recon)
@@ -200,14 +249,14 @@ class MlpLcaModel(MlpModel):
     feed_dict = self.get_feed_dict(input_data, input_labels)
 
     eval_list = [self.global_step, self.lca_module.w,
-      self.lca_module.reconstruction, self.lca_module.a]
+      self.lca_module.reconstruction, self.lca_module.a, self.input_node]
     eval_out = tf.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
-    weights, recon, lca_activity = eval_out[1:]
+    weights, recon, lca_activity, input_node = eval_out[1:]
 
     batch_size = input_data.shape[0]
-    fig = pf.plot_activity_hist(np.reshape(input_data, [batch_size, -1]), title="Image Histogram",
+    fig = pf.plot_activity_hist(np.reshape(input_node, [batch_size, -1]), title="Image Histogram",
       save_filename=self.params.disp_dir+"img_hist"+filename_suffix)
 
     fig = pf.plot_activity_hist(np.reshape(recon, [batch_size, -1]), title="Recon Histogram",
@@ -216,10 +265,10 @@ class MlpLcaModel(MlpModel):
     recon = dp.reshape_data(recon, flatten=False)[0]
     weights = dp.reshape_data(weights.T, flatten=False)[0] # [num_neurons, height, width]
     #Scale image by max and min of images and/or recon
-    r_max = np.max([np.max(input_data), np.max(recon)])
-    r_min = np.min([np.min(input_data), np.min(recon)])
-    input_data = dp.reshape_data(input_data, flatten=False)[0]
-    fig = pf.plot_data_tiled(input_data, normalize=False,
+    r_max = np.max([np.max(input_node), np.max(recon)])
+    r_min = np.min([np.min(input_node), np.min(recon)])
+    input_node = dp.reshape_data(input_node, flatten=False)[0]
+    fig = pf.plot_data_tiled(input_node, normalize=False,
       title="Scaled Images at step "+current_step, vmin=r_min, vmax=r_max,
       save_filename=self.params.disp_dir+"images"+filename_suffix)
     fig = pf.plot_data_tiled(recon, normalize=False,
@@ -231,9 +280,15 @@ class MlpLcaModel(MlpModel):
     fig = pf.plot_activity_hist(lca_activity, title="LCA Activity Histogram",
       save_filename=self.params.disp_dir+"lca_act_hist"+filename_suffix)
 
-    if(self.params.train_on_recon):
-      if(len(weights.shape) == 4):
-        weights = np.transpose(weights, (0, 2, 3, 1))
-      fig = pf.plot_data_tiled(weights, normalize=False,
-        title="Dictionary at step "+current_step, vmin=None, vmax=None,
-        save_filename=self.params.disp_dir+"phi"+filename_suffix)
+    if(len(weights.shape) == 4):
+      weights = np.transpose(weights, (0, 2, 3, 1))
+    fig = pf.plot_data_tiled(weights, normalize=False,
+      title="Dictionary at step "+current_step, vmin=None, vmax=None,
+      save_filename=self.params.disp_dir+"phi"+filename_suffix)
+
+    #Plot loss over time
+    eval_list = [self.lca_module.recon_loss_list, self.lca_module.sparse_loss_list, self.lca_module.total_loss_list]
+    (recon_losses, sparse_losses, total_losses) = tf.get_default_session().run(eval_list, feed_dict)
+    #TODO put this in plot functions
+    pf.plot_sc_losses(recon_losses, sparse_losses, total_losses,
+      save_filename=self.params.disp_dir+"losses"+filename_suffix)
