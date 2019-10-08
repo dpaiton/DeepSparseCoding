@@ -625,8 +625,8 @@ def plot_circular_variance_histogram(variances_list, label_list, num_bins=50, y_
   plt.show()
   return fig
 
-def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label_list, num_bins, width_ratios, height_ratios,
-                                 fontsize, figsize, dpi):
+def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label_list, num_bins, density, width_ratios,
+                                 height_ratios, fontsize, figsize, dpi):
   fig = plt.figure(figsize=figsize, dpi=dpi)
   gs0 = gridspec.GridSpec(1, 3, width_ratios=width_ratios)
   axes = []
@@ -639,7 +639,7 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
   bar_width = np.diff(bins).min()
   hist_list = []
   for variances, label, color in zip(circ_var_list, label_list, color_list):
-    hist, bin_edges = np.histogram(variances.flatten(), bins)
+    hist, bin_edges = np.histogram(variances.flatten(), bins, density=density)
     hist_list.append(hist)
     bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
     bin_centers = bin_left + (bin_right - bin_left)/2
@@ -657,7 +657,10 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
   y_max = np.max([np.max(hist) for hist in hist_list])
   axes[-1].set_ylim([0, y_max+1])
   axes[-1].set_title("Circular Variance", fontsize=fontsize)
-  axes[-1].set_ylabel("Count", fontsize=fontsize)
+  if density:
+    axes[-1].set_ylabel("Density", fontsize=fontsize)
+  else:
+    axes[-1].set_ylabel("Count", fontsize=fontsize)
   handles, labels = axes[-1].get_legend_handles_labels()
   legend = axes[-1].legend(handles=handles, labels=labels, fontsize=fontsize,
     borderaxespad=0., framealpha=0.0, loc="upper right")
