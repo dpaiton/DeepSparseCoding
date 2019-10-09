@@ -69,7 +69,7 @@ class LcaAnalyzer(Analyzer):
     if os.path.exists(ot_file_loc):
       self.ot_grating_responses = np.load(ot_file_loc, allow_pickle=True)["data"].item()
     co_file_loc = self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz"
-    if os.path.exists(ot_file_loc):
+    if os.path.exists(co_file_loc):
       self.co_grating_responses = np.load(co_file_loc, allow_pickle=True)["data"].item()
 
   def compute_time_varied_response(self, images, steps_per_image=None):
