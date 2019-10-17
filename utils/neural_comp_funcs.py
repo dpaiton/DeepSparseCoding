@@ -53,7 +53,7 @@ def set_size(width, fraction=1, subplot=[1, 1]):
     return fig_dim
 
 def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_levels, x_range, y_range, show_contours=True,
-                           text_width=200, width_fraction=1.0, dpi=100):#, fontsize=12):
+                           text_width=200, width_fraction=1.0, dpi=100):
   arrow_width = 0.0
   arrow_linewidth = 1
   arrow_headsize = 0.15
@@ -65,7 +65,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
   phi_k_text_y_offset = -1.2 / width_fraction
   phi_j_text_x_offset = 0.9 / width_fraction
   phi_j_text_y_offset = 0.3 / width_fraction
-  nu_text_x_offset = -0.54 / width_fraction
+  nu_text_x_offset = -0.56 / width_fraction
   nu_text_y_offset = 0.3 / width_fraction
   num_models = len(analyzer_list)
   num_plots_y = np.int32(np.ceil(np.sqrt(num_models)))
@@ -94,7 +94,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     analyzer = analyzer_list[analyzer_index]
     inner_gs = gridspec.GridSpecFromSubplotSpec(1, 1, gs0[plot_id])#, wspace=gspec_wspace, hspace=gspec_hspace)
     curve_axes.append(pf.clear_axis(fig.add_subplot(inner_gs[0])))
-    curve_axes[-1].set_title(analyzer.analysis_params.display_name)#, fontsize=fontsize)
+    curve_axes[-1].set_title(analyzer.analysis_params.display_name)
     # plot colored mesh points
     norm_activity = analyzer.comp_activations[analyzer_neuron_index, analyzer_orth_index, ...]
     x_mesh, y_mesh = np.meshgrid(analyzer.comp_contour_dataset["x_pts"], analyzer.comp_contour_dataset["y_pts"])
@@ -116,7 +116,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     text_handle = curve_axes[-1].text(
       target_vector_x+(tenth_range_shift*phi_k_text_x_offset),
       target_vector_y+(tenth_range_shift*phi_k_text_y_offset),
-      r"$\Phi_{k}$", horizontalalignment='center', verticalalignment='center')#, fontsize=fontsize)
+      r"$\Phi_{k}$", horizontalalignment='center', verticalalignment='center')
     # plot comparison neuron arrow & label 
     proj_comparison = analyzer.comp_contour_dataset["proj_comparison_neuron"][analyzer_neuron_index][analyzer_orth_index]
     comparison_vector_x = proj_comparison[0].item()
@@ -127,7 +127,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     text_handle = curve_axes[-1].text(
       comparison_vector_x+(tenth_range_shift*phi_j_text_x_offset),
       comparison_vector_y+(tenth_range_shift*phi_j_text_y_offset),
-      r"$\Phi_{j}$", horizontalalignment='center', verticalalignment='center')#, fontsize=fontsize)
+      r"$\Phi_{j}$", horizontalalignment='center', verticalalignment='center')
     # Plot all other comparison neurons TODO: add flag to optionally do this
     #for proj_alt in analyzer.comp_contour_dataset["proj_comparison_neuron"][analyzer_neuron_index]:
     #  if not np.all(proj_alt == proj_comparison):
@@ -144,7 +144,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     text_handle = curve_axes[-1].text(
       orth_vector_x+(tenth_range_shift*nu_text_x_offset),
       orth_vector_y+(tenth_range_shift*nu_text_y_offset),
-      r"$\nu$", horizontalalignment='center', verticalalignment='center')#, fontsize=fontsize)
+      r"$\nu$", horizontalalignment='center', verticalalignment='center')
     # Plot axes
     curve_axes[-1].set_aspect("equal")
     curve_axes[-1].plot(x_range, [0,0], color='k', linewidth=arrow_linewidth/2)
@@ -153,10 +153,10 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     #gs2 = gridspec.GridSpecFromSubplotSpec(2, 1, inner_gs[1], wspace=0.0, hspace=0.5)#-0.55)
     #target_vect_ax = pf.clear_axis(fig.add_subplot(gs2[0]))
     #target_vect_ax.imshow(analyzer.bf_stats["basis_functions"][analyzer.target_neuron_ids[0]], cmap="Greys_r")
-    #target_vect_ax.set_title("Primary\nBasis Function", color='r')#, fontsize=fontsize)
+    #target_vect_ax.set_title("Primary\nBasis Function", color='r')
     #comparison_vect_ax = pf.clear_axis(fig.add_subplot(gs2[1]))
     #comparison_vect_ax.imshow(analyzer.bf_stats["basis_functions"][analyzer.comparison_neuron_ids[0][0]], cmap="Greys_r")
-    #comparison_vect_ax.set_title("Comparison\nBasis Function", color='k')#, fontsize=fontsize)
+    #comparison_vect_ax.set_title("Comparison\nBasis Function", color='k')
     analyzer_index += 1
   # Add colorbar
   scalarMap._A = []
@@ -169,7 +169,7 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     borderpad=0,
     )
   cbar = fig.colorbar(scalarMap, cax=cbar_ax, ticks=[vmin, vmax])
-  cbar.ax.tick_params(labelleft=False, labelright=True, left=False, right=True)#, labelsize=fontsize)
+  cbar.ax.tick_params(labelleft=False, labelright=True, left=False, right=True)
   cbar.ax.set_yticklabels(["{:.0f}".format(vmin), "{:.0f}".format(vmax)])
   plt.show()
   return fig, contour_handles
@@ -624,110 +624,6 @@ def compute_osi(centered_ot_curve):
   orth_val = centered_ot_curve[0]
   osi = (max_val - orth_val) / (max_val + orth_val)
   return osi
-
-def plot_circular_variance(cv_data, max_bfs_per_fig=400, title="", save_filename=None, fontsize=12):
-  assert np.sqrt(max_bfs_per_fig) % 1 == 0, "Pick a square number for max_bfs_per_fig"
-  orientations = (np.pi * np.arange(len(cv_data))
-    / len(cv_data)) - (np.pi/2) # relative to preferred
-  num_bfs = len(cv_data)
-  num_bf_figs = int(np.ceil(num_bfs / max_bfs_per_fig))
-  # this determines how many ot curves are aranged in a square grid within
-  # any given figure
-  if num_bf_figs > 1:
-    bfs_per_fig = max_bfs_per_fig
-  else:
-    squares = [x**2 for x in range(1, int(np.sqrt(max_bfs_per_fig))+1)]
-    bfs_per_fig = squares[bisect.bisect_left(squares, num_bfs)]
-  plot_sidelength = int(np.sqrt(bfs_per_fig))
-  bf_idx = 0
-  bf_figs = []
-  for in_bf_fig_idx in range(num_bf_figs):
-    fig = plt.figure(figsize=(32, 32))
-    plt.suptitle(title + ', fig {} of {}'.format(
-      in_bf_fig_idx+1, num_bf_figs))#, fontsize=fontsize)
-    subplot_grid = gridspec.GridSpec(plot_sidelength, plot_sidelength,
-      wspace=0.4, hspace=0.4)
-    fig_bf_idx = bf_idx % bfs_per_fig
-    while fig_bf_idx < bfs_per_fig and bf_idx < num_bfs:
-      #if bf_idx % 100 == 0:
-      #  print("plotted ", bf_idx, " of ", num_bfs, " circular variance plots")
-      ## print("sum vector: ", np.real(cv_data[bf_idx][1]), np.imag(cv_data[bf_idx][1]))
-      ax = plt.Subplot(fig, subplot_grid[fig_bf_idx])
-      ax.plot(np.real(cv_data[bf_idx][0]), np.imag(cv_data[bf_idx][0]),
-              c='g', linewidth=0.5)
-      ax.scatter(np.real(cv_data[bf_idx][0]), np.imag(cv_data[bf_idx][0]),
-                 c='g', s=4)
-      ax.quiver(np.real(cv_data[bf_idx][1]), np.imag(cv_data[bf_idx][1]),
-                angles='xy', scale_units='xy', scale=1.0, color='b',
-                width=0.01)
-      # ax.quiver(0.5, 0.5, color='b')
-      ax.axvline(x=0.0, color='k', linestyle='--', alpha=0.6, linewidth=0.3)
-      ax.axhline(y=0.0, color='k', linestyle='--', alpha=0.6, linewidth=0.3)
-      ax.yaxis.set_major_formatter(plticker.FormatStrFormatter('%0.2g'))
-      xaxis_size = max(np.max(np.real(cv_data[bf_idx][0])), 1.0)
-      yaxis_size = max(np.max(np.imag(cv_data[bf_idx][0])), 1.0)
-      ax.set_yticks([-1. * yaxis_size, yaxis_size])
-      ax.set_xticks([-1. * xaxis_size, xaxis_size])
-      # put the circular variance index in the upper left
-      ax.text(0.02, 0.97, "CV: {:.2f}".format(cv_data[bf_idx][2]),
-              horizontalalignment="left", verticalalignment="top",
-              transform=ax.transAxes, color="b")#, fontsize=fontsize)
-      fig.add_subplot(ax)
-      fig_bf_idx += 1
-      bf_idx += 1
-    if save_filename is not None:
-      filename_split = os.path.split(save_filename)
-      save_filename = filename_split[0]+str(in_bf_fig_idx).zfill(2)+"_"+filename_split[1]
-      fig.savefig(save_filename)
-      plt.close(fig)
-      bf_figs.append(None)
-    else:
-      bf_figs.append(fig)
-  if save_filename is None:
-    plt.show()
-  return bf_figs
-
-def plot_circular_variance_histogram(variances_list, label_list, num_bins=50, y_max=None,
-                                     fontsize=18, figsize=None, save_filename=None):
-  variance_min = np.min([np.min(var) for var in variances_list])#0.0
-  variance_max = np.max([np.max(var) for var in variances_list])#1.0
-  bins = np.linspace(variance_min, variance_max, num_bins)
-  bar_width = np.diff(bins).min()
-  fig, ax = plt.subplots(1, figsize=figsize)
-  hist_list = []
-  handles = []
-  for variances, label in zip(variances_list, label_list):
-    hist, bin_edges = np.histogram(variances.flatten(), bins)
-    #hist = hist / np.max(hist)
-    hist_list.append(hist)
-    bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
-    bin_centers = bin_left + (bin_right - bin_left)/2
-    handles.append(ax.bar(bin_centers, hist, width=bar_width, log=True, align="center", alpha=0.5, label=label))
-  ax.set_xticks(bin_left, minor=True)
-  ax.set_xticks(bin_left[::4], minor=False)
-  ax.xaxis.set_major_formatter(plticker.FormatStrFormatter("%0.0f"))
-  ax.tick_params("both", labelsize=16)
-  ax.set_xlim([variance_min, variance_max])
-  ax.set_xticks([variance_min, variance_max])
-  ax.set_xticklabels(["More selective", "Less selective"])
-  ticks = ax.xaxis.get_major_ticks()
-  ticks[0].label1.set_horizontalalignment("left")
-  ticks[1].label1.set_horizontalalignment("right")
-  if y_max is None:
-    # Round up to the nearest power of 10
-    y_max = 10**(np.ceil(np.log10(np.max([np.max(hist) for hist in hist_list]))))
-  ax.set_ylim([1, y_max])
-  ax.set_title("Circular Variance Histogram")#, fontsize=fontsize)
-  ax.set_xlabel("Selectivity")#, fontsize=fontsize)
-  ax.set_ylabel("Log Count")#, fontsize=fontsize)
-  legend = ax.legend(handles, label_list, #ncol=len(label_list),
-    borderaxespad=0., bbox_to_anchor=[0.98, 0.98], fancybox=True, loc="upper right")#, fontsize=fontsize)
-  if save_filename is not None:
-    fig.savefig(save_filename)
-    plt.close(fig)
-    return None
-  plt.show()
-  return fig
 
 def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label_list, num_bins, density, width_ratios,
                                  height_ratios, fontsize, figsize, dpi):
