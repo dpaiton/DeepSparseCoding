@@ -52,15 +52,11 @@ class NeuronVisualizationModule(object):
         self.vis_var.set_shape([None,] + self.input_shape[1:])
         self.ignore_load_var_list.append(self.vis_var)
         self.reset = self.vis_var.initializer
-
         self.vis_pert = self.vis_var - self.data_tensor
-
         if(self.norm_constraint_mag is not None):
           self.vis_pert = self.norm_constraint_mag * tf.nn.l2_normalize(self.vis_pert,
             axis=list(range(1,len(self.input_shape)))) # don't normalize along batch dim
-
         self.vis_image = self.vis_pert + self.data_tensor
-
         if(self.clip_output): # Clip final visualization image to bound specified
           self.vis_image = tfc.upper_bound(tfc.lower_bound(
             self.vis_image, self.clip_range[0]), self.clip_range[1])
@@ -98,7 +94,6 @@ class NeuronVisualizationModule(object):
         else:
           assert False, ("method " + self.method +" not recognized.\n"+
             "Options are 'erhan'.")
-
       with tf.variable_scope("optimizer") as scope:
         if(self.optimizer == "adam"):
           self.vis_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
