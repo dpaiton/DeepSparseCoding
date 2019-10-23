@@ -9,7 +9,7 @@ import sys
 """
 Test for running models
 loads every model and runs on synthetic data
-TODO: allow test_params to hvae multiple entries & test each entry
+TODO: allow test_params to have multiple entries & test each entry
 """
 def testBasic(self):
   schedule_index = 0 # Not testing support for multiple schedules
