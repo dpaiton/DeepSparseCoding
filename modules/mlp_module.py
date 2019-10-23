@@ -46,7 +46,8 @@ class MlpModule(object):
     elif data_ndim == 4:
       self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
       self.num_pixels = self.y_size * self.x_size * self.num_data_channels
-      assert layer_types[0] == "conv", ("Data tensor must have ndim==4 for conv layers")
+      assert layer_types[0] == "conv", ("Data tensor must have ndim==4 for conv layers."
+        +"Is the vectorize_data parameter set correctly?")
     else:
       assert False, ("Shouldn't get here")
 
