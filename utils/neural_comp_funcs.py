@@ -1,12 +1,12 @@
 import re
 import numpy as np
-from skimage.measure import compare_psnr
+from skimage import measure
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.ticker import FormatStrFormatter
+import matplotlib.ticker as plticker
 from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 import matplotlib.font_manager
@@ -28,19 +28,56 @@ class Arrow3D(FancyArrowPatch):
         self.set_positions((xs[0],ys[0]),(xs[1],ys[1]))
         FancyArrowPatch.draw(self, renderer)
 
+def set_size(width, fraction=1, subplot=[1, 1]):
+    """ Set aesthetic figure dimensions to avoid scaling in latex.
+    Parameters
+    ----------
+    width: float
+            Width in pts
+    fraction: float
+            Fraction of the width which you wish the figure to occupy
+    Returns
+    -------
+    fig_dim: tuple
+            Dimensions of figure in inches
+    
+    Usage: figsize = set_size(text_width, fraction=1, subplot=[1, 1])
+    Code obtained from: https://jwalton.info/Embed-Publication-Matplotlib-Latex/
+    """
+    fig_width_pt = width * fraction # Width of figure
+    inches_per_pt = 1 / 72.27 # Convert from pt to inches
+    golden_ratio = (5**.5 - 1) / 2 # Golden ratio to set aesthetic figure height
+    fig_width_in = fig_width_pt * inches_per_pt # Figure width in inches
+    fig_height_in = fig_width_in * golden_ratio * (subplot[0] / subplot[1]) # Figure height in inches
+    fig_dim = (fig_width_in, fig_height_in) # Final figure dimensions
+    return fig_dim
+
 def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_levels, x_range, y_range, show_contours=True,
-                           figsize=None, dpi=100, fontsize=12):
+                           text_width=200, width_fraction=1.0, dpi=100):
+  arrow_width = 0.0
+  arrow_linewidth = 1
+  arrow_headsize = 0.15
+  arrow_head_length = 0.15
+  arrow_head_width = 0.15
+  gs0_hspace = 0.5
+  gs0_wspace = -0.6
+  phi_k_text_x_offset = 0.6 / width_fraction
+  phi_k_text_y_offset = -1.2 / width_fraction
+  phi_j_text_x_offset = 0.9 / width_fraction
+  phi_j_text_y_offset = 0.3 / width_fraction
+  nu_text_x_offset = -0.56 / width_fraction
+  nu_text_y_offset = 0.3 / width_fraction
   num_models = len(analyzer_list)
   num_plots_y = np.int32(np.ceil(np.sqrt(num_models)))
   num_plots_x = np.int32(np.ceil(np.sqrt(num_models)))
-  gs0 = gridspec.GridSpec(num_plots_y, num_plots_x, wspace=-0.1)
+  gs0 = gridspec.GridSpec(num_plots_y, num_plots_x, wspace=gs0_wspace, hspace=gs0_hspace)
   vmin = np.min([np.min(analyzer.comp_activations) for analyzer in analyzer_list])
   vmax = np.max([np.max(analyzer.comp_activations) for analyzer in analyzer_list])
   levels = np.linspace(vmin, vmax, num_levels)
   cmap = plt.get_cmap("cividis")
   cNorm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
-  fig = plt.figure(figsize=figsize, dpi=dpi)
+  fig = plt.figure(figsize=set_size(text_width, width_fraction, [num_plots_y, num_plots_x]), dpi=dpi)
   contour_handles = []
   curve_axes = []
   analyzer_index = 0
@@ -55,9 +92,9 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     else:
       analyzer_orth_index = orth_indices
     analyzer = analyzer_list[analyzer_index]
-    inner_gs = gridspec.GridSpecFromSubplotSpec(1, 1, gs0[plot_id])
+    inner_gs = gridspec.GridSpecFromSubplotSpec(1, 1, gs0[plot_id])#, wspace=gspec_wspace, hspace=gspec_hspace)
     curve_axes.append(pf.clear_axis(fig.add_subplot(inner_gs[0])))
-    curve_axes[-1].set_title(analyzer.analysis_params.display_name, fontsize=fontsize)
+    curve_axes[-1].set_title(analyzer.analysis_params.display_name)
     # plot colored mesh points
     norm_activity = analyzer.comp_activations[analyzer_neuron_index, analyzer_orth_index, ...]
     x_mesh, y_mesh = np.meshgrid(analyzer.comp_contour_dataset["x_pts"], analyzer.comp_contour_dataset["y_pts"])
@@ -73,47 +110,53 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     target_vector_x = proj_target[0].item()
     target_vector_y = proj_target[1].item()
     curve_axes[-1].arrow(0, 0, target_vector_x, target_vector_y,
-      width=0.00, head_width=0.15, head_length=0.15, fc='k', ec='k',
-      linestyle='-', linewidth=3)
+      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length, fc='k', ec='k',
+      linestyle='-', linewidth=arrow_linewidth)
     tenth_range_shift = ((max(x_range) - min(x_range))/10) # For shifting labels
-    text_handle = curve_axes[-1].text(target_vector_x+(tenth_range_shift*0.3), target_vector_y+(tenth_range_shift*0.7),
-      r"$\Phi_{k}$", fontsize=fontsize, horizontalalignment='center', verticalalignment='center')
+    text_handle = curve_axes[-1].text(
+      target_vector_x+(tenth_range_shift*phi_k_text_x_offset),
+      target_vector_y+(tenth_range_shift*phi_k_text_y_offset),
+      r"$\Phi_{k}$", horizontalalignment='center', verticalalignment='center')
     # plot comparison neuron arrow & label 
     proj_comparison = analyzer.comp_contour_dataset["proj_comparison_neuron"][analyzer_neuron_index][analyzer_orth_index]
     comparison_vector_x = proj_comparison[0].item()
     comparison_vector_y = proj_comparison[1].item()
     curve_axes[-1].arrow(0, 0, comparison_vector_x, comparison_vector_y,
-      width=0.00, head_width=0.15, head_length=0.15, fc='k', ec='k',
-      linestyle="-", linewidth=3)
-    text_handle = curve_axes[-1].text(comparison_vector_x+(tenth_range_shift*0.3), comparison_vector_y+(tenth_range_shift*0.7),
-      r"$\Phi_{j}$", fontsize=fontsize, horizontalalignment='center', verticalalignment='center')
+      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length, fc='k', ec='k',
+      linestyle="-", linewidth=arrow_linewidth)
+    text_handle = curve_axes[-1].text(
+      comparison_vector_x+(tenth_range_shift*phi_j_text_x_offset),
+      comparison_vector_y+(tenth_range_shift*phi_j_text_y_offset),
+      r"$\Phi_{j}$", horizontalalignment='center', verticalalignment='center')
     # Plot all other comparison neurons TODO: add flag to optionally do this
     #for proj_alt in analyzer.comp_contour_dataset["proj_comparison_neuron"][analyzer_neuron_index]:
     #  if not np.all(proj_alt == proj_comparison):
     #    curve_axes[-1].arrow(0, 0, proj_alt[0].item(), proj_alt[1].item(),
-    #      width=0.00, head_width=0.15, head_length=0.15, fc='w', ec='w',
+    #      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length, fc='w', ec='w',
     #      linestyle="dashed", linewidth=1.0, alpha=0.9)
     # Plot orthogonal vector Nu
     proj_orth = analyzer.comp_contour_dataset["proj_orth_vect"][analyzer_neuron_index][analyzer_orth_index]
     orth_vector_x = proj_orth[0].item()
     orth_vector_y = proj_orth[1].item()
     curve_axes[-1].arrow(0, 0, orth_vector_x, orth_vector_y,
-      width=0.00, head_width=0.10, head_length=0.10, fc='k', ec='k',
-      linestyle="-", linewidth=3)
-    text_handle = curve_axes[-1].text(orth_vector_x+(tenth_range_shift*0.3), orth_vector_y+(tenth_range_shift*0.7),
-      r"$\nu$", fontsize=fontsize, horizontalalignment='center', verticalalignment='center')
+      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length, fc='k', ec='k',
+      linestyle="-", linewidth=arrow_linewidth)
+    text_handle = curve_axes[-1].text(
+      orth_vector_x+(tenth_range_shift*nu_text_x_offset),
+      orth_vector_y+(tenth_range_shift*nu_text_y_offset),
+      r"$\nu$", horizontalalignment='center', verticalalignment='center')
     # Plot axes
     curve_axes[-1].set_aspect("equal")
-    curve_axes[-1].plot(x_range, [0,0], color='k')
-    curve_axes[-1].plot([0,0], y_range, color='k')
+    curve_axes[-1].plot(x_range, [0,0], color='k', linewidth=arrow_linewidth/2)
+    curve_axes[-1].plot([0,0], y_range, color='k', linewidth=arrow_linewidth/2)
     # Include basis function image - note, need to change number of plots for inner_gs for this code
     #gs2 = gridspec.GridSpecFromSubplotSpec(2, 1, inner_gs[1], wspace=0.0, hspace=0.5)#-0.55)
     #target_vect_ax = pf.clear_axis(fig.add_subplot(gs2[0]))
     #target_vect_ax.imshow(analyzer.bf_stats["basis_functions"][analyzer.target_neuron_ids[0]], cmap="Greys_r")
-    #target_vect_ax.set_title("Primary\nBasis Function", color='r', fontsize=16)
+    #target_vect_ax.set_title("Primary\nBasis Function", color='r')
     #comparison_vect_ax = pf.clear_axis(fig.add_subplot(gs2[1]))
     #comparison_vect_ax.imshow(analyzer.bf_stats["basis_functions"][analyzer.comparison_neuron_ids[0][0]], cmap="Greys_r")
-    #comparison_vect_ax.set_title("Comparison\nBasis Function", color='k', fontsize=16)
+    #comparison_vect_ax.set_title("Comparison\nBasis Function", color='k')
     analyzer_index += 1
   # Add colorbar
   scalarMap._A = []
@@ -126,168 +169,229 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
     borderpad=0,
     )
   cbar = fig.colorbar(scalarMap, cax=cbar_ax, ticks=[vmin, vmax])
-  cbar.ax.tick_params(labelleft=False, labelright=True, left=False, right=True, labelsize=fontsize)
+  cbar.ax.tick_params(labelleft=False, labelright=True, left=False, right=True)
   cbar.ax.set_yticklabels(["{:.0f}".format(vmin), "{:.0f}".format(vmax)])
   plt.show()
   return fig, contour_handles
 
-def plot_bf_curvature(analyzer, target_neuron_index=0, line_alpha=0.5, figsize=None, dpi=100, fontsize=12):
-  fig = plt.figure(figsize=figsize, dpi=dpi)
-  gs0 = gridspec.GridSpec(1, 2, hspace=0.0, wspace=0.5)
-  axes = [fig.add_subplot(gs0[idx]) for idx in range(2)]
-  for orth_index in range(analyzer.num_comparison_vectors):#analyzer.num_neurons-1):
-    axes[0].plot(analyzer.sliced_datapoints[:, 1], analyzer.comp_sliced_activity[target_neuron_index][orth_index],
-      color='b', alpha=line_alpha)
-  num_rand_orth = np.minimum(analyzer.num_comparison_vectors, analyzer.num_pixels-1)
-  for orth_index in range(num_rand_orth):
-    axes[1].plot(analyzer.sliced_datapoints[:, 1], analyzer.rand_sliced_activity[target_neuron_index][orth_index],
-      color='b', alpha=line_alpha)
-  for ax, title in zip(axes, ["Basis Projection", "Random Projection"]):
-    ax.set_title(title, y=1.03, fontsize=fontsize)
-    ax.set_ylabel("Normalized Activation", fontsize=fontsize)
-    ax.set_xlabel("Distance from Basis Function", fontsize=fontsize)
-    ax.grid(True)
-    ax.set_ylim([0.0, 1.0])
-    x_vals = analyzer.sliced_datapoints[:,1]
-    ax.set_xlim([np.min(x_vals), np.max(x_vals)])
-    for tick in ax.xaxis.get_major_ticks():
-      tick.label.set_fontsize(14) 
-    for tick in ax.yaxis.get_major_ticks():
-      tick.label.set_fontsize(14) 
-    ax.set_aspect((np.max(x_vals)-np.min(x_vals)))
-    ax.tick_params(labelsize=14)
-  fig.suptitle("Normalized Responses to Orthogonal Inputs\n"+analyzer.analysis_params.display_name,
-    y=0.63, x=0.5, fontsize=fontsize)
-  plt.show()
-  return fig
+def compute_curvature_fits(analyzer_list, target_act):
+  for analyzer in analyzer_list:
+    analyzer.iso_comp_curvatures = []
+    analyzer.iso_rand_curvatures = []
+    activations_and_curvatures = ((analyzer.iso_comp_activations, analyzer.iso_comp_curvatures),
+      (analyzer.iso_rand_activations, analyzer.iso_rand_curvatures))
+    for activations, curvatures in activations_and_curvatures:
+      (num_neurons, num_planes, num_points_y, num_points_x) = activations.shape
+      analyzer.num_neurons = num_neurons
+      for neuron_id in range(analyzer.num_neurons):
+        sub_curvatures = []
+        for plane_id in range(num_planes):
+          activity = activations[neuron_id, plane_id, ...]
+          ## mirror top half of activations to bottom half to only measure curvature in the upper quadrant
+          num_y, num_x = activity.shape 
+          activity[:int(num_y/2), :] = activity[int(num_y/2):, :][::-1,:]
+          ## compute curvature
+          contours = measure.find_contours(activity, target_act)[0]
+          x_vals = contours[:,1]
+          y_vals = contours[:,0]
+          coeffs = np.polynomial.polynomial.polyfit(y_vals, x_vals, deg=2)
+          sub_curvatures.append(coeffs[-1])
+        curvatures.append(sub_curvatures)
+    comp_x_pts = analyzer.attn_comp_contour_dataset["x_pts"]
+    rand_x_pts = analyzer.attn_rand_contour_dataset["x_pts"]
+    assert(np.all(comp_x_pts == rand_x_pts)) # This makes sure we don't need to recompute proj_datapoints for each case
+    num_x_imgs = len(comp_x_pts)
+    x_target = comp_x_pts[num_x_imgs-1] # find a location to take a slice
+    proj_datapoints = analyzer.attn_comp_contour_dataset["proj_datapoints"]
+    slice_indices = np.where(proj_datapoints[:, 0] == x_target)[0]
+    analyzer.sliced_datapoints = proj_datapoints[slice_indices, :][:, :] # slice grid
+    analyzer.attn_comp_curvatures = []
+    analyzer.attn_comp_fits = []
+    analyzer.attn_comp_sliced_activity = []
+    analyzer.attn_rand_curvatures = []
+    analyzer.attn_rand_fits = []
+    analyzer.attn_rand_sliced_activity = []
+    for neuron_index in range(analyzer.attn_num_target_neurons):
+      sub_comp_curvatures = []
+      sub_comp_fits = []
+      sub_comp_sliced_activity = []
+      sub_comp_delta_activity = []
+      sub_rand_curvatures = []
+      sub_rand_fits = []
+      sub_rand_sliced_activity = []
+      for orth_index in range(analyzer.attn_num_comparison_vectors):
+        comp_activity = analyzer.attn_comp_activations[neuron_index, orth_index, ...].reshape([-1])
+        sub_comp_sliced_activity.append(comp_activity[slice_indices][:])
+        coeff = np.polynomial.polynomial.polyfit(analyzer.sliced_datapoints[:, 1],
+          sub_comp_sliced_activity[-1], deg=2) # [c0, c1, c2], where p = c0 + c1x + c2x^2
+        sub_comp_curvatures.append(-coeff[2]) # multiply by -1 so that positive coeff is "more" curvature
+        sub_comp_fits.append(np.polynomial.polynomial.polyval(analyzer.sliced_datapoints[:, 1], coeff))
+      num_rand_vectors = np.minimum(analyzer.bf_stats["num_inputs"]-1, analyzer.attn_num_comparison_vectors)
+      for orth_index in range(num_rand_vectors):
+        rand_activity = analyzer.attn_rand_activations[neuron_index, orth_index, ...].reshape([-1])
+        sub_rand_sliced_activity.append(rand_activity[slice_indices][:])
+        coeff = np.polynomial.polynomial.polyfit(analyzer.sliced_datapoints[:, 1],
+          sub_rand_sliced_activity[-1], deg=2)
+        sub_rand_curvatures.append(-coeff[2])
+        sub_rand_fits.append(np.polynomial.polynomial.polyval(analyzer.sliced_datapoints[:, 1], coeff))
+      analyzer.attn_comp_curvatures.append(sub_comp_curvatures)
+      analyzer.attn_comp_fits.append(sub_comp_fits)
+      analyzer.attn_comp_sliced_activity.append(sub_comp_sliced_activity)
+      analyzer.attn_rand_curvatures.append(sub_rand_curvatures)
+      analyzer.attn_rand_fits.append(sub_rand_fits)
+      analyzer.attn_rand_sliced_activity.append(sub_rand_sliced_activity)
+        
+def get_bins(all_curvatures, num_bins=50):
+  max_curvature = np.amax(all_curvatures)
+  min_curvature = np.amin(all_curvatures)
+  bin_width = (max_curvature - min_curvature) / (num_bins-1) # subtract 1 to leave room for the zero bin
+  bin_centers = [0.0]
+  while min(bin_centers) > min_curvature:
+    bin_centers.append(bin_centers[-1]-bin_width)
+  bin_centers = bin_centers[::-1]
+  while max(bin_centers) < max_curvature:
+    bin_centers.append(bin_centers[-1]+bin_width)
+  bin_lefts = bin_centers - (bin_width / 2)
+  bin_rights = bin_centers + (bin_width / 2)
+  bins = np.append(bin_lefts, bin_rights[-1])
+  return bins
 
-def plot_fit_curvature(analyzer, target_neuron_index=0, line_alpha=0.5, figsize=None, dpi=100, fontsize=12):
-  fig = plt.figure(figsize=figsize, dpi=dpi)
-  gs0 = gridspec.GridSpec(1, 2, hspace=0.0, wspace=0.5)
-  axes = [fig.add_subplot(gs0[idx]) for idx in range(2)]
-  for orth_index in range(analyzer.num_comparison_vectors):#analyzer.num_neurons-1):
-    axes[0].plot(analyzer.sliced_datapoints[:,1], analyzer.comp_fits[target_neuron_index][orth_index],
-      color='r', alpha=line_alpha)
-  num_rand_orth = np.minimum(analyzer.num_comparison_vectors, analyzer.num_pixels-1)
-  for orth_index in range(num_rand_orth):
-    axes[1].plot(analyzer.sliced_datapoints[:,1], analyzer.rand_fits[target_neuron_index][orth_index],
-      color='r', alpha=line_alpha)
-  for ax, title in zip(axes, ["Basis Projection", "Random Projection"]):
-    ax.set_title(title, y=1.03, fontsize=fontsize)
-    ax.set_ylabel("Normalized Activation", fontsize=fontsize)
-    ax.set_xlabel("Distance from Basis Function", fontsize=fontsize)
-    ax.grid(True)
-    ax.set_ylim([0.0, 1.0])
-    x_vals = analyzer.sliced_datapoints[:,1]
-    ax.set_xlim([np.min(x_vals), np.max(x_vals)])
-    for tick in ax.xaxis.get_major_ticks():
-      tick.label.set_fontsize(14) 
-    for tick in ax.yaxis.get_major_ticks():
-      tick.label.set_fontsize(14) 
-    ax.set_aspect((np.max(x_vals)-np.min(x_vals)))
-    ax.tick_params(labelsize=14)
-  fig.suptitle("Polynomial Fit to Orthogonal Inputs\n"+analyzer.analysis_params.display_name+"\n",
-    y=0.63, x=0.5, fontsize=fontsize)
-  plt.show()
-  return fig
+def compute_curvature_hists(analyzer_list, num_bins):
+  # uniform bins for both iso-curvature plots and both attenuation-curvature plots
+  iso_all_curvatures = []
+  for analyzer in analyzer_list:
+    for neuron_index in range(analyzer.num_neurons):
+      iso_all_curvatures += analyzer.iso_comp_curvatures[neuron_index]
+      iso_all_curvatures += analyzer.iso_rand_curvatures[neuron_index]
+  iso_bins = get_bins(iso_all_curvatures, num_bins)
+  attn_all_curvatures = []
+  for analyzer in analyzer_list:
+    for neuron_index in range(analyzer.attn_num_target_neurons):
+      attn_all_curvatures += analyzer.attn_comp_curvatures[neuron_index]
+      attn_all_curvatures += analyzer.attn_rand_curvatures[neuron_index]
+  attn_bins = get_bins(attn_all_curvatures, num_bins)
+  for analyzer in analyzer_list:
+    # Iso-response histogram
+    flat_comp_curvatures = [item for sub_list in analyzer.iso_comp_curvatures for item in sub_list]
+    comp_hist, analyzer.iso_bin_edges = np.histogram(flat_comp_curvatures, iso_bins, density=False)
+    analyzer.iso_comp_hist = comp_hist / len(flat_comp_curvatures)
+    flat_rand_curvatures = [item for sub_list in analyzer.iso_rand_curvatures for item in sub_list]
+    rand_hist, _ = np.histogram(flat_rand_curvatures, iso_bins, density=False)
+    analyzer.iso_rand_hist = rand_hist / len(flat_rand_curvatures)
+    # Response attenuation histogram
+    flat_comp_curvatures = [item for sub_list in analyzer.attn_comp_curvatures for item in sub_list]
+    comp_hist, analyzer.attn_bin_edges = np.histogram(flat_comp_curvatures, attn_bins, density=False)
+    analyzer.attn_comp_hist = comp_hist / len(flat_comp_curvatures)
+    flat_rand_curvatures = [item for sub_list in analyzer.attn_rand_curvatures for item in sub_list]
+    rand_hist, _ = np.histogram(flat_rand_curvatures, attn_bins, density=False)
+    analyzer.attn_rand_hist = rand_hist / len(flat_rand_curvatures)
 
-def plot_curvature_histograms(activity, contour_pts, contour_angle, contour_text_loc, hist_list, label_list, color_list,
-                              bin_centers, title, xlabel, figsize=None, dpi=100, fontsize=12):
-  fig = plt.figure(figsize=figsize, dpi=dpi)
-  num_y_plots = 4
-  num_x_plots = 4
-  gs0 = gridspec.GridSpec(num_y_plots, num_x_plots, wspace=0.5)
-
-  x, y = contour_pts
+def plot_curvature_histograms(activity, contour_pts, contour_angle, contour_text_loc, hist_list, label_list,
+                              color_list, mesh_color, bin_centers, title, xlabel, curve_lims,
+                              text_width=200, width_ratio=1.0, dpi=100):
+  gs0_wspace = 0.5
+  hspace_hist = 0.7
+  wspace_hist = 0.08
+  view_elevation = 30
+  iso_response_line_thickness = 2
+  respone_attenuation_line_thickness = 2
+  num_y_plots = 2
+  num_x_plots = 1
+  fig = plt.figure(figsize=set_size(text_width, width_ratio, [num_y_plots, num_x_plots]), dpi=dpi)
+  gs_base = gridspec.GridSpec(num_y_plots, num_x_plots, wspace=gs0_wspace)
+  curve_ax = fig.add_subplot(gs_base[0], projection='3d')
   x_mesh, y_mesh = np.meshgrid(*contour_pts)
-  curve_ax = fig.add_subplot(gs0[:, 0:2], projection='3d')
-  curve_ax.set_zlim(0,1)
-  curve_ax.set_xlim3d(5,200)
+  curve_ax.set_zlim(0, 1)
+  curve_ax.set_xlim3d(5, 200)
   x_ticks = curve_ax.get_xticks().tolist()
-  x_ticks = np.round(np.linspace(0.6, 4.4, 11), 1).astype(str)
+  x_ticks = np.round(np.linspace(curve_lims["x"][0], curve_lims["x"][1],
+    len(x_ticks)), 1).astype(str)
   a_x = [" "]*len(x_ticks)
   a_x[1] = x_ticks[1]
-  a_x[-3] = x_ticks[-2]
-  curve_ax.set_xticklabels(a_x, size=fontsize)
+  a_x[-1] = x_ticks[-1]
+  curve_ax.set_xticklabels(a_x)
   y_ticks = curve_ax.get_yticks().tolist()
-  y_ticks = np.round(np.linspace(-10, 10, 11), 1).astype(str)
+  y_ticks = np.round(np.linspace(curve_lims["y"][0], curve_lims["y"][1],
+    len(y_ticks)), 1).astype(str)
   a_y = [" "]*len(y_ticks)
   a_y[1] = y_ticks[1]
-  a_y[-2] = y_ticks[-2]
-  curve_ax.set_yticklabels(a_y, size=fontsize)
+  a_y[-1] = y_ticks[-1]
+  curve_ax.set_yticklabels(a_y)
   curve_ax.set_zticklabels([])
   curve_ax.zaxis.set_rotate_label(False)
-  curve_ax.set_zlabel("Normalized Activity", rotation=90, size=fontsize)
-  curve_ax.scatter(x_mesh, y_mesh, activity, color="#A9A9A9",s=0.05)
+  curve_ax.set_zlabel("Normalized Activity", rotation=90, labelpad=-12., position=(-10., 0.))
+  curve_ax.scatter(x_mesh, y_mesh, activity, color=mesh_color, s=0.01)
   loc0, loc1, loc2 = contour_text_loc[0]
-  curve_ax.text(loc0, loc1, loc2, "Iso-\nresponse", color='black', size=fontsize)
+  curve_ax.text(loc0, loc1, loc2, "Iso-\nresponse", color="black")
   iso_line_offset = 165
-  curve_ax.plot(np.zeros_like(x)+iso_line_offset, y, activity[:, iso_line_offset], color="black", lw=5)
+  x, y = contour_pts
+  curve_ax.plot(np.zeros_like(x)+iso_line_offset, y, activity[:, iso_line_offset], color="black", lw=2)
   v = Arrow3D([-200/3., -200/3.], [200/2., 200/2.+200/16.], 
               [0, 0.0], mutation_scale=10, 
-              lw=2, arrowstyle="-|>", color="r", linestyle="dashed")
+              lw=1, arrowstyle="-|>", color="red", linestyle="dashed")
   curve_ax.add_artist(v)
-  curve_ax.text(-270/3., 300/3.0, 0.0, "v", color='red', size=fontsize)
+  curve_ax.text(-300/3., 280/3.0, 0.0, r"$\nu$", color="red")
   phi_k = Arrow3D([-200/3., 0.], [200/2., 200/2.], 
               [0, 0.0], mutation_scale=10, 
-              lw=2, arrowstyle="-|>", color="r", linestyle = "dashed")
+              lw=1, arrowstyle="-|>", color="red", linestyle = "dashed")
   curve_ax.add_artist(phi_k)
-  curve_ax.text(-175/3., 270/3.0, 0.0, r"${\phi}_{k}$", color='red', size=fontsize)
+  curve_ax.text(-175/3., 250/3.0, 0.0, r"${\phi}_{k}$", color="red")
   loc0, loc1, loc2 = contour_text_loc[1]
-  curve_ax.text(loc0, loc1, loc2, "Response\nAttenuation", color='black', size=fontsize)
+  curve_ax.text(loc0, loc1, loc2, "Response\nAttenuation", color="black")
   lines = np.array([0.2, 0.203, 0.197]) - 0.1
   for i in lines:
-      curve_ax.contour3D(x_mesh, y_mesh, activity, [i], colors="black")
-  curve_ax.view_init(30, contour_angle)
+      curve_ax.contour3D(x_mesh, y_mesh, activity, [i], colors="black", linewidths=2)
+  curve_ax.view_init(view_elevation, contour_angle)
+  scaling = np.array([getattr(curve_ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+  curve_ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]]*3) # make sure it has a square aspect
+  #curve_ax.set_rasterized(True) # TODO: Figure out how to stop 3D scatter from having transparency
   
-  sub_num_y_plots = 4#len(hist_list) #2
-  sub_num_x_plots = 1#len(hist_list[0]) #2
-  hist_gs = gridspec.GridSpecFromSubplotSpec(sub_num_y_plots, sub_num_x_plots, gs0[:, 2:], hspace=0.40, wspace=0.15)
-  all_lists = zip(hist_list, label_list, color_list, bin_centers, title, xlabel)
-  orig_ax = fig.add_subplot(hist_gs[0])
+  num_hist_y_plots = 2
+  num_hist_x_plots = 2
+  gs_hist = gridspec.GridSpecFromSubplotSpec(num_hist_y_plots, num_hist_x_plots, gs_base[1],
+    hspace=hspace_hist, wspace=wspace_hist)
+  all_x_lists = zip(hist_list, label_list, color_list, bin_centers, title)
+  orig_ax = fig.add_subplot(gs_hist[0,0])
   axes = []
-  axis_index = 0
-  for sub_plt_x in range(0, sub_num_x_plots):
-    for sub_plt_y in range(0, sub_num_y_plots):
+  for sub_plt_y in range(0, num_hist_y_plots):
+    axes.append([])
+    for sub_plt_x in range(0, num_hist_x_plots):
       if (sub_plt_x, sub_plt_y) == (0,0):
-        axes.append(orig_ax)
+        axes[sub_plt_y].append(orig_ax)
       else:
-        #axes.append(fig.add_subplot(hist_gs[sub_plt_y, sub_plt_x], sharey=orig_ax))
-        axes.append(fig.add_subplot(hist_gs[axis_index], sharey=orig_ax))
-      axis_index += 1
-  axis_index = 0
-  for axis_x, (sub_hist, sub_label, sub_color, sub_bins, sub_title, sub_xlabel) in enumerate(all_lists):
-    handles = []
-    labels = []
-    max_val = 0
-    for axis_y, (axis_hists, axis_labels, axis_colors) in enumerate(zip(sub_hist, sub_label, sub_color)):
-      axes[axis_index].set_xticks(sub_bins, minor=True)
-      axes[axis_index].set_xticks(sub_bins[::int(len(sub_bins)/5)], minor=False)
-      axes[axis_index].set_xlabel(sub_xlabel, fontsize=fontsize)
-      axes[axis_index].xaxis.set_major_formatter(FormatStrFormatter("%0.3f"))
+        axes[sub_plt_y].append(fig.add_subplot(gs_hist[sub_plt_y, sub_plt_x], sharey=orig_ax))
+  for axis_x, (sub_hist, sub_label, sub_color, sub_bins, sub_title) in enumerate(all_x_lists):
+    max_hist_val = 0.001
+    min_hist_val = 100
+    all_y_lists = zip(sub_hist, sub_label, sub_color, xlabel)
+    for axis_y, (axis_hists, axis_labels, axis_colors, sub_xlabel) in enumerate(all_y_lists):
+      axes[axis_y][axis_x].set_xticks(sub_bins, minor=True)
+      axes[axis_y][axis_x].set_xticks(sub_bins[::int(len(sub_bins)/4)], minor=False)
+      axes[axis_y][axis_x].xaxis.set_major_formatter(plticker.FormatStrFormatter("%0.3f"))
       for hist, label, color in zip(axis_hists, axis_labels, axis_colors):
-        axes[axis_index].plot(sub_bins, hist, color=color, linestyle="-", drawstyle="steps-mid", label=label)
-        axes[axis_index].set_yscale('log')
-        if np.max(hist) > max_val:
-          max_val = np.max(hist)
-      axes[axis_index].axvline(0.0, color='k', linestyle='dashed', linewidth=1)
-      for tick in axes[axis_index].xaxis.get_major_ticks():
-        tick.label.set_fontsize(fontsize) 
-      for tick in axes[axis_index].yaxis.get_major_ticks():
-        tick.label.set_fontsize(fontsize) 
-      axes[axis_index].set_ylabel("Normalized\nCount", fontsize=fontsize)
-      ax_handles, ax_labels = axes[axis_index].get_legend_handles_labels()
-      handles += ax_handles
-      labels += ax_labels
-      if axis_x == 0 and axis_y == 1:#sub_num_y_plots-1:
-        legend = axes[axis_index].legend(handles=handles, labels=labels, fontsize=fontsize, loc="upper right",
-          borderaxespad=0.5, borderpad=0., ncol=2)
+        axes[axis_y][axis_x].plot(sub_bins, hist, color=color, linestyle="-", drawstyle="steps-mid", label=label)
+        axes[axis_y][axis_x].set_yscale('log')
+        if np.max(hist) > max_hist_val:
+          max_hist_val = np.max(hist)
+        if np.min(hist) < min_hist_val:
+          min_hist_val = np.min(hist)
+      axes[axis_y][axis_x].axvline(0.0, color="black", linestyle="dashed", linewidth=1)
+      if axis_y == 0:
+        axes[axis_y][axis_x].set_title(sub_title)
+      axes[axis_y][axis_x].set_xlabel(sub_xlabel)
+      if axis_x == 0:
+        axes[axis_y][axis_x].set_ylabel("Relative\nFrequency")
+        ax_handles, ax_labels = axes[axis_y][axis_x].get_legend_handles_labels()
+        legend = axes[axis_y][axis_x].legend(handles=ax_handles, labels=ax_labels, loc="upper right",
+          ncol=3, borderaxespad=0., borderpad=0., handlelength=0., columnspacing=-0.5,
+          labelspacing=0., bbox_to_anchor=(0.95, 0.95))
         legend.get_frame().set_linewidth(0.0)
-        for text, color in zip(legend.get_texts(), [color for sublist in sub_color for color in sublist]):
+        for text, color in zip(legend.get_texts(), axis_colors):
           text.set_color(color)
         for item in legend.legendHandles:
           item.set_visible(False)
-      axis_index += 1
+      if axis_x == 1:
+        axes[axis_y][axis_x].tick_params(axis="y", labelleft=False)
   plt.show()
   return fig
 
@@ -317,8 +421,8 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
     (y_id, x_id) = plot_id
     if y_id == 0 and x_id == 0:
       ax = fig.add_subplot(gs[plot_id])
-      #ax.set_ylabel("Activation", fontsize=16)
-      #ax.set_xlabel("Orientation", fontsize=16)
+      #ax.set_ylabel("Activation")#, fontsize=16)
+      #ax.set_xlabel("Orientation")#, fontsize=16)
       ax00 = ax
     else:
       ax = fig.add_subplot(gs[plot_id])#, sharey=ax00)
@@ -330,7 +434,7 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
         color_val = scalarMap.to_rgba(contrast)
         ax.plot(orientations, activity, linewidth=1, color=color_val)
         ax.scatter(orientations, activity, s=4, c=[color_val])
-        ax.yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
+        ax.yaxis.set_major_formatter(plticker.FormatStrFormatter('%0.2g'))
         ax.set_yticks([0, np.max(activity)])
         ax.set_xticks([0, 90, 180])
       bf_idx += 1
@@ -358,7 +462,7 @@ def plot_weights(weights, title="", figsize=None, save_filename=None):
       filter_total += 1
     pf.clear_axis(sub_ax[plot_id])
     sub_ax[plot_id].set_aspect("equal")
-  fig.suptitle(title, y=0.95, x=0.5, fontsize=20)
+  fig.suptitle(title, y=0.95, x=0.5)#, fontsize=20)
   if save_filename is not None:
       fig.savefig(save_filename)
       plt.close(fig)
@@ -521,110 +625,6 @@ def compute_osi(centered_ot_curve):
   osi = (max_val - orth_val) / (max_val + orth_val)
   return osi
 
-def plot_circular_variance(cv_data, max_bfs_per_fig=400, title="", save_filename=None):
-  assert np.sqrt(max_bfs_per_fig) % 1 == 0, "Pick a square number for max_bfs_per_fig"
-  orientations = (np.pi * np.arange(len(cv_data))
-    / len(cv_data)) - (np.pi/2) # relative to preferred
-  num_bfs = len(cv_data)
-  num_bf_figs = int(np.ceil(num_bfs / max_bfs_per_fig))
-  # this determines how many ot curves are aranged in a square grid within
-  # any given figure
-  if num_bf_figs > 1:
-    bfs_per_fig = max_bfs_per_fig
-  else:
-    squares = [x**2 for x in range(1, int(np.sqrt(max_bfs_per_fig))+1)]
-    bfs_per_fig = squares[bisect.bisect_left(squares, num_bfs)]
-  plot_sidelength = int(np.sqrt(bfs_per_fig))
-  bf_idx = 0
-  bf_figs = []
-  for in_bf_fig_idx in range(num_bf_figs):
-    fig = plt.figure(figsize=(32, 32))
-    plt.suptitle(title + ', fig {} of {}'.format(
-      in_bf_fig_idx+1, num_bf_figs), fontsize=20)
-    subplot_grid = gridspec.GridSpec(plot_sidelength, plot_sidelength,
-      wspace=0.4, hspace=0.4)
-    fig_bf_idx = bf_idx % bfs_per_fig
-    while fig_bf_idx < bfs_per_fig and bf_idx < num_bfs:
-      #if bf_idx % 100 == 0:
-      #  print("plotted ", bf_idx, " of ", num_bfs, " circular variance plots")
-      ## print("sum vector: ", np.real(cv_data[bf_idx][1]), np.imag(cv_data[bf_idx][1]))
-      ax = plt.Subplot(fig, subplot_grid[fig_bf_idx])
-      ax.plot(np.real(cv_data[bf_idx][0]), np.imag(cv_data[bf_idx][0]),
-              c='g', linewidth=0.5)
-      ax.scatter(np.real(cv_data[bf_idx][0]), np.imag(cv_data[bf_idx][0]),
-                 c='g', s=4)
-      ax.quiver(np.real(cv_data[bf_idx][1]), np.imag(cv_data[bf_idx][1]),
-                angles='xy', scale_units='xy', scale=1.0, color='b',
-                width=0.01)
-      # ax.quiver(0.5, 0.5, color='b')
-      ax.axvline(x=0.0, color='k', linestyle='--', alpha=0.6, linewidth=0.3)
-      ax.axhline(y=0.0, color='k', linestyle='--', alpha=0.6, linewidth=0.3)
-      ax.yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
-      xaxis_size = max(np.max(np.real(cv_data[bf_idx][0])), 1.0)
-      yaxis_size = max(np.max(np.imag(cv_data[bf_idx][0])), 1.0)
-      ax.set_yticks([-1. * yaxis_size, yaxis_size])
-      ax.set_xticks([-1. * xaxis_size, xaxis_size])
-      # put the circular variance index in the upper left
-      ax.text(0.02, 0.97, 'CV: {:.2f}'.format(cv_data[bf_idx][2]),
-              horizontalalignment='left', verticalalignment='top',
-              transform=ax.transAxes, color='b', fontsize=10)
-      fig.add_subplot(ax)
-      fig_bf_idx += 1
-      bf_idx += 1
-    if save_filename is not None:
-      filename_split = os.path.split(save_filename)
-      save_filename = filename_split[0]+str(in_bf_fig_idx).zfill(2)+"_"+filename_split[1]
-      fig.savefig(save_filename)
-      plt.close(fig)
-      bf_figs.append(None)
-    else:
-      bf_figs.append(fig)
-  if save_filename is None:
-    plt.show()
-  return bf_figs
-
-def plot_circular_variance_histogram(variances_list, label_list, num_bins=50, y_max=None,
-                                     fontsize=18, figsize=None, save_filename=None):
-  variance_min = np.min([np.min(var) for var in variances_list])#0.0
-  variance_max = np.max([np.max(var) for var in variances_list])#1.0
-  bins = np.linspace(variance_min, variance_max, num_bins)
-  bar_width = np.diff(bins).min()
-  fig, ax = plt.subplots(1, figsize=figsize)
-  hist_list = []
-  handles = []
-  for variances, label in zip(variances_list, label_list):
-    hist, bin_edges = np.histogram(variances.flatten(), bins)
-    #hist = hist / np.max(hist)
-    hist_list.append(hist)
-    bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
-    bin_centers = bin_left + (bin_right - bin_left)/2
-    handles.append(ax.bar(bin_centers, hist, width=bar_width, log=True, align="center", alpha=0.5, label=label))
-  ax.set_xticks(bin_left, minor=True)
-  ax.set_xticks(bin_left[::4], minor=False)
-  ax.xaxis.set_major_formatter(FormatStrFormatter("%0.0f"))
-  ax.tick_params("both", labelsize=16)
-  ax.set_xlim([variance_min, variance_max])
-  ax.set_xticks([variance_min, variance_max])
-  ax.set_xticklabels(["More selective", "Less selective"])
-  ticks = ax.xaxis.get_major_ticks()
-  ticks[0].label1.set_horizontalalignment("left")
-  ticks[1].label1.set_horizontalalignment("right")
-  if y_max is None:
-    # Round up to the nearest power of 10
-    y_max = 10**(np.ceil(np.log10(np.max([np.max(hist) for hist in hist_list]))))
-  ax.set_ylim([1, y_max])
-  ax.set_title("Circular Variance Histogram", fontsize=fontsize)
-  ax.set_xlabel("Selectivity", fontsize=fontsize)
-  ax.set_ylabel("Log Count", fontsize=fontsize)
-  legend = ax.legend(handles, label_list, fontsize=fontsize, #ncol=len(label_list),
-    borderaxespad=0., bbox_to_anchor=[0.98, 0.98], fancybox=True, loc="upper right")
-  if save_filename is not None:
-    fig.savefig(save_filename)
-    plt.close(fig)
-    return None
-  plt.show()
-  return fig
-
 def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label_list, num_bins, density, width_ratios,
                                  height_ratios, fontsize, figsize, dpi):
   fig = plt.figure(figsize=figsize, dpi=dpi)
@@ -646,8 +646,8 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
     axes[-1].plot(bin_centers, hist, linestyle="-", drawstyle="steps-mid", color=color, label=label)
   axes[-1].set_xticks(bin_left, minor=True)
   axes[-1].set_xticks(bin_left[::4], minor=False)
-  axes[-1].xaxis.set_major_formatter(FormatStrFormatter("%0.0f"))
-  axes[-1].tick_params("both", labelsize=fontsize)
+  axes[-1].xaxis.set_major_formatter(plticker.FormatStrFormatter("%0.0f"))
+  #axes[-1].tick_params("both", labelsize=fontsize)
   axes[-1].set_xlim([variance_min, variance_max])
   axes[-1].set_xticks([variance_min, variance_max])
   axes[-1].set_xticklabels(["More\nselective", "Less\nselective"])
@@ -656,14 +656,14 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
   ticks[1].label1.set_horizontalalignment("right")
   y_max = np.max([np.max(hist) for hist in hist_list])
   axes[-1].set_ylim([0, y_max+1])
-  axes[-1].set_title("Circular Variance", fontsize=fontsize)
+  axes[-1].set_title("Circular Variance")#, fontsize=fontsize)
   if density:
-    axes[-1].set_ylabel("Density", fontsize=fontsize)
+    axes[-1].set_ylabel("Density")#, fontsize=fontsize)
   else:
-    axes[-1].set_ylabel("Count", fontsize=fontsize)
+    axes[-1].set_ylabel("Count")#, fontsize=fontsize)
   handles, labels = axes[-1].get_legend_handles_labels()
-  legend = axes[-1].legend(handles=handles, labels=labels, fontsize=fontsize,
-    borderaxespad=0., framealpha=0.0, loc="upper right")
+  legend = axes[-1].legend(handles=handles, labels=labels,
+    borderaxespad=0., framealpha=0.0, loc="upper right")#, fontsize=fontsize)
   legend.get_frame().set_linewidth(0.0)
   for text, color in zip(legend.get_texts(), color_list):
     text.set_color(color)
@@ -719,7 +719,7 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
       (y_id, x_id) = plot_id
       if y_id == 0 and x_id == 0:
         plt.text(x=0.1, y=1.4, s=analyzer.analysis_params.display_name, horizontalalignment='center',
-          verticalalignment='center', transform=axes[-1].transAxes, fontsize=fontsize)
+          verticalalignment='center', transform=axes[-1].transAxes)#, fontsize=fontsize)
   #gs_circvar = gridspec.GridSpecFromSubplotSpec(len(analyzer_list), 1, gs0[3])#, hspace=-0.5)
   #for analyzer_index, analyzer in enumerate(analyzer_list):
   #  cv_data = [val for index, val in enumerate(analyzer.metrics_list["circ_var"]) if index in bf_indices]
@@ -743,7 +743,7 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
   #      #axes[-1].quiver(np.real(cv_data[bf_idx][1]), np.imag(cv_data[bf_idx][1]),
   #      #          angles='xy', scale_units='xy', scale=1.0, color='b', width=0.01)
   #      #axes[-1].quiver(0.5, 0.5, color='b')
-  #      axes[-1].yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
+  #      axes[-1].yaxis.set_major_formatter(plticker.FormatStrFormatter('%0.2g'))
   #      xaxis_size = max(np.max(np.real(cv_data[bf_idx][0])), 1.0)
   #      yaxis_size = max(np.max(np.imag(cv_data[bf_idx][0])), 1.0)
   #      axes[-1].set_yticks([])#[-1. * yaxis_size, yaxis_size])
@@ -751,7 +751,7 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
   #      # put the circular variance index in the upper left
   #      #axes[-1].text(0.02, 0.97, '{:.2f}'.format(cv_data[bf_idx][2]),
   #      #        horizontalalignment='left', verticalalignment='top',
-  #      #        transform=axes[-1].transAxes, color='b', fontsize=10)
+  #      #        transform=axes[-1].transAxes, color='b')#, fontsize=10)
   #      bf_idx += 1
   #    else:
   #      pf.clear_axis(axes[-1])
