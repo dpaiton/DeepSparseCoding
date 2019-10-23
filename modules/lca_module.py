@@ -24,7 +24,6 @@ class LcaModule(object):
 
     self.data_tensor = data_tensor
     self.check_data()
-
     self.variable_scope = variable_scope
     self.num_neurons = num_neurons
     self.sparse_mult = sparse_mult
@@ -33,9 +32,7 @@ class LcaModule(object):
     self.rectify_a = rectify_a
     self.num_steps = num_steps
     self.eps = eps
-
     self.calc_shapes()
-
     self.trainable_variables = TrainableVariableDict()
     self.build_graph()
 
