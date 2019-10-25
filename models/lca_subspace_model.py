@@ -27,6 +27,15 @@ class LcaSubspaceModel(LcaModel):
       self.params.eps)
     return module
 
+  def get_group_activity(self):
+    return self.module.group_activity
+
+  def get_group_angle(self):
+    return self.module.group_angle
+
+  def get_group_encodings(self):
+    return (self.get_group_activity(), self.get_group_angle())
+
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     update_dict = super(LcaSubspaceModel, self).generate_update_dict(input_data, input_labels,
     batch_step)
