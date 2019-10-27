@@ -21,7 +21,7 @@ class params(BaseParams):
     if(TRAIN_ON_RECON):
       self.model_name = "mlp_lca_conv_recon"
     else:
-      self.model_name = "mlp_lca_conv_latent"
+      self.model_name = "mlp_lca_768_latent"
     self.version = "0.0"
     self.num_images = 150 # How many images to use from the VH dataset
     self.vectorize_data = True
@@ -45,7 +45,7 @@ class params(BaseParams):
     # LCA Params
     self.lca_conv = False
     self.num_neurons = 768
-    self.num_steps = 50
+    self.num_steps = 75#50
     self.dt = 0.001
     self.tau = 0.03
     self.rectify_a = True
@@ -125,7 +125,8 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.vectorize_data = True
-      self.rescale_data = True
+      self.rescale_data = False
+      self.standardize_data = True
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
@@ -168,28 +169,29 @@ class params(BaseParams):
           self.schedule[sched_idx]["decay_steps"] = int(0.5*self.schedule[sched_idx]["num_batches"])
           self.schedule[sched_idx]["decay_rate"] = 0.9
       else:
-        self.mlp_output_channels = [128, self.num_classes]
+        self.mlp_output_channels = [512, self.num_classes]
         self.mlp_layer_types = ["fc", "fc"]
-        self.mlp_activation_functions = ["relu", "identity"]
+        self.mlp_activation_functions = ["lrelu", "identity"]
         self.optimizer = "adam"
         self.mlp_patch_size = []
         self.mlp_conv_strides = []
         self.batch_norm = [None]*len(self.mlp_output_channels)
-        self.dropout = [1.0, 1.0]
+        self.dropout = [0.4, 1.0]
         self.max_pool = [False, False]
         self.max_pool_ksize = [None, None]
         self.max_pool_strides = [None, None]
         self.lrn = [None]*len(self.mlp_output_channels)
         for sched_idx in range(len(self.schedule)):
+          self.schedule[sched_idx]["num_batches"] = int(5e5)
           self.schedule[sched_idx]["weights"] = [
             "mlp/layer0/fc_w_0:0",
             "mlp/layer0/fc_b_0:0",
             "mlp/layer1/fc_w_1:0",
             "mlp/layer1/fc_b_1:0"]
           self.schedule[sched_idx]["train_on_adversarial"] = False
-          self.schedule[sched_idx]["sparse_mult"] = 0.25
-          self.schedule[sched_idx]["weight_lr"] = 1e-5
-          self.schedule[sched_idx]["decay_steps"] = int(0.4*self.schedule[sched_idx]["num_batches"])
+          self.schedule[sched_idx]["sparse_mult"] = 0.15
+          self.schedule[sched_idx]["weight_lr"] = 1e-4
+          self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
           self.schedule[sched_idx]["decay_rate"] = 0.9
 
     elif data_type.lower() == "cifar10":
