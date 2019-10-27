@@ -10,7 +10,7 @@ class params(BaseParams):
     super(params, self).__init__()
     self.model_type = "ae"
     self.model_name = "ae_768"
-    self.version = "0.0"
+    self.version = "1.0"
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = True
@@ -130,18 +130,18 @@ class params(BaseParams):
       self.batch_size = 100
       self.layer_types = ["fc"]*len(self.output_channels)
       self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
-      self.dropout = [0.4] * (len(self.activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
+      self.dropout = [0.3] * (len(self.activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
       self.log_int = 100
-      self.cp_int = int(5e5)
-      self.gen_plot_int = int(5e5)
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e5)
       self.norm_weights = False
       self.norm_w_init = False
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(5e6)
+        self.schedule[sched_idx]["num_batches"] = int(6e5)
         self.schedule[sched_idx]["weights"] = None
-        self.schedule[sched_idx]["decay_mult"] = 0.0#1e-4
-        self.schedule[sched_idx]["norm_mult"] = 3e-4
-        self.schedule[sched_idx]["weight_lr"] = 4e-4
+        self.schedule[sched_idx]["decay_mult"] = 2e-3
+        self.schedule[sched_idx]["norm_mult"] = 1e-4
+        self.schedule[sched_idx]["weight_lr"] = 1e-3
         self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["num_batches"]*0.8)
         self.schedule[sched_idx]["decay_rate"] = 0.5
         self.schedule[sched_idx]["staircase"] = True

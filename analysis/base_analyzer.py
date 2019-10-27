@@ -467,6 +467,23 @@ class Analyzer(object):
     evals = dict(zip(var_names, eval_list))
     return evals
 
+  def evaluate_tf_tensor(self, tensor, feed_dict):
+    """
+    Creates a session with the loaded model graph to run variable
+    Outputs:
+      tensor_eval [np.ndarray] containing the values computed from the session run
+    Inputs:
+      tensor [tf variable] variable to be evaluated
+      feed_dict [dict] feed dictionary with required keys for the input tensor
+    """
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.Session(config=config, graph=self.model.graph) as sess:
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
+      tensor_eval = sess.run(tensor, feed_dict)
+    return tensor_eval
+
   def basis_analysis(self, weights, save_info):
     bf_stats = dp.get_dictionary_stats(weights, padding=self.analysis_params.ft_padding,
       num_gauss_fits=self.analysis_params.num_gauss_fits,

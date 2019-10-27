@@ -5,8 +5,8 @@ class params(BaseParams):
   def __init__(self):
     super(params, self).__init__()
     self.model_type = "lca_subspace"
-    self.model_name = "lca_subspace_1024"
-    self.version = "0.0"
+    self.model_name = "lca_subspace"
+    self.version = "3.0"
     self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
@@ -98,16 +98,17 @@ class params(BaseParams):
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      self.num_neurons = 1024
-      self.num_groups = 256
-      self.cp_int = int(5e3)
+      self.num_neurons = 2560#1024
+      self.num_groups = 640
+      self.num_steps = 75
+      self.cp_int = int(1e5)
       self.log_int = 100
-      self.gen_plot_int = int(5e3)
+      self.gen_plot_int = int(5e4)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(2e4)
-        self.schedule[sched_idx]["weight_lr"] = 0.02
-        self.schedule[sched_idx]["group_orth_mult"] = 0.1
-        self.schedule[sched_idx]["sparse_mult"] = 4.0
+        self.schedule[sched_idx]["num_batches"] = int(5e5)
+        self.schedule[sched_idx]["weight_lr"] = 0.01
+        self.schedule[sched_idx]["group_orth_mult"] = 0.08
+        self.schedule[sched_idx]["sparse_mult"] = 1.3
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
