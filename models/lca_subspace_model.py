@@ -13,6 +13,10 @@ class LcaSubspaceModel(LcaModel):
     super(LcaSubspaceModel, self).__init__()
     self.vector_inputs = True
 
+  def load_params(self, params):
+    super(LcaSubspaceModel, self).load_params(params)
+    self.params.num_neurons_per_group = self.params.num_neurons // self.params.num_groups
+
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
@@ -35,6 +39,11 @@ class LcaSubspaceModel(LcaModel):
 
   def get_group_encodings(self):
     return (self.get_group_activity(), self.get_group_angle())
+
+  def compute_recon_from_group(self, sigma_in, z_in):
+    a_in = tf.multiply(tf.expand_dims(sigma_in, axis=-1), z_in)
+    a_in = tf.reshape(a_in, [tf.shape(sigma_in)[0], self.params.num_neurons])
+    return self.module.build_decoder(a_in, name="reconstruction")
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     update_dict = super(LcaSubspaceModel, self).generate_update_dict(input_data, input_labels,

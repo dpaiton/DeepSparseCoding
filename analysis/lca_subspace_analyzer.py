@@ -43,6 +43,17 @@ class LcaSubspaceAnalyzer(LcaAnalyzer):
     elif self.analysis_params.do_neuron_visualization:
       self.neuron_visualization_analysis(save_info=save_info)
 
+  def add_pre_init_ops_to_graph(self):
+    super(LcaSubspaceAnalyzer, self).add_pre_init_ops_to_graph()
+    if self.analysis_params.do_group_recons:
+      with tf.device(self.model_params.device):
+        with self.model.graph.as_default():
+          with tf.variable_scope("placeholders") as scope:
+            self.sigmas = tf.placeholder(tf.float32, [None, self.model_params.num_groups])
+            self.zs = tf.placeholder(tf.float32, [None, self.model_params.num_groups,
+              self.model_params.num_neurons_per_group])
+          self.group_recons = self.model.compute_recon_from_group(self.sigmas, self.zs)
+
   def compute_pooled_activations(self, images):
     """
     Computes the 2nd layer output code for a set of images.
