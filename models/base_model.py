@@ -406,8 +406,7 @@ class Model(object):
         with tf.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
-  #If build_graph gets called without parameters,
-  #will build placeholder first, then call build_graph_from_input
+  #If build_graph gets called it will build placeholder first, then call build_graph_from_input
   #Subclasses can overwrite this function to ignore this functionality
   def build_graph(self):
     input_node = self.build_input_placeholder()

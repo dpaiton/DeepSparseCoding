@@ -21,7 +21,6 @@ class LcaModule(object):
     Outputs:
       dictionary
     """
-
     self.data_tensor = data_tensor
     self.check_data()
     self.variable_scope = variable_scope
