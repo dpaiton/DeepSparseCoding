@@ -856,7 +856,7 @@ def plot_group_weights(weights, group_ids, title="", figsize=None,  save_filenam
       ax = clear_axis(fig.add_subplot(gs_inner[inner_plot_id]))
       ax.set_aspect("equal")
       if neuron_index < num_neurons:
-        ax.imshow(weights[indices[neuron_index], ...], cmap="Greys_r")
+        ax.imshow(weights[indices[neuron_index], ...], cmap="Greys_r", vmin=vmin, vmax=vmax)
         neuron_index += 1
   fig.suptitle(title, y=0.9, x=0.5, fontsize=20)
   if save_filename is not None:

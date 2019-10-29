@@ -45,6 +45,7 @@ class BaseParams(object):
     self.batch_size = 100
     self.optimizer = "annealed_sgd"
     self.norm_weights = False
+    self.orthonorm_weights = False
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.cp_load = False

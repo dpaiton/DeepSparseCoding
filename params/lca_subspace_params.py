@@ -41,7 +41,7 @@ class params(BaseParams):
     self.cp_load_var = ["phi"]
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = int(1e5)
+    self.gen_plot_int = int(1e3)
     self.save_plots = True
     self.schedule = [
       {"weights": None,
@@ -83,7 +83,7 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.version = "4_4.0_0.3"
+      self.version = "5x_4_1.5_0.2"
       self.num_images = 150
       self.vectorize_data = True
       self.norm_data = False
@@ -99,13 +99,14 @@ class params(BaseParams):
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      self.num_neurons = 768
-      self.num_groups = 768 // 4
+      self.num_groups = 4
+      self.num_neurons = 256 * 5
+      self.num_groups = self.num_neurons // self.num_groups
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["group_orth_mult"] = 0.3
-        self.schedule[sched_idx]["sparse_mult"] = 4.0
+        self.schedule[sched_idx]["group_orth_mult"] = 0.2
+        self.schedule[sched_idx]["sparse_mult"] = 1.5
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 

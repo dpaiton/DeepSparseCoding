@@ -15,6 +15,7 @@ class params(object):
     self.analysis_dataset = "train"
     #Output directory file
     self.save_info = "analysis_" + self.analysis_dataset
+
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
@@ -62,7 +63,7 @@ class params(object):
     #Adversarial params
     self.adversarial_num_steps = 5000 # Step size for adversarial attacks
     self.adversarial_attack_method = "carlini_targeted"
-    self.save_info += "_"+self.adversarial_attack_method # To avoid overwriting
+    #self.save_info += "_"+self.adversarial_attack_method # To avoid overwriting
     self.adversarial_step_size = 0.001
     self.adversarial_max_change = 0.1
     self.carlini_change_variable = True

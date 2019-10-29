@@ -92,7 +92,7 @@ with tf.Session(config=config, graph=model.graph) as sess:
       #if("train_on_adversarial" in sch):
       #  if(sch["train_on_adversarial"]):
       #    model.modify_input(feed_dict)
-      model.modify_input(feed_dict, sch["train_on_adversarial"])
+#      model.modify_input(feed_dict, sch["train_on_adversarial"])
 
       batch_t0 = ti.time()
 
@@ -118,6 +118,11 @@ with tf.Session(config=config, graph=model.graph) as sess:
       ## Normalize weights
       if params.norm_weights:
         sess.run([model.norm_weights], feed_dict)
+
+      if params.orthonorm_weights:
+        sess.run([model.orthonorm_weights], feed_dict)
+
+
 
       batch_t1 = ti.time()
       avg_time += (batch_t1-batch_t0)/params.batch_size
