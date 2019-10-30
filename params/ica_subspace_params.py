@@ -40,7 +40,7 @@ class params(ica_params):
     self.cp_load_var = ["w_synth"]
     self.log_int = 100
     self.log_to_file = True
-    self.gen_plot_int = 1000
+    self.gen_plot_int = 500
     self.save_plots = True
     self.schedule = [
       {"weights": ["weights/w_analy:0"],
@@ -62,22 +62,22 @@ class params(ica_params):
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
       self.version = "1"
-      self.num_images = 150
+      self.num_images = 50 #150
       self.vectorize_data = True
       self.norm_data = False
-      self.rescale_data = False
+      self.rescale_data = True
       self.center_data = True
       self.whiten_data = True
       self.whiten_method = "ZCA"
       self.extract_patches = True
       self.whiten_batch_size = 10
-      self.num_patches = int(5*1e4)
-      self.batch_size = 5000
+      self.num_patches = 5000
+      self.batch_size = 100
       self.patch_edge_size = 16
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      self.orthonorm_weights = False
+      self.orthonorm_weights = True
       
       self.group_size = 4
       self.num_neurons = 256

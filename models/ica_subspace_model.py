@@ -27,11 +27,21 @@ class IcaSubspaceModel(Model):
     def get_input_shape(self):
         return self.input_shape
 
+    def init_weight(self, method="uniform"):
+        if method == "uniform":
+            return np.random.uniform(low=-1.0, high=1.0, size=self.w_analy_shape)
+        elif method == "gaussian":
+            return np.linalg.qr(np.random.standard_normal(self.w_analy_shape), mode='complete')[0]
+        elif method == "identity":
+            return np.ones(shape=self.w_analy_shape)
+
+
+
     def build_graph_from_input(self, input_node):
         with tf.device(self.params.device):
             with self.graph.as_default():
                 with tf.variable_scope("weights") as scope:
-                    Q, _ = np.linalg.qr(np.random.standard_normal(self.w_analy_shape), mode='complete')
+                    Q = self.init_weight("gaussian")
                     self.w_analy = tf.get_variable(name="w_analy",
                                                    dtype=tf.float32,
                                                    initializer=Q.astype(np.float32),
@@ -46,14 +56,26 @@ class IcaSubspaceModel(Model):
 #                    self.log_lik = self.compute_log_lik(input_node) 
 
                 with tf.variable_scope("output") as scope:
-                    self.recon = tf.matmul(self.s, tf.transpose(self.w_synth), name="recon")
+#                    self.recon = tf.matmul(self.s, tf.transpose(self.w_synth), name="recon")
+                    self.recon = tf.matmul(self.s, self.w_analy, name="recon")
 
                 with tf.variable_scope("orthonormalize") as scope:
-                    self.orthonorm_weights = tf.assign(self.w_analy, 
-                            tf.matmul(tf.math.pow(tf.matmul(self.w_analy, tf.transpose(self.w_analy)), -0.5), 
-                                self.w_analy))
-
+#                    self.step1 = tf.matmul(self.w_analy, tf.transpose(self.w_analy))
+#                    print("w_analy shape", self.w_analy.shape)
+#                    self.step2a = tf.sqrt(self.step1) 
+#                    self.step2 = tf.linalg.inv(tf.sqrt(self.step1))
+#                    self.step3 = tf.matmul(tf.real(self.step2), self.w_analy)
+                    self.orthonorm_weights = tf.assign(self.w_analy, self.orthonorm_weights())
         self.graph_built = True
+
+    def orthonorm_weights(self):
+        self.step1 = tf.matmul(self.w_analy, tf.transpose(self.w_analy))
+        s, u, v = tf.linalg.svd(self.step1)
+        self.step2 = tf.matmul(tf.matmul(u, tf.eye(self.params.num_neurons)*tf.math.pow(s, -0.5)), tf.transpose(v)) 
+        self.step3 = tf.matmul(tf.real(self.step2), self.w_analy)
+        return self.step3
+        
+
 
     def compute_weight_gradients(self, optimizer, weight_op=None):
         W = weight_op
@@ -94,22 +116,14 @@ class IcaSubspaceModel(Model):
     def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
         update_dict = super(IcaSubspaceModel, self).generate_update_dict(input_data, input_labels, batch_step)
         feed_dict = self.get_feed_dict(input_data, input_labels)
-        eval_list  = [self.global_step, self.s, self.recon, self.w_analy, self.w_grad, self.one_grad, self.repeat_I, self.wti, self.nonlinear, self.pre_nonlinear]
+        eval_list  = [self.global_step, self.s, self.recon, self.w_analy, self.w_grad]
+#                self.step1, self.step2, self.step3, self.step2a]
         out_vals = tf.get_default_session().run(eval_list, feed_dict)
         print("w_analy")
         print(out_vals[3])
         print("w_grad")
         print(out_vals[4])
-        print("one_grad")
-        print(out_vals[5])
-        print("repeat I")
-        print(out_vals[6])
-        print("wtf")
-        print(out_vals[7])
-        print("nonlinear")
-        print(out_vals[8])
-        print("prenonlinear")
-        print(out_vals[9])
+
         stat_dict = {
                 "global_step": out_vals[0],
                 "latent_vars": out_vals[1],
@@ -117,8 +131,6 @@ class IcaSubspaceModel(Model):
                 "w_analy": out_vals[3],
                 "w_grad": out_vals[4],
                 }
-
-
         update_dict.update(stat_dict) # stat_dict vals overwrite
         return update_dict
 
