@@ -20,7 +20,7 @@ class params(ica_params):
     self.whiten_data = True
     self.whiten_method = "ZCA"
     self.lpf_data = True # only for ZCA/PCA
-    self.lpf_cutoff = 0.7
+    self.lpf_cutoff = 0.625
     self.extract_patches = True
     self.num_patches = 1e6
     self.patch_edge_size = 16
@@ -38,9 +38,9 @@ class params(ica_params):
     self.cp_load_step = None
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["w_synth"]
-    self.log_int = 100
+    self.log_int = 50
     self.log_to_file = True
-    self.gen_plot_int = 500
+    self.gen_plot_int = 100
     self.save_plots = True
     self.schedule = [
       {"weights": ["weights/w_analy:0"],
@@ -61,18 +61,18 @@ class params(ica_params):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.version = "1"
+      self.version = "3"
       self.num_images = 50 #150
       self.vectorize_data = True
       self.norm_data = False
-      self.rescale_data = True
+      self.rescale_data = False
       self.center_data = True
       self.whiten_data = True
       self.whiten_method = "ZCA"
       self.extract_patches = True
       self.whiten_batch_size = 10
-      self.num_patches = 5000
-      self.batch_size = 100
+      self.num_patches = int(1e5)
+      self.batch_size = 500 #int(5*1e2)
       self.patch_edge_size = 16
       self.overlapping_patches = True
       self.randomize_patches = True
@@ -88,4 +88,4 @@ class params(ica_params):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
-        self.schedule[sched_idx]["decay_rate"] = 0.5
+        self.schedule[sched_idx]["decay_rate"] = 0.2
