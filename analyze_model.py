@@ -19,11 +19,11 @@ class params(object):
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
-    self.do_run_analysis = True
+    self.do_run_analysis = False
     # Evaluate model variables (specified in analysis class) on images
     self.do_evals = True
     # Dictionary fitting
-    self.do_basis_analysis = True
+    self.do_basis_analysis = False
     # LCA Inference analysis
     self.do_inference = False #TODO: Does not work for lca_subspace
     # Activity triggered averages
@@ -35,9 +35,9 @@ class params(object):
     # Find optimal stimulus using gradient methods
     self.do_neuron_visualization = False # adversaries must be False
     # Patchwise image recon
-    self.do_full_recon = True
+    self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
-    self.do_orientation_analysis = True
+    self.do_orientation_analysis = False
     # How many images to use for analysis, patches are generated from these
     self.num_analysis_images = 150#1000
     self.whiten_batch_size = 10 # for VH dataset

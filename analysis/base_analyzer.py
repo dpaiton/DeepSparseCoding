@@ -280,11 +280,11 @@ class Analyzer(object):
     # Run statistics
     stats_file_loc = self.analysis_out_dir+"savefiles/run_stats_"+save_info+".npz"
     if os.path.exists(stats_file_loc):
-      self.run_stats = np.load(stats_file_loc)["data"].item()["run_stats"]
+      self.run_stats = np.load(stats_file_loc, allow_pickle=True)["data"].item()["run_stats"]
     # var_names evaluated
     eval_file_loc = self.analysis_out_dir+"savefiles/evals_"+save_info+".npz"
     if os.path.exists(eval_file_loc):
-      self.evals = np.load(eval_file_loc)["data"].item()["evals"]
+      self.evals = np.load(eval_file_loc, allow_pickle=True)["data"].item()["evals"]
     # Basis function fits
     try:
       self.load_basis_stats(save_info)
@@ -298,24 +298,24 @@ class Analyzer(object):
       self.atcs = ata_analysis["atcs"]
     ata_noise_file_loc = self.analysis_out_dir+"savefiles/atas_noise_"+save_info+".npz"
     if os.path.exists(ata_noise_file_loc):
-      ata_noise_analysis = np.load(ata_noise_file_loc)["data"].item()
+      ata_noise_analysis = np.load(ata_noise_file_loc, allow_pickel=True)["data"].item()
       self.noise_atas = ata_noise_analysis["noise_atas"]
       self.noise_atcs = ata_noise_analysis["noise_atcs"]
     act_noise_file_loc = self.analysis_out_dir+"savefiles/noise_response_"+save_info+".npz"
     if os.path.exists(act_noise_file_loc):
-      noise_analysis = np.load(act_noise_file_loc)["data"].item()
+      noise_analysis = np.load(act_noise_file_loc, allow_pickle=True)["data"].item()
       self.noise_activity = noise_analysis["noise_activity"]
       self.analysis_params.num_noise_images = self.noise_activity.shape[0]
     # Orientation analysis
     tuning_file_locs = [self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz",
       self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz"]
     if os.path.exists(tuning_file_locs[0]):
-      self.ot_grating_responses = np.load(tuning_file_locs[0])["data"].item()
+      self.ot_grating_responses = np.load(tuning_file_locs[0], allow_pickle=True)["data"].item()
     if os.path.exists(tuning_file_locs[1]):
-      self.co_grating_responses = np.load(tuning_file_locs[1])["data"].item()
+      self.co_grating_responses = np.load(tuning_file_locs[1], allow_pickle=True)["data"].item()
     recon_file_loc = self.analysis_out_dir+"savefiles/full_recon_"+save_info+".npz"
     if os.path.exists(recon_file_loc):
-      recon_analysis = np.load(recon_file_loc)["data"].item()
+      recon_analysis = np.load(recon_file_loc, allow_pickle=True)["data"].item()
       self.full_image = recon_analysis["full_image"]
       self.full_recon = recon_analysis["full_recon"]
       self.recon_frac_act = recon_analysis["recon_frac_act"]
@@ -325,7 +325,7 @@ class Analyzer(object):
     recon_adversarial_stats_file_loc = (
       self.analysis_out_dir+"savefiles/recon_adversary_stats_"+save_info+".npz")
     if os.path.exists(recon_adversarial_stats_file_loc):
-      data = np.load(recon_adversarial_stats_file_loc)["data"].item()
+      data = np.load(recon_adversarial_stats_file_loc, allow_pickle=True)["data"].item()
       self.steps_idx = data["steps_idx"]
       self.recon_adversarial_input_images = data["input_images"]
       self.adversarial_target_images = data["target_images"]
@@ -380,11 +380,11 @@ class Analyzer(object):
     neuron_visualization_file_loc = (
       self.analysis_out_dir+"savefiles/neuron_visualization_analysis_"+save_info+".npz")
     if os.path.exists(neuron_visualization_file_loc):
-      self.neuron_vis_output = np.load(neuron_visualization_file_loc)["data"].item()
+      self.neuron_vis_output = np.load(neuron_visualization_file_loc, allow_pickle=True)["data"].item()
 
   def load_basis_stats(self, save_info):
     bf_file_loc = self.analysis_out_dir+"savefiles/basis_"+save_info+".npz"
-    self.bf_stats = np.load(bf_file_loc)["data"].item()["bf_stats"]
+    self.bf_stats = np.load(bf_file_loc, allow_pickle=True)["data"].item()["bf_stats"]
 
   def stats_analysis(self, save_info):
     """Run stats extracted from the logfile"""
@@ -460,6 +460,7 @@ class Analyzer(object):
     config.gpu_options.allow_growth = True
     with tf.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, feed_dict)
+      print("checkpoint location:", self.analysis_params.cp_loc)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
       eval_list = sess.run(tensors, feed_dict)
@@ -509,7 +510,7 @@ class Analyzer(object):
     self.analysis_logger.log_info("Noise analysis is complete.")
     return (noise_activity, noise_atas, noise_atcs)
 
-  def compute_activations(self, images, batch_size=None):
+  def compute_activations(self, images, batch_size=4):
     """
     Computes the output code for a set of images.
     Outputs:

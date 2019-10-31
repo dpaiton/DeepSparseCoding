@@ -122,8 +122,6 @@ with tf.Session(config=config, graph=model.graph) as sess:
       if params.orthonorm_weights:
         sess.run([model.orthonorm_weights], feed_dict)
 
-
-
       batch_t1 = ti.time()
       avg_time += (batch_t1-batch_t0)/params.batch_size
 
