@@ -2,7 +2,7 @@ from analysis.lambda_analyzer import LambdaAnalyzer as lamb
 from analysis.mlp_analyzer import MlpAnalyzer as mlp
 from analysis.ica_analyzer import IcaAnalyzer as ica
 from analysis.lca_analyzer import LcaAnalyzer as lca
-#from analysis.ica_subspace_analyzer import IcaSubspaceAnalyzer as ica_subspace
+from analysis.ica_subspace_analyzer import IcaSubspaceAnalyzer as ica_subspace
 from analysis.lca_subspace_analyzer import LcaSubspaceAnalyzer as sub_lca
 from analysis.lca_pca_analyzer import LcaPcaAnalyzer as lca_pca
 from analysis.lca_conv_analyzer import LcaConvAnalyzer as conv_lca
@@ -21,7 +21,7 @@ def get_analyzer(model_type):
   if model_type.lower() == "ica":
     return ica()
   if model_type.lower() == "ica_subspace":
-    return ica()
+    return ica_subspace()
     return ica_subspace()
   if model_type.lower() == "rica":
     return rica()

@@ -19,11 +19,11 @@ class params(object):
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
-    self.do_run_analysis = False
+    self.do_run_analysis = True
     # Evaluate model variables (specified in analysis class) on images
     self.do_evals = True
     # Dictionary fitting
-    self.do_basis_analysis = False
+    self.do_basis_analysis = True
     # LCA Inference analysis
     self.do_inference = False #TODO: Does not work for lca_subspace
     # Activity triggered averages
