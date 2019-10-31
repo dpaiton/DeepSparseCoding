@@ -54,3 +54,12 @@ class LcaSubspaceModel(LcaModel):
       title="Dictionary at step "+current_step, figsize=(18,18),
       save_filename=(self.params.disp_dir+"group_phi_v"+self.params.version+"-"+
         current_step.zfill(6)+".png"))
+
+  def get_group_activity(self):
+    return self.module.group_activity
+
+  def get_group_angle(self):
+    return self.module.group_angles
+
+  def get_group_encodings(self):
+    return (self.get_group_activity(), self.get_group_angle())
