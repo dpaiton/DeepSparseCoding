@@ -269,7 +269,8 @@ def get_grating_params(bf_stats, bf_idx, patch_edge=None, location=None, diamete
   contrast = 1.0 if contrast is None else contrast
   return (patch_edge, location, diameter, orientation, frequency, phase, contrast)
 
-def generate_grating(patch_edge_size, location, diameter, orientation, frequency, phase, contrast):
+def generate_grating(patch_edge_size, location, diameter, orientation, frequency, phase, contrast,
+  gauss_sigma=None):
   """
   generate a sinusoidal stimulus. The stimulus is a square with a circular mask.
   patch_edge_size [int] number of pixels the stimulus edge will span
@@ -280,12 +281,16 @@ def generate_grating(patch_edge_size, location, diameter, orientation, frequency
   frequency [float] frequency of stimulus
   phase [float] phase of the grating
   contrast [float] contrast of the grating, should be between 0 and 1
+  gauss_sigma [float] standard deviation for gaussian
   """
   vals = np.linspace(-np.pi, np.pi, patch_edge_size)
   X, Y = np.meshgrid(vals, vals)
   Xr = np.cos(orientation)*X + -np.sin(orientation)*Y  # countercloclwise
   Yr = np.sin(orientation)*X + np.cos(orientation)*Y
   stim = contrast*np.sin(Yr*frequency+phase)
+  if gauss_sigma is not None:
+    gauss = np.exp(-.5 * (Xr ** 2 / gauss_sigma ** 2 + Yr ** 2 / gauss_sigma ** 2))
+    stim = stim * gauss
   if diameter > 0: # Generate mask
     rad = diameter/2
     y_loc, x_loc = location
