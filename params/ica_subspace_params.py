@@ -31,16 +31,16 @@ class params(ica_params):
     self.batch_size = 50
     self.prior = "laplacian" #"cauchy"
     self.optimizer = "annealed_sgd"
-    self.cp_int = 1000
+    self.cp_int = 3000
     self.max_cp_to_keep = 1
     self.cp_load = False
     self.cp_load_name = "pretrain"
     self.cp_load_step = None
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["w_synth"]
-    self.log_int = 50
+    self.log_int = 300
     self.log_to_file = True
-    self.gen_plot_int = 100
+    self.gen_plot_int = 300
     self.save_plots = True
     self.schedule = [
       {"weights": ["weights/w_analy:0"],
@@ -61,7 +61,7 @@ class params(ica_params):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.version = "3"
+      self.version = "4"
       self.num_images = 50 #150
       self.vectorize_data = True
       self.norm_data = False
@@ -72,7 +72,7 @@ class params(ica_params):
       self.extract_patches = True
       self.whiten_batch_size = 10
       self.num_patches = int(1e5)
-      self.batch_size = 500 #int(5*1e2)
+      self.batch_size = 1000 #int(5*1e2)
       self.patch_edge_size = 16
       self.overlapping_patches = True
       self.randomize_patches = True

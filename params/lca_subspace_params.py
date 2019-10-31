@@ -32,7 +32,7 @@ class params(BaseParams):
     self.tau = 0.03
     self.norm_weights = True
     self.optimizer = "annealed_sgd"
-    self.cp_int = int(1e5)
+    self.cp_int = int(1e3)
     self.max_cp_to_keep = 1
     self.cp_load = False
     self.cp_load_name = "pretrain"
@@ -83,7 +83,7 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.version = "5x_4_1.5_0.2"
+      self.version = "5x_2_2.0_0.2"
       self.num_images = 150
       self.vectorize_data = True
       self.norm_data = False
@@ -93,20 +93,19 @@ class params(BaseParams):
       self.whiten_method = "FT"
       self.whiten_batch_size = 10
       self.extract_patches = True
-      self.whiten_batch_size = 10
       self.num_patches = 1e6
       self.patch_edge_size = 16
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      self.num_groups = 4
+      self.group_size = 2
       self.num_neurons = 256 * 5
-      self.num_groups = self.num_neurons // self.num_groups
+      self.num_groups = self.num_neurons // self.group_size
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["num_batches"] = int(1e4)
         self.schedule[sched_idx]["weight_lr"] = 0.01
         self.schedule[sched_idx]["group_orth_mult"] = 0.2
-        self.schedule[sched_idx]["sparse_mult"] = 1.5
+        self.schedule[sched_idx]["sparse_mult"] = 2.0 
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
@@ -143,7 +142,7 @@ class params(BaseParams):
       self.num_neurons = 128
       self.num_groups = self.num_neurons // 4
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["num_batches"] = int(1e3)
         self.schedule[sched_idx]["group_orth_mult"] = 0.001
         self.schedule[sched_idx]["sparse_mult"] = 0.1
         self.schedule[sched_idx]["weight_lr"] = 0.01
