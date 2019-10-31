@@ -11,12 +11,14 @@ class IcaSubspaceModel(Model):
         super(IcaSubspaceModel, self).__init__()
         self.vector_inputs = True
 
+
     def load_params(self, params):
         super(IcaSubspaceModel, self).load_params(params)
         self.input_shape = [None, self.params.num_pixels]
         self.w_synth_shape = [self.params.num_pixels, self.params.num_neurons]
         self.w_analy_shape = [self.params.num_neurons, self.params.num_pixels]
         self.R = self.construct_index_matrix().astype(np.float32)
+
 
     def construct_index_matrix(self):
         R = np.zeros(shape=(self.params.num_neurons, self.params.num_groups))
@@ -31,6 +33,7 @@ class IcaSubspaceModel(Model):
     def get_input_shape(self):
         return self.input_shape
 
+
     def init_weight(self, method="uniform"):
         if method == "uniform":
             return np.random.uniform(low=-1.0, high=1.0, size=self.w_analy_shape)
@@ -38,7 +41,6 @@ class IcaSubspaceModel(Model):
             return np.linalg.qr(np.random.standard_normal(self.w_analy_shape), mode='complete')[0]
         elif method == "identity":
             return np.ones(shape=self.w_analy_shape)
-
 
 
     def build_graph_from_input(self, input_node):
@@ -57,12 +59,12 @@ class IcaSubspaceModel(Model):
                     self.s = tf.matmul(input_node, tf.transpose(self.w_analy), name="latent_vars")
 
                 with tf.variable_scope("output") as scope:
-#                    self.recon = tf.matmul(self.s, tf.transpose(self.w_synth), name="recon")
                     self.recon = tf.matmul(self.s, self.w_analy, name="recon")
 
                 with tf.variable_scope("orthonormalize") as scope:
                     self.orthonorm_weights = tf.assign(self.w_analy, self.orthonorm_weights(self.w_analy))
         self.graph_built = True
+
 
     def orthonorm_weights(self, w):
         m = tf.matmul(w, w, adjoint_b=True)
@@ -83,7 +85,7 @@ class IcaSubspaceModel(Model):
             grads.append(one_w_grad)
         gradient = tf.stack(grads)
         avg_grad = tf.math.reduce_mean(gradient, axis=0)
-        self.w_grad = avg_grad
+        self.w_grad = avg_grad # for monitoring 
         return [(-avg_grad, weight_op)]
     
     def compute_weight_gradient_per_input(self, I):
@@ -94,13 +96,7 @@ class IcaSubspaceModel(Model):
         Wt_I_sq = tf.math.pow(Wt_I, 2)
         pre_nonlinear_term = nonlinearity(tf.matmul(tf.transpose(Wt_I_sq), self.R))
         nonlinear_term = tf.matmul(pre_nonlinear_term, tf.transpose(self.R))
-
         repeat_I = tf.tile(I, [1, self.params.num_neurons])
-
-        self.repeat_I = repeat_I
-        self.wti = Wt_I
-        self.pre_nonlinear = pre_nonlinear_term
-        self.nonlinear = nonlinear_term
         return  repeat_I * tf.transpose(Wt_I) * nonlinear_term
 
         
@@ -141,7 +137,7 @@ class IcaSubspaceModel(Model):
         latent_vars = eval_out[3]
 
         pf.plot_weights(w_synth_eval, title="w_synth at step {}".format(curr_step), figsize=(16, 16),
-                    save_filename="{}/{}_w_synth_eval_{}.png".format(self.params.disp_dir, self.params.version, curr_step))
+                    save_filename="{}/v{}_w_synth_eval_{}.png".format(self.params.disp_dir, self.params.version, curr_step))
 
 #        pf.plot_weights(w_analy_eval, title="w_aynth at step {}".format(curr_step), figsize=(16, 16),
 #                    save_filename="{}w_analy_eval_{}.png".format(self.params.disp_dir, curr_step))
