@@ -303,6 +303,7 @@ def plot_curvature_histograms(activity, contour_pts, contour_angle, contour_text
   x_mesh, y_mesh = np.meshgrid(*contour_pts)
   curve_ax.set_zlim(0, 1)
   curve_ax.set_xlim3d(5, 200)
+  curve_ax.grid(b=True, zorder=0)
   x_ticks = curve_ax.get_xticks().tolist()
   x_ticks = np.round(np.linspace(curve_lims["x"][0], curve_lims["x"][1],
     len(x_ticks)), 1).astype(str)
@@ -319,13 +320,11 @@ def plot_curvature_histograms(activity, contour_pts, contour_angle, contour_text
   curve_ax.set_yticklabels(a_y)
   curve_ax.set_zticklabels([])
   curve_ax.zaxis.set_rotate_label(False)
-  curve_ax.set_zlabel("Normalized Activity", rotation=90, labelpad=-12., position=(-10., 0.))
-  curve_ax.scatter(x_mesh, y_mesh, activity, color=mesh_color, s=0.01)
-  loc0, loc1, loc2 = contour_text_loc[0]
-  curve_ax.text(loc0, loc1, loc2, "Iso-\nresponse", color="black")
-  iso_line_offset = 165
-  x, y = contour_pts
-  curve_ax.plot(np.zeros_like(x)+iso_line_offset, y, activity[:, iso_line_offset], color="black", lw=2)
+  curve_ax.set_zlabel("Normalized\nActivity", rotation=95, labelpad=-12., position=(-10., 0.))
+  #curve_ax.scatter(x_mesh, y_mesh, activity, color=mesh_color, s=0.01)
+  curve_ax.plot_wireframe(x_mesh, y_mesh, activity, rcount=100, ccount=100, color=mesh_color, zorder=1,
+    linestyles="dotted", linewidths=0.5, alpha=1.0)
+  # Plane vector visualizations
   v = Arrow3D([-200/3., -200/3.], [200/2., 200/2.+200/16.], 
               [0, 0.0], mutation_scale=10, 
               lw=1, arrowstyle="-|>", color="red", linestyle="dashed")
@@ -336,15 +335,23 @@ def plot_curvature_histograms(activity, contour_pts, contour_angle, contour_text
               lw=1, arrowstyle="-|>", color="red", linestyle = "dashed")
   curve_ax.add_artist(phi_k)
   curve_ax.text(-175/3., 250/3.0, 0.0, r"${\phi}_{k}$", color="red")
+  # Iso-response curve
+  loc0, loc1, loc2 = contour_text_loc[0]
+  curve_ax.text(loc0, loc1, loc2, "Iso-\nresponse", color="black", weight="bold", zorder=10)
+  iso_line_offset = 165
+  x, y = contour_pts
+  curve_ax.plot(np.zeros_like(x)+iso_line_offset, y, activity[:, iso_line_offset],
+    color="black", lw=2, zorder=2)
+  # Response attenuation curve
   loc0, loc1, loc2 = contour_text_loc[1]
-  curve_ax.text(loc0, loc1, loc2, "Response\nAttenuation", color="black")
+  curve_ax.text(loc0, loc1, loc2, "Response\nAttenuation", color="black", weight="bold", zorder=10)
   lines = np.array([0.2, 0.203, 0.197]) - 0.1
   for i in lines:
-      curve_ax.contour3D(x_mesh, y_mesh, activity, [i], colors="black", linewidths=2)
+      curve_ax.contour3D(x_mesh, y_mesh, activity, [i], colors="black", linewidths=2, zorder=2)
+  # Additional settings
   curve_ax.view_init(view_elevation, contour_angle)
   scaling = np.array([getattr(curve_ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
   curve_ax.auto_scale_xyz(*[[np.min(scaling), np.max(scaling)]]*3) # make sure it has a square aspect
-  #curve_ax.set_rasterized(True) # TODO: Figure out how to stop 3D scatter from having transparency
   
   num_hist_y_plots = 2
   num_hist_x_plots = 2
@@ -365,6 +372,8 @@ def plot_curvature_histograms(activity, contour_pts, contour_angle, contour_text
     min_hist_val = 100
     all_y_lists = zip(sub_hist, sub_label, sub_color, xlabel)
     for axis_y, (axis_hists, axis_labels, axis_colors, sub_xlabel) in enumerate(all_y_lists):
+      axes[axis_y][axis_x].spines["top"].set_visible(False)
+      axes[axis_y][axis_x].spines["right"].set_visible(False)
       axes[axis_y][axis_x].set_xticks(sub_bins, minor=True)
       axes[axis_y][axis_x].set_xticks(sub_bins[::int(len(sub_bins)/4)], minor=False)
       axes[axis_y][axis_x].xaxis.set_major_formatter(plticker.FormatStrFormatter("%0.3f"))
@@ -626,12 +635,13 @@ def compute_osi(centered_ot_curve):
   return osi
 
 def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label_list, num_bins, density, width_ratios,
-                                 height_ratios, fontsize, figsize, dpi):
-  fig = plt.figure(figsize=figsize, dpi=dpi)
-  gs0 = gridspec.GridSpec(1, 3, width_ratios=width_ratios)
+                                 height_ratios, text_width=200, width_ratio=1.0, dpi=100):
+  num_y_plots = 5
+  num_x_plots = 3
+  fig = plt.figure(figsize=set_size(text_width, width_ratio, [num_y_plots, num_x_plots]), dpi=dpi)
+  gs0 = gridspec.GridSpec(num_y_plots, num_x_plots, width_ratios=width_ratios)
   axes = []
-  
-  gs_hist = gridspec.GridSpecFromSubplotSpec(4, 1, gs0[0], height_ratios=height_ratios)
+  gs_hist = gridspec.GridSpecFromSubplotSpec(4, 1, gs0[:, 0], height_ratios=height_ratios)
   axes.append(fig.add_subplot(gs_hist[1:3, 0]))
   variance_min = 0.0
   variance_max = 1.0
@@ -644,10 +654,11 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
     bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
     bin_centers = bin_left + (bin_right - bin_left)/2
     axes[-1].plot(bin_centers, hist, linestyle="-", drawstyle="steps-mid", color=color, label=label)
+  axes[-1].spines["top"].set_visible(False)
+  axes[-1].spines["right"].set_visible(False)
   axes[-1].set_xticks(bin_left, minor=True)
   axes[-1].set_xticks(bin_left[::4], minor=False)
   axes[-1].xaxis.set_major_formatter(plticker.FormatStrFormatter("%0.0f"))
-  #axes[-1].tick_params("both", labelsize=fontsize)
   axes[-1].set_xlim([variance_min, variance_max])
   axes[-1].set_xticks([variance_min, variance_max])
   axes[-1].set_xticklabels(["More\nselective", "Less\nselective"])
@@ -656,20 +667,21 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
   ticks[1].label1.set_horizontalalignment("right")
   y_max = np.max([np.max(hist) for hist in hist_list])
   axes[-1].set_ylim([0, y_max+1])
-  axes[-1].set_title("Circular Variance")#, fontsize=fontsize)
+  axes[-1].set_title("Circular Variance")
   if density:
-    axes[-1].set_ylabel("Density")#, fontsize=fontsize)
+    axes[-1].set_ylabel("Density")
   else:
-    axes[-1].set_ylabel("Count")#, fontsize=fontsize)
+    axes[-1].set_ylabel("Count")
   handles, labels = axes[-1].get_legend_handles_labels()
   legend = axes[-1].legend(handles=handles, labels=labels,
-    borderaxespad=0., framealpha=0.0, loc="upper right")#, fontsize=fontsize)
+    borderaxespad=0., framealpha=0.0, loc="upper right",
+    bbox_to_anchor=(1.0, 0.8)) #bbox sets (x, y) of legend, relative to loc
   legend.get_frame().set_linewidth(0.0)
   for text, color in zip(legend.get_texts(), color_list):
     text.set_color(color)
   for item in legend.legendHandles:
     item.set_visible(False)
-  gs_weights = gridspec.GridSpecFromSubplotSpec(len(analyzer_list), 1, gs0[1], hspace=-0.6)
+  gs_weights = gridspec.GridSpecFromSubplotSpec(len(analyzer_list), 1, gs0[:, 1], hspace=-0.6)
   for gs_idx, analyzer in enumerate(analyzer_list):
     weights = np.stack(analyzer.bf_stats["basis_functions"], axis=0)[analyzer.bf_indices, ...]
     weights = dp.norm_weights(weights)
@@ -687,7 +699,7 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
         axes[-1].imshow(np.squeeze(weights[bf_idx, ...]), vmin=vmin, vmax=vmax, cmap="Greys_r")
         bf_idx += 1
       pf.clear_axis(axes[-1])
-  gs_tuning = gridspec.GridSpecFromSubplotSpec(len(analyzer_list), 1, gs0[2], hspace=-0.6)
+  gs_tuning = gridspec.GridSpecFromSubplotSpec(len(analyzer_list), 1, gs0[:, 2], hspace=-0.6)
   for analyzer_idx, analyzer in enumerate(analyzer_list):
     contrasts = analyzer.ot_grating_responses["contrasts"]
     orientations = analyzer.ot_grating_responses["orientations"]
@@ -718,42 +730,7 @@ def plot_circ_variance_histogram(analyzer_list, circ_var_list, color_list, label
         bf_idx += 1
       (y_id, x_id) = plot_id
       if y_id == 0 and x_id == 0:
-        plt.text(x=0.1, y=1.4, s=analyzer.analysis_params.display_name, horizontalalignment='center',
-          verticalalignment='center', transform=axes[-1].transAxes)#, fontsize=fontsize)
-  #gs_circvar = gridspec.GridSpecFromSubplotSpec(len(analyzer_list), 1, gs0[3])#, hspace=-0.5)
-  #for analyzer_index, analyzer in enumerate(analyzer_list):
-  #  cv_data = [val for index, val in enumerate(analyzer.metrics_list["circ_var"]) if index in bf_indices]
-  #  orientations = (np.pi * np.arange(len(cv_data)) / len(cv_data)) - (np.pi/2) # relative to preferred
-  #  num_bfs = len(cv_data)
-  #  num_plots_y = np.int32(np.ceil(np.sqrt(num_bfs)))+1
-  #  num_plots_x = np.int32(np.ceil(np.sqrt(num_bfs)))
-  #  gs_circvar_inner = gridspec.GridSpecFromSubplotSpec(num_plots_y, num_plots_x, gs_circvar[analyzer_index],
-  #    wspace=0.4, hspace=0.4)
-  #  bf_idx = 0
-  #  for plot_id in np.ndindex((num_plots_y, num_plots_x)):
-  #    (y_id, x_id) = plot_id
-  #    if y_id == 0 and x_id == 0:
-  #      axes.append(fig.add_subplot(gs_circvar_inner[plot_id]))
-  #      ax00 = axes[-1]
-  #    else:
-  #      axes.append(fig.add_subplot(gs_circvar_inner[plot_id]))
-  #    if bf_idx < num_bfs:
-  #      axes[-1].plot(np.real(cv_data[bf_idx][0]), np.imag(cv_data[bf_idx][0]), c='g', linewidth=0.5)
-  #      #axes[-1].scatter(np.real(cv_data[bf_idx][0]), np.imag(cv_data[bf_idx][0]), c='g', s=4)
-  #      #axes[-1].quiver(np.real(cv_data[bf_idx][1]), np.imag(cv_data[bf_idx][1]),
-  #      #          angles='xy', scale_units='xy', scale=1.0, color='b', width=0.01)
-  #      #axes[-1].quiver(0.5, 0.5, color='b')
-  #      axes[-1].yaxis.set_major_formatter(plticker.FormatStrFormatter('%0.2g'))
-  #      xaxis_size = max(np.max(np.real(cv_data[bf_idx][0])), 1.0)
-  #      yaxis_size = max(np.max(np.imag(cv_data[bf_idx][0])), 1.0)
-  #      axes[-1].set_yticks([])#[-1. * yaxis_size, yaxis_size])
-  #      axes[-1].set_xticks([])#[-1. * xaxis_size, xaxis_size])
-  #      # put the circular variance index in the upper left
-  #      #axes[-1].text(0.02, 0.97, '{:.2f}'.format(cv_data[bf_idx][2]),
-  #      #        horizontalalignment='left', verticalalignment='top',
-  #      #        transform=axes[-1].transAxes, color='b')#, fontsize=10)
-  #      bf_idx += 1
-  #    else:
-  #      pf.clear_axis(axes[-1])
+        plt.text(x=0.1, y=1.45, s=analyzer.analysis_params.display_name, horizontalalignment='center',
+          verticalalignment='center', transform=axes[-1].transAxes)
   plt.show()
   return fig

@@ -84,7 +84,7 @@ def make_panel(analyzer,
 
 
 def make_annotation_bbox(image, loc, offset_image_kwargs={"cmap": "Greys"}):
-    imagebox = OffsetImage(image, zoom=1.5, **offset_image_kwargs)
+    imagebox = OffsetImage(image, zoom=2.0, **offset_image_kwargs)
     ab = AnnotationBbox(imagebox, loc)
     return ab
 
