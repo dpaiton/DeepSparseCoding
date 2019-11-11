@@ -82,7 +82,7 @@ def add_contour(contour, ax=None, plot_kwargs=None):
 
 
 def add_grads(grads, grad_coords, ax, skip_x_axis_grads=True):
-    for grad, (x, y) in zip(grads, grad_coords):
+    for grad, (x, y) in zip(grads[::3], grad_coords[::3]):
         if x < 0.1:
             continue
         if skip_x_axis_grads:
@@ -90,8 +90,8 @@ def add_grads(grads, grad_coords, ax, skip_x_axis_grads=True):
                 continue
         if grad[0] <= 0:
             continue
-        ax.arrow(x, y, *grad / 150, width=1e-3,
-                 color="gray", alpha=1., zorder=8.)
+        ax.arrow(x, y, *grad / 150, width=0.003,
+                 color="dimgray", alpha=1., zorder=8.)
 
 
 def plot_dictionary_element(dict_elem, ax=None, arrow_kwargs=None):
