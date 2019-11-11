@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.animation as animation
 from mpl_toolkits import axes_grid1
 import re
 import utils.data_processing as dp
@@ -381,14 +382,14 @@ def plot_bf_stats(bf_stats, num_bf=2):
   plt.show()
   return fig
 
-def plot_loc_freq_summary(bf_stats, figsize=(15, 5), fontsize=16):
+def plot_loc_freq_summary(bf_stats, spotsize=10, figsize=(15, 5), fontsize=16):
   plt.rc('text', usetex=True)
   fig = plt.figure(figsize=figsize)
   gs = fig.add_gridspec(1, 3, wspace=0.3)
   ax = fig.add_subplot(gs[0])
   x_pos = [x for (y,x) in bf_stats["gauss_centers"]]
   y_pos = [y for (y,x) in bf_stats["gauss_centers"]]
-  ax.scatter(x_pos, y_pos, color='k', s=10)
+  ax.scatter(x_pos, y_pos, color='k', s=spotsize)
   ax.set_xlim([0, bf_stats["patch_edge_size"]-1])
   ax.set_ylim([bf_stats["patch_edge_size"]-1, 0])
   ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
@@ -401,7 +402,7 @@ def plot_loc_freq_summary(bf_stats, figsize=(15, 5), fontsize=16):
   x_sf = [x for (y,x) in bf_stats["fourier_centers"]]
   y_sf = [y for (y,x) in bf_stats["fourier_centers"]]
   max_sf = np.max(np.abs(x_sf+y_sf))
-  ax.scatter(x_sf, y_sf, color='k', s=10)
+  ax.scatter(x_sf, y_sf, color='k', s=spotsize)
   ax.set_xlim([-max_sf, max_sf])
   ax.set_ylim([-max_sf, max_sf])
   ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))

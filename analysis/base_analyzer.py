@@ -527,14 +527,19 @@ class Analyzer(object):
     self.analysis_logger.log_info("Noise analysis is complete.")
     return (noise_activity, noise_atas, noise_atcs)
 
-  def compute_activations(self, images, batch_size=None):
+  def compute_activations(self, images, batch_size=None, activation_operation=None):
     """
     Computes the output code for a set of images.
     Outputs:
-      evaluated model.get_encodings() on the input images
+      evaluated activation_operation on the input images
     Inputs:
       images [np.ndarray] of shape (num_imgs, num_img_pixels)
+      batch_size [int] how many inputs to use in a batch
+      activation_operation [tf operation] that produces the output activation
+        if None then it defaults to `self.model.get_encodings()`
     """
+    if activation_operation is None:
+        activation_operation = self.model.get_encodings
     images_shape = list(images.shape)
     num_images = images_shape[0]
     config = tf.ConfigProto()
@@ -553,13 +558,13 @@ class Analyzer(object):
           im_batch_end_idx = int(np.min([im_batch_start_idx + batch_size, num_images]))
           batch_images = images[im_batch_start_idx:im_batch_end_idx, ...]
           feed_dict = self.model.get_feed_dict(batch_images, is_test=True)
-          outputs = sess.run(self.model.get_encodings(), feed_dict)
+          outputs = sess.run(activation_operation(), feed_dict)
           activations[im_batch_start_idx:im_batch_end_idx, ...] = outputs.copy()
       else:
         feed_dict = self.model.get_feed_dict(images, is_test=True)
         sess.run(self.model.init_op, feed_dict)
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
-        activations = sess.run(self.model.get_encodings(), feed_dict)
+        activations = sess.run(activation_operation(), feed_dict)
     return activations
 
   def compute_atas(self, activities, images, batch_size=100):
@@ -947,7 +952,7 @@ class Analyzer(object):
 
   def get_neuron_angles(self, bf_stats):
     """
-    Compute the angle between all pairs of basis functions in bf_stats
+    Compute the angle in degrees between all pairs of basis functions in bf_stats
     Outputs:
       neuron_angles [np.ndarray] lower triangle of plot matrix only, as a vector in raster order
       plot_matrix [np.ndarray] of shape [num_neurons, num_neurons] with all angles between

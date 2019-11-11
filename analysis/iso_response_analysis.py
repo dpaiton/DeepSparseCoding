@@ -3,9 +3,7 @@ import re
 import numpy as np
 import tensorflow as tf
 from data.dataset import Dataset
-import data.data_selector as ds
 import utils.data_processing as dp
-import utils.plot_functions as pf
 import analysis.analysis_picker as ap
 
 def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stats):
@@ -136,7 +134,8 @@ def get_contour_dataset(analyzer, num_comparison_vects, use_random_orth_vects, x
     out_dict["orth_vect"].append(orth_vect_sub_list)
   return out_dict, all_datapoints
 
-def get_normalized_activations(analyzer, contour_dataset, batch_size=None):
+def get_normalized_activations(analyzer, contour_dataset, batch_size=None,
+  activation_operation=None):
   """
   contour_dataset should have shape [num_target_neurons][num_comparisons_per_target][num_datapoints, datapoint_length]
   output list is shape [num_target_neurons][num_comparisons_per_target][num_datapoints_x, num_datapoints_y]
@@ -153,7 +152,8 @@ def get_normalized_activations(analyzer, contour_dataset, batch_size=None):
             #batch_size = num_images // n # second greatest factor
             batch_size = n
             break
-      activations = analyzer.compute_activations(datapoints["test"].images, batch_size)
+      activations = analyzer.compute_activations(datapoints["test"].images, batch_size,
+        activation_operation)
       activations = activations[:, neuron_index]
       activity_max = np.amax(np.abs(activations))
       activations = activations / (activity_max + 0.00001)
@@ -170,6 +170,7 @@ class lca_512_vh_params(object):
     self.version = "0.0"
     self.save_info = "analysis_train_carlini_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class lca_768_vh_params(object):
   def __init__(self):
@@ -179,6 +180,7 @@ class lca_768_vh_params(object):
     self.version = "0.0"
     self.save_info = "analysis_train_carlini_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class lca_1024_vh_params(object):
   def __init__(self):
@@ -188,6 +190,7 @@ class lca_1024_vh_params(object):
     self.version = "0.0"
     self.save_info = "analysis_train_carlini_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class lca_2560_vh_params(object):
   def __init__(self):
@@ -197,6 +200,7 @@ class lca_2560_vh_params(object):
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class ae_768_vh_params(object):
   def __init__(self):
@@ -206,6 +210,7 @@ class ae_768_vh_params(object):
     self.version = "1.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class sae_768_vh_params(object):
   def __init__(self):
@@ -215,6 +220,7 @@ class sae_768_vh_params(object):
     self.version = "1.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class rica_768_vh_params(object):
   def __init__(self):
@@ -224,6 +230,7 @@ class rica_768_vh_params(object):
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class lca_768_mnist_params(object):
   def __init__(self):
@@ -233,6 +240,7 @@ class lca_768_mnist_params(object):
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class lca_1536_mnist_params(object):
   def __init__(self):
@@ -242,6 +250,7 @@ class lca_1536_mnist_params(object):
     self.version = "0.0"
     self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class ae_768_mnist_params(object):
   def __init__(self):
@@ -251,6 +260,7 @@ class ae_768_mnist_params(object):
     self.version = "0.0"
     self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class sae_768_mnist_params(object):
   def __init__(self):
@@ -260,6 +270,7 @@ class sae_768_mnist_params(object):
     self.version = "0.0"
     self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class rica_768_mnist_params(object):
   def __init__(self):
@@ -269,6 +280,7 @@ class rica_768_mnist_params(object):
     self.version = "0.0"
     self.save_info = "analysis_train_kurakin_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
 
 class ae_deep_mnist_params(object):
   def __init__(self):
@@ -278,11 +290,22 @@ class ae_deep_mnist_params(object):
     self.version = "0.0"
     self.save_info = "analysis_test_carlini_targeted"
     self.overwrite_analysis_log = False
+    self.use_group_activations = False
+
+class lca_subspace_params(object):
+  def __init__(self):
+    self.model_type = "lca_subspace"
+    self.model_name = "lca_subspace_vh"
+    self.display_name = "SSC"
+    self.version = "3.0"
+    self.save_info = "analysis_train_kurakin_targeted"
+    self.overwrite_analysis_log = False
+    self.use_group_activations = True
 
 if __name__ == "__main__":
   print("Loading models...")
-  min_angle = 10
-  max_angle = 60
+  min_angle = 5
+  max_angle = 50
   use_bf_stats = True # If false, then use optimal stimulus
   batch_size = 100
 
@@ -292,9 +315,14 @@ if __name__ == "__main__":
   #y_range = [-2, 2]
   #num_images = int(50**2)
 
-  num_neurons = 100 # How many neurons to plot
-  num_comparison_vects = 20 # How many planes to construct (None is all of them)
-  x_range = [1.0, 3.0]
+  #num_neurons = 100 # How many neurons to plot
+  #num_comparison_vects = 20 # How many planes to construct (None is all of them)
+  #x_range = [1.0, 3.0]
+  #y_range = [-2.0, 2.0]
+  #num_images = int(30**2)
+  num_neurons = 9 # How many neurons to plot
+  num_comparison_vects = 10 # How many planes to construct (None is all of them)
+  x_range = [-2.0, 2.0]
   y_range = [-2.0, 2.0]
   num_images = int(30**2)
 
@@ -305,13 +333,15 @@ if __name__ == "__main__":
   #num_images = int(200**2)
 
   #params_list = [lca_768_mnist_params(), lca_1536_mnist_params()]
-  params_list = [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params(), lca_2560_vh_params()]
+  #params_list = [lca_512_vh_params(), lca_768_vh_params(), lca_1024_vh_params(), lca_2560_vh_params()]
   #params_list = [lca_2560_vh_params()]
   #params_list = [rica_768_vh_params(), ae_768_vh_params(), sae_768_vh_params()]
   #params_list = [rica_768_mnist_params(), ae_768_mnist_params(), sae_768_mnist_params()]
+  params_list = [lca_subspace_params()]
 
-  iso_save_name = "iso_curvature_xrange1.3_yrange-2.2_"
+  #iso_save_name = "iso_curvature_xrange1.3_yrange-2.2_"
   #iso_save_name = "iso_curvature_ryan_"
+  iso_save_name = "iso_curvature_min05_max50_"
 
   for params in params_list:
     params.model_dir = (os.path.expanduser("~")+"/Work/Projects/"+params.model_name)
@@ -345,7 +375,11 @@ if __name__ == "__main__":
       contour_dataset, datapoints = get_contour_dataset(analyzer, num_comparison_vects,
         use_random_orth_vects, x_range, y_range, num_images)
       print("Computing network activations for "+rand_str+" dataset...")
-      activations = get_normalized_activations(analyzer, datapoints, batch_size)
+      if params.use_group_activations:
+        activations = get_normalized_activations(analyzer, datapoints, batch_size,
+          activation_operation=analyzer.model.get_reshaped_group_activity)
+      else:
+        activations = get_normalized_activations(analyzer, datapoints, batch_size)
       if use_random_orth_vects:
         np.savez(analyzer.analysis_out_dir+"savefiles/iso_rand_activations_"+iso_save_name+params.save_info+".npz",
           data=activations)

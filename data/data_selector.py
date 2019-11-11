@@ -56,6 +56,13 @@ def get_data(params):
       +"Supported data_types are: \n"+" ".join(data_list))
   return dataset
 
+def get_data_from_string(dataset_string, directory_string):
+  class params(object):
+    def __init__(self):
+      self.data_type = dataset_string
+      self.data_dir = directory_string
+  return get_data(params())
+
 def get_dataset_list():
   data_list = ["vanHateren", "field", "MNIST", "CIFAR10", "tinyImages", "synthetic"]
   return data_list

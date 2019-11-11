@@ -17,7 +17,7 @@ def get_analyzer(model_type):
     return mlp()
   if model_type.lower() == "lambda":
     return lamb()
-  if model_type.lower() == "ica":
+  if model_type.lower() in ["ica", "ica_subspace"]:
     return ica()
   if model_type.lower() == "rica":
     return rica()

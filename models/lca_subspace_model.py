@@ -35,10 +35,17 @@ class LcaSubspaceModel(LcaModel):
     return self.module.group_activity
 
   def get_group_angle(self):
-    return self.module.group_angle
+    return self.module.group_angles
 
   def get_group_encodings(self):
     return (self.get_group_activity(), self.get_group_angle())
+
+  def get_reshaped_group_activity(self):
+    return self.module.reshape_groups_per_neuron(self.get_group_activity())
+
+  def get_reshaped_group_encodings(self):
+    return (self.module.reshape_groups_per_neuron(self.get_group_activity()),
+      self.get_group_angle())
 
   def compute_recon_from_group(self, sigma_in, z_in):
     a_in = tf.multiply(tf.expand_dims(sigma_in, axis=-1), z_in)

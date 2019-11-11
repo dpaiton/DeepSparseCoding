@@ -41,8 +41,11 @@ class LcaSubspaceModule(LcaModule):
     """
     group_amplitudes returns each neuron's group index:
       sigma_i = ||a_{j in i}||_2
-    a_in shape is [num_batch, num_neurons]
-    sigmas shape is [num_batch, num_groups]
+    Inputs:
+      a_in shape is [num_batch, num_neurons]
+        could be u or a inputs
+    Outputs:
+      sigmas shape is [num_batch, num_groups]
     """
     new_shape = tf.stack([tf.shape(self.data_tensor)[0]]+[self.num_groups,
       self.num_neurons_per_group])
@@ -53,12 +56,13 @@ class LcaSubspaceModule(LcaModule):
   def group_directions(self, a_in, sigmas, name=None):
     """
     group_directions returns each neurons direction normalized by the group amplitude:
-      \hat{a}_i = a_i / sigmas_i
+      z_i = a_i / sigmas_i
     a_in shape [num_batch, num_neurons]
     sigms shape [num_batch, num_neurons]
     directions shape [num_batch, num_neurons]
     """
-    directions = tf.divide(a_in, sigmas, name=name)
+    directions = tf.where(tf.greater(sigmas, 0.0), tf.divide(a_in, sigmas, name=name),
+      tf.zeros_like(sigmas))
     return directions
 
   def threshold_units(self, u_in):
@@ -106,9 +110,9 @@ class LcaSubspaceModule(LcaModule):
     super(LcaSubspaceModule, self).build_graph()
     with tf.variable_scope(self.variable_scope) as scope:
       with tf.variable_scope(self.inference_scope):
-        self.group_activity = tf.identity(self.group_amplitudes(self.u),
+        self.group_activity = tf.identity(self.group_amplitudes(self.a),
           name="group_activity")
-        self.group_angles = tf.identity(self.group_directions(self.u,
+        self.group_angles = tf.identity(self.group_directions(self.a,
           self.reshape_groups_per_neuron(self.group_activity)), name="group_directions")
       with tf.variable_scope(self.weight_scope):
         self.group_weights = tf.reshape(self.w,

@@ -35,8 +35,12 @@ def load_vanHateren(params):
   if hasattr(params, "rand_state"):
     rand_state = params.rand_state
   else:
-    assert hasattr(params, "rand_seed"), ("Params must specify a random state or seed")
-    rand_state = np.random.RandomState(params.rand_seed)
+    #assert hasattr(params, "rand_seed"), ("Params must specify a random state or seed")
+    if hasattr(params, "rand_seed"):
+      rand_state = np.random.RandomState(params.rand_seed)
+    else:
+      rand_state = np.random.RandomState(None)
+      print("WARNING: Params did not specify a random state or seed")
   num_images = int(params.num_images) if hasattr(params, "num_images") else None
   image_edge_size = int(params.image_edge_size) if hasattr(params, "image_edge_size") else None
   # Get data
