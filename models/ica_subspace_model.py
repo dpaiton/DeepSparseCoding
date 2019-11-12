@@ -18,6 +18,12 @@ class IcaSubspaceModel(Model):
         self.w_synth_shape = [self.params.num_pixels, self.params.num_neurons]
         self.w_analy_shape = [self.params.num_neurons, self.params.num_pixels]
         self.R = self.construct_index_matrix().astype(np.float32)
+        self.params.num_neurons_per_group = self.params.num_neurons // self.params.num_groups
+        neuron_ids = np.arange(self.params.num_neurons, dtype=np.int32)
+        self.group_ids = [neuron_ids[start:start+self.params.num_neurons_per_group]
+            for start in np.arange(0, self.params.num_neurons, self.params.num_neurons_per_group,
+            dtype=np.int32)]
+
 
 
     def construct_index_matrix(self):
@@ -65,6 +71,11 @@ class IcaSubspaceModel(Model):
                     self.orthonorm_weights = tf.assign(self.w_analy, self.orthonorm_weights(self.w_analy))
         self.graph_built = True
 
+
+    def get_encodings(self):
+        return self.s
+
+    # TODO: def get_group_acts(self):
 
     def orthonorm_weights(self, w):
         m = tf.matmul(w, w, adjoint_b=True)

@@ -36,20 +36,29 @@ class params(object):
     self.do_group_recons = False
     # How many images to use for analysis, patches are generated from these
     self.num_analysis_images = 150#1000
-    self.whiten_batch_size = 10 # for VH dataset
+    self.batch_size = 10
     # Contrasts for orientation experiments
     self.contrasts = [1.0]
     # Phases for orientation experiments
-    self.phases = np.linspace(-np.pi, np.pi, 8)
+    self.phases = np.linspace(-np.pi, np.pi, 16)
     # Orientations for orientation experiments
-    self.orientations = np.linspace(0.0, np.pi, 4)
+    self.orientations = np.linspace(0.0, np.pi, 16)
     # Which neurons to run analysis on
-    self.neuron_indices = list(range(3))
+    self.neuron_indices = list(range(60))
     # Rescale inputs
     self.input_scale = 1.0
 
+def get_isa_group_act(s, group_size=4):
+  num_groups = s.shape[1]//group_size
+  group_acts = []
+  for i in range(s.shape[0]):
+    groups = np.array(np.array_split(s[i], s.shape[1]//group_size))
+    group_act = np.sqrt(np.sum(np.power(groups, 2), axis=1))
+    group_acts.append(group_act)
+  return np.stack(group_acts)
+
 def orientation_tuning(analyzer, contrasts=[0.5], orientations=[np.pi],
-  phases=[np.pi], group_indices=None, diameter=-1, scale=1.0):
+  phases=[np.pi], group_indices=None, diameter=-1, scale=1.0, batch_size=10):
   """
   Performs orientation tuning analysis for given parameters
   Inputs:
@@ -64,11 +73,18 @@ def orientation_tuning(analyzer, contrasts=[0.5], orientations=[np.pi],
   """
   bf_stats = analyzer.bf_stats
   # Stimulus parameters
-  tot_num_groups = analyzer.model.params.num_groups
-  if group_indices is None:
-    group_indices = np.arange(tot_num_groups)
-  num_groups = len(group_indices)
-  neuron_indices = [analyzer.model.module.group_ids[group_idx][0] for group_idx in group_indices]
+  if analyzer.analysis_params.model_type in ["lca_subspace", "ica_subspace"]:
+    tot_num_groups = analyzer.model.params.num_groups
+    if group_indices is None:
+      group_indices = np.arange(tot_num_groups)
+    num_groups = len(group_indices)
+    if analyzer.analysis_params.model_type == "lca_subspace":
+      neuron_indices = [analyzer.model.module.group_ids[group_idx][0] for group_idx in group_indices]
+    else:
+      neuron_indices = [analyzer.model.group_ids[group_idx][0] for group_idx in group_indices]
+  else:
+    tot_num_neurons = analyzer.model.params.num_neurons
+    neuron_indices = group_indices
   num_pixels = bf_stats["patch_edge_size"]**2
   num_neurons = np.asarray(neuron_indices).size
   num_contrasts = np.asarray(contrasts).size
@@ -96,18 +112,50 @@ def orientation_tuning(analyzer, contrasts=[0.5], orientations=[np.pi],
   phase_stims = analyzer.model.reshape_dataset(phase_stims, analyzer.model_params)
   phase_stims["test"].images /= np.max(np.abs(phase_stims["test"].images))
   phase_stims["test"].images *= scale
-  activations = analyzer.evaluate_tf_tensor(
-    tensor=analyzer.model.get_group_activity(),
-    feed_dict=analyzer.model.get_feed_dict(phase_stims["test"].images, is_test=True))
-  activations = activations.reshape(responses.shape+(tot_num_groups,))
-  for bf_idx, group_idx in enumerate(group_indices):
-    activity_slice = activations[bf_idx, :, :, :, group_idx]
-    responses[bf_idx, ...] = activity_slice
-    for co_idx, contrast in enumerate(contrasts):
-      for or_idx, orientation in enumerate(orientations):
-        phase_activity = activations[bf_idx, co_idx, or_idx, :, group_idx]
-        best_phases[bf_idx, co_idx, or_idx] = phases[np.argmax(phase_activity)]
-      best_orientations[bf_idx, co_idx] = orientations[np.argmax(best_phases[bf_idx, co_idx, :])]
+  num_data = phase_stims["test"].images.shape[0]
+  assert num_data % batch_size == 0, (str(num_data)+" "+str(batch_size))
+  num_iterations = num_data // batch_size
+  activations = []
+  for it in range(num_iterations):
+    batch_start_idx = int(it * batch_size)
+    batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))
+    batch_images = phase_stims["test"].images[batch_start_idx:batch_end_idx, ...]
+    if analyzer.analysis_params.model_type == "ica_subspace":
+      activations.append(get_isa_group_act(analyzer.evaluate_tf_tensor(
+        tensor=analyzer.model.get_encodings(),
+        feed_dict=analyzer.model.get_feed_dict(batch_images, is_test=True))))
+    elif analyzer.analysis_params.model_type == "lca_subspace":
+      activations.append(analyzer.evaluate_tf_tensor(
+        tensor=analyzer.model.get_group_activity(),
+        feed_dict=analyzer.model.get_feed_dict(batch_images, is_test=True)))
+    elif analyzer.analysis_params.model_type == "ica":
+      activations.append(analyzer.evaluate_tf_tensor(
+        tensor=analyzer.model.get_encodings(),
+        feed_dict=analyzer.model.get_feed_dict(batch_images, is_test=True)))
+    else:
+      assert False
+  activations = np.stack(activations, axis=0) # num_batch, batch_size, num_activations
+  activations = activations.reshape(num_data, activations.shape[-1]) # collapse batch dim
+  if analyzer.analysis_params.model_type in ["lca_subspace", "ica_subspace"]:
+    activations = activations.reshape(responses.shape+(tot_num_groups,))
+    for subgroup_idx, group_idx in enumerate(group_indices):
+      activity_slice = activations[subgroup_idx, :, :, :, group_idx]
+      responses[subgroup_idx, ...] = activity_slice
+      for co_idx, contrast in enumerate(contrasts):
+        for or_idx, orientation in enumerate(orientations):
+          phase_activity = activations[subgroup_idx, co_idx, or_idx, :, group_idx]
+          best_phases[subgroup_idx, co_idx, or_idx] = phases[np.argmax(phase_activity)]
+        best_orientations[subgroup_idx, co_idx] = orientations[np.argmax(best_phases[subgroup_idx, co_idx, :])]
+  else:
+    activations = activations.reshape(responses.shape+(tot_num_neurons,))
+    for sub_neuron_idx, tot_neuron_idx in enumerate(neuron_indices):
+      activity_slice = activations[sub_neuron_idx, :, :, :, tot_neuron_idx]
+      responses[sub_neuron_idx, ...] = activity_slice
+      for co_idx, contrast in enumerate(contrasts):
+        for or_idx, orientation in enumerate(orientations):
+          phase_activity = activations[sub_neuron_idx, co_idx, or_idx, :, tot_neuron_idx]
+          best_phases[sub_neuron_idx, co_idx, or_idx] = phases[np.argmax(phase_activity)]
+        best_orientations[sub_neuron_idx, co_idx] = orientations[np.argmax(best_phases[sub_neuron_idx, co_idx, :])]
   return {"contrasts":contrasts, "orientations":orientations, "phases":phases,
     "neuron_indices":neuron_indices, "responses":responses, "best_orientations":best_orientations,
     "best_phases":best_phases, "group_indices":group_indices}
@@ -126,30 +174,31 @@ for model_stats in zip(model_types, model_names, model_versions, model_save_info
   analysis_params.save_info = model_stats[3]
   analysis_params.projects_dir = os.path.expanduser("~")+"/Work/ryan_Projects/"
   analysis_params.model_dir = analysis_params.projects_dir+analysis_params.model_name
-  
+
   model_log_file = (analysis_params.model_dir+"/logfiles/"+analysis_params.model_name
     +"_v"+analysis_params.version+".log")
   model_logger = Logger(model_log_file, overwrite=False)
   model_log_text = model_logger.load_file()
   model_params = model_logger.read_params(model_log_text)[-1]
   analysis_params.model_type = model_params.model_type
-  
+
   # Initialize & setup analyzer
   analyzer = ap.get_analyzer(analysis_params.model_type)
   analyzer.setup(analysis_params)
-  
+
   analysis_params.data_type = analyzer.model_params.data_type
   analyzer.model_params.whiten_data = False
-  
+
   analyzer.setup_model(analyzer.model_params)
   analyzer.load_analysis(save_info=analysis_params.save_info)
   #analyzer.load_basis_stats(analysis_params.save_info)
   analyzer.model_name = analysis_params.model_name
-  
+
   ot_grating_responses = orientation_tuning(analyzer, analysis_params.contrasts,
     analysis_params.orientations, analysis_params.phases,
-    analysis_params.neuron_indices, scale=analysis_params.input_scale)
-  
+    analysis_params.neuron_indices, scale=analysis_params.input_scale,
+    batch_size=analysis_params.batch_size)
+
   analysis_out_dir = analysis_params.model_dir+"/analysis/"+analysis_params.version+"/"
   np.savez(analysis_out_dir+"savefiles/group_ot_responses_"+analysis_params.save_info+".npz",
     data=ot_grating_responses)

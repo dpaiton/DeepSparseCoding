@@ -20,6 +20,7 @@ class IcaModel(Model):
       "Prior must be 'laplacian' or 'cauchy'")
     ## Calculated params
     self.num_neurons = self.params.num_pixels
+    self.params.num_neurons = self.num_neurons
     self.input_shape = [None, self.params.num_pixels]
     self.w_synth_shape = [self.num_neurons, self.params.num_pixels]
     self.w_analysis_shape = [self.params.num_pixels, self.num_neurons]
