@@ -8,6 +8,7 @@ import params.mlp_sae_params as mlp_sae
 import params.mlp_lista_params as mlp_lista
 import params.ica_params as ica
 import params.ica_pca_params as ica_pca
+import params.ica_subspace_params as ica_subspace
 import params.rica_params as rica
 import params.lca_params as lca
 import params.lca_pca_params as lca_pca
@@ -55,6 +56,8 @@ def get_params(model_type):
     return ica.params()
   if model_type.lower() == "ica_pca":
     return ica_pca.params()
+  if model_type.lower() == "ica_subspace":
+    return ica_subspace.params()
   if model_type.lower() == "rica":
     return rica.params()
   if model_type.lower() == "lca":
