@@ -1,52 +1,43 @@
 import os
-params = {
-  "model_type": "lca_pca",
-  "model_name": "test_lca_pca",
-  "version": "0.0",
-  "num_images": 100,
-  "vectorize_data": True,
-  "norm_data": False,
-  "whiten_data": True,
-  "whiten_method": "FT",
-  "contrast_normalize": False,
-  "extract_patches": True,
-  "num_patches": 1e6,
-  "patch_edge_size": 16,
-  "overlapping_patches": True,
-  "randomize_patches": True,
-  "patch_variance_threshold": 1e-6,
-  "batch_size": 100,
-  "num_neurons": 512, #1024,#2560,
-  "num_pooling_units": 50,
-  "num_steps": 50,
-  "dt": 0.001,
-  "tau": 0.03,
-  "rectify_a": True,
-  "norm_weights": True,
-  "thresh_type": "soft",
-  "optimizer": "annealed_sgd",
-  "cp_int": 10000,
-  "max_cp_to_keep": 1,
-  "cp_load": True,
-  "cp_load_step": int(1e6), # None gives latest checkpoint
-  "cp_load_name": "lca_pca_512_vh_ft_white",
-  "cp_load_ver": "0.0",
-  "cp_load_var": ["phi"],
-  "log_int": 10,
-  "log_to_file": True,
-  "gen_plot_int": 100,
-  "save_plots": True,
-  "eps": 1e-12,
-  "device": "/gpu:0",
-  "rand_seed": 1234567890,
-  "out_dir": os.path.expanduser("~")+"/Work/Projects/",
-  "data_dir": os.path.expanduser("~")+"/Work/Datasets/"}
+from params.lca_params import params as lca_params
 
-schedule = [
-  {"weights": ["phi"],
-  "sparse_mult": 0.08,
-  "weight_lr": [0.8],
-  "decay_steps": [int(1e2*0.4)],
-  "decay_rate": [0.5],
-  "staircase": [True],
-  "num_batches": int(1e2)}]
+class params(lca_params):
+  def __init__(self):
+    """
+    Additional modifiable parameters:
+      num_pooling_units [int] number of 2nd layer units
+    """
+    super(params, self).__init__()
+    self.model_type = "lca_pca"
+    self.model_name = "lca_pca"
+    self.version = "0.0"
+    self.num_batches = int(1e5)
+    self.batch_size = 100
+    self.num_neurons = 768
+    self.num_pooling_units = 192
+    self.num_steps = 60
+    self.dt = 0.001
+    self.tau = 0.03
+    self.rectify_a = True
+    self.norm_weights = True
+    self.thresh_type = "soft"
+    self.optimizer = "annealed_sgd"
+    self.cp_int = 10000
+    self.max_cp_to_keep = 1
+    self.cp_load = False
+    self.cp_load_step = int(1e6) # None gives latest checkpoint
+    self.cp_load_name = "lca_pca_512_vh_ft_white"
+    self.cp_load_ver = "0.0"
+    #self.cp_load_var = ["phi"]
+    self.log_int = 100
+    self.log_to_file = True
+    self.gen_plot_int = 5000
+    self.save_plots = True
+
+    self.schedule = [
+      {"weights": ["lca/weights/w:0"],
+      "sparse_mult": 1.0,
+      "weight_lr": [0.01],
+      "decay_steps": [int(self.num_batches*0.5)],
+      "decay_rate": [0.8],
+      "staircase": [True]}]

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import FormatStrFormatter
 from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.animation as animation
 from mpl_toolkits import axes_grid1
 import re
 import utils.data_processing as dp
@@ -139,8 +140,7 @@ def plot_pooling_summaries(bf_stats, pooling_filters, num_pooling_filters,
         color_val = scalarMap.to_rgba(connection_strength)
         center = bf_stats["gauss_centers"][bf_idx]
         evals, evecs = bf_stats["gauss_orientations"][bf_idx]
-        orientations = bf_stats["fourier_centers"][bf_idx]
-        angle = np.rad2deg(np.pi/2 + np.arctan2(*orientations))
+        angle = np.rad2deg(np.pi/2 + bf_stats["ellipse_orientations"][bf_idx])
         alpha = 0.5
         ellipse = plot_ellipse(ax, center, evals, angle, color_val, alpha=alpha, lines=lines)
       ax.set_xlim(0, patch_edge_size-1)
@@ -286,10 +286,8 @@ def plot_top_bases(a_cov, weights, bf_indices, num_top_cov_bases):
   gs = gridspec.GridSpec(num_bases, num_top_cov_bases+2, hspace=0.6)
   for x_id in range(num_bases):
     primary_bf_idx = bf_indices[x_id]
-    a_cov_row = a_cov[primary_bf_idx, :]
     sorted_cov_indices = np.argsort(a_cov[primary_bf_idx, :])[-2::-1]
-    primary_bf = np.squeeze(dp.reshape_data(weights.T[primary_bf_idx,...],
-      flatten=False)[0])
+    primary_bf = np.squeeze(dp.reshape_data(weights.T[primary_bf_idx,...], flatten=False)[0])
     ax = plt.subplot(gs[x_id,0])
     ax.imshow(primary_bf, cmap="Greys_r", interpolation="nearest")
     ax.tick_params(axis="both", bottom="off", top="off",
@@ -360,7 +358,7 @@ def plot_bf_stats(bf_stats, num_bf=2):
     sub_ax[plot_id, 2].spines["bottom"].set_linewidth(2.5)
     sub_ax[plot_id, 2].spines["top"].set_color("none")
     sub_ax[plot_id, 2].spines["right"].set_color("none")
-    sub_ax[plot_id, 2].set_ylim([0, fourier.shape[0]-1])
+    sub_ax[plot_id, 2].set_ylim([fourier.shape[0]-1, 0])
     sub_ax[plot_id, 2].set_xlim([0, fourier.shape[1]-1])
     # Fourier summary stats
     sub_ax[plot_id, 3].imshow(bf, interpolation="Nearest", cmap="Greys_r")
@@ -384,31 +382,54 @@ def plot_bf_stats(bf_stats, num_bf=2):
   plt.show()
   return fig
 
-def plot_loc_freq_summary(bf_stats):
-  fig, sub_ax = plt.subplots(1, 2, figsize=(10,5))
+def plot_loc_freq_summary(bf_stats, spotsize=10, figsize=(15, 5), fontsize=16):
+  plt.rc('text', usetex=True)
+  fig = plt.figure(figsize=figsize)
+  gs = fig.add_gridspec(1, 3, wspace=0.3)
+  ax = fig.add_subplot(gs[0])
   x_pos = [x for (y,x) in bf_stats["gauss_centers"]]
   y_pos = [y for (y,x) in bf_stats["gauss_centers"]]
-  sub_ax[0].scatter(x_pos, y_pos, color='k', s=10)
-  sub_ax[0].set_xlim([0, bf_stats["patch_edge_size"]-1])
-  sub_ax[0].set_ylim([bf_stats["patch_edge_size"]-1, 0])
-  sub_ax[0].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-  sub_ax[0].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-  sub_ax[0].set_aspect("equal")
-  sub_ax[0].set_ylabel("Pixels")
-  sub_ax[0].set_xlabel("Pixels")
-  sub_ax[0].set_title("Basis Function Centers", fontsize=12)
+  ax.scatter(x_pos, y_pos, color='k', s=spotsize)
+  ax.set_xlim([0, bf_stats["patch_edge_size"]-1])
+  ax.set_ylim([bf_stats["patch_edge_size"]-1, 0])
+  ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  ax.set_aspect("equal")
+  ax.set_ylabel("Pixels", fontsize=fontsize)
+  ax.set_xlabel("Pixels", fontsize=fontsize)
+  ax.set_title("Centers", fontsize=fontsize, pad=32)
+  ax = fig.add_subplot(gs[1])
   x_sf = [x for (y,x) in bf_stats["fourier_centers"]]
   y_sf = [y for (y,x) in bf_stats["fourier_centers"]]
   max_sf = np.max(np.abs(x_sf+y_sf))
-  sub_ax[1].scatter(x_sf, y_sf, color='k', s=10)
-  sub_ax[1].set_xlim([-max_sf, max_sf])
-  sub_ax[1].set_ylim([-max_sf, max_sf])
-  sub_ax[1].xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-  sub_ax[1].yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-  sub_ax[1].set_aspect("equal")
-  sub_ax[1].set_ylabel("Cycles / Patch")
-  sub_ax[1].set_xlabel("Cycles / Patch")
-  sub_ax[1].set_title("Basis Function Spatial Frequencies", fontsize=12)
+  ax.scatter(x_sf, y_sf, color='k', s=spotsize)
+  ax.set_xlim([-max_sf, max_sf])
+  ax.set_ylim([-max_sf, max_sf])
+  ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+  ax.set_aspect("equal")
+  ax.set_ylabel("Cycles / Patch", fontsize=fontsize)
+  ax.set_xlabel("Cycles / Patch", fontsize=fontsize)
+  ax.set_title("Spatial Frequencies", fontsize=fontsize, pad=32)
+  num_bins = 360
+  orientations = [np.pi + orientation
+    for orientation in [np.arctan2(*fyx[::-1]) for fyx in bf_stats["fourier_centers"]]]
+  bins = np.linspace(0, 2*np.pi, num_bins)
+  count, bin_edges = np.histogram(orientations, bins)
+  count = count / np.max(count)
+  bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
+  bin_centers = bin_left + (bin_right - bin_left)/2
+  ax = fig.add_subplot(gs[2], polar=True)
+  ax.plot(bin_centers, count, linewidth=3, color='k')
+  ax.set_yticks([])
+  ax.set_thetamin(0)
+  ax.set_thetamax(2*np.pi)
+  ax.set_xticks([0, np.pi/4, 2*np.pi/4, 3*np.pi/4, 4*np.pi/4,
+    5*np.pi/4, 6*np.pi/4, 7*np.pi/4, 2*np.pi])
+  ax.set_xticklabels([r"0", r"$\frac{\pi}{4}$", r"$\frac{\pi}{2}$",
+    r"$\frac{3\pi}{4}$", r"$\pi$", r"$\frac{5\pi}{4}$", r"$\frac{3\pi}{2}$",
+    r"$\frac{7\pi}{4}$"], fontsize=fontsize)
+  ax.set_title("Orientaitons", fontsize=fontsize, pad=23)
   plt.show()
   return fig
 
@@ -459,7 +480,29 @@ def plot_hilbert_analysis(weights, padding=None):
   plt.show()
   return fig
 
-def plot_matrix(matrix, title=""):
+def plot_image(image, vmin=None, vmax=None, title="", save_filename=None):
+  """
+  Plot single image
+  Inputs:
+    image [np.ndarray] 2-D image
+    title [str] indicating the title for the figure
+  """
+  if vmin is None:
+    vmin = np.min(image)
+  if vmax is None:
+    vmax = np.max(image)
+  fig, ax = plt.subplots(1, figsize=(10,10))
+  ax = clear_axis(ax)
+  im = ax.imshow(image, cmap="Greys_r", vmin=vmin, vmax=vmax, interpolation="nearest")
+  ax.set_title(title, fontsize=20)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
+  plt.show()
+  return fig
+
+def plot_matrix(matrix, title="", save_filename=None):
   """
   Plot covariance matrix as an image
   Inputs:
@@ -471,6 +514,10 @@ def plot_matrix(matrix, title=""):
   im.set_clim(vmin=np.min(matrix), vmax=np.max(matrix))
   ax.set_title(title, fontsize=20)
   add_colorbar_to_im(im)
+  if save_filename is not None:
+      fig.savefig(save_filename)
+      plt.close(fig)
+      return None
   plt.show()
   return fig
 
@@ -559,7 +606,7 @@ def plot_bar(data, num_xticks=5, title="", xlabel="", ylabel="", save_filename=N
   plt.show()
   return fig
 
-def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activations):
+def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activations, figsize=(32,32)):
   """
   Generate contrast orientation tuning curves. Every subplot will have curves for each contrast.
   Inputs:
@@ -573,7 +620,7 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
   cmap = plt.get_cmap('Greys')
   cNorm = matplotlib.colors.Normalize(vmin=0.0, vmax=1.0)
   scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
-  fig = plt.figure(figsize=(32,32))
+  fig = plt.figure(figsize=figsize)
   num_plots_y = np.int32(np.ceil(np.sqrt(num_bfs)))+1
   num_plots_x = np.int32(np.ceil(np.sqrt(num_bfs)))
   gs_widths = [1.0,]*num_plots_x
@@ -597,7 +644,7 @@ def plot_contrast_orientation_tuning(bf_indices, contrasts, orientations, activa
         activity = activations[bf_indices[bf_idx], co_idx, :]
         color_val = scalarMap.to_rgba(contrast)
         ax.plot(orientations, activity, linewidth=1, color=color_val)
-        ax.scatter(orientations, activity, s=4, c=color_val)
+        ax.scatter(orientations, activity, s=4, c=[color_val])
         ax.yaxis.set_major_formatter(FormatStrFormatter('%0.2g'))
         ax.set_yticks([0, np.max(activity)])
         ax.set_xticks([0, 90, 180])
@@ -744,15 +791,16 @@ def plot_activity_hist(data, num_bins="auto", title="", save_filename=None):
   (fig, ax) = plt.subplots(1)
   vals, bins, patches = ax.hist(data, bins=num_bins, histtype="barstacked",
     stacked=True)
-  ax.set_xlim([np.min(data), np.max(data)])
+  if np.min(data) != np.max(data):
+    ax.set_xlim([np.min(data), np.max(data)])
   ax.set_xlabel('Value')
   ax.set_ylabel('Count')
   fig.suptitle(title, y=1.0, x=0.5)
   fig.tight_layout()
   if save_filename is not None:
-      fig.savefig(save_filename)
-      plt.close(fig)
-      return None
+    fig.savefig(save_filename)
+    plt.close(fig)
+    return None
   plt.show()
   return fig
 
@@ -775,22 +823,69 @@ def plot_phase_avg_power_spec(data, title="", save_filename=None):
   plt.show()
   return fig
 
-def plot_weights(weights, title="", save_filename=None):
+def plot_group_weights(weights, group_ids, title="", figsize=None,  save_filename=None):
   """
-    weights: [np.ndarray] of shape [num_outputs, num_input_x, num_input_y]
+    weights: [np.ndarray] of shape [num_neurons, num_input_y, num_input_x]
+    group_ids: [list of lists] containing ids for each group [[,]*neurons_per_group,]*num_groups
   """
+  num_neurons = weights.shape[0]
+  for weight_id in range(num_neurons):
+    weights[weight_id,...] = weights[weight_id,...] - weights[weight_id,...].mean()
+    weights[weight_id,...] = weights[weight_id,...] / (weights[weight_id,...].max()-weights[weight_id,...].min())
+  vmin = np.min(weights)
+  vmax = np.max(weights)
+  indices = [idx for id_list in group_ids for idx in id_list]
+  num_groups = len(group_ids)
+  num_groups_x = int(np.floor(np.sqrt(num_groups)))
+  num_groups_y = int(np.ceil(np.sqrt(num_groups)))
+  num_neurons_per_group = len(group_ids[0])
+  num_neurons_x = int(np.floor(np.sqrt(num_neurons_per_group)))
+  num_neurons_y = int(np.ceil(np.sqrt(num_neurons_per_group)))
+  outer_spacing = 0.20
+  inner_spacing = 0.1
+  fig = plt.figure(figsize=figsize)
+  gs1 = gridspec.GridSpec(num_groups_y, num_groups_x,
+    hspace=outer_spacing*num_groups_y/(num_groups_x+num_groups_y),
+    wspace=outer_spacing*num_groups_x/(num_groups_x+num_groups_y))
+  neuron_index = 0
+  for group_plot_id in np.ndindex((num_groups_y, num_groups_x)):
+    gs_inner = gridspec.GridSpecFromSubplotSpec(num_neurons_y, num_neurons_x, gs1[group_plot_id],
+      hspace=inner_spacing*num_neurons_y/(num_neurons_x+num_neurons_y),
+      wspace=inner_spacing*num_neurons_x/(num_neurons_x+num_neurons_y))
+    for inner_plot_id in np.ndindex((num_neurons_y, num_neurons_x)):
+      ax = clear_axis(fig.add_subplot(gs_inner[inner_plot_id]))
+      ax.set_aspect("equal")
+      if neuron_index < num_neurons:
+        ax.imshow(weights[indices[neuron_index], ...], cmap="Greys_r", vmin=vmin, vmax=vmax)
+        neuron_index += 1
+  fig.suptitle(title, y=0.9, x=0.5, fontsize=20)
+  if save_filename is not None:
+    fig.savefig(save_filename)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
+def plot_weights(weights, title="", figsize=None, save_filename=None):
+  """
+    weights: [np.ndarray] of shape [num_outputs, num_input_y, num_input_x]
+    The matrices are renormalized before plotting.
+  """
+  weights = dp.norm_weights(weights)
+  vmin = np.min(weights)
+  vmax = np.max(weights)
   num_plots = weights.shape[0]
   num_plots_y = int(np.ceil(np.sqrt(num_plots))+1)
   num_plots_x = int(np.floor(np.sqrt(num_plots)))
-  fig, sub_ax = plt.subplots(num_plots_y, num_plots_x, figsize=(18,18))
+  fig, sub_ax = plt.subplots(num_plots_y, num_plots_x, figsize=figsize)
   filter_total = 0
   for plot_id in  np.ndindex((num_plots_y, num_plots_x)):
     if filter_total < num_plots:
-      sub_ax[plot_id].imshow(weights[filter_total, ...], cmap="Greys_r")
+      sub_ax[plot_id].imshow(np.squeeze(weights[filter_total, ...]), vmin=vmin, vmax=vmax, cmap="Greys_r")
       filter_total += 1
     clear_axis(sub_ax[plot_id])
     sub_ax[plot_id].set_aspect("equal")
-  fig.suptitle(title, y=0.9, x=0.5, fontsize=20)
+  fig.suptitle(title, y=0.95, x=0.5, fontsize=20)
   if save_filename is not None:
       fig.savefig(save_filename)
       plt.close(fig)
@@ -827,6 +922,9 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
     data = np.squeeze(data)
   elif data.ndim == 4:
     data = np.squeeze(pad_data(data))
+    #If rgb, need to rescale from 0 .. 1
+    if(data.shape[-1] == 3):
+      data = (data - data.min())/(data.max() - data.min())
   else:
     assert False, ("input data must have ndim==3 or 4")
   fig, sub_axis = plt.subplots(1, figsize=(24, 24))
@@ -845,7 +943,7 @@ def plot_data_tiled(data, normalize=False, title="", vmin=None, vmax=None, cmap=
   plt.show()
   return fig
 
-def plot_stats(data, keys=None, labels=None, figsize=None, save_filename=None):
+def plot_stats(data, keys=None, labels=None, start_index=0, figsize=None, save_filename=None):
   """
   Generate time-series plots of stats specified by keys
   Inputs:
@@ -865,6 +963,10 @@ def plot_stats(data, keys=None, labels=None, figsize=None, save_filename=None):
   assert len(keys) > 0, "Keys must be None or have length > 0."
   if "batch_step" in keys:
     keys.remove("batch_step")
+  if "schedule_index" in keys:
+    keys.remove("schedule_index")
+  if "global_batch_index" in keys:
+    keys.remove("global_batch_index")
   if labels is None:
     labels = keys
   else:
@@ -875,13 +977,15 @@ def plot_stats(data, keys=None, labels=None, figsize=None, save_filename=None):
   fig = plt.figure(figsize=figsize)
   axis_image = [None]*num_keys
   for key_idx, key in enumerate(keys):
+    x_dat = data["batch_step"][start_index:]
+    y_dat = data[key][start_index:]
     ax = fig.add_subplot(gs[key_idx])
-    axis_image[key_idx] = ax.plot(data["batch_step"], data[key])
+    axis_image[key_idx] = ax.plot(x_dat, y_dat)
     if key_idx < len(keys)-1:
       ax.get_xaxis().set_ticklabels([])
     ax.locator_params(axis="y", nbins=5)
     ax.set_ylabel("\n".join(re.split("_", labels[key_idx])))
-    ax.set_yticks([np.minimum(0.0, np.min(data[key])), np.maximum(0.0, np.max(data[key]))])
+    ax.set_yticks([np.minimum(0.0, np.min(y_dat)), np.maximum(0.0, np.max(y_dat))])
     ylabel_xpos = -0.15
     ax.yaxis.set_label_coords(ylabel_xpos, 0.5)
   ax.set_xlabel("Batch Number")
@@ -899,8 +1003,10 @@ def plot_inference_stats(data, title="", save_filename=None):
   Inputs:
     data: [dict] that must contain the "losses"
       this can be created by using the LCA analyzer objects
+  TODO: Add a 4th plot that shows the % change in active coefficients (inactive-to-active + active-to-inactive)
+        e.g. in bottom left of figure 7 in rozell et al 2008 LCA paper
   """
-  labels = [key for key in data["losses"].keys()]
+  labels = [key.title() for key in data["losses"].keys()]
   losses = [val for val in data["losses"].values()]
   num_im, num_steps = losses[0].shape
   means = [None,]*len(labels)
@@ -911,7 +1017,7 @@ def plot_inference_stats(data, title="", save_filename=None):
   num_plots_y = np.int32(np.ceil(np.sqrt(len(labels))))+1
   num_plots_x = np.int32(np.ceil(np.sqrt(len(labels))))
   gs = gridspec.GridSpec(num_plots_y, num_plots_x)
-  fig = plt.figure(figsize=(10,10))
+  fig = plt.figure(figsize=(12,12))
   loss_id = 0
   for plot_id in np.ndindex((num_plots_y, num_plots_x)):
     (y_id, x_id) = plot_id
@@ -932,34 +1038,42 @@ def plot_inference_stats(data, title="", save_filename=None):
   fig.tight_layout()
   fig.suptitle(title, y=1.03, x=0.5, fontsize=20)
   if save_filename is not None:
-    fig.savefig(save_filename, transparent=True)
+    fig.savefig(save_filename, transparent=True, bbox_inches="tight", pad=0.1)
     plt.close(fig)
     return None
   plt.show()
   return fig
 
-def plot_inference_traces(data, activation_threshold, img_idx=0):
+def plot_inference_traces(data, activation_threshold, img_idx=None, act_indicator_threshold=None):
   """
   Plot of model neurons' inputs over time
   Args:
     data: [dict] with each trace, with keys [b, u, a, ga, images]
       Dictionary is created by analyze_lca.evaluate_inference()
     img_idx: [int] which image in data["images"] to run analysis on
+    act_indicator_threshold: [float] sets the threshold for when a neuron is marked as "recently active"
+      Recently active neurons are those that became active towards the end of the inference process
+      Recency is computed as any time step that is greater than num_inference_steps * act_indicator_threshold
+      Recently active neurons are indicated by a dotted magenta border
+      This input must be between 0.0 and 1.0
   """
   plt.rc('text', usetex=True)
   (num_images, num_time_steps, num_neurons) = data["b"].shape
   sqrt_nn = int(np.sqrt(num_neurons))
+  if img_idx is None:
+    img_idx = np.random.choice(num_images)
   global_max_val = float(np.max(np.abs([data["b"][img_idx,...],
-    data["u"][img_idx,...], data["ga"][img_idx,...], data["a"][img_idx,...]])))
+    data["u"][img_idx,...], data["ga"][img_idx,...], data["a"][img_idx,...],
+    np.ones_like(data["b"][img_idx,...])*activation_threshold])))
   fig, sub_axes = plt.subplots(sqrt_nn+2, sqrt_nn+1, figsize=(20, 20))
   fig.subplots_adjust(hspace=0.20, wspace=0.20)
   for (axis_idx, axis) in enumerate(fig.axes): # one axis per neuron
     if axis_idx < num_neurons:
       t = np.arange(data["b"].shape[1])
-      b = data["b"][img_idx,:,axis_idx]
-      u = data["u"][img_idx,:,axis_idx]
-      ga = data["ga"][img_idx,:,axis_idx]
-      a = data["a"][img_idx,:,axis_idx]
+      b = data["b"][img_idx, :, axis_idx]
+      u = data["u"][img_idx, :, axis_idx]
+      ga = data["ga"][img_idx, :, axis_idx]
+      a = data["a"][img_idx, :, axis_idx]
       l1, = axis.plot(t, b, linewidth=0.25, color="g", label="b")
       l2, = axis.plot(t, u, linewidth=0.25, color="b", label="u")
       l3, = axis.plot(t, ga, linewidth=0.25, color="r", label="Ga")
@@ -984,8 +1098,20 @@ def plot_inference_traces(data, activation_threshold, img_idx=0):
       fig.lines.append(line)
       if (a[-1] > 0):
         clear_axis(axis, spines="magenta")
+        if act_indicator_threshold is not None:
+          assert act_indicator_threshold > 0.0 and act_indicator_threshold < 1.0, (
+            "act_indicator_threshold must be between 0.0 and 1.0")
+          thresh_index = int(num_time_steps * act_indicator_threshold)
+          if np.all([a[idx] == 0 for idx in range(0, thresh_index)]): # neuron has recently become active
+             for ax_loc in ["top", "bottom", "left", "right"]:
+              axis.spines[ax_loc].set_linestyle((1, (1, 3))) #length, spacing (on, off)
       else:
         clear_axis(axis, spines="black")
+        if act_indicator_threshold is not None:
+          thresh_index = int(num_time_steps * act_indicator_threshold)
+          if np.any([a[idx] > 0 for idx in range(thresh_index, num_time_steps)]): # neuron has recently become inactive
+             for ax_loc in ["top", "bottom", "left", "right"]:
+              axis.spines[ax_loc].set_linestyle((1, (1, 3))) #length, spacing (on, off)
     else:
       clear_axis(axis)
   num_pixels = np.size(data["images"][img_idx])
@@ -1003,13 +1129,93 @@ def plot_inference_traces(data, activation_threshold, img_idx=0):
   return fig
 
 def plot_weight_image(weights, colorbar_aspect=50, title="", figsize=None, save_filename=None):
-  fig, ax = plt.subplots(1, 1, figsize=figsize)
+  fig, ax = plt.subplots(1, 1, figsize=figsize, squeeze=False)
+  ax = ax.item()
   im = ax.imshow(weights, vmin=np.min(weights), vmax=np.max(weights), cmap="Greys_r")
   ax.set_title(title)
   clear_axis(ax)
   add_colorbar_to_im(im, aspect=colorbar_aspect)
   if save_filename is not None:
     fig.savefig(save_filename, transparent=True)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
+def plot_weight_angle_heatmap(weight_angles, angle_min=0, angle_max=180, title="", figsize=None, save_filename=None):
+  vmin = angle_min
+  vmax = angle_max
+  cmap = plt.get_cmap('viridis')
+  cNorm = matplotlib.colors.Normalize(vmin=vmin, vmax=vmax)
+  scalarMap = matplotlib.cm.ScalarMappable(norm=cNorm, cmap=cmap)
+  scalarMap._A = []
+  fig, ax = plt.subplots(1, figsize=figsize)
+  im = ax.imshow(weight_angles, vmin=vmin, vmax=vmax)
+  ax.set_title(title, fontsize=18)
+  cbar = add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, ticks=[vmin, vmax])
+  cbar.ax.set_yticklabels(["{:.0f}".format(vmin), "{:.0f}".format(vmax)])
+  if save_filename is not None:
+    fig.savefig(save_filename, transparent=True)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
+def plot_weight_angle_histogram(weight_angles, num_bins=50, angle_min=0, angle_max=180,
+  y_max=None, figsize=None, save_filename=None):
+  bins = np.linspace(angle_min, angle_max, num_bins)
+  hist, bin_edges = np.histogram(weight_angles.flatten(), bins)
+  if y_max is None:
+    y_max = np.max(hist)
+  bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
+  bin_centers = bin_left + (bin_right - bin_left)/2
+  fig, ax = plt.subplots(1, figsize=figsize)
+  ax.bar(bin_centers, hist, width=2.0, log=True, align="center")
+  ax.set_xticks(bin_left, minor=True)
+  ax.set_xticks(bin_left[::4], minor=False)
+  ax.xaxis.set_major_formatter(FormatStrFormatter("%0.0f"))
+  ax.tick_params("both", labelsize=16)
+  ax.set_xlim([angle_min, angle_max])
+  ax.set_xticks([angle_min, int(np.floor(angle_max/4)), int(2*np.floor(angle_max/4)),
+    int(3*np.floor(angle_max/4)), angle_max])
+  ax.set_ylim([1, y_max])
+  ax.set_title("Neuron Angle Histogram", fontsize=18)
+  ax.set_xlabel("Angle (Degrees)", fontsize=18)
+  ax.set_ylabel("Log Count", fontsize=18)
+  if save_filename is not None:
+    fig.savefig(save_filename)
+    plt.close(fig)
+    return None
+  plt.show()
+  return fig
+
+def plot_weight_nearest_neighbor_histogram(weight_angles, num_bins=25, angle_min=0, angle_max=90,
+  y_max=None, figsize=None, save_filename=None):
+  nn_angles = np.zeros(weight_angles.shape[0])
+  for neuron_id in range(weight_angles.shape[0]):
+    neighbors = np.delete(weight_angles[neuron_id,:], neuron_id)
+    nn_angles[neuron_id] = np.min(neighbors[neighbors>=0])
+  bins = np.linspace(angle_min, angle_max, num_bins)
+  hist, bin_edges = np.histogram(nn_angles.flatten(), bins)
+  if y_max is None:
+    y_max = np.max(hist)
+  bin_left, bin_right = bin_edges[:-1], bin_edges[1:]
+  bin_centers = bin_left + (bin_right - bin_left)/2
+  fig, ax = plt.subplots(1, figsize=figsize)
+  ax.bar(bin_centers, hist, width=1.0, log=True, align="center")
+  ax.set_xticks(bin_left, minor=True)
+  ax.set_xticks(bin_left[::4], minor=False)
+  ax.xaxis.set_major_formatter(FormatStrFormatter("%0.0f"))
+  ax.tick_params("both", labelsize=16)
+  ax.set_xlim([angle_min, angle_max])
+  ax.set_xticks([angle_min, int(np.floor(angle_max/4)), int(2*np.floor(angle_max/4)),
+    int(3*np.floor(angle_max/4)), angle_max])
+  ax.set_ylim([1, y_max])
+  ax.set_title("Neuron Nearest Neighbor Angle", fontsize=18)
+  ax.set_xlabel("Angle (Degrees)", fontsize=18)
+  ax.set_ylabel("Log Count", fontsize=18)
+  if save_filename is not None:
+    fig.savefig(save_filename)
     plt.close(fig)
     return None
   plt.show()
@@ -1058,6 +1264,26 @@ def bgr_colormap():
       }
   return LinearSegmentedColormap("bgr", cdict)
 
+def add_colorbar_to_ax(handle, ax, aspect=20, pad_fraction=0.5, labelsize=16, **kwargs):
+  """
+  Add a vertical color bar to an image plot.
+  Inputs:
+    ax: TODO
+    aspect: [int] aspect ratio of the colorbar
+    pad_fraction: [float] how much space to place between colorbar & plot
+    labelsize: [float] font size of the colorbar labels
+    **kwargs: [dict] other keyword arguments that would be passed to axes.figure.colorbar()
+  """
+  divider = axes_grid1.make_axes_locatable(ax)
+  width = axes_grid1.axes_size.AxesY(ax, aspect=1./aspect)
+  pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
+  current_ax = plt.gca()
+  cax = divider.append_axes("right", size=width, pad=pad)
+  plt.sca(current_ax)
+  cbar = ax.figure.colorbar(handle, cax=cax, **kwargs)
+  cbar.ax.tick_params(labelsize=labelsize)
+  return cbar
+
 def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, **kwargs):
   """
   Add a vertical color bar to an image plot.
@@ -1078,14 +1304,18 @@ def add_colorbar_to_im(im, aspect=20, pad_fraction=0.5, labelsize=16, **kwargs):
   cbar.ax.tick_params(labelsize=labelsize)
   return cbar
 
+def clear_axes(ax, spines="none"):
+  """
+  TODO: Loop over ax (regardless of shape) and call clear_axis on each element
+  """
+  raise NotImplementedError
+
 def clear_axis(ax, spines="none"):
-  ax.spines["right"].set_color(spines)
-  ax.spines["top"].set_color(spines)
-  ax.spines["left"].set_color(spines)
-  ax.spines["bottom"].set_color(spines)
+  for ax_loc in ["top", "bottom", "left", "right"]:
+    ax.spines[ax_loc].set_color(spines)
   ax.set_yticklabels([])
   ax.set_xticklabels([])
   ax.get_xaxis().set_visible(False)
   ax.get_yaxis().set_visible(False)
-  ax.tick_params(axis="both", bottom="off", top="off", left="off", right="off")
+  ax.tick_params(axis="both", bottom=False, top=False, left=False, right=False)
   return ax

@@ -1,48 +1,94 @@
 import params.param_picker as pp
-from models.mlp import MLP as mlp
-from models.ica import ICA as ica
-from models.ica_pca import ICA_PCA as ica_pca
-from models.gradient_sc import Gradient_SC as gsc
-from models.entropy_sc import Entropy_SC as esc
-from models.lca import LCA as lca
-from models.lca_pca import LCA_PCA as lca_pca
-from models.lca_pca_fb import LCA_PCA_FB as lca_pca_fb
-from models.conv_lca import CONV_LCA as conv_lca
-from models.sigmoid_autoencoder import Sigmoid_Autoencoder as sa
-from models.gdn_autoencoder import GDN_Autoencoder as ga
-from models.relu_autoencoder import ReLU_Autoencoder as ra
-from models.density_learner import Density_Learner as dl
+from models.lambda_model import LambdaModel as lamb
+from models.mlp_model import MlpModel as mlp
+from models.mlp_lca_model import MlpLcaModel as mlp_lca
+from models.mlp_lca_subspace_model import MlpLcaSubspaceModel as mlp_lca_subspace
+from models.mlp_ae_model import MlpAeModel as mlp_ae
+from models.mlp_vae_model import MlpVaeModel as mlp_vae
+from models.mlp_sae_model import MlpSaeModel as mlp_sae
+from models.mlp_lista_model import MlpListaModel as mlp_lista
+from models.ica_model import IcaModel as ica
+from models.ica_subspace_model import IcaSubspaceModel as ica_subspace
+#from models.ica_pca_model import IcaPcaModel as ica_pca
+from models.rica_model import RicaModel as rica
+from models.lca_model import LcaModel as lca
+from models.lca_pca_model import LcaPcaModel as lca_pca
+from models.lca_pca_fb_model import LcaPcaFbModel as lca_pca_fb
+from models.lca_subspace_model import LcaSubspaceModel as lca_subspace
+from models.lca_conv_model import LcaConvModel as lca_conv
+from models.lista_model import ListaModel as lista
+#from models.fflista_model import FfListaModel as fflista
+#from models.gdn_autoencoder_model import GdnAutoencoderModel as ga
+#from models.gdn_conv_autoencoder_model import GdnConvAutoencoderModel as ga_conv
+#from models.gdn_conv_decoder_model import GdnConvDecoderModel as gd_conv
+#from models.relu_autoencoder_model import ReluAutoencoderModel as ra
+from models.ae_model import AeModel as ae
+from models.dae_model import DaeModel as dae
+from models.dae_mem_model import DaeMemModel as dae_mem
+from models.vae_model import VaeModel as vae
+from models.sae_model import SaeModel as sae
 
 def get_model(model_type):
+  if model_type.lower() == "lambda":
+    return lamb()
   if model_type.lower() == "mlp":
     return mlp()
+  if model_type.lower() == "mlp_lca_subspace":
+    return mlp_lca_subspace()
+  if model_type.lower() == "mlp_lca":
+    return mlp_lca()
+  if model_type.lower() == "mlp_ae":
+    return mlp_ae()
+  if model_type.lower() == "mlp_vae":
+    return mlp_vae()
+  if model_type.lower() == "mlp_sae":
+    return mlp_sae()
+  if model_type.lower() == "mlp_lista":
+    return mlp_lista()
   if model_type.lower() == "ica":
     return ica()
-  if model_type.lower() == "ica_pca":
-    return ica_pca()
-  if model_type.lower() == "gradient_sc":
-    return gsc()
-  if model_type.lower() == "entropy_sc":
-    return esc()
+  if model_type.lower() == "ica_subspace":
+    return ica_subspace()
+  #if model_type.lower() == "ica_pca":
+  #  return ica_pca()
+  if model_type.lower() == "rica":
+    return rica()
   if model_type.lower() == "lca":
     return lca()
   if model_type.lower() == "lca_pca":
     return lca_pca()
   if model_type.lower() == "lca_pca_fb":
     return lca_pca_fb()
-  if model_type.lower() == "conv_lca":
-    return conv_lca()
-  if model_type.lower() == "sigmoid_autoencoder":
-    return sa()
-  if model_type.lower() == "gdn_autoencoder":
-    return ga()
-  if model_type.lower() == "relu_autoencoder":
-    return ra()
-  if model_type.lower() == "density_learner":
-    return dl()
+  if model_type.lower() == "lca_conv":
+    return lca_conv()
+  if model_type.lower() == "lca_subspace":
+    return lca_subspace()
+  if model_type.lower() == "lista":
+    return lista()
+  #if model_type.lower() == "fflista":
+  #  return fflista()
+  #if model_type.lower() == "gdn_autoencoder":
+  #  return ga()
+  #if model_type.lower() == "gdn_conv_autoencoder":
+  #  return ga_conv()
+  #if model_type.lower() == "gdn_conv_decoder":
+  #  return gd_conv()
+  #if model_type.lower() == "relu_autoencoder":
+  #  return ra()
+  if model_type.lower() == "ae":
+    return ae()
+  if model_type.lower() == "dae":
+    return dae()
+  if model_type.lower() == "dae_mem":
+    return dae_mem()
+  if model_type.lower() == "sae":
+    return sae()
+  if model_type.lower() == "vae":
+    return vae()
+  assert False, ("model_type did not match allowable types in models/model_picker.")
 
 def get_model_list():
-  model_list = ["mlp", "ica", "ica_pca", "gradient_sc", "entropy_sc", "lca", "lca_pca",
-    "lca_pca_fb", "conv_lca", "sigmoid_autoencoder", "gdn_autoencoder", "relu_autoencoder",
-    "density_learner"]
+  model_list = ["lambda", "mlp", "mlp_lca", "mlp_lca_subspace", "mlp_ae", "mlp_vae", "mlp_sae",
+    "mlp_lista", "ica", "ica_subspace", "rica", "lca", "lca_pca", "lca_pca_fb", "lca_conv", "lca_subspace", "lista",
+     "ae", "dae", "dae_mem", "sae", "vae"]
   return model_list
