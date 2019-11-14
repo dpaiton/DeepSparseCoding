@@ -28,7 +28,7 @@ class params(object):
     # Activity triggered averages
     self.do_atas = False #TODO: this can produce outputs that are too big for npz; need to batch?
     # Recon adversarial image analysis
-    self.do_recon_adversaries = True # TODO: broken for rica
+    self.do_recon_adversaries = False # TODO: broken for rica
     #Classification adversarial image analysis
     self.do_class_adversaries = False
     # Find optimal stimulus using gradient methods
@@ -36,7 +36,9 @@ class params(object):
     # Patchwise image recon
     self.do_full_recon = True
     # Orientation and Cross-Orientation analysis
-    self.do_orientation_analysis = True # TODO: broken for ae_deep
+    self.do_orientation_analysis = False # TODO: broken for ae_deep
+    # Reconstructions from individual groups for subspace Sparse Coding
+    self.do_group_recons = False
     # How many images to use for analysis, patches are generated from these
     self.num_analysis_images = 150#1000
     self.whiten_batch_size = 10 # for VH dataset
@@ -63,15 +65,15 @@ class params(object):
     self.adversarial_num_steps = 5000 # Step size for adversarial attacks
     self.adversarial_attack_method = "kurakin_targeted"#"carlini_targeted"
     self.save_info += "_"+self.adversarial_attack_method # To avoid overwriting
-    self.adversarial_step_size = 0.001
-    self.adversarial_max_change = 0.1
-    self.carlini_change_variable = True
+    self.adversarial_step_size = 0.001 # learning rate for optimizer
+    self.adversarial_max_change = 0.5 # maximum size of adversarial perturation
+    self.carlini_change_variable = False
     self.adv_optimizer = "sgd"
     self.adversarial_target_method = "random" # Not used if attack_method is untargeted#TODO support specified
     self.adversarial_clip = True
-    self.adversarial_clip_range = [0.0, 1.0]
-    self.carlini_recon_mult = list(np.arange(.5, 1, .1))
-    self.adversarial_save_int = 1000#Interval at which to save adv examples to the npy file
+    self.adversarial_clip_range = [-0.8, 7.0] # Maximum range of image values
+    self.carlini_recon_mult = 0.1#list(np.arange(.5, 1, .1))
+    self.adversarial_save_int = 1000 # Interval at which to save adv examples to the npz file
     self.eval_batch_size = 100 # batch size for computing adv examples
     self.adversarial_input_id = list(range(100)) # Which adv images to use; None to use all
     #TODO
@@ -92,7 +94,7 @@ class params(object):
     # Optimal stimulus calculation
     self.neuron_vis_num_steps = int(4e5)
     self.neuron_vis_step_size = 2e-4
-    self.neuron_vis_save_int = 100
+    self.neuron_vis_save_int = 1000
     self.neuron_vis_stim_save_int = int(1e5)
     self.neuron_vis_clip = False
     self.neuron_vis_clip_range = [0.0, 1.0]
@@ -104,9 +106,9 @@ class params(object):
     self.neuron_vis_target_layer = None
     # TODO: we are temporarily assigning a 1-hot vector for analysis, but we could pass a specific
     #   selection vector instead of a target_neuron_idx
-    self.neuron_vis_targets = np.random.choice(range(768), 30, replace=False)
+    self.neuron_vis_targets = np.random.choice(range(10), 5, replace=False)
     self.neuron_vis_target_neuron_idx = self.neuron_vis_targets[0] # TODO: Clean this up...
-    self.neuron_vis_selection_vector = np.zeros(768) # TODO: avoid hard-coding num neurons
+    self.neuron_vis_selection_vector = np.zeros(10) # TODO: avoid hard-coding num neurons
     self.neuron_vis_selection_vector[self.neuron_vis_target_neuron_idx] = 1
 
 parser = argparse.ArgumentParser()
