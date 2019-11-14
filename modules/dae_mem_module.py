@@ -9,10 +9,10 @@ from utils import mem_utils
 
 class DaeMemModule(DaeModule):
   def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides, ent_mult,
-    decay_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size, num_mle_steps,
-    gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps,
+    decay_mult, norm_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size,
+    num_mle_steps, gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps,
     memristor_data_loc, memristor_type, memristor_std_eps, synthetic_noise, mem_error_rate,
-    act_funcs, dropout, tie_decoder_weights, variable_scope="dae_mem"):
+    act_funcs, dropout, tie_decoder_weights, norm_w_init,  variable_scope="dae_mem"):
     """
     Divisive Autoencoder module
     Inputs:
@@ -20,6 +20,7 @@ class DaeMemModule(DaeModule):
       output_channels: a list of channels to make, also defines number of layers
       ent_mult: tradeoff multiplier for latent entropy loss
       decay_mult: tradeoff multiplier for weight decay loss
+      norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       bounds_slope: slope for out of bounds loss (two relus back to back)
       latent_min: min value you want for latent variable (max value for left relu)
       latent_max: max value you want for latent variable (max value for right relu)
@@ -42,8 +43,9 @@ class DaeMemModule(DaeModule):
       dropout: specifies the keep probability or None
       conv: if True, do convolution
       conv_strides: list of strides for convolution [batch, y, x, channels]
-      patch_y: number of y inputs for convolutional patches
-      patch_x: number of x inputs for convolutional patches
+      patch_size: number of (y, x) inputs for convolutional patches
+      norm_w_init: if True, l2 normalize w_init,
+        reducing over [0] axis on enc and [-1] axis on dec
       variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -57,10 +59,10 @@ class DaeMemModule(DaeModule):
     noise_var_mult = 0 # for the mem module we only want memristor noise, not mem + quantization noise
     num_quant_bins = 10 # just setting this to something non-zero so there's no chance of breaking
     super(DaeMemModule, self).__init__(data_tensor, layer_types, output_channels, patch_size,
-      conv_strides, ent_mult, decay_mult, bounds_slope, latent_min, latent_max, num_triangles,
-      mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const,
-      gdn_b_init_const, gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout,
-      tie_decoder_weights, variable_scope)
+      conv_strides, ent_mult, decay_mult, norm_mult, bounds_slope, latent_min, latent_max,
+      num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult,
+      gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs,
+      dropout, tie_decoder_weights, norm_w_init, variable_scope)
 
   def memristorize(self, u_in, memristor_std_eps, memristor_type=None, synthetic_noise=None):
     if memristor_type is None:
@@ -86,7 +88,8 @@ class DaeMemModule(DaeModule):
       norm_min=self.latent_min, norm_max=self.latent_max, synthetic_noise=self.synthetic_noise)
     v_clip = tf.clip_by_value(u_in, clip_value_min=self.latent_min, clip_value_max=self.latent_max)
     r = mem_utils.memristor_output(v_clip, memristor_std_eps, vs_data, mus_data, sigs_data,
-      interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'), error_rate = self.mem_error_rate)
+      interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'),
+      error_rate = self.mem_error_rate)
     u_out = tf.reshape(r, shape=tf.shape(u_in), name="mem_r")
     return u_out
 
@@ -148,6 +151,14 @@ class DaeMemModule(DaeModule):
       self.b_list += dec_b_list
       self.w_gdn_list += dec_w_gdn_list
       self.b_gdn_list += dec_b_gdn_list
+
+      with tf.variable_scope("norm_weights") as scope:
+        w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
+        self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
+          axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
+        self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
+          axis=-1, epsilon=1e-8, name="col_l2_norm"))
+        self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
 
       for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
         self.trainable_variables[w_gdn.name] = w_gdn

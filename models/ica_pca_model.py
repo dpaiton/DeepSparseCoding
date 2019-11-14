@@ -4,17 +4,17 @@ import params.param_picker as pp
 from models.ica_model import IcaModel
 
 class IcaPcaModel(IcaModel):
-  def build_graph(self):
+  def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
-    super(IcaPcaModel, self).build_graph()
+    super(IcaPcaModel, self).build_graph_from_input(input_node)
     with self.graph.as_default():
       with tf.variable_scope("covariance") as scope:
         self.act_corr = tf.divide(tf.matmul(tf.transpose(tf.nn.relu(self.a)),
-          tf.nn.relu(self.a)), tf.to_float(tf.shape(self.x)[0]), name="a_corr_matrix")
+          tf.nn.relu(self.a)), tf.to_float(tf.shape(input_node)[0]), name="a_corr_matrix")
         act_centered = tf.nn.relu(self.a) - tf.reduce_mean(tf.nn.relu(self.a), axis=[1],
           keep_dims=True)
         self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
-          tf.to_float(tf.shape(self.x)[0]), name="a_cov_matrix")
+          tf.to_float(tf.shape(input_node)[0]), name="a_cov_matrix")
 
       with tf.variable_scope("pooling_filters") as scope:
         self.full_cov = tf.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),

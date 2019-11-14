@@ -16,14 +16,15 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "lca"
-    self.model_name = "lca_1568"
-    self.version = "0.0"
+    self.model_name = "lca_1280"
+    self.version = "5x_0.55"
     self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = False
     self.center_data = False
     self.standardize_data = False
+    self.tf_standardize_data = False
     self.contrast_normalize = False
     self.whiten_data = True
     self.whiten_method = "FT"
@@ -69,18 +70,20 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.vectorize_data = True
-      self.rescale_data = True
+      self.rescale_data = False
+      self.standardize_data = True
       self.whiten_data = False
       self.extract_patches = False
       self.rectify_a = True
-      self.num_neurons = 1568#768
+      self.num_neurons = 1536
       self.thresh_type = "soft"
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
+      self.log_int = int(1e2)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.3#0.25
-        self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["num_batches"] = int(5e5)
+        self.schedule[sched_idx]["sparse_mult"] = 0.3#0.15
+        self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 
@@ -91,11 +94,16 @@ class params(BaseParams):
       self.rescale_data = False
       self.whiten_data = True
       self.whiten_method = "FT"
+      self.whiten_batch_size = 10
       self.extract_patches = True
-      self.num_neurons = 768
+      self.num_neurons = 1280
+      self.num_steps = 60
       self.thresh_type = "soft"
+      self.cp_int = int(1e5)
+      self.log_int = int(1e2)
+      self.gen_plot_int = int(2e4)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.8
+        self.schedule[sched_idx]["sparse_mult"] = 0.55
         self.schedule[sched_idx]["weight_lr"] = 0.01
         self.schedule[sched_idx]["num_batches"] = int(2e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])

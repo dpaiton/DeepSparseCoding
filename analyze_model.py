@@ -12,7 +12,7 @@ class params(object):
   def __init__(self):
     self.device = "/gpu:0"
     #Which dataset to run analysis on, options are "train", "val", or "test"
-    self.analysis_dataset = "test"
+    self.analysis_dataset = "train"
     #Output directory file
     self.save_info = "analysis_" + self.analysis_dataset
     # If false, append to log file
@@ -20,28 +20,33 @@ class params(object):
     # Load in training run stats from log file
     self.do_run_analysis = False
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = False
+    self.do_evals = True
     # Dictionary fitting
-    self.do_basis_analysis = False
+    self.do_basis_analysis = True
     # LCA Inference analysis
-    self.do_inference = False
+    self.do_inference = False #TODO: Does not work for lca_subspace
     # Activity triggered averages
-    self.do_atas = False
+    self.do_atas = False #TODO: this can produce outputs that are too big for npz; need to batch?
     # Recon adversarial image analysis
     self.do_recon_adversaries = False # TODO: broken for rica
     #Classification adversarial image analysis
-    self.do_class_adversaries = True
+    self.do_class_adversaries = False
+    # Find optimal stimulus using gradient methods
+    self.do_neuron_visualization = False # adversaries must be False
     # Patchwise image recon
-    self.do_full_recon = False
+    self.do_full_recon = True
     # Orientation and Cross-Orientation analysis
-    self.do_orientation_analysis = False
+    self.do_orientation_analysis = False # TODO: broken for ae_deep
+    # Reconstructions from individual groups for subspace Sparse Coding
+    self.do_group_recons = False
     # How many images to use for analysis, patches are generated from these
-    self.num_analysis_images = 1000
+    self.num_analysis_images = 150#1000
+    self.whiten_batch_size = 10 # for VH dataset
     # How many input patches to create - only used if model calls for patching
     self.num_patches = 1e4
     # How many images to use in the ATA analysis
     # NOTE: No warning is given if this is greater than the number of available images
-    self.num_ata_images = 1e3
+    self.num_ata_images = 5e2
     # How many noise images to compute noise ATAs
     self.num_noise_images = 1e3
     # How many random images to average over for inference statistics
@@ -51,55 +56,33 @@ class params(object):
     # Edge size of full (square) image (for full_recon)
     self.image_edge_size = 128
     # Fourier analysis padding for weight fitting
-    self.ft_padding = 32
+    self.ft_padding = 128
     # How many inference steps to perform (None uses model params)
     self.num_inference_steps = None
     # Which dataset images to use for inference (None uses random)
     self.inference_img_indices = None
-
     #Adversarial params
-    #self.adversarial_num_steps = 500 # Step size for adversarial attacks
-    #self.adversarial_attack_method = "kurakin_untargeted" # Only for class attack
-
-    #self.adversarial_attack_method = "kurakin_targeted"
-    #self.carlini_recon_mult = [.5]
-
-    self.adversarial_attack_method = "carlini_targeted"
-    self.carlini_recon_mult = [.5]
-    self.adversarial_num_steps = 1000
-    #self.carlini_recon_mult = list(np.arange(.1, 1, .1))
-
-    #To avoid overwriting
-    self.save_info += "_"+self.adversarial_attack_method
-
-    self.adversarial_step_size = 0.001
-    #self.adversarial_max_change = None #0.03 #0.3 #For cifar10/mnist
-    self.adversarial_max_change = 0.03 #0.3 #For cifar10/mnist
-    #TODO support specified
-    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
+    self.adversarial_num_steps = 5000 # Step size for adversarial attacks
+    self.adversarial_attack_method = "kurakin_targeted"#"carlini_targeted"
+    self.save_info += "_"+self.adversarial_attack_method # To avoid overwriting
+    self.adversarial_step_size = 0.001 # learning rate for optimizer
+    self.adversarial_max_change = 0.5 # maximum size of adversarial perturation
+    self.carlini_change_variable = False
+    self.adv_optimizer = "sgd"
+    self.adversarial_target_method = "random" # Not used if attack_method is untargeted#TODO support specified
     self.adversarial_clip = True
-    self.adversarial_clip_range = [0.0, 1.0]
-
-
-    #Interval at which to save adversarial examples to the npy file
-    #self.adversarial_save_int = 1
-    self.adversarial_save_int = 100
-
-    self.eval_batch_size = 10
-
-    #Specify which adv to use here
-    #If none, use all
-    self.adversarial_input_id = list(range(100))
-
+    self.adversarial_clip_range = [-0.8, 7.0] # Maximum range of image values
+    self.carlini_recon_mult = 0.1#list(np.arange(.5, 1, .1))
+    self.adversarial_save_int = 1000 # Interval at which to save adv examples to the npz file
+    self.eval_batch_size = 100 # batch size for computing adv examples
+    self.adversarial_input_id = list(range(100)) # Which adv images to use; None to use all
     #TODO
     #Parameter for "specified" target_method
     #Only for class attack
     #Need to be a list or numpy array of size [adv_batch_size]
     self.adversarial_target_labels = None
-
     # Rescale inputs to match dataset scales used during training
     self.input_scale = 1.0 # TODO: Get input_scale from log file
-
     # Which neurons to run tuning experiments on (None to do all)
     self.neuron_indices = None
     # Contrasts for orientation experiments
@@ -108,6 +91,25 @@ class params(object):
     self.phases = np.linspace(-np.pi, np.pi, 8)
     # Orientations for orientation experiments
     self.orientations = np.linspace(0.0, np.pi, 16)
+    # Optimal stimulus calculation
+    self.neuron_vis_num_steps = int(4e5)
+    self.neuron_vis_step_size = 2e-4
+    self.neuron_vis_save_int = 1000
+    self.neuron_vis_stim_save_int = int(1e5)
+    self.neuron_vis_clip = False
+    self.neuron_vis_clip_range = [0.0, 1.0]
+    self.neuron_vis_method = "erhan"
+    self.neuron_vis_norm_magnitude = None
+    self.neuron_vis_l2_regularize_coeff = 0.001
+    self.neuron_vis_variation_coeff = 0.005
+    self.neuron_vis_optimizer = "sgd"
+    self.neuron_vis_target_layer = None
+    # TODO: we are temporarily assigning a 1-hot vector for analysis, but we could pass a specific
+    #   selection vector instead of a target_neuron_idx
+    self.neuron_vis_targets = np.random.choice(range(10), 5, replace=False)
+    self.neuron_vis_target_neuron_idx = self.neuron_vis_targets[0] # TODO: Clean this up...
+    self.neuron_vis_selection_vector = np.zeros(10) # TODO: avoid hard-coding num neurons
+    self.neuron_vis_selection_vector[self.neuron_vis_target_neuron_idx] = 1
 
 parser = argparse.ArgumentParser()
 
@@ -139,6 +141,8 @@ analyzer = ap.get_analyzer(analysis_params.model_type)
 analyzer.setup(analysis_params)
 
 analysis_params.data_type = analyzer.model_params.data_type
+if(analyzer.model_params.data_type == "vanhateren"):
+  analyzer.model_params.whiten_batch_size = analysis_params.whiten_batch_size
 analyzer.model_params.num_images = analysis_params.num_analysis_images
 if hasattr(analyzer.model_params, "extract_patches") and analyzer.model_params.extract_patches:
   analyzer.model_params.num_patches = analysis_params.num_patches

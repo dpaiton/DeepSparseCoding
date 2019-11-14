@@ -28,6 +28,7 @@ class BaseParams(object):
     eps            [float] Small value to avoid division by zero
     device         [str] Which device to run on
     rand_seed      [int] Random seed
+  TODO: list_params() function
   """
   def __init__(self):
     self.vectorize_data = True
@@ -35,6 +36,7 @@ class BaseParams(object):
     self.rescale_data = True
     self.center_data = False
     self.standardize_data = False
+    self.tf_standardize_data = False
     self.contrast_normalize = False
     self.whiten_data = False
     self.lpf_data = False

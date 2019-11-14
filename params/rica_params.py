@@ -9,13 +9,15 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "rica"
-    self.model_name = "rica"
+    self.model_name = "rica_768"
     self.version = "0.0"
     self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
-    self.center_data = True
+    self.center_data = False
+    self.rescale_data = False
     self.standardize_data = False
+    self.tf_standardize_data = False
     self.contrast_normalize = False
     self.whiten_data = True
     self.whiten_method = "ZCA"
@@ -60,7 +62,8 @@ class params(BaseParams):
       self.batch_size = 50000
       self.vectorize_data = True
       self.rescale_data = True
-      self.whiten_data = True
+      self.standardize_data = False
+      self.whiten_data = False
       self.whiten_method = "ZCA"
       self.lpf_data = True
       self.lpf_cutoff = 0.7
@@ -78,6 +81,7 @@ class params(BaseParams):
       self.num_images = 150
       self.batch_size = int(1e5)
       self.vectorize_data = True
+      self.center_data = True
       self.rescale_data = False
       self.whiten_data = True
       self.whiten_method = "ZCA"
@@ -85,13 +89,13 @@ class params(BaseParams):
       self.lpf_cutoff = 0.7
       self.extract_patches = True
       self.num_neurons = 768
-      self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["recon_mult"] = 0.8
         self.schedule[sched_idx]["sparse_mult"] = 1.0
         self.schedule[sched_idx]["weight_lr"] = 0.3
         self.schedule[sched_idx]["num_batches"] = 1
-        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_steps"] = int(0.9*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.5
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

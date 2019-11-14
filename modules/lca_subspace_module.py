@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 from utils.trainable_variable_dict import TrainableVariableDict
 from modules.lca_module import LcaModule
-import pdb
 
 class LcaSubspaceModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size,
@@ -35,33 +34,35 @@ class LcaSubspaceModule(LcaModule):
     Reshape sigmas from [num_batch, num_groups] to [num_batch, num_neurons]
     Each neuron index is assigned the group amplitude for its corresponding group
     """
-    ##TODO optimize this; remove the for loop
-    #sigmas = tf.squeeze(tf.stack([sigmas[:, group_index]
-    #  for group_index in self.group_assignments], axis=-1, name=name))
-    out_sigmas = tf.gather(tf.squeeze(sigmas), self.group_assignments, axis=-1)
+    out_sigmas = tf.gather(sigmas, self.group_assignments, axis=-1)
     return out_sigmas
 
   def group_amplitudes(self, a_in, name=None):
     """
     group_amplitudes returns each neuron's group index:
       sigma_i = ||a_{j in i}||_2
-    a_in shape is [num_batch, num_neurons]
-    sigmas shape is [num_batch, num_groups]
+    Inputs:
+      a_in shape is [num_batch, num_neurons]
+        could be u or a inputs
+    Outputs:
+      sigmas shape is [num_batch, num_groups]
     """
-    new_shape = tf.stack([tf.shape(self.data_tensor)[0]]+[self.num_groups, self.num_neurons_per_group])
+    new_shape = tf.stack([tf.shape(self.data_tensor)[0]]+[self.num_groups,
+      self.num_neurons_per_group])
     a_resh = tf.reshape(a_in, shape=new_shape)
-    sigmas = tf.sqrt(tf.reduce_sum(tf.square(a_resh), axis=2, keepdims=True), name=name)
+    sigmas = tf.sqrt(tf.reduce_sum(tf.square(a_resh), axis=2, keepdims=False), name=name)
     return sigmas
 
   def group_directions(self, a_in, sigmas, name=None):
     """
     group_directions returns each neurons direction normalized by the group amplitude:
-      \hat{a}_i = a_i / sigmas_i
+      z_i = a_i / sigmas_i
     a_in shape [num_batch, num_neurons]
     sigms shape [num_batch, num_neurons]
     directions shape [num_batch, num_neurons]
     """
-    directions = tf.divide(a_in, sigmas, name=name)
+    directions = tf.where(tf.greater(sigmas, 0.0), tf.divide(a_in, sigmas, name=name),
+      tf.zeros_like(sigmas))
     return directions
 
   def threshold_units(self, u_in):
@@ -82,7 +83,7 @@ class LcaSubspaceModule(LcaModule):
         name="group_sparse_loss")
     return sparse_loss
 
-  def compute_group_orthogonalization_loss(self, a_in):
+  def compute_group_orthogonalization_loss(self):
     with tf.variable_scope("unsupervised"):
       # For each group
         # assemble matrix of W = [num_pixels, num_neurons_in_group]
@@ -91,14 +92,17 @@ class LcaSubspaceModule(LcaModule):
       group_weights = tf.reshape(self.w,
         shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group], name="group_weights")
       w_orth_list = [
-        tf.reduce_sum(tf.abs(tf.subtract(tf.matmul(tf.transpose(group_weights[:,group_idx,:]),
-        group_weights[:,group_idx,:]), tf.eye(num_rows=self.num_neurons_per_group))))
+        tf.reduce_sum(tf.abs(tf.matmul(tf.transpose(group_weights[:, group_idx, :]),
+        group_weights[:, group_idx, :]) - tf.eye(num_rows=self.num_neurons_per_group)))
         for group_idx in range(self.num_groups)]
       group_orthogonalization_loss = tf.multiply(self.group_orth_mult, tf.add_n(w_orth_list),
         name="group_orth_loss")
     return group_orthogonalization_loss
 
   def get_loss_funcs(self):
+    #TODO: Should be able to rewrite this to have a tuple as its value where the second
+    # entry in the tuple is the argument it needs (e.g. self.a or self.recon) or at least a label
+    # to choose from a preset list of args
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss,
       "orthogonalization_loss":self.compute_group_orthogonalization_loss}
 
@@ -106,11 +110,16 @@ class LcaSubspaceModule(LcaModule):
     super(LcaSubspaceModule, self).build_graph()
     with tf.variable_scope(self.variable_scope) as scope:
       with tf.variable_scope(self.inference_scope):
-        self.group_activity = tf.identity(self.group_amplitudes(self.u),
+        self.group_activity = tf.identity(self.group_amplitudes(self.a),
           name="group_activity")
-        self.group_angles = tf.identity(self.group_directions(self.u,
+        self.group_angles = tf.identity(self.group_directions(self.a,
           self.reshape_groups_per_neuron(self.group_activity)), name="group_directions")
       with tf.variable_scope(self.weight_scope):
         self.group_weights = tf.reshape(self.w,
           shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group],
           name="group_weights")
+      with tf.variable_scope("loss") as scope:
+        self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
+          "sparse_loss":self.compute_sparse_loss(self.a),
+          "orthogonalization_loss":self.compute_group_orthogonalization_loss()}
+        self.total_loss = tf.add_n([val for val in self.loss_dict.values()], name="total_loss")

@@ -33,7 +33,8 @@ class MlpModule(object):
 
     data_ndim = len(data_shape)
     assert (data_ndim == 2 or data_ndim == 4), (
-      "Model requires data_tensor to have shape [batch, num_features] or [batch, y, x, features]")
+      "Model requires data_tensor to have shape [batch, num_features]"+
+      "or [batch, y, x, features], not "+str(data_shape))
     label_ndim = len(label_tensor.get_shape().as_list())
     assert label_ndim == 2, (
       "Model requires label_tensor to have shape [batch, num_classes]")
@@ -45,7 +46,8 @@ class MlpModule(object):
     elif data_ndim == 4:
       self.batch_size, self.y_size, self.x_size, self.num_data_channels = data_shape
       self.num_pixels = self.y_size * self.x_size * self.num_data_channels
-      assert layer_types[0] == "conv", ("Data tensor must have ndim==4 for conv layers")
+      assert layer_types[0] == "conv", ("Data tensor must have ndim==4 for conv layers."
+        +"Is the vectorize_data parameter set correctly?")
     else:
       assert False, ("Shouldn't get here")
 
@@ -146,7 +148,8 @@ class MlpModule(object):
           reduc_axes=[0,1,2], variable_scope="batch_norm_"+str(layer_id))
         conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
-      conv_out = tf.nn.dropout(conv_out, rate=1-self.dropout[layer_id])
+      #conv_out = tf.nn.dropout(conv_out, rate=1-self.dropout[layer_id])
+      conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
 
       if self.lrn[layer_id] is not None:
         if self.lrn[layer_id] == "pre":
@@ -183,7 +186,8 @@ class MlpModule(object):
           variable_scope="batch_norm_"+str(layer_id))
         fc_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
-      fc_out = tf.nn.dropout(fc_out, rate=1-self.dropout[layer_id])
+      #fc_out = tf.nn.dropout(fc_out, rate=1-self.dropout[layer_id])
+      fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
       if self.max_pool[layer_id]:
         fc_out = tf.nn.max_pool(fc_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
@@ -250,17 +254,17 @@ class MlpModule(object):
           with tf.variable_scope(self.loss_type):
             if(self.loss_type == "softmax_cross_entropy"):
               ## For semi-supervised learning, loss is 0 if there is no label
-              self.label_mult = tf.reduce_sum(self.label_tensor, axis=[1]) # vector with len [batch
+              self.label_mult = tf.reduce_sum(self.label_tensor, axis=[1]) # vector with len [batch]
               label_classes = tf.argmax(self.label_tensor, axis=-1)
 
-              self.cross_entropy_loss = self.label_mult * \
-                tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_classes,
-                logits=self.layer_list[-1])
+              self.cross_entropy_loss = (self.label_mult
+                * tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_classes,
+                logits=self.layer_list[-1]))
 
               #self.cross_entropy_loss = (self.label_mult
               #  * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
               #  self.label_est, self.eps, 1.0))), axis=[1])) # vector with len [batch]
-
+              self.sum_loss = self.cross_entropy_loss
               #Doing this to avoid divide by zero
               label_count = tf.reduce_sum(self.label_mult) # number of non-ignore labels in batch
               f1 = lambda: tf.zeros_like(self.cross_entropy_loss)
@@ -268,7 +272,6 @@ class MlpModule(object):
               pred_fn_pairs = {
                 tf.equal(label_count, tf.constant(0.0)): f1, # all labels are 'ignore'
                 tf.greater(label_count, tf.constant(0.0)): f2} # mean over non-ignore labels
-              self.sum_loss = self.cross_entropy_loss
               self.mean_loss = tf.case(pred_fn_pairs,
                 default=f2, exclusive=True, name="mean_cross_entropy_loss")
             elif(self.loss_type == "l2"):

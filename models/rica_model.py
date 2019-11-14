@@ -53,9 +53,6 @@ class RicaModel(Model):
   def get_loss_funcs(self):
     return {"recon_loss":self.compute_recon_loss, "sparse_loss":self.compute_sparse_loss}
 
-  def get_input_shape(self):
-    return self.input_shape
-
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
@@ -94,6 +91,12 @@ class RicaModel(Model):
             self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
+
+  def get_input_shape(self):
+    return self.input_shape
+
+  def get_num_latent(self):
+    return self.params.num_neurons
 
   def get_encodings(self):
     return self.a

@@ -6,12 +6,13 @@ class params(BaseParams):
     super(params, self).__init__()
     self.model_type = "lca_subspace"
     self.model_name = "lca_subspace"
-    self.version = "0.0"
+    self.version = "3.0"
     self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.center_data = True
     self.standardize_data = False
+    self.tf_standardize_data = False
     self.contrast_normalize = False
     self.whiten_data = True
     self.whiten_method = "FT"
@@ -67,15 +68,16 @@ class params(BaseParams):
       self.lpf_cutoff = 0.7
       self.extract_patches = False
       self.batch_size = 100
-      self.num_neurons = 512
-      self.num_groups = 128
+      self.num_neurons = 1024
+      self.num_groups = 256
       self.thresh_type = "soft"
-      self.cp_int = int(1e5)
+      self.log_int = 100
+      self.cp_int = int(5e5)
       self.gen_plot_int = int(1e5)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["num_batches"] = int(7e5)
         self.schedule[sched_idx]["weight_lr"] = 0.08
-        self.schedule[sched_idx]["group_orth_mult"] = 0.04
+        self.schedule[sched_idx]["group_orth_mult"] = 0.06
         self.schedule[sched_idx]["sparse_mult"] = 0.45
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.7
@@ -89,19 +91,24 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = True
       self.whiten_method = "FT"
+      self.whiten_batch_size = 10
       self.extract_patches = True
       self.num_patches = 1e6
       self.patch_edge_size = 16
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      self.num_neurons = 768
-      self.num_groups = 192
+      self.num_neurons = 2560#1024
+      self.num_groups = 640
+      self.num_steps = 75
+      self.cp_int = int(1e5)
+      self.log_int = 100
+      self.gen_plot_int = int(5e4)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(1e6)
+        self.schedule[sched_idx]["num_batches"] = int(5e5)
         self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["group_orth_mult"] = 0.1
-        self.schedule[sched_idx]["sparse_mult"] = 5.0
+        self.schedule[sched_idx]["group_orth_mult"] = 0.08
+        self.schedule[sched_idx]["sparse_mult"] = 1.3
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 

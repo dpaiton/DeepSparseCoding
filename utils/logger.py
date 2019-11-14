@@ -124,7 +124,6 @@ class Logger(object):
       param_list.append(param_obj)
     return param_list
 
-
   def read_schedule(self, text):
     """
     Read schedule from text file and return as a list of dictionaries
@@ -161,13 +160,16 @@ class Logger(object):
     if self.log_to_file and hasattr(self, "file_obj"):
       self.file_obj.close()
 
+
 class NumpyEncoder(js.JSONEncoder):
   def default(self, obj):
-    if isinstance(obj, np.integer):
+    if(callable(obj)):
+      return None
+    elif(isinstance(obj, np.integer)):
       return int(obj)
-    elif isinstance(obj, np.floating):
+    elif(isinstance(obj, np.floating)):
       return float(obj)
-    elif isinstance(obj, np.ndarray):
+    elif(isinstance(obj, np.ndarray)):
       return obj.tolist()
     else:
       return super(NumpyEncoder, self).default(obj)

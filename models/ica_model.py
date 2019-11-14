@@ -20,12 +20,10 @@ class IcaModel(Model):
       "Prior must be 'laplacian' or 'cauchy'")
     ## Calculated params
     self.num_neurons = self.params.num_pixels
+    self.params.num_neurons = self.num_neurons
     self.input_shape = [None, self.params.num_pixels]
     self.w_synth_shape = [self.num_neurons, self.params.num_pixels]
     self.w_analysis_shape = [self.params.num_pixels, self.num_neurons]
-
-  def get_input_shape(self):
-    return self.input_shape
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
@@ -65,8 +63,7 @@ class IcaModel(Model):
             self.z = (2*self.a) / (1 + tf.pow(self.a, 2.0))
 
         with tf.variable_scope("output") as scope:
-          with tf.variable_scope("image_estimate"):
-            self.reconstruction = tf.matmul(self.a, self.w_synth, name="reconstruction")
+          self.reconstruction = tf.matmul(self.a, self.w_synth, name="reconstruction")
 
     self.graph_built = True
 
@@ -87,7 +84,7 @@ class IcaModel(Model):
     # Note this is performed on w_synthesis (A in Bell & Sejnowski 1997), while the B&S paper gives
     # an update rule for W.
     z_a_avg = tf.divide(tf.matmul(tf.transpose(self.z), self.a),
-      tf.to_float(tf.shape(self.input_placeholder)[0]), name="avg_samples")
+      tf.cast(tf.shape(self.input_placeholder)[0], tf.float32), name="avg_samples")
     gradient = -tf.subtract(tf.matmul(tf.transpose(z_a_avg), weight_op[0]), weight_op[0],
       name=weight_name+"_gradient") # weight_op[0] is expected to be w_synth
 
@@ -98,6 +95,18 @@ class IcaModel(Model):
     #  name=weight_name+"_gradient") # weight_op[0] is expected to be w_analysis
     #gradient = -tf.add(weight_op[0], tf.multiply(self.z, tf.matmul(self.a, weight_op[0])
     return [(gradient, weight_op[0])]
+
+  def compute_recon_from_placeholder(self):
+    return self.reconstruction
+
+  def get_input_shape(self):
+    return self.input_shape
+
+  def get_num_latent(self):
+    return self.num_neurons
+
+  def get_encodings(self):
+    return self.a
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
     """
@@ -156,7 +165,6 @@ class IcaModel(Model):
       stat_dict[name+"_grad_max_mean_min"] = [grad_max, grad_mean, grad_min]
     update_dict.update(stat_dict) # stat_dict vals overwrite
     return update_dict
-
 
   def generate_plots(self, input_data, input_labels=None):
     """

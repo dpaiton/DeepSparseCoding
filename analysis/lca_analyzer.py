@@ -40,6 +40,15 @@ class LcaAnalyzer(Analyzer):
     if self.analysis_params.do_inference:
       self.inference_stats = self.inference_analysis(images, save_info,
         self.analysis_params.num_inference_images, self.analysis_params.num_inference_steps)
+    if self.analysis_params.do_orientation_analysis:
+      if not self.analysis_params.do_basis_analysis:
+        try:
+          self.load_basis_stats(save_info)
+        except FileNotFoundError:
+          assert False, (
+          "Basis analysis must have been previously run, or do_basis_analysis must be True.")
+      self.ot_grating_responses, self.co_grating_responses = self.grating_analysis(self.bf_stats,
+        save_info)
     if self.analysis_params.do_recon_adversaries:
       self.recon_adversary_analysis(images,
         labels=labels, batch_size=self.analysis_params.eval_batch_size,
@@ -47,22 +56,21 @@ class LcaAnalyzer(Analyzer):
         target_method=self.analysis_params.adversarial_target_method,
         target_id=self.analysis_params.adversarial_target_id,
         save_info=save_info)
-    if self.analysis_params.do_orientation_analysis:
-      self.ot_grating_responses, self.co_grating_responses = self.grating_analysis(self.bf_stats,
-        save_info)
+    elif self.analysis_params.do_neuron_visualization:
+      self.neuron_visualization_analysis(save_info=save_info)
 
   def load_analysis(self, save_info=""):
     super(LcaAnalyzer, self).load_analysis(save_info)
     # Inference analysis
     inference_file_loc = self.analysis_out_dir+"savefiles/inference_"+save_info+".npz"
     if os.path.exists(inference_file_loc):
-      self.inference_stats = np.load(inference_file_loc)["data"].item()["inference_stats"]
+      self.inference_stats = np.load(inference_file_loc, allow_pickle=True)["data"].item()["inference_stats"]
     ot_file_loc = self.analysis_out_dir+"savefiles/ot_responses_"+save_info+".npz"
     if os.path.exists(ot_file_loc):
-      self.ot_grating_responses = np.load(ot_file_loc)["data"].item()
+      self.ot_grating_responses = np.load(ot_file_loc, allow_pickle=True)["data"].item()
     co_file_loc = self.analysis_out_dir+"savefiles/co_responses_"+save_info+".npz"
-    if os.path.exists(ot_file_loc):
-      self.co_grating_responses = np.load(co_file_loc)["data"].item()
+    if os.path.exists(co_file_loc):
+      self.co_grating_responses = np.load(co_file_loc, allow_pickle=True)["data"].item()
 
   def compute_time_varied_response(self, images, steps_per_image=None):
     """
@@ -125,7 +133,7 @@ class LcaAnalyzer(Analyzer):
         self.lca_g = self.model.module.compute_inhibitory_connectivity()
         self.u_list = [self.model.module.u_zeros]
         self.a_list = [self.model.module.threshold_units(self.u_list[0])]
-        self.ga_list = [self.model.module.u_zeros]
+        self.ga_list = [tf.matmul(self.a_list[0], self.lca_g)]
         self.psnr_list = [tf.constant(0.0, dtype=tf.float32)]
         current_recon = self.model.compute_recon_from_encoding(self.a_list[0])
         current_loss_list = [
@@ -138,8 +146,8 @@ class LcaAnalyzer(Analyzer):
           u, ga = self.model.module.step_inference(self.u_list[step], self.a_list[step],
             self.lca_b, self.lca_g, step)
           self.u_list.append(u)
-          self.a_list.append(self.model.module.threshold_units(self.u_list[step+1]))
           self.ga_list.append(ga)
+          self.a_list.append(self.model.module.threshold_units(u))
           current_recon = self.model.compute_recon_from_encoding(self.a_list[-1])
           current_loss_list = [
             self.model.module.compute_recon_loss(current_recon),
@@ -175,8 +183,8 @@ class LcaAnalyzer(Analyzer):
         evals = sess.run(run_list, feed_dict)
         b[img_idx, :] = evals[0]
         u[img_idx, ...] = np.stack(np.squeeze(evals[1]), axis=0)
-        ga[img_idx, ...] = np.stack(np.squeeze(evals[2]), axis=0)
-        a[img_idx, ...] = np.stack(np.squeeze(evals[3]), axis=0)
+        a[img_idx, ...] = np.stack(np.squeeze(evals[2]), axis=0)
+        ga[img_idx, ...] = np.stack(np.squeeze(evals[3]), axis=0)
         psnr[img_idx, ...] = np.stack(np.squeeze(evals[4]), axis=0)
         losses[img_idx].update(evals[5])
     # Reformat list_images(dict(list_steps) to dict(array_images_steps)

@@ -244,7 +244,9 @@ def get_dictionary_stats(weights, padding=None, num_gauss_fits=20, gauss_thresh=
     fy_cen = (max_fys[max_fx] - (N/2)) * (patch_edge_size/N)
     fx_cen = (max_fx - (N/2)) * (patch_edge_size/N)
     fourier_centers[bf_idx] = [fy_cen, fx_cen]
-    ellipse_orientations[bf_idx] = np.arctan2(*fourier_centers[bf_idx])
+    # NOTE: we flip fourier_centers because fx_cen is the peak of the x frequency,
+    # which would be a y coordinate
+    ellipse_orientations[bf_idx] = np.arctan2(*fourier_centers[bf_idx][::-1])
     spatial_frequencies[bf_idx] = np.sqrt(fy_cen**2 + fx_cen**2)
     areas[bf_idx] = np.pi * np.prod(evals)
     phases[bf_idx] = np.angle(bffs[bf_idx])[y_cen, x_cen]
@@ -668,7 +670,7 @@ def rescale_data_to_one(data):
   data_axis=tuple(range(data.ndim)[1:])
   data_min = np.min(data, axis=data_axis, keepdims=True)
   data_max = np.max(data, axis=data_axis, keepdims=True)
-  data = (data - data_min) / (data_max - data_min + 1e-6)
+  data = (data - data_min) / (data_max - data_min + 1e-8)
   if data.shape != orig_shape:
     data = reshape_data(data, out_shape=orig_shape)[0]
   return data, data_min, data_max
@@ -716,7 +718,7 @@ def center_data(data, use_dataset_mean=False):
       data = reshape_data(data, out_shape=orig_shape)[0]
   return data, data_mean
 
-def standardize_data(data):
+def standardize_data(data, eps=None):
   """
   Standardize each image data to have zero mean and unit standard-deviation (z-score)
   Inputs:
@@ -724,14 +726,15 @@ def standardize_data(data):
   Outputs:
     data: [np.ndarray] normalized data
   """
+  if eps is None:
+    eps = 1.0 / np.sqrt(data[0,...].size)
   data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
   num_examples = data.shape[0]
   data_axis = tuple(range(data.ndim)[1:]) # standardize each example individually
   data_mean = np.mean(data, axis=data_axis, keepdims=True)
   data_true_std = np.std(data, axis=data_axis, keepdims=True)
-  data_min_std = 1.0/np.sqrt(data[0,...].size)
-  data_std = np.where(data_true_std >= data_min_std, data_true_std,
-    data_min_std*np.ones_like(data_true_std))
+  data_std = np.where(data_true_std >= eps, data_true_std,
+    eps*np.ones_like(data_true_std))
   for idx in range(data.shape[0]): # TODO: Broadcasting should work here
     data[idx, ...] = (data[idx, ...] - data_mean[idx]) /  data_std[idx]
   if data.shape != orig_shape:
@@ -796,6 +799,23 @@ def lpf_data(data, cutoff=0.7):
     data_lpf = reshape_data(data_lpf, out_shape=orig_shape)[0]
   return data_lpf, data_mean, lpf
 
+def whiten_data_batch(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False, batch_size=None):
+  if batch_size is not None:
+    data_shape = list(data.shape)
+    num_data = data_shape[0]
+    assert num_data % batch_size == 0, (
+      "batch_size=%g must divide evenly into num_data=%g"%(batch_size, num_data))
+    num_batches = int(num_data / batch_size)
+    output = np.zeros(data_shape)
+    for batch_idx in range(num_batches):
+      batch_start_idx = int(batch_idx * batch_size)
+      batch_end_idx = int(batch_start_idx + batch_size)
+      batch_data = data[batch_start_idx:batch_end_idx, ...]
+      output[batch_start_idx:batch_end_idx, ...], data_mean, w_filter  = whiten_data(batch_data,
+        method, lpf_cutoff, subtract_pixel_mean)
+    return output, data_mean, w_filter
+  return whiten_data(data, method, lpf_cutoff, subtract_pixel_mean)
+
 def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
   """
   Whiten data
@@ -816,7 +836,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=False)[0:4]
     if subtract_pixel_mean:
       data, pixel_data_mean = center_data(data, use_dataset_mean=False)
-    data, batch_data_mean = center_data(data, use_dataset_mean=True)
+    data, data_mean = center_data(data, use_dataset_mean=True)
     # TODO: Buffer fft to an even number of pixels so that fftshift always behaves as expected
     #   better idea is to use the filter shape as the s parameter to FFT2, and then you can
     #   reshape filter to whatever you need by specifying num_rows
@@ -829,7 +849,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     if subtract_pixel_mean:
       data, pixel_data_mean = center_data(data, use_dataset_mean=False)
-    data, batch_data_mean = center_data(data, use_dataset_mean=True)
+    data, data_mean = center_data(data, use_dataset_mean=True)
     cov = np.divide(np.dot(data.T, data), num_examples)
     d, u = np.linalg.eig(cov)
     sqrt_inv_d = np.diag(np.sqrt(1./(d+1e-8)))
@@ -839,7 +859,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     (data, orig_shape, num_examples, num_rows) = reshape_data(data, flatten=True)[0:4]
     if subtract_pixel_mean:
       data, pixel_data_mean = center_data(data, use_dataset_mean=False)
-    data, batch_data_mean = center_data(data, use_dataset_mean=True)
+    data, data_mean = center_data(data, use_dataset_mean=True)
     cov = np.divide(np.dot(data.T, data), num_examples)
     d, u = np.linalg.eig(cov)
     sqrt_inv_d = np.diag(np.sqrt(1./(d+1e-8)))
@@ -850,7 +870,7 @@ def whiten_data(data, method="FT", lpf_cutoff=0.7, subtract_pixel_mean=False):
     assert False, ("whitening method must be 'FT', 'ZCA', or 'PCA'")
   if data_wht.shape != orig_shape:
     data_wht = reshape_data(data_wht, out_shape=orig_shape)[0]
-  return data_wht, batch_data_mean, w_filter
+  return data_wht, data_mean, w_filter
 
 def unwhiten_data(data, data_mean, w_filter, method="FT"):
   """
@@ -1012,12 +1032,12 @@ def norm_weights(weights):
 def one_hot_to_dense(one_hot_labels):
   """
   converts a matrix of one-hot labels to a list of dense labels
-  Parameters:
-      one_hot_labels: one-hot numpy array of shape [num_labels, num_classes]
-  Returns:
-      dense_labels: 1D numpy array of labels
-          The integer value indicates the class and 0 is assumed to be a class.
-          The integer class also indicates the index for the corresponding one-hot representation
+  Inputs:
+    one_hot_labels: one-hot numpy array of shape [num_labels, num_classes]
+  Outputs:
+    dense_labels: 1D numpy array of labels
+      The integer value indicates the class and 0 is assumed to be a class.
+      The integer class also indicates the index for the corresponding one-hot representation
   """
   one_hot_labels = np.asarray(one_hot_labels)
   num_labels, num_classes = one_hot_labels.shape
@@ -1063,6 +1083,94 @@ def cos_similarity(x, y):
     assert x_norm > 0, (
       "Error: input 'x' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, x_norm))
     assert y_norm > 0, (
-      "Error: input 'y' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, x_norm))
+      "Error: input 'y' for batch_idx %g must have l2 norm > 0, not %g"%(batch_idx, y_norm))
     batch_similarity.append(np.dot(x_vect, y_vect.T) / (y_norm * x_norm))
   return np.stack(batch_similarity, axis=0)
+
+def bf_projections(target_vector, comparison_vect):
+  """
+  Find a projection basis that is orthogonal to target_vector and as close as possible to comparison_vect
+  Usees a single step of the Gram-Schmidt process
+  Inputs:
+    target_vector [np.ndarray] of shape [num_pixels,]
+    comparison_vect [np.ndarray] of shape [num_pixels,]
+  Outputs:
+    projection_matrix [tuple] containing [ax_1, ax_2] for projecting data into the 2d array
+  """
+  # NONORM ADJUSTMENT
+  #normed_target_vector = target_vector / np.linalg.norm(target_vector)
+  #normed_comparison_vect = comparison_vect / np.linalg.norm(comparison_vect)
+  #v = normed_comparison_vect - np.dot(normed_comparison_vect[:,None].T, normed_target_vector[:,None]) * normed_target_vector
+  #v_norm = np.linalg.norm(v)
+  #v = np.squeeze((v / v_norm).T)
+  #v = v * np.linalg.norm(target_vector) # rescale to target scale
+  #proj_matrix = np.stack([target_vector, v], axis=0)
+
+  # NORM
+  v = comparison_vect - np.dot(comparison_vect[:,None].T, target_vector[:,None]) * target_vector
+  v_norm = np.linalg.norm(v)
+  v = np.squeeze((v / v_norm).T)
+  proj_matrix = np.stack([target_vector, v], axis=0)
+
+  return proj_matrix, v
+
+def find_orth_vect(matrix):
+  """
+  Given an orthonormal matrix, find a new unit vector that is orthogonal
+  Inputs:
+    matrix [np.ndarray] matrix whose columns are each orthonormal vectors
+  Outputs:
+    orth_vect [np.ndarray] unit vector that is orthogonal to all of the vectors in the input matrix
+  """
+  rand_vect = np.random.rand(matrix.shape[0], 1)
+  new_matrix = np.hstack((matrix, rand_vect))
+  candidate_vect = np.zeros(matrix.shape[1]+1)
+  candidate_vect[-1] = 1
+  orth_vect = np.linalg.lstsq(new_matrix.T, candidate_vect, rcond=None)[0] # [0] indexes lst-sqrs solution
+  orth_vect = np.squeeze((orth_vect / np.linalg.norm(orth_vect)).T)
+  return orth_vect
+
+def get_rand_orth_vectors(target_vector, num_orth_directions):
+  """
+  Given a vector, construct a matrix of shape [num_orth_directions, vector_length] of vectors
+  that are orthogonal to the input
+  Inputs:
+    target_vector [np.ndarray] initial vector
+    num_orth_directions [int] number of orthogonal vectors to construct
+  Outputs:
+    rand_vectors [np.ndarray] output matrix of shape [num_orth_directions, vector_length] containing vectors
+    that are all orthogonal to target_vector
+  """
+  # NONORM ADJUSTMENT
+  #target_norm = np.linalg.norm(target_vector)
+  #normed_target_vector = target_vector / target_norm
+  #normed_rand_vectors = normed_target_vector.T[:,None] # matrix of alternate vectors
+  #rand_vectors = target_vector.T[:,None] # matrix of alternate vectors
+  #for orth_idx in range(num_orth_directions):
+  #  normed_tmp_vect = find_orth_vect(normed_rand_vectors)
+  #  normed_rand_vectors = np.append(normed_rand_vectors, normed_tmp_vect[:,None], axis=1)
+  #  tmp_vect = normed_tmp_vect * target_norm
+  #  rand_vectors = np.append(rand_vectors, tmp_vect[:,None], axis=1)
+
+  # NORM
+  rand_vectors = target_vector.T[:,None] # matrix of alternate vectors
+  for orth_idx in range(num_orth_directions):
+    tmp_vect = find_orth_vect(rand_vectors)
+    rand_vectors = np.append(rand_vectors, tmp_vect[:,None], axis=1)
+
+  return rand_vectors.T[1:, :]
+
+def normalize_vectors(vector_list):
+  """
+  Convert a list of vectors into a matrix of normalized vectors that is shape [num_vectors, vector_length],
+  where num_vectors = len(vector_list)
+  Inputs:
+    vector_list: [list of np.ndarray] list of equal length vectors
+  Outputs:
+    norm_vectors [np.ndarray] matrix of l2-normalized vectors that is shape [num_vectors, vector_length]
+  """
+  norm_vectors = vector_list[0].T[:,None] # matrix of alternate vectors
+  for tmp_vect in vector_list:
+    tmp_vect = np.squeeze((tmp_vect / np.linalg.norm(tmp_vect)).T)
+    norm_vectors = np.append(norm_vectors, tmp_vect[:,None], axis=1)
+  return norm_vectors.T[1:, :] # [num_vectors, vector_length]

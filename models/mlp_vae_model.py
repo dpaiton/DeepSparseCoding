@@ -20,27 +20,20 @@ class MlpVaeModel(MlpModel):
     self.vector_inputs = True
     self.input_shape = [None, self.params.num_pixels]
     self.label_shape = [None, self.params.num_classes]
-    self.act_funcs = [activation_picker(act_func_str)
-      for act_func_str in self.params.activation_functions]
-    if np.all([layer_type == "fc" for layer_type in self.params.vae_layer_types]):
-      self.params.vae_patch_size = []
-      self.params.vae_conv_strides = []
+    self.ae_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.ae_activation_functions]
+    self.mlp_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.mlp_activation_functions]
+    if np.all([layer_type == "fc" for layer_type in self.params.ae_layer_types]):
+      self.params.ae_patch_size = []
+      self.params.ae_conv_strides = []
 
   def build_vae_module(self, input_node):
-    module = VaeModule(input_node, self.params.vae_layer_types, self.params.vae_output_channels,
-      self.params.vae_patch_size, self.params.vae_conv_strides, self.decay_mult, self.kld_mult,
-      self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
-      self.params.noise_level, self.params.recon_loss_type, variable_scope="vae")
-    return module
-
-  def build_mlp_module(self, input_node):
-    #The only parameter different here vs base class is mlp_output_channels vs output_channels
-    #TODO is there a better way to do this?
-    module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
-      self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-      self.params.mlp_patch_size, self.params.mlp_conv_strides, self.params.eps,
-      loss_type="softmax_cross_entropy")
+    module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
+      self.params.ae_patch_size, self.params.ae_conv_strides, self.decay_mult, self.norm_mult,
+      self.kld_mult, self.ae_act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
+      self.params.noise_level, self.params.recon_loss_type, self.params.norm_w_init,
+      variable_scope="vae")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -51,6 +44,7 @@ class MlpVaeModel(MlpModel):
           self.label_placeholder = tf.placeholder(tf.float32,
             shape=self.label_shape, name="input_labels")
           self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
+          self.norm_mult = tf.placeholder(tf.float32, shape=(), name="norm_mult")
           self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
           self.train_vae = tf.placeholder(tf.bool, shape=(), name="train_vae")
 
