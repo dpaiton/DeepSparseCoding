@@ -40,7 +40,7 @@ def set_size(width, fraction=1, subplot=[1, 1]):
     -------
     fig_dim: tuple
             Dimensions of figure in inches
-    
+
     Usage: figsize = set_size(text_width, fraction=1, subplot=[1, 1])
     Code obtained from: https://jwalton.info/Embed-Publication-Matplotlib-Latex/
     """
@@ -52,7 +52,7 @@ def set_size(width, fraction=1, subplot=[1, 1]):
     fig_dim = (fig_width_in, fig_height_in) # Final figure dimensions
     return fig_dim
 
-def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_levels, x_range, y_range, show_contours=True,
+def plot_group_iso_contours(analyzer_list, neuron_indices, orth_indices, num_levels, x_range, y_range, show_contours=True,
                            text_width=200, width_fraction=1.0, dpi=100):
   arrow_width = 0.0
   arrow_linewidth = 1
@@ -82,81 +82,85 @@ def plot_goup_iso_contours(analyzer_list, neuron_indices, orth_indices, num_leve
   curve_axes = []
   analyzer_index = 0
   for plot_id in np.ndindex((num_plots_y, num_plots_x)):
-    (y_id, x_id) = plot_id
-    if type(neuron_indices) == list:
-      analyzer_neuron_index = neuron_indices[analyzer_index]
-    else:
-      analyzer_neuron_index = neuron_indices
-    if type(orth_indices) == list:
-      analyzer_orth_index = orth_indices[analyzer_index]
-    else:
-      analyzer_orth_index = orth_indices
-    analyzer = analyzer_list[analyzer_index]
-    inner_gs = gridspec.GridSpecFromSubplotSpec(1, 1, gs0[plot_id])#, wspace=gspec_wspace, hspace=gspec_hspace)
-    curve_axes.append(pf.clear_axis(fig.add_subplot(inner_gs[0])))
-    curve_axes[-1].set_title(analyzer.analysis_params.display_name)
-    # plot colored mesh points
-    norm_activity = analyzer.comp_activations[analyzer_neuron_index, analyzer_orth_index, ...]
-    x_mesh, y_mesh = np.meshgrid(analyzer.comp_contour_dataset["x_pts"], analyzer.comp_contour_dataset["y_pts"])
-    if show_contours:
-      contsf = curve_axes[-1].contourf(x_mesh, y_mesh, norm_activity,
-        levels=levels, vmin=vmin, vmax=vmax, alpha=1.0, antialiased=True, cmap=cmap)
-    else:
-      contsf = curve_axes[-1].scatter(x_mesh, y_mesh,
-        vmin=vmin, vmax=vmax, cmap=cmap, marker="s", alpha=1.0, c=norm_activity, s=30.0)
-    contour_handles.append(contsf)
-    # plot target neuron arrow & label
-    proj_target = analyzer.comp_contour_dataset["proj_target_neuron"][analyzer_neuron_index][analyzer_orth_index]
-    target_vector_x = proj_target[0].item()
-    target_vector_y = proj_target[1].item()
-    curve_axes[-1].arrow(0, 0, target_vector_x, target_vector_y,
-      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length, fc='k', ec='k',
-      linestyle='-', linewidth=arrow_linewidth)
-    tenth_range_shift = ((max(x_range) - min(x_range))/10) # For shifting labels
-    text_handle = curve_axes[-1].text(
-      target_vector_x+(tenth_range_shift*phi_k_text_x_offset),
-      target_vector_y+(tenth_range_shift*phi_k_text_y_offset),
-      r"$\Phi_{k}$", horizontalalignment='center', verticalalignment='center')
-    # plot comparison neuron arrow & label 
-    proj_comparison = analyzer.comp_contour_dataset["proj_comparison_neuron"][analyzer_neuron_index][analyzer_orth_index]
-    comparison_vector_x = proj_comparison[0].item()
-    comparison_vector_y = proj_comparison[1].item()
-    curve_axes[-1].arrow(0, 0, comparison_vector_x, comparison_vector_y,
-      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length, fc='k', ec='k',
-      linestyle="-", linewidth=arrow_linewidth)
-    text_handle = curve_axes[-1].text(
-      comparison_vector_x+(tenth_range_shift*phi_j_text_x_offset),
-      comparison_vector_y+(tenth_range_shift*phi_j_text_y_offset),
-      r"$\Phi_{j}$", horizontalalignment='center', verticalalignment='center')
-    # Plot all other comparison neurons TODO: add flag to optionally do this
-    #for proj_alt in analyzer.comp_contour_dataset["proj_comparison_neuron"][analyzer_neuron_index]:
-    #  if not np.all(proj_alt == proj_comparison):
-    #    curve_axes[-1].arrow(0, 0, proj_alt[0].item(), proj_alt[1].item(),
-    #      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length, fc='w', ec='w',
-    #      linestyle="dashed", linewidth=1.0, alpha=0.9)
-    # Plot orthogonal vector Nu
-    proj_orth = analyzer.comp_contour_dataset["proj_orth_vect"][analyzer_neuron_index][analyzer_orth_index]
-    orth_vector_x = proj_orth[0].item()
-    orth_vector_y = proj_orth[1].item()
-    curve_axes[-1].arrow(0, 0, orth_vector_x, orth_vector_y,
-      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length, fc='k', ec='k',
-      linestyle="-", linewidth=arrow_linewidth)
-    text_handle = curve_axes[-1].text(
-      orth_vector_x+(tenth_range_shift*nu_text_x_offset),
-      orth_vector_y+(tenth_range_shift*nu_text_y_offset),
-      r"$\nu$", horizontalalignment='center', verticalalignment='center')
-    # Plot axes
-    curve_axes[-1].set_aspect("equal")
-    curve_axes[-1].plot(x_range, [0,0], color='k', linewidth=arrow_linewidth/2)
-    curve_axes[-1].plot([0,0], y_range, color='k', linewidth=arrow_linewidth/2)
-    # Include basis function image - note, need to change number of plots for inner_gs for this code
-    #gs2 = gridspec.GridSpecFromSubplotSpec(2, 1, inner_gs[1], wspace=0.0, hspace=0.5)#-0.55)
-    #target_vect_ax = pf.clear_axis(fig.add_subplot(gs2[0]))
-    #target_vect_ax.imshow(analyzer.bf_stats["basis_functions"][analyzer.target_neuron_ids[0]], cmap="Greys_r")
-    #target_vect_ax.set_title("Primary\nBasis Function", color='r')
-    #comparison_vect_ax = pf.clear_axis(fig.add_subplot(gs2[1]))
-    #comparison_vect_ax.imshow(analyzer.bf_stats["basis_functions"][analyzer.comparison_neuron_ids[0][0]], cmap="Greys_r")
-    #comparison_vect_ax.set_title("Comparison\nBasis Function", color='k')
+    if analyzer_index < num_models:
+      (y_id, x_id) = plot_id
+      if type(neuron_indices) == list:
+        analyzer_neuron_index = neuron_indices[analyzer_index]
+      else:
+        analyzer_neuron_index = neuron_indices
+      if type(orth_indices) == list:
+        analyzer_orth_index = orth_indices[analyzer_index]
+      else:
+        analyzer_orth_index = orth_indices
+      analyzer = analyzer_list[analyzer_index]
+      inner_gs = gridspec.GridSpecFromSubplotSpec(1, 1, gs0[plot_id])
+      curve_axes.append(pf.clear_axis(fig.add_subplot(inner_gs[0])))
+      curve_axes[-1].set_title(analyzer.analysis_params.display_name)
+      # plot colored mesh points
+      norm_activity = analyzer.comp_activations[analyzer_neuron_index, analyzer_orth_index, ...]
+      x_mesh, y_mesh = np.meshgrid(analyzer.comp_contour_dataset["x_pts"],
+        analyzer.comp_contour_dataset["y_pts"])
+      if show_contours:
+        contsf = curve_axes[-1].contourf(x_mesh, y_mesh, norm_activity,
+          levels=levels, vmin=vmin, vmax=vmax, alpha=1.0, antialiased=True, cmap=cmap)
+      else:
+        contsf = curve_axes[-1].scatter(x_mesh, y_mesh,
+          vmin=vmin, vmax=vmax, cmap=cmap, marker="s", alpha=1.0, c=norm_activity, s=30.0)
+      contour_handles.append(contsf)
+      # plot target neuron arrow & label
+      proj_target = analyzer.comp_contour_dataset["proj_target_neuron"][analyzer_neuron_index][analyzer_orth_index]
+      target_vector_x = proj_target[0].item()
+      target_vector_y = proj_target[1].item()
+      curve_axes[-1].arrow(0, 0, target_vector_x, target_vector_y,
+        width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length,
+        fc='k', ec='k', linestyle='-', linewidth=arrow_linewidth)
+      tenth_range_shift = ((max(x_range) - min(x_range))/10) # For shifting labels
+      text_handle = curve_axes[-1].text(
+        target_vector_x+(tenth_range_shift*phi_k_text_x_offset),
+        target_vector_y+(tenth_range_shift*phi_k_text_y_offset),
+        r"$\Phi_{k}$", horizontalalignment='center', verticalalignment='center')
+      # plot comparison neuron arrow & label
+      proj_comparison = analyzer.comp_contour_dataset["proj_comparison_neuron"][analyzer_neuron_index][analyzer_orth_index]
+      comparison_vector_x = proj_comparison[0].item()
+      comparison_vector_y = proj_comparison[1].item()
+      curve_axes[-1].arrow(0, 0, comparison_vector_x, comparison_vector_y,
+        width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length,
+        fc='k', ec='k', linestyle="-", linewidth=arrow_linewidth)
+      text_handle = curve_axes[-1].text(
+        comparison_vector_x+(tenth_range_shift*phi_j_text_x_offset),
+        comparison_vector_y+(tenth_range_shift*phi_j_text_y_offset),
+        r"$\Phi_{j}$", horizontalalignment='center', verticalalignment='center')
+      # Plot all other comparison neurons TODO: add flag to optionally do this
+      #for proj_alt in analyzer.comp_contour_dataset["proj_comparison_neuron"][analyzer_neuron_index]:
+      #  if not np.all(proj_alt == proj_comparison):
+      #    curve_axes[-1].arrow(0, 0, proj_alt[0].item(), proj_alt[1].item(),
+      #      width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length,
+      #      fc='w', ec='w', linestyle="dashed", linewidth=1.0, alpha=0.9)
+      # Plot orthogonal vector Nu
+      proj_orth = analyzer.comp_contour_dataset["proj_orth_vect"][analyzer_neuron_index][analyzer_orth_index]
+      orth_vector_x = proj_orth[0].item()
+      orth_vector_y = proj_orth[1].item()
+      curve_axes[-1].arrow(0, 0, orth_vector_x, orth_vector_y,
+        width=arrow_width, head_width=arrow_head_width, head_length=arrow_head_length,
+        fc='k', ec='k', linestyle="-", linewidth=arrow_linewidth)
+      text_handle = curve_axes[-1].text(
+        orth_vector_x+(tenth_range_shift*nu_text_x_offset),
+        orth_vector_y+(tenth_range_shift*nu_text_y_offset),
+        r"$\nu$", horizontalalignment='center', verticalalignment='center')
+      # Plot axes
+      curve_axes[-1].set_aspect("equal")
+      curve_axes[-1].plot(x_range, [0,0], color='k', linewidth=arrow_linewidth/2)
+      curve_axes[-1].plot([0,0], y_range, color='k', linewidth=arrow_linewidth/2)
+      # Include basis function image - note, need to change number of plots for inner_gs for this code
+      #gs2 = gridspec.GridSpecFromSubplotSpec(2, 1, inner_gs[1], wspace=0.0, hspace=0.5)#-0.55)
+      #target_vect_ax = pf.clear_axis(fig.add_subplot(gs2[0]))
+      #target_vect_ax.imshow(analyzer.bf_stats["basis_functions"][analyzer.target_neuron_ids[0]],
+      #  cmap="Greys_r")
+      #target_vect_ax.set_title("Primary\nBasis Function", color='r')
+      #comparison_vect_ax = pf.clear_axis(fig.add_subplot(gs2[1]))
+      #comparison_vect_ax.imshow(analyzer.bf_stats["basis_functions"][analyzer.comparison_neuron_ids[0][0]],
+      #  cmap="Greys_r")
+      #comparison_vect_ax.set_title("Comparison\nBasis Function", color='k')
     analyzer_index += 1
   # Add colorbar
   scalarMap._A = []
