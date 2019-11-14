@@ -120,13 +120,16 @@ class params(BaseParams):
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
       self.vectorize_data = False
-      self.standardize_data = True
+      self.standardize_data = False
+      self.tf_standardize_data = True
       self.rescale_data = False
       self.cp_int = int(1e4)
       self.gen_plot_int = int(1e4)
       self.batch_size = 100
+      self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
+      self.tie_decoder_weights = True
       self.layer_types = ["conv"]
       self.output_channels = [256]
       self.patch_size = [(12, 12)]

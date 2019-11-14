@@ -1,7 +1,7 @@
 import os
 from params.base_params import BaseParams
 
-TRAIN_ON_RECON = False
+TRAIN_ON_RECON = True
 
 class params(BaseParams):
   def __init__(self):
@@ -251,7 +251,7 @@ class params(BaseParams):
             ]
           self.schedule[sched_idx]["train_on_adversarial"] = False
           self.schedule[sched_idx]["sparse_mult"] = 0.07
-          self.schedule[sched_idx]["weight_lr"] = 1e-3
+          self.schedule[sched_idx]["weight_lr"] = 5e-4
           #Decay steps is in terms of epochs, (num_epochs_per_batch * 350 per decay)
           self.schedule[sched_idx]["decay_steps"] = 80000
           self.schedule[sched_idx]["decay_rate"] = 0.9
@@ -281,7 +281,7 @@ class params(BaseParams):
             "mlp/layer3/fc_b_3:0",
             ]
           self.schedule[sched_idx]["sparse_mult"] = 0.07
-          self.schedule[sched_idx]["weight_lr"] = 1e-3
+          self.schedule[sched_idx]["weight_lr"] = 5e-4
           #Decay steps is in terms of epochs, (num_epochs_per_batch * 350 per decay)
           self.schedule[sched_idx]["decay_steps"] = 80000
           self.schedule[sched_idx]["decay_rate"] = 0.9

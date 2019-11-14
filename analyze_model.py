@@ -18,7 +18,7 @@ class params(object):
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
-    self.do_run_analysis = True
+    self.do_run_analysis = False
     # Evaluate model variables (specified in analysis class) on images
     self.do_evals = True
     # Dictionary fitting
@@ -147,8 +147,8 @@ analyzer.model_params.num_images = analysis_params.num_analysis_images
 if hasattr(analyzer.model_params, "extract_patches") and analyzer.model_params.extract_patches:
   analyzer.model_params.num_patches = analysis_params.num_patches
 
-# Load data for analysis
 data = ds.get_data(analyzer.model_params)
+
 data = analyzer.model.preprocess_dataset(data, analyzer.model_params)
 data = analyzer.model.reshape_dataset(data, analyzer.model_params)
 analyzer.model_params.data_shape = list(data["train"].shape[1:])

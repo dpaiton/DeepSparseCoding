@@ -1,7 +1,7 @@
 import os
 from params.base_params import BaseParams
 
-TRAIN_ADV = False
+TRAIN_ADV = True
 
 class params(BaseParams):
   def __init__(self):
@@ -148,12 +148,13 @@ class params(BaseParams):
 
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
-        self.schedule[sched_idx]["weight_lr"] = 1e-3
+        self.schedule[sched_idx]["weight_lr"] = 5e-4
         #Decay steps is in terms of epochs, (num_epochs_per_batch * 350 per decay)
-        self.schedule[sched_idx]["decay_steps"] = 50000
+        self.schedule[sched_idx]["decay_steps"] = 80000
         self.schedule[sched_idx]["decay_rate"] = 0.9
       if(TRAIN_ADV):
         self.schedule[0]["num_batches"] = int(5e3)
+        self.schedule[1]["num_batches"] = int(3e5)
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
