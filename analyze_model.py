@@ -37,7 +37,7 @@ class params(object):
     # Patchwise image recon
     self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
-    self.do_orientation_analysis = False
+    self.do_orientation_analysis = True
     # How many images to use for analysis, patches are generated from these
     self.num_analysis_images = 150#1000
     self.whiten_batch_size = 10 # for VH dataset

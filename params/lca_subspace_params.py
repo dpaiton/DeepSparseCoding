@@ -83,7 +83,7 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.version = "5x_2_2.0_0.2"
+      self.version = "5x_2_1.0_0.3"
       self.num_images = 150
       self.vectorize_data = True
       self.norm_data = False
@@ -104,8 +104,8 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e4)
         self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["group_orth_mult"] = 0.2
-        self.schedule[sched_idx]["sparse_mult"] = 2.0 
+        self.schedule[sched_idx]["group_orth_mult"] = 0.3
+        self.schedule[sched_idx]["sparse_mult"] = 1.0 
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
 

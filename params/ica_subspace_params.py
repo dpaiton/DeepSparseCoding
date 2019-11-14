@@ -61,7 +61,7 @@ class params(ica_params):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.version = "4"
+      self.version = "5"
       self.num_images = 50 #150
       self.vectorize_data = True
       self.norm_data = False
