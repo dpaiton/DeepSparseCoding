@@ -53,6 +53,7 @@ class IcaSubspaceModel(Model):
 
         with tf.variable_scope("inference") as scope:
           self.s = tf.matmul(input_node, tf.transpose(self.w_analy), name="latent_vars")
+          self.group_s = self.compute_group_activations(self.s)
 
         with tf.variable_scope("output") as scope:
           self.recon = tf.matmul(self.s, self.w_analy, name="recon")
@@ -68,6 +69,12 @@ class IcaSubspaceModel(Model):
     new_s = tf.linalg.diag(tf.pow(s, -0.5))
     rot = tf.matmul(tf.matmul(u, new_s), v, adjoint_b=True)
     return tf.matmul(tf.real(rot), w)
+
+  
+  def compute_group_activations(self, s):
+    s2 = tf.pow(s, 2)
+    group_s = tf.matmul(s2, self.R)
+    return tf.sqrt(group_s)
 
     
   def compute_weight_gradients(self, optimizer, weight_op=None):
