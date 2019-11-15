@@ -13,10 +13,10 @@ class IcaSubspaceModel(Model):
     def load_params(self, params):
       super(IcaSubspaceModel, self).load_params(params)
       self.input_shape = [None, self.params.num_pixels]
+      self.params.num_neurons_per_group = self.params.num_neurons // self.params.num_groups
       self.w_synth_shape = [self.params.num_pixels, self.params.num_neurons]
       self.w_analy_shape = [self.params.num_neurons, self.params.num_pixels]
       self.R = self.construct_index_matrix().astype(np.float32)
-      self.params.num_neurons_per_group = self.params.num_neurons // self.params.num_groups
       neuron_ids = np.arange(self.params.num_neurons, dtype=np.int32)
       self.group_ids = [neuron_ids[start:start+self.params.num_neurons_per_group]
         for start in np.arange(0, self.params.num_neurons, self.params.num_neurons_per_group,
@@ -26,7 +26,7 @@ class IcaSubspaceModel(Model):
       R = np.zeros(shape=(self.params.num_neurons, self.params.num_groups))
       c = 0
       for r in range(self.params.num_neurons):
-        if r != 0 and r % self.params.group_size == 0:
+        if r != 0 and r % self.params.num_neurons_per_group == 0:
           c += 1
         R[r, c] = 1.0
       return R

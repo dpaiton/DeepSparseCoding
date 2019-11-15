@@ -46,6 +46,7 @@ class params(BaseParams):
     # LCA Params
     self.lca_conv = False
     self.num_neurons = 768
+    self.num_groups = 192
     self.num_steps = 50
     self.dt = 0.001
     self.tau = 0.03
@@ -195,6 +196,7 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.num_neurons = 768
+      self.num_groups = 192
       self.train_on_recon = True # if False, train on activations
       self.num_classes = 2
       self.mlp_output_channels = [128, 64, self.num_classes]
@@ -221,4 +223,5 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.num_neurons = 100
+    self.num_groups = 25
     self.num_steps = 5

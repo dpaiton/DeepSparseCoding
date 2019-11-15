@@ -101,4 +101,3 @@ if run_data:
   from tests.data.data_selector_test import DataSelectorTest
 
 tf.test.main()
-

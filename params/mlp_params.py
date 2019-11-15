@@ -176,13 +176,19 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.mlp_output_channels = [20]+[self.mlp_output_channels[-1]]
-    self.mlp_layer_types = ["conv", "fc"]
+    if self.vectorize_data:
+      self.mlp_layer_types = ["fc", "fc"]
+      self.max_pool = [False, False]
+      self.max_pool_ksize = [None, None]
+      self.max_pool_strides = [None, None]
+    else:
+      self.mlp_layer_types = ["conv", "fc"]
+      self.mlp_patch_size = [(2, 2)]
+      self.mlp_conv_strides = [(1,1,1,1)]
+      self.max_pool = [True, False]
+      self.max_pool_ksize = [(1,2,2,1), None]
+      self.max_pool_strides = [(1,2,2,1), None]
     self.mlp_activation_functions = ["lrelu"]*len(self.mlp_output_channels)
-    self.mlp_patch_size = [(2, 2)]
-    self.mlp_conv_strides = [(1,1,1,1)]
     self.batch_norm = [None, None]
     self.dropout = [1.0, 1.0]
     self.lrn = ["post", None]
-    self.max_pool = [True, False]
-    self.max_pool_ksize = [(1,2,2,1), None]
-    self.max_pool_strides = [(1,2,2,1), None]
