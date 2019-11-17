@@ -28,7 +28,10 @@ class BaseParams(object):
     eps            [float] Small value to avoid division by zero
     device         [str] Which device to run on
     rand_seed      [int] Random seed
-  TODO: list_params() function
+
+    mlp_conv_strides [list of tuples] containing strides for conv layers.
+      Following the tf documentation for tf.nn.conv2d,
+      the tuple contains [filter_height, filter_width, in_channels, out_channels]
   """
   def __init__(self):
     self.vectorize_data = True

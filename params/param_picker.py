@@ -1,3 +1,4 @@
+import params.base_params as base
 import params.lambda_params as lamb
 import params.mlp_params as mlp
 import params.mlp_lca_subspace_params as mlp_lca_subspace
@@ -16,7 +17,6 @@ import params.lca_pca_fb_params as lca_pca_fb
 import params.lca_subspace_params as lca_subspace
 import params.lca_conv_params as lca_conv
 import params.lista_params as lista
-#import params.fflista_params as fflista
 #import params.gdn_autoencoder_params as ga
 #import params.gdn_conv_autoencoder_params as cga
 #import params.gdn_conv_decoder_params as cgd
@@ -72,8 +72,6 @@ def get_params(model_type):
     return lca_conv.params()
   if model_type.lower() == "lista":
     return lista.params()
-  #if model_type.lower() == "fflista":
-  #  return fflista.params()
   if model_type.lower() == "ae":
     return ae.params()
   if model_type.lower() == "dae":
@@ -93,3 +91,39 @@ def get_params(model_type):
   #if model_type.lower() == "relu_autoencoder":
   #  return ra.params()
   assert False, (model_type+" is not a supported model_type")
+
+def list_all_params():
+  all_params = [
+    base,
+    lamb,
+    mlp,
+    mlp_lca_subspace,
+    mlp_lca,
+    mlp_ae,
+    mlp_vae,
+    mlp_sae,
+    mlp_lista,
+    ica,
+    ica_pca,
+    ica_subspace,
+    rica,
+    lca,
+    lca_pca,
+    lca_pca_fb,
+    lca_subspace,
+    lca_conv,
+    lista,
+    ae,
+    dae,
+    dae_mem,
+    sae,
+    vae]
+  param_names = []
+  for params_obj in all_params:
+    params_dict = params_obj.params().__dict__
+    for param_name in list(params_dict.keys()):
+      param_names.append(param_name)
+  return sorted(set(param_names))
+
+if __name__ == "__main__":
+  print("\n".join(list_all_params()))
