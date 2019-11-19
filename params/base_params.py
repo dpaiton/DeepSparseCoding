@@ -18,6 +18,7 @@ class BaseParams(object):
                   len(cp_set_var) should equal len(cp_load_var)
     data_dir [str] location of dataset folders
     device [str] which device to run on
+    eps [float] small value to avoid division by zero
     extract_patches [bool] if set, extract patches from dataset images during preprocessing
     gen_plot_int [int] interval (in batches) between plot outputs during training
       plot outputs are specified in the model's generate_plots function
@@ -54,7 +55,7 @@ class BaseParams(object):
       each model has different auto_placeholders; all of them must exist in schedule_dict.keys() for each dictionary in the schedule list
     standardize_data [bool] if set, z-score data to have mean=0 and standard deviation=1 using numpy operators
     tf_standardize_data [bool] if set, z-score data to have mean=0 and standard deviation=1 using tensorflow operators
-    eps [float] small value to avoid division by zero
+      only compatible when vectorize_data is False because it must be done on 3d image
     vectorize_data [bool] if set, reshape input data to be [batch, data_dimensionality] (i.e. a batch of vectors)
       must be True for fully connected networks and False for convolutional networks
     version [str] version string to be appended to all outputs for training and analysis; can be any string, or empty
