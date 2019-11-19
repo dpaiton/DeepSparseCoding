@@ -17,9 +17,9 @@ class VaeModel(AeModel):
     super(VaeModel, self).__init__()
 
   def build_module(self, input_node):
-    module = VaeModule(input_node, self.params.layer_types, self.params.output_channels,
-      self.params.patch_size, self.params.conv_strides, self.decay_mult, self.norm_mult,
-      self.kld_mult, self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights,
+    module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
+      self.params.ae_patch_size, self.params.ae_conv_strides, self.decay_mult, self.norm_mult,
+      self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
       self.params.noise_level, self.params.recon_loss_type, self.params.norm_w_init,
       variable_scope="vae")
     return module
@@ -92,7 +92,7 @@ class VaeModel(AeModel):
     # Plot generated digits
     randoms = [np.random.normal(0, 1, self.num_latent) for _ in range(self.params.batch_size)]
     feed_dict[self.latent_input] = np.stack(randoms, axis=0)
-    feed_dict[self.dropout_keep_probs] = [1.0] * len(self.params.dropout)
+    feed_dict[self.ae_dropout_keep_probs] = [1.0] * len(self.params.ae_dropout)
     imgs = tf.get_default_session().run(self.compute_recon_from_placeholder(), feed_dict)
     imgs = np.stack([np.reshape(imgs[i], [28, 28]) for i in range(len(imgs))], axis=0)
     imgs = (imgs - np.min(imgs)) / (np.max(imgs) - np.min(imgs))

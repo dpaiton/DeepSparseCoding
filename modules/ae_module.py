@@ -27,7 +27,6 @@ class AeModule(object):
     self.conv_strides = conv_strides
     self.variable_scope = variable_scope
     self.trainable_variables = TrainableVariableDict()
-
     self.data_tensor = data_tensor
     self.layer_types = layer_types
     self.output_channels = output_channels
@@ -39,13 +38,11 @@ class AeModule(object):
     self.norm_mult = norm_mult
     self.act_funcs = act_funcs
     self.tie_decoder_weights = tie_decoder_weights
-
     self.num_conv_layers = layer_types.count("conv")
     self.num_fc_layers = layer_types.count("fc")
     self.num_encoder_layers = self.num_fc_layers + self.num_conv_layers
     self.num_decoder_layers = self.num_encoder_layers
     self.num_layers = self.num_encoder_layers + self.num_decoder_layers
-
     data_ndim = len(data_tensor.get_shape().as_list())
     if data_ndim == 2:
       self.batch_size, self.num_pixels = self.data_tensor.get_shape()
@@ -53,7 +50,6 @@ class AeModule(object):
       self.batch_size, self.num_pixels_y, self.num_pixels_x, self.num_channels = \
         self.data_tensor.get_shape()
       self.num_pixels = self.num_pixels_y * self.num_pixels_x * self.num_channels
-
     if layer_types[0] == "conv":
       assert data_ndim == 4, (
         "Module requires data_tensor to have shape" +
@@ -76,7 +72,6 @@ class AeModule(object):
       ("conv_strides must be a list of size " + str(self.num_conv_layers))
     assert len(self.act_funcs) == self.num_layers, \
       ("act_funcs parameter must be a list of size " + str(self.num_layers))
-
     self.conv_strides = self.conv_strides + [None]*(self.num_fc_layers*2) + self.conv_strides[::-1]
     self.build_graph()
 
@@ -284,7 +279,6 @@ class AeModule(object):
         self.w_normed_dec_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
           axis=-1, epsilon=1e-12, dtype=tf.float32)
         self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
-
       self.u_list = [self.data_tensor]
       self.w_list = []
       self.b_list = []
@@ -295,18 +289,14 @@ class AeModule(object):
       self.u_list += enc_u_list[1:] # build_encoder() will place self.u_list[0] as enc_u_list[0]
       self.w_list += enc_w_list
       self.b_list += enc_b_list
-
       with tf.variable_scope("inference") as scope:
         self.a = tf.identity(enc_u_list[-1], name="activity")
-
       dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
         self.act_funcs[self.num_encoder_layers:])
-
       self.u_list += dec_u_list[1:] # build_decoder() will place self.u_list[-1] as dec_u_list[0]
       if not self.tie_decoder_weights:
         self.w_list += dec_w_list
       self.b_list += dec_b_list
-
       with tf.variable_scope("norm_weights") as scope:
         w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
         self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
@@ -314,12 +304,9 @@ class AeModule(object):
         self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
           axis=-1, epsilon=1e-8, name="col_l2_norm"))
         self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
-
       for w,b in zip(self.w_list, self.b_list):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
-
       with tf.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
-
       self.compute_total_loss()

@@ -46,8 +46,8 @@ class MlpLcaModel(MlpModel):
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
           self.train_lca = tf.placeholder(tf.bool, shape=(), name="train_lca")
         with tf.variable_scope("placeholders") as scope:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
-            name="dropout_keep_probs")
+          self.mlp_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="mlp_dropout_keep_probs")
         self.train_lca = tf.cast(self.train_lca, tf.float32)
         with tf.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")

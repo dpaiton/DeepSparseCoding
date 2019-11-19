@@ -7,7 +7,6 @@ class params(BaseParams):
     self.model_type = "lca_subspace"
     self.model_name = "lca_subspace"
     self.version = "3.0"
-    self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.center_data = True
@@ -84,7 +83,6 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.num_images = 150
       self.vectorize_data = True
       self.norm_data = False
       self.rescale_data = False

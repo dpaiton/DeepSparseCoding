@@ -26,11 +26,11 @@ class params(BaseParams):
     # Specify number of neurons for encoder
     # Last element in list is the size of the latent space
     # Decoder will automatically build the transpose of the encoder
-    self.layer_types = ["fc", "fc"]
-    self.output_channels = [512, 50]
-    self.activation_functions = ["relu", "identity", "relu", "identity"]
-    self.dropout = [1.0]*4
-    self.noise_level = 0.0 # Variance of noise added to the input data
+    self.ae_layer_types = ["fc", "fc"]
+    self.ae_output_channels = [512, 50]
+    self.ae_activation_functions = ["relu", "identity", "relu", "identity"]
+    self.ae_dropout = [1.0]*4
+    self.noise_level = 0.0 # std of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_decoder_weights = False
     self.norm_weights = False
@@ -64,11 +64,11 @@ class params(BaseParams):
       self.cp_int = 5e5
       self.gen_plot_int = 5e5
       self.noise_level = 0.08
-      self.layer_types = ["fc", "fc", "fc"]
-      self.output_channels = [768, 256, 64]#[768]
+      self.ae_layer_types = ["fc", "fc", "fc"]
+      self.ae_output_channels = [768, 256, 64]#[768]
       self.recon_loss_type = "mse" # "mse" or "crossentropy"
-      self.activation_functions = ["lrelu", "lrelu", "identity", "lrelu", "lrelu", "relu"]#["relu", "relu"]
-      self.dropout = [0.5, 0.8, 1.0, 0.8, 0.8, 1.0]#[1.0, 1.0]
+      self.ae_activation_functions = ["lrelu", "lrelu", "identity", "lrelu", "lrelu", "relu"]#["relu", "relu"]
+      self.ae_dropout = [0.5, 0.8, 1.0, 0.8, 0.8, 1.0]#[1.0, 1.0]
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["num_batches"] = int(2e6)
         self.schedule[schedule_idx]["weight_lr"] = 8e-4
@@ -96,12 +96,12 @@ class params(BaseParams):
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.activation_functions = ["relu", "identity", "relu", "identity"]
-    self.dropout = [1.0]*len(self.activation_functions)
-    self.output_channels = [20, 10]
+    self.ae_activation_functions = ["relu", "identity", "relu", "identity"]
+    self.ae_dropout = [1.0]*len(self.ae_activation_functions)
+    self.ae_output_channels = [20, 10]
     # Test 1
-    self.layer_types = ["fc", "fc"]
+    self.ae_layer_types = ["fc", "fc"]
     # Test 2
-    #self.layer_types = ["conv", "conv"]
-    #self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-    #self.patch_size = [(3, 3), (3, 3)]
+    #self.ae_layer_types = ["conv", "conv"]
+    #self.ae_conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
+    #self.ae_patch_size = [(3, 3), (3, 3)]

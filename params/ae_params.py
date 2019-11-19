@@ -28,12 +28,12 @@ class params(BaseParams):
     #Specify number of neurons for encoder
     #Last element in list is the size of the latent space
     #Decoder will automatically build the transpose of the encoder
-    self.layer_types = ["fc", "fc"]
-    self.output_channels = [512, 50]
-    self.patch_size = []
-    self.conv_strides = []
-    self.activation_functions = ["relu", "relu", "relu", "identity"]
-    self.dropout = [1.0]*4
+    self.ae_layer_types = ["fc", "fc"]
+    self.ae_output_channels = [512, 50]
+    self.ae_patch_size = []
+    self.ae_conv_strides = []
+    self.ae_activation_functions = ["relu", "relu", "relu", "identity"]
+    self.ae_dropout = [1.0]*4
     self.optimizer = "annealed_sgd"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
@@ -58,12 +58,12 @@ class params(BaseParams):
       self.model_name += "_mnist"
       self.rescale_data = False
       self.standardize_data = True
-      self.output_channels = [768, 256, 256, 128, 64]#[768]
-      self.layer_types = ["fc"]*len(self.output_channels)
+      self.ae_output_channels = [768, 256, 256, 128, 64]#[768]
+      self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
-      self.dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
+      self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
+      self.ae_dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
       self.cp_int = int(5e5)
       self.gen_plot_int = int(5e5)
       self.norm_weights = False
@@ -83,14 +83,14 @@ class params(BaseParams):
       self.vectorize_data = False
       self.standardize_data = True
       self.rescale_data = False
-      self.layer_types = ["conv"]
-      self.output_channels = [256]
-      self.patch_size = [(12, 12)]
-      self.conv_strides = [(1, 2, 2, 1)]
+      self.ae_layer_types = ["conv"]
+      self.ae_output_channels = [256]
+      self.ae_patch_size = [(12, 12)]
+      self.ae_conv_strides = [(1, 2, 2, 1)]
       self.optimizer = "adam"
       self.batch_size = 100
-      self.activation_functions = ["relu", "identity"]
-      self.dropout = [1.0] * 2
+      self.ae_activation_functions = ["relu", "identity"]
+      self.ae_dropout = [1.0] * 2
       self.cp_int = int(1e3)
       self.gen_plot_int = int(1e3)
       self.schedule = [
@@ -105,7 +105,6 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.num_images = 150
       self.rescale_data = False
       self.vectorize_data = True
       self.whiten_data = True
@@ -122,15 +121,15 @@ class params(BaseParams):
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      #self.output_channels = [1536, 768, 256, 64]
-      #self.output_channels = [768, 256, 32]
-      self.output_channels = [768]
-      self.layer_types = ["fc"]*len(self.output_channels)
+      #self.ae_output_channels = [1536, 768, 256, 64]
+      #self.ae_output_channels = [768, 256, 32]
+      self.ae_output_channels = [768]
+      self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.layer_types = ["fc"]*len(self.output_channels)
-      self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
-      self.dropout = [0.3] * (len(self.activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
+      self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
+      self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
+      self.ae_dropout = [0.3] * (len(self.ae_activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
       self.log_int = 100
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
@@ -166,20 +165,20 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     # Test 1
-    #self.layer_types = ["fc", "fc", "fc"]
+    #self.ae_layer_types = ["fc", "fc", "fc"]
     #self.vectorize_data = True
-    #self.output_channels = [30, 20, 10]
+    #self.ae_output_channels = [30, 20, 10]
     # Test 2
-    #self.layer_types = ["conv", "conv", "conv"]
+    #self.ae_layer_types = ["conv", "conv", "conv"]
     #self.vectorize_data = False
-    #self.output_channels = [30, 20, 10]
-    #self.patch_size = [(8,8), (4,4), (2,2)]
-    #self.conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
+    #self.ae_output_channels = [30, 20, 10]
+    #self.ae_patch_size = [(8,8), (4,4), (2,2)]
+    #self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
     # Test 3
-    self.layer_types = ["conv", "conv", "fc"]
+    self.ae_layer_types = ["conv", "conv", "fc"]
     self.vectorize_data = False
-    self.output_channels = [30, 20, 10]
-    self.patch_size = [(8,8), (4,4)]
-    self.conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
-    self.activation_functions = ["relu"] * (2 * len(self.output_channels) - 1) + ["identity"]
-    self.dropout = [1.0] * len(self.activation_functions)
+    self.ae_output_channels = [30, 20, 10]
+    self.ae_patch_size = [(8,8), (4,4)]
+    self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
+    self.ae_activation_functions = ["relu"] * (2 * len(self.ae_output_channels) - 1) + ["identity"]
+    self.ae_dropout = [1.0] * len(self.ae_activation_functions)

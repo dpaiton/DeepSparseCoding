@@ -14,7 +14,6 @@ class params(BaseParams):
     self.model_type = "lca_conv"
     self.model_name = "lca_conv"
     self.version = "0.0"
-    self.num_images = 150
     self.vectorize_data = False
     self.norm_data = False
     self.center_data = True
@@ -24,7 +23,6 @@ class params(BaseParams):
     self.whiten_method = "FT"
     self.lpf_data = False # only for ZCA
     self.lpf_cutoff = 0.7
-    self.use_tf_norm = False
     self.extract_patches = False
     self.image_edge_size = 128
     self.batch_size = 25
@@ -76,7 +74,6 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.num_images = 150
       self.rescale_data = False
       self.center_data = True
       self.whiten_data = True

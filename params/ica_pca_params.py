@@ -12,7 +12,6 @@ class params(ica_params):
     self.model_type = "ica_pca"
     self.model_name = "ica_pca"
     self.version = "0.0"
-    self.num_images = 50
     self.vectorize_data = True
     self.norm_data = False
     self.whiten_data = True
@@ -23,7 +22,6 @@ class params(ica_params):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 1e-6
-    self.num_batches = int(1e5)
     self.batch_size = 100
     self.prior = "laplacian" # "cauchy"
     self.optimizer = "annealed_sgd"
@@ -42,6 +40,7 @@ class params(ica_params):
     self.schedule = [
       {"weights": ["a"],
       "weight_lr": [0.01],
-      "decay_steps": [int(self.num_batches*0.8)],
+      "num_batches": int(1e4),
+      "decay_steps": [int(1e4*0.8)],
       "decay_rate": [0.7],
       "staircase": [True]}]

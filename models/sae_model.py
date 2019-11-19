@@ -10,9 +10,9 @@ class SaeModel(AeModel):
     super(SaeModel, self).__init__()
 
   def build_module(self, input_node):
-    module = SaeModule(input_node, self.params.layer_types, self.params.output_channels,
-      self.params.patch_size, self.params.conv_strides, self.sparse_mult, self.decay_mult,
-      self.norm_mult, self.target_act, self.act_funcs, self.dropout_keep_probs,
+    module = SaeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
+      self.params.ae_patch_size, self.params.ae_conv_strides, self.sparse_mult, self.decay_mult,
+      self.norm_mult, self.target_act, self.act_funcs, self.ae_dropout_keep_probs,
       self.params.tie_decoder_weights, self.params.norm_w_init, variable_scope="sae")
     return module
 

@@ -13,7 +13,6 @@ class params(BaseParams):
     self.model_type = "dae"
     self.model_name = "dae_test"
     self.version = "0.0"
-    self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.center_data = False
@@ -31,13 +30,13 @@ class params(BaseParams):
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
-    self.layer_types = ["fc", "fc", "fc"]
-    self.output_channels = [1500, 1000, 50]
+    self.ae_layer_types = ["fc", "fc", "fc"]
+    self.ae_output_channels = [1500, 1000, 50]
     self.tie_decoder_weights = False
     self.norm_weights = False
     self.norm_w_init = False
-    self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-    self.dropout = [1.0]*6
+    self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
+    self.ae_dropout = [1.0]*6
     self.num_triangles = 30
     self.mle_step_size = 0.01
     self.num_mle_steps = 30
@@ -83,10 +82,10 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.layer_types = ["fc", "fc", "fc"]
-      self.output_channels = [1568, 784, 50]
-      self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-      self.dropout = [1.0]*len(self.activation_functions)
+      self.ae_layer_types = ["fc", "fc", "fc"]
+      self.ae_output_channels = [1568, 784, 50]
+      self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
+      self.ae_dropout = [1.0]*len(self.ae_activation_functions)
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vanhateren"
@@ -110,10 +109,10 @@ class params(BaseParams):
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.layer_types = ["conv", "conv"]
-    self.output_channels = [20, 10]
-    self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-    self.patch_size = [(3, 3), (3, 3)]
-    self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
-    self.dropout = [1.0]*4
+    self.ae_layer_types = ["conv", "conv"]
+    self.ae_output_channels = [20, 10]
+    self.ae_conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
+    self.ae_patch_size = [(3, 3), (3, 3)]
+    self.ae_activation_functions = ["gdn", "gdn", "gdn", "identity"]
+    self.ae_dropout = [1.0]*4
     self.vectorize_data = False

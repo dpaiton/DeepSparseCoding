@@ -60,7 +60,7 @@ class MlpModel(Model):
 
   def build_mlp_module(self, input_node):
     module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+      self.params.mlp_output_channels, self.params.batch_norm, self.mlp_dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.mlp_patch_size, self.params.mlp_conv_strides, self.mlp_act_funcs,
       self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy",
@@ -76,8 +76,8 @@ class MlpModel(Model):
         with tf.variable_scope("label_placeholders") as scope:
           self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
         with tf.variable_scope("placeholders") as scope:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
-            name="dropout_keep_probs")
+          self.mlp_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="mlp_dropout_keep_probs")
         self.mlp_module = self.build_mlp_module(input_node)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
         #TODO analysis depends on this name for label ests. Can we abstract this?
@@ -120,9 +120,9 @@ class MlpModel(Model):
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(MlpModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
     if(is_test): # Turn off dropout when not training
-      feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
+      feed_dict[self.mlp_dropout_keep_probs] = [1.0,] * len(self.params.mlp_dropout)
     else:
-      feed_dict[self.dropout_keep_probs] = self.params.dropout
+      feed_dict[self.mlp_dropout_keep_probs] = self.params.mlp_dropout
     #train_on_adversarial is not built in analyzers, so only set this var if this exists
     if(hasattr(self, 'train_on_adversarial')):
       if(feed_dict[self.train_on_adversarial]):

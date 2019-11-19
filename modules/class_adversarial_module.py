@@ -6,7 +6,7 @@ import pdb
 
 class ClassAdversarialModule(object):
   def __init__(self, data_tensor, use_adv_input, num_classes, num_steps, step_size, max_step=None, clip_adv=True,
-    clip_range = [0.0, 1.0], attack_method="kurakin_untargeted", eps=1e-8, variable_scope="class_adversarial"):
+    clip_range=[0.0, 1.0], attack_method="kurakin_untargeted", eps=1e-8, variable_scope="class_adversarial"):
     """
     TODO:
     Adversarial module

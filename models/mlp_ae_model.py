@@ -40,7 +40,7 @@ class MlpAeModel(MlpModel):
 
   #def build_mlp_module(self, input_node):
   #  module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-  #    self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+  #    self.params.mlp_output_channels, self.params.batch_norm, self.mlp_dropout_keep_probs,
   #    self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
   #    self.params.mlp_patch_size, self.params.mlp_conv_strides, self.mlp_act_funcs,
   #    self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy",
@@ -59,8 +59,8 @@ class MlpAeModel(MlpModel):
           self.train_ae = tf.placeholder(tf.bool, shape=(), name="train_ae")
 
         with tf.variable_scope("placeholders") as sess:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
-            name="dropout_keep_probs")
+          self.mlp_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="mlp_dropout_keep_probs")
           self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="ae_dropout_keep_probs")
 
@@ -107,7 +107,6 @@ class MlpAeModel(MlpModel):
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(MlpAeModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
-    #TODO dropout_keep_probs should be mlp_dropout_keep_probs (getting set in base class)
     if(is_test): # Turn off dropout when not training
       feed_dict[self.ae_dropout_keep_probs] = [1.0,] * len(self.params.ae_dropout)
     else:

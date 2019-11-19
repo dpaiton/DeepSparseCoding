@@ -49,8 +49,8 @@ class MlpVaeModel(MlpModel):
           self.train_vae = tf.placeholder(tf.bool, shape=(), name="train_vae")
 
         with tf.variable_scope("placeholders") as scope:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
-            name="dropout_keep_probs")
+          self.mlp_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="mlp_dropout_keep_probs")
           self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="ae_dropout_keep_probs")
 

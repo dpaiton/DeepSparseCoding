@@ -12,7 +12,6 @@ class params(BaseParams):
       bounds_slope        [float] slope for out of bounds loss (two relus back to back)
       latent_min          [float] minimum allowable value for latent variables where ramp loss = 0
       latent_max          [float] maximum allowable value for latent variables where ramp loss = 0
-      mle_step_size       [float] size of maximimum likelihood estimator steps
       num_mle_steps       [int] number of max likelihood estimation steps for the entropy estimator
       num_quant_bins      [int] number of bins you want for quantization
       gdn_w_init_const    [float] initial value for the GDN weights
@@ -25,7 +24,6 @@ class params(BaseParams):
     self.model_type = "dae"
     self.model_name = "dae_test"
     self.version = "0.0"
-    self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.center_data = False
@@ -43,13 +41,13 @@ class params(BaseParams):
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
-    self.layer_types = ["fc", "fc", "fc"]
-    self.output_channels = [1500, 1000, 50]
+    self.ae_layer_types = ["fc", "fc", "fc"]
+    self.ae_output_channels = [1500, 1000, 50]
     self.tie_decoder_weights = False
     self.norm_weights = False
     self.norm_w_init = False
-    self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-    self.dropout = [1.0]*6
+    self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
+    self.ae_dropout = [1.0]*6
     self.num_triangles = 30
     self.mle_step_size = 0.01
     self.num_mle_steps = 30
@@ -90,10 +88,10 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.layer_types = ["fc", "fc", "fc"]
-      self.output_channels = [768, 512, 50]
-      self.activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-      self.dropout = [1.0]*len(self.activation_functions)
+      self.ae_layer_types = ["fc", "fc", "fc"]
+      self.ae_output_channels = [768, 512, 50]
+      self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
+      self.ae_dropout = [1.0]*len(self.ae_activation_functions)
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
       for sched_idx in range(len(self.schedule)):
@@ -121,12 +119,12 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 1e-4
-      self.layer_types = ["conv", "conv"]
-      self.output_channels = [20, 10]
-      self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-      self.patch_size = [(3, 3), (3, 3)]
-      self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
-      self.dropout = [1.0]*4
+      self.ae_layer_types = ["conv", "conv"]
+      self.ae_output_channels = [20, 10]
+      self.ae_conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
+      self.ae_patch_size = [(3, 3), (3, 3)]
+      self.ae_activation_functions = ["gdn", "gdn", "gdn", "identity"]
+      self.ae_dropout = [1.0]*4
       self.vectorize_data = False
     else:
       assert False, ("Data type "+data_type+" is not supported.")
@@ -141,10 +139,10 @@ class params(BaseParams):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.vectorize_data = False
-    self.layer_types = ["conv", "conv"]
-    self.output_channels = [20, 10]
-    self.conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-    self.patch_size = [(3, 3), (3, 3)]
-    self.activation_functions = ["gdn", "gdn", "gdn", "identity"]
-    self.dropout = [1.0]*len(self.activation_functions)
+    self.ae_layer_types = ["conv", "conv"]
+    self.ae_output_channels = [20, 10]
+    self.ae_conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
+    self.ae_patch_size = [(3, 3), (3, 3)]
+    self.ae_activation_functions = ["gdn", "gdn", "gdn", "identity"]
+    self.ae_dropout = [1.0]*len(self.ae_activation_functions)
     self.vectorize_data = False

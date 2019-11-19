@@ -32,7 +32,7 @@ class MlpListaModel(MlpModel):
     assert self.params.mlp_layer_types[0] == "fc", (
       "MLP must have FC layers to train on LISTA activity")
     module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-      self.params.mlp_output_channels, self.params.batch_norm, self.dropout_keep_probs,
+      self.params.mlp_output_channels, self.params.batch_norm, self.mlp_dropout_keep_probs,
       self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
       self.params.mlp_patch_size, self.params.mlp_conv_strides, self.mlp_act_funcs,
       self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy",
@@ -48,8 +48,8 @@ class MlpListaModel(MlpModel):
           self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
 
         with tf.variable_scope("placeholders") as scope:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
-            name="dropout_keep_probs")
+          self.mlp_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="mlp_dropout_keep_probs")
 
         # LISTA module
         with tf.variable_scope("weight_inits") as scope:

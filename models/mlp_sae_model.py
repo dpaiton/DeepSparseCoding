@@ -52,8 +52,8 @@ class MlpSaeModel(MlpModel):
           self.train_sae = tf.placeholder(tf.bool, shape=(), name="train_sae")
 
         with tf.variable_scope("placeholders") as sess:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
-            name="dropout_keep_probs")
+          self.mlp_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="mlp_dropout_keep_probs")
           self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
             name="ae_dropout_keep_probs")
 
@@ -100,7 +100,6 @@ class MlpSaeModel(MlpModel):
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(MlpSaeModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
-    #TODO dropout_keep_probs should be mlp_dropout_keep_probs (getting set in base class)
     if(is_test): # Turn off dropout when not training
       feed_dict[self.ae_dropout_keep_probs] = [1.0,] * len(self.params.ae_dropout)
     else:

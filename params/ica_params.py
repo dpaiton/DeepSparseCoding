@@ -11,7 +11,6 @@ class params(BaseParams):
     self.model_type = "ica"
     self.model_name = "ica"
     self.version = "0.0"
-    self.num_images = 100
     self.vectorize_data = True
     self.norm_data = False
     self.center_data = False
@@ -27,7 +26,6 @@ class params(BaseParams):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0
-    self.num_batches = int(5e5)
     self.batch_size = 50
     self.prior = "laplacian" #"cauchy"
     self.optimizer = "annealed_sgd"
@@ -54,7 +52,6 @@ class params(BaseParams):
     self.data_type = data_type
     if self.data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.num_images = 150
       self.batch_size = 50
       self.vectorize_data = True
       self.rescale_data = False

@@ -18,7 +18,6 @@ class params(BaseParams):
     self.model_type = "lca"
     self.model_name = "lca_1280"
     self.version = "5x_0.55"
-    self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = False
@@ -89,7 +88,6 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.num_images = 150
       self.vectorize_data = True
       self.rescale_data = False
       self.whiten_data = True

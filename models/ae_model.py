@@ -22,19 +22,19 @@ class AeModel(Model):
     """
     super(AeModel, self).load_params(params)
     self.input_shape = [None,] + self.params.data_shape
-    self.num_latent = self.params.output_channels[-1]
+    self.num_latent = self.params.ae_output_channels[-1]
     self.act_funcs = [activation_picker(act_func_str)
-      for act_func_str in self.params.activation_functions]
-    if np.all([layer_type == "fc" for layer_type in self.params.layer_types]):
-      self.params.patch_size = []
-      self.params.conv_strides = []
-    assert len(self.params.dropout) == len(self.params.activation_functions), \
-        ("Dropout parameter must be a list of size " + str(len(self.params.activation_functions)))
+      for act_func_str in self.params.ae_activation_functions]
+    if np.all([layer_type == "fc" for layer_type in self.params.ae_layer_types]):
+      self.params.ae_patch_size = []
+      self.params.ae_conv_strides = []
+    assert len(self.params.ae_dropout) == len(self.params.ae_activation_functions), \
+        ("Dropout parameter must be a list of size " + str(len(self.params.ae_activation_functions)))
 
   def build_module(self, input_node):
-    module = AeModule(input_node, self.params.layer_types, self.params.output_channels,
-      self.params.patch_size, self.params.conv_strides, self.decay_mult, self.norm_mult,
-      self.act_funcs, self.dropout_keep_probs, self.params.tie_decoder_weights,
+    module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
+      self.params.ae_patch_size, self.params.ae_conv_strides, self.decay_mult, self.norm_mult,
+      self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
       self.params.norm_w_init, variable_scope="ae")
     return module
 
@@ -48,8 +48,8 @@ class AeModel(Model):
           self.norm_mult = tf.placeholder(tf.float32, shape=(), name="norm_mult")
 
         with tf.variable_scope("placeholders") as scope:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
-            name="dropout_keep_probs")
+          self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+            name="ae_dropout_keep_probs")
           self.latent_input = tf.placeholder(tf.float32, name="latent_input")
 
         self.module = self.build_module(input_node)
@@ -89,9 +89,9 @@ class AeModel(Model):
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
     feed_dict = super(AeModel, self).get_feed_dict(input_data, input_labels, dict_args, is_test)
     if(is_test): # Turn off dropout when not training
-      feed_dict[self.dropout_keep_probs] = [1.0,] * len(self.params.dropout)
+      feed_dict[self.ae_dropout_keep_probs] = [1.0,] * len(self.params.ae_dropout)
     else:
-      feed_dict[self.dropout_keep_probs] = self.params.dropout
+      feed_dict[self.ae_dropout_keep_probs] = self.params.ae_dropout
     return feed_dict
 
   def get_input_shape(self):

@@ -13,7 +13,6 @@ class params(lca_pca_params):
     self.model_type = "lca_pca_fb"
     self.model_name = "lca_pca_fb"
     self.version = "0.0"
-    self.num_batches = int(1e4)
     self.batch_size = 100
     self.num_neurons = 512
     self.num_pooling_units = 50
@@ -34,9 +33,10 @@ class params(lca_pca_params):
     self.save_plots = True
     self.schedule = [
       {"weights": ["lca/weights/w:0"],
+      "num_batches": int(1e4),
       "sparse_mult": 0.08,
       "fb_mult": 1e-3,
       "weight_lr": [0.8],
-      "decay_steps": [int(self.num_batches*0.6)],
+      "decay_steps": [int(1e4*0.6)],
       "decay_rate": [0.5],
       "staircase": [True]}]

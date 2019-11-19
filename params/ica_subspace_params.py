@@ -7,7 +7,6 @@ class params(ica_params):
     self.model_type = "ica_subspace"
     self.model_name = "ica_subspace"
     self.version = "0.0"
-    self.num_images = 100
     self.vectorize_data = True
     self.whiten_data = True
     self.whiten_method = "ZCA"
@@ -16,7 +15,6 @@ class params(ica_params):
     self.extract_patches = True
     self.num_patches = 1e6
     self.patch_edge_size = 16
-    self.num_batches = int(5e5)
     self.batch_size = 50
     self.prior = "laplacian" #"cauchy"
     self.optimizer = "annealed_sgd"
@@ -38,7 +36,7 @@ class params(ica_params):
     self.data_type = data_type
     if data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.num_images = 50 #150
+      self.num_images = 100
       self.vectorize_data = True
       self.norm_data = False
       self.rescale_data = False

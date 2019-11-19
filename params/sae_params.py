@@ -5,14 +5,13 @@ class params(BaseParams):
   def __init__(self):
     """
     Additional modifiable parameters:
-      output_channels [list of ints]
-      activation_functions [list of strs]
+      ae_output_channels [list of ints]
+      ae_activation_functions [list of strs]
     """
     super(params, self).__init__()
     self.model_type = "sae"
     self.model_name = "sae_768"
     self.version = "1.0"
-    self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = False
@@ -33,12 +32,12 @@ class params(BaseParams):
     self.norm_weights = False
     self.norm_w_init = False
     self.batch_size = 100
-    self.layer_types = ["fc"]
-    self.output_channels = [768]
-    self.patch_size = []
-    self.conv_strides = []
-    self.activation_functions = ["sigmoid", "identity"]
-    self.dropout = [1.0]*2
+    self.ae_layer_types = ["fc"]
+    self.ae_output_channels = [768]
+    self.ae_patch_size = []
+    self.ae_conv_strides = []
+    self.ae_activation_functions = ["sigmoid", "identity"]
+    self.ae_dropout = [1.0]*2
     self.optimizer = "annealed_sgd"#"adam"
     self.cp_int = int(1e5)
     self.max_cp_to_keep = 1
@@ -76,10 +75,10 @@ class params(BaseParams):
       self.standardize_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.output_channels = [768]
+      self.ae_output_channels = [768]
       self.norm_w_init = False
-      self.activation_functions = ["sigmoid", "identity"]
-      self.dropout = [1.0]*2*len(self.output_channels)
+      self.ae_activation_functions = ["sigmoid", "identity"]
+      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(5e6)
         self.schedule[sched_idx]["weight_lr"] = 0.01#0.0002
@@ -92,7 +91,6 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.num_images = 150
       self.batch_size = 100
       self.vectorize_data = True
       self.rescale_data = False
@@ -101,9 +99,9 @@ class params(BaseParams):
       self.whiten_method = "FT"
       self.whiten_batch_size = 10
       self.extract_patches = True
-      self.output_channels = [768]
-      self.activation_functions = ["sigmoid", "identity"]
-      self.dropout = [1.0]*2
+      self.ae_output_channels = [768]
+      self.ae_activation_functions = ["sigmoid", "identity"]
+      self.ae_dropout = [1.0]*2
       self.log_int = 100
       self.cp_int = int(5e5)
       self.gen_plot_int = int(2e5)
@@ -130,13 +128,13 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.tie_decoder_weights = True
-      self.layer_types = ["conv"]
-      self.output_channels = [256]
-      self.patch_size = [(12, 12)]
-      self.conv_strides = [(1, 2, 2, 1)]
-      self.activation_functions = ["sigmoid", "identity"]
+      self.ae_layer_types = ["conv"]
+      self.ae_output_channels = [256]
+      self.ae_patch_size = [(12, 12)]
+      self.ae_conv_strides = [(1, 2, 2, 1)]
+      self.ae_activation_functions = ["sigmoid", "identity"]
       self.optimizer = "adam"
-      self.dropout = [1.0]*2*len(self.output_channels)
+      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 0.001
@@ -162,9 +160,9 @@ class params(BaseParams):
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      self.output_channels = [768]
-      self.activation_functions = ["sigmoid", "identity"]
-      self.dropout = [1.0]*2
+      self.ae_output_channels = [768]
+      self.ae_activation_functions = ["sigmoid", "identity"]
+      self.ae_dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["decay_mult"] = 0.008
         self.schedule[sched_idx]["norm_mult"] = 0.0
@@ -181,9 +179,9 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.output_channels = [768]
-      self.activation_functions = ["sigmoid", "identity"]
-      self.dropout = [1.0]*2
+      self.ae_output_channels = [768]
+      self.ae_activation_functions = ["sigmoid", "identity"]
+      self.ae_dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_mult"] = 0.03
@@ -206,8 +204,8 @@ class params(BaseParams):
       self.schedule[sched_idx]["sparse_mult"] = 0.15
       self.schedule[sched_idx]["target_act"] = 0.2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.layer_types = ["fc"]
+    self.ae_layer_types = ["fc"]
     self.vectorize_data = True
-    self.output_channels = [30]
-    self.activation_functions = ["sigmoid", "identity"]
-    self.dropout = [1.0]*len(self.activation_functions)
+    self.ae_output_channels = [30]
+    self.ae_activation_functions = ["sigmoid", "identity"]
+    self.ae_dropout = [1.0]*len(self.ae_activation_functions)

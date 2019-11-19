@@ -11,7 +11,6 @@ class params(BaseParams):
     self.model_type = "rica"
     self.model_name = "rica_768"
     self.version = "0.0"
-    self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.center_data = False
@@ -78,7 +77,6 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
-      self.num_images = 150
       self.batch_size = int(1e5)
       self.vectorize_data = True
       self.center_data = True

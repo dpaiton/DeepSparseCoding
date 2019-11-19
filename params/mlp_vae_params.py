@@ -12,7 +12,6 @@ class params(BaseParams):
     self.model_type = "mlp_vae"
     self.model_name = "mlp_vae"
     self.version = "0.0"
-    self.num_images = 150
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = False
@@ -37,7 +36,7 @@ class params(BaseParams):
     self.ae_conv_strides = []
     self.ae_activation_functions = ["lrelu", "sigmoid"]
     self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
-    self.noise_level = 0.01 # variance of noise added to the input data
+    self.noise_level = 0.01 # std of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_decoder_weights = False
     self.norm_weights = False
@@ -54,7 +53,7 @@ class params(BaseParams):
     self.mlp_patch_size = []
     self.mlp_conv_strides = []
     self.batch_norm = [None, None, None]
-    self.dropout = [1.0, 1.0, 1.0]
+    self.mlp_dropout = [1.0, 1.0, 1.0]
     self.max_pool = [False, False, False]
     self.max_pool_ksize = [None, None, None]
     self.max_pool_strides = [None, None, None]
@@ -66,7 +65,7 @@ class params(BaseParams):
     self.adversarial_attack_method = "kurakin_untargeted"
     self.adversarial_step_size = 0.01
     self.adversarial_max_change = 0.3
-    self.adversarial_target_method = "random" #Not used if attach_method is untargeted
+    # DEPRECATE self.adversarial_target_method = "random" #Not used if attack_method is untargeted
     self.adversarial_clip = True
     #TODO get these params from other params
     self.adversarial_clip_range = [0.0, 1.0]
@@ -157,7 +156,7 @@ class params(BaseParams):
       self.mlp_patch_size = [(5, 5), (5, 5)]
       self.mlp_conv_strides = [(1,1,1,1), (1,1,1,1)]
       self.batch_norm = [None, None, None, None]
-      self.dropout = [1.0, 1.0, 0.4, 1.0]
+      self.mlp_dropout = [1.0, 1.0, 0.4, 1.0]
       self.max_pool = [True, True, False, False]
       self.max_pool_ksize = [(1,2,2,1), (1,2,2,1), None, None]
       self.max_pool_strides = [(1,2,2,1), (1,2,2,1), None, None]

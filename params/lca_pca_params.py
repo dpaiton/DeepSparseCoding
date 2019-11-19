@@ -11,7 +11,6 @@ class params(lca_params):
     self.model_type = "lca_pca"
     self.model_name = "lca_pca"
     self.version = "0.0"
-    self.num_batches = int(1e5)
     self.batch_size = 100
     self.num_neurons = 768
     self.num_pooling_units = 192
@@ -38,6 +37,7 @@ class params(lca_params):
       {"weights": ["lca/weights/w:0"],
       "sparse_mult": 1.0,
       "weight_lr": [0.01],
-      "decay_steps": [int(self.num_batches*0.5)],
+      "num_batches": 1e5,
+      "decay_steps": [int(1e5*0.5)],
       "decay_rate": [0.8],
       "staircase": [True]}]
