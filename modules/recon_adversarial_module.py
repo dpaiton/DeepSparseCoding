@@ -41,27 +41,27 @@ class ReconAdversarialModule(object):
     self.build_init_graph()
 
   def build_init_graph(self):
-    with tf.variable_scope(self.variable_scope) as scope:
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       # These placeholders are here since they're only needed for construct adv examples
-      with tf.variable_scope("placeholders") as scope:
-        self.adv_target = tf.placeholder(tf.float32, shape=self.input_shape,
+      with tf.compat.v1.variable_scope("placeholders") as scope:
+        self.adv_target = tf.compat.v1.placeholder(tf.float32, shape=self.input_shape,
           name="adversarial_target_data")
-        self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+        self.recon_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="recon_mult")
         if(self.attack_method == "marzi_untargeted"):
-          self.orig_recons = tf.placeholder(tf.float32, shape=self.input_shape, name="orig_recons")
+          self.orig_recons = tf.compat.v1.placeholder(tf.float32, shape=self.input_shape, name="orig_recons")
         if(self.attack_method == "marzi_latent"):
-          self.orig_latent_activities = tf.placeholder(tf.float32, shape=(None, self.num_neurons),
+          self.orig_latent_activities = tf.compat.v1.placeholder(tf.float32, shape=(None, self.num_neurons),
             name="orig_latent_activities")
           #TODO: Get num_neurons from model to set this shape
-          self.selection_vector = tf.placeholder(tf.float32, shape=(self.num_neurons, 1),
+          self.selection_vector = tf.compat.v1.placeholder(tf.float32, shape=(self.num_neurons, 1),
             name="selection_vector")
-      with tf.variable_scope("input_var"):
+      with tf.compat.v1.variable_scope("input_var"):
         # Initialize adv_var to data tensor - this will make the perturbation init 0
         adv_init = tf.identity(self.data_tensor)
         if(self.carlini_change_variable):
           # adv_init is the inverse of the change-of-variable, so that the final pert init is 0
           adv_init = 2 * adv_init - 1 # Map adv_init to be between -1 and 1
-          adv_init = 0.5 * tf.log((1 + adv_init) / (1 - adv_init)) # tanh^-1(x)
+          adv_init = 0.5 * tf.math.log((1 + adv_init) / (1 - adv_init)) # tanh^-1(x)
         self.adv_var = tf.Variable(adv_init, dtype=tf.float32, trainable=True,
           validate_shape=False, name="adv_var")
         self.ignore_load_var_list.append(self.adv_var)
@@ -84,7 +84,7 @@ class ReconAdversarialModule(object):
         if(self.clip_adv): # Clip final adverarial image to bound specified
           self.adv_images = tfc.upper_bound(tfc.lower_bound(
             self.adv_images, self.clip_range[0]), self.clip_range[1])
-      with tf.variable_scope("input_switch"): # Switch based on input to use adv images or not
+      with tf.compat.v1.variable_scope("input_switch"): # Switch based on input to use adv images or not
         self.adv_switch_input = tf.cond(self.use_adv_input,
           true_fn=lambda:self.adv_images, false_fn=lambda:self.data_tensor, strict=True)
 
@@ -98,10 +98,10 @@ class ReconAdversarialModule(object):
     recons: tf variable for network reconstructions
     latent_activities: tf variable for latent activations, required for marzi_latent attack
     """
-    with tf.variable_scope(self.variable_scope) as scope:
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       self.recons = recons
       self.latent_activities = latent_activities
-      with tf.variable_scope("loss") as scope:
+      with tf.compat.v1.variable_scope("loss") as scope:
         adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recons))
 
         if(self.attack_method == "kurakin_targeted"):
@@ -144,14 +144,14 @@ class ReconAdversarialModule(object):
             "Options are 'kurakin_targeted', 'carlini_targeted', 'marzi_untargeted'"+
             "or 'marzi_latent'.")
 
-      with tf.variable_scope("optimizer") as scope:
+      with tf.compat.v1.variable_scope("optimizer") as scope:
         if(self.adv_optimizer == "adam"):
           self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
           # code below ensures that adam variables are also reset when the reset op is run
           initializer_ops = [v.initializer for v in self.adv_opt.variables()]
           self.reset = tf.group(initializer_ops + [self.reset])
         elif(self.adv_optimizer == "sgd"):
-          self.adv_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
+          self.adv_opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=self.step_size)
         else:
           assert False, ("optimizer must be 'adam' or 'sgd', not '"+str(self.adv_optimizer)+"'.")
 
@@ -196,7 +196,7 @@ class ReconAdversarialModule(object):
     if(save_int is None):
       save_int = self.num_steps + 1
     # Reset input to orig image
-    sess = tf.get_default_session()
+    sess = tf.compat.v1.get_default_session()
     sess.run(self.reset, feed_dict=feed_dict)
     # Always store orig image
     eval_vect = [self.data_tensor, self.recons]

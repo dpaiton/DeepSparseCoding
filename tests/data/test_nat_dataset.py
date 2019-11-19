@@ -20,14 +20,15 @@ w_shape = [8, 8, 1, 10]
 test_graph = tf.Graph()
 with tf.device("/gpu:0"):
   with test_graph.as_default():
-    x = tf.placeholder(tf.float32, shape=x_shape, name="x")
+    x = tf.compat.v1.placeholder(tf.float32, shape=x_shape, name="x")
     w_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False,
-      seed=params.rand_seed, dtype=tf.float32)
-    w = tf.get_variable(name="w", shape=w_shape, dtype=tf.float32,
+      seed=params.rand_seed)
+    w = tf.compat.v1.get_variable(name="w", shape=w_shape, dtype=tf.float32,
       initializer=w_init, trainable=True)
     y = tf.nn.conv2d(x, w, [1, 4, 4, 1], padding="SAME", use_cudnn_on_gpu=True, name="y")
-    init_op = tf.group(tf.global_variables_initializer(), tf.local_variables_initializer())
-config = tf.ConfigProto()
+    init_op = tf.group(tf.compat.v1.global_variables_initializer(),
+      tf.compat.v1.local_variables_initializer())
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
 
 num_epochs = 0
@@ -39,7 +40,7 @@ while num_epochs < 1:
   print(batch_counter, "\n-------\n", locations, "\n-------\n")
   num_batches = data["train"].batches_completed
   num_epochs = data["train"].epochs_completed
-  with tf.Session(config=config, graph=test_graph) as sess:
+  with tf.compat.v1.Session(config=config, graph=test_graph) as sess:
     sess.run(init_op,
       feed_dict={x:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
     out_var = sess.run(y, feed_dict={x:images})

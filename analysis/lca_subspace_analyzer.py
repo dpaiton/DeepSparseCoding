@@ -48,9 +48,9 @@ class LcaSubspaceAnalyzer(LcaAnalyzer):
     if self.analysis_params.do_group_recons:
       with tf.device(self.model_params.device):
         with self.model.graph.as_default():
-          with tf.variable_scope("placeholders") as scope:
-            self.sigmas = tf.placeholder(tf.float32, [None, self.model_params.num_groups])
-            self.zs = tf.placeholder(tf.float32, [None, self.model_params.num_groups,
+          with tf.compat.v1.variable_scope("placeholders") as scope:
+            self.sigmas = tf.compat.v1.placeholder(tf.float32, [None, self.model_params.num_groups])
+            self.zs = tf.compat.v1.placeholder(tf.float32, [None, self.model_params.num_groups,
               self.model_params.num_neurons_per_group])
           self.group_recons = self.model.compute_recon_from_group(self.sigmas, self.zs)
 
@@ -58,9 +58,9 @@ class LcaSubspaceAnalyzer(LcaAnalyzer):
     """
     Computes the 2nd layer output code for a set of images.
     """
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(images)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.model_params.cp_loc)

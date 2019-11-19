@@ -44,7 +44,7 @@ class LcaConvModule(LcaModule):
     return x_
 
   def step_inference(self, u_in, a_in, step):
-    with tf.variable_scope("update_u"+str(step)) as scope:
+    with tf.compat.v1.variable_scope("update_u"+str(step)) as scope:
       recon_error = self.data_tensor - self.build_decoder(a_in, name="reconstruction")
       error_injection = tf.nn.conv2d(recon_error, self.w, [1, self.stride_y,
         self.stride_x, 1], padding="SAME", use_cudnn_on_gpu=True, name="forward_injection")

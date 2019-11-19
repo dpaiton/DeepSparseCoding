@@ -151,9 +151,9 @@ class Analyzer(object):
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.input_node = self.model.build_input_placeholder()
-          with tf.variable_scope("placeholders") as scope:
+          with tf.compat.v1.variable_scope("placeholders") as scope:
             # This is a switch used internally to use clean or adv examples
-            self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
+            self.use_adv_input = tf.compat.v1.placeholder(tf.bool, shape=(), name="use_adv_input")
           # Building adv module here with adv_params
           self.class_adv_module = ClassAdversarialModule(self.input_node, self.use_adv_input,
             self.model_params.num_classes, self.analysis_params.adversarial_num_steps,
@@ -182,9 +182,9 @@ class Analyzer(object):
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
           self.input_node = self.model.build_input_placeholder()
-          with tf.variable_scope("placeholders") as scope:
+          with tf.compat.v1.variable_scope("placeholders") as scope:
             # This is a switch used internally to use clean or adv examples
-            self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
+            self.use_adv_input = tf.compat.v1.placeholder(tf.bool, shape=(), name="use_adv_input")
           self.recon_adv_module = ReconAdversarialModule(
             data_tensor=self.input_node,
             use_adv_input=self.use_adv_input,
@@ -420,12 +420,12 @@ class Analyzer(object):
     """
     num_data = images.shape[0]
     num_iterations = int(np.ceil(num_data / batch_size))
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     evals = {}
     for name in var_names:
       evals[name] = []
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       image_shape = (batch_size,) + images.shape[1:]
       sess.run(self.model.init_op, {self.model.input_placeholder:np.zeros(image_shape)})
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
@@ -457,9 +457,9 @@ class Analyzer(object):
     evaluate_model_batch will take in images and evaluate batch variables
     """
     feed_dict = self.model.get_feed_dict(images, is_test=True)
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       tensors = [self.model.graph.get_tensor_by_name(name) for name in var_names]
@@ -476,9 +476,9 @@ class Analyzer(object):
       tensor [tf variable] variable to be evaluated
       feed_dict [dict] feed dictionary with required keys for the input tensor
     """
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       tensor_eval = sess.run(tensor, feed_dict)
@@ -542,9 +542,9 @@ class Analyzer(object):
         activation_operation = self.model.get_encodings
     images_shape = list(images.shape)
     num_images = images_shape[0]
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       if batch_size is not None and batch_size < num_images:
         assert num_images % batch_size == 0, (
           "batch_size=%g must divide evenly into num_images=%g"%(batch_size, num_images))
@@ -1018,9 +1018,9 @@ class Analyzer(object):
         "loss" - visualization loss at given step
     """
     input_shape = self.model.get_input_shape()[1:] # We don't need bach dim
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(init_image, is_test=True)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
@@ -1052,9 +1052,9 @@ class Analyzer(object):
     steps=None
     all_adversarial_images = []
     all_recons = []
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(input_images, is_test=True)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
@@ -1207,9 +1207,9 @@ class Analyzer(object):
     steps = None
     all_adv_images = []
     all_adv_outputs = []
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(input_images, input_labels, is_test=True)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)

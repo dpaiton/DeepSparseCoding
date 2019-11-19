@@ -37,7 +37,7 @@ class SaeModule(AeModule):
       tie_decoder_weights, norm_w_init, variable_scope)
 
   def compute_sparse_loss(self, a_in):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       reduc_dims = tuple(range(len(a_in.get_shape().as_list()) - 1))
       avg_act = tf.reduce_mean(a_in, axis=reduc_dims, name="batch_avg_activity")
       p_dist = self.target_act * tf.subtract(ef.safe_log(self.target_act),
@@ -49,7 +49,7 @@ class SaeModule(AeModule):
     return sparse_loss
 
   def compute_total_loss(self):
-    with tf.variable_scope("loss") as scope:
+    with tf.compat.v1.variable_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "sparse_loss":self.compute_sparse_loss(self.a),
         "weight_decay_loss":self.compute_weight_decay_loss(),

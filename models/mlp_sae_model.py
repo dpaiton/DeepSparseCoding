@@ -42,19 +42,19 @@ class MlpSaeModel(MlpModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("auto_placeholders") as scope:
-          self.label_placeholder = tf.placeholder(tf.float32,
+        with tf.compat.v1.variable_scope("auto_placeholders") as scope:
+          self.label_placeholder = tf.compat.v1.placeholder(tf.float32,
             shape=self.label_shape, name="input_labels")
-          self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
-          self.norm_mult = tf.placeholder(tf.float32, shape=(), name="norm_mult")
-          self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
-          self.target_act = tf.placeholder(tf.float32, shape=(), name="target_act")
-          self.train_sae = tf.placeholder(tf.bool, shape=(), name="train_sae")
+          self.decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="decay_mult")
+          self.norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="norm_mult")
+          self.sparse_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="sparse_mult")
+          self.target_act = tf.compat.v1.placeholder(tf.float32, shape=(), name="target_act")
+          self.train_sae = tf.compat.v1.placeholder(tf.bool, shape=(), name="train_sae")
 
-        with tf.variable_scope("placeholders") as sess:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+        with tf.compat.v1.variable_scope("placeholders") as sess:
+          self.dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
-          self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+          self.ae_dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],
             name="ae_dropout_keep_probs")
 
         self.train_sae = tf.cast(self.train_sae, tf.float32)
@@ -77,24 +77,24 @@ class MlpSaeModel(MlpModel):
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.variable_scope("loss") as scope:
+        with tf.compat.v1.variable_scope("loss") as scope:
           #Loss switches based on train_sae flag
           self.total_loss = self.train_sae * self.sae_module.total_loss + \
             (1-self.train_sae) * self.mlp_module.total_loss
 
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
-        with tf.variable_scope("performance_metrics") as scope:
+        with tf.compat.v1.variable_scope("performance_metrics") as scope:
           #VAE metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.sae_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
-          with tf.variable_scope("prediction_bools"):
+          with tf.compat.v1.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.variable_scope("accuracy"):
+          with tf.compat.v1.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
@@ -128,7 +128,7 @@ class MlpSaeModel(MlpModel):
       self.sae_module.a, self.sae_module.reconstruction,
       self.pSNRdB]
 
-    out_vals =  tf.get_default_session().run(eval_list, feed_dict)
+    out_vals =  tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     recon_loss, sparse_loss, sae_a_vals, recon, pSNRdB\
       = out_vals[0:5]
 
@@ -168,7 +168,7 @@ class MlpSaeModel(MlpModel):
 
     eval_list = [self.global_step, self.sae_module.w_list[0],
       self.sae_module.reconstruction, self.sae_module.a]
-    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, sae_activity = eval_out[1:]

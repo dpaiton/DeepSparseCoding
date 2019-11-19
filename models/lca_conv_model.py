@@ -50,7 +50,7 @@ class LcaConvModel(LcaModel):
     else:
       assert False, ("Input_data.shape[-1] should indicate color channel, and should be 1 or 3")
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    weights, recon, activity = tf.get_default_session().run(
+    weights, recon, activity = tf.compat.v1.get_default_session().run(
       [self.module.w, self.module.reconstruction, self.get_encodings()], feed_dict)
 
     recon = dp.rescale_data_to_one(recon)[0]

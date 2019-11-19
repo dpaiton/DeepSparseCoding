@@ -10,7 +10,7 @@ class params(BaseParams):
     super(params, self).__init__()
     self.model_type = "ae"
     self.model_name = "ae_768"
-    self.version = "1.0"
+    self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = True
@@ -57,15 +57,18 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.rescale_data = False
-      self.standardize_data = True
-      self.output_channels = [768, 256, 256, 128, 64]#[768]
-      self.layer_types = ["fc"]*len(self.output_channels)
+      self.standardize_data = False
+      self.tf_standardize_data = True
+      self.center_data = False
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
+      self.output_channels = [768, 256, 256, 128, 64]#[768]
+      self.layer_types = ["fc"]*len(self.output_channels)
       self.activation_functions = ["relu"] * (2 * len(self.layer_types) - 1) + ["identity"]
       self.dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
-      self.cp_int = int(5e5)
-      self.gen_plot_int = int(5e5)
+      self.log_int = 100
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e4)
       self.norm_weights = False
       self.norm_w_init = False
       self.schedule = [
@@ -73,7 +76,7 @@ class params(BaseParams):
         "weights": None,
         "decay_mult": 0.0,#1e-4,
         "norm_mult": 1e-4,#2e-4,#0.0,
-        "weight_lr": 0.0001,#0.003,
+        "weight_lr": 0.002,
         "decay_steps": int(6e5),
         "decay_rate": 0.5,
         "staircase": True,}]

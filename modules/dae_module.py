@@ -75,7 +75,7 @@ class DaeModule(AeModule):
     return a_entropies
 
   def compute_entropy_loss(self, a_in):
-    with tf.variable_scope("latent"):
+    with tf.compat.v1.variable_scope("latent"):
       #a_flat = tf.reshape(a_in, [tf.shape(a_in)[0], -1])
       #a_flat = tf.layers.Flatten()(a_in)#tf.reshape(a_in, [tf.shape(a_in)[0], -1])
       dim = tf.reduce_prod(tf.shape(a_in)[1:])
@@ -93,7 +93,7 @@ class DaeModule(AeModule):
     return ramp_loss
 
   def compute_total_loss(self):
-    with tf.variable_scope("loss") as scope:
+    with tf.compat.v1.variable_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "weight_decay_loss":self.compute_weight_decay_loss(),
         "weight_norm_loss":self.compute_weight_norm_loss(),
@@ -114,7 +114,7 @@ class DaeModule(AeModule):
       weight_id = num_layers - (layer_id + 1)
     """
     trainable_variables = []
-    with tf.variable_scope("layer"+str(layer_id), reuse=tf.AUTO_REUSE) as scope:
+    with tf.compat.v1.variable_scope("layer"+str(layer_id), reuse=tf.compat.v1.AUTO_REUSE) as scope:
       if self.tie_decoder_weights:
         w_read_id = self.num_layers - (layer_id+1)
       else:
@@ -122,7 +122,7 @@ class DaeModule(AeModule):
 
       name_prefix = "conv_" if conv else "fc_"
       w_name = name_prefix+"w_"+str(w_read_id)
-      w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
       trainable_variables.append(w)
 
@@ -131,7 +131,7 @@ class DaeModule(AeModule):
         b_shape = w_shape[-2]
       else:
         b_shape = w_shape[-1]
-      b = tf.get_variable(name=b_name, shape=b_shape,
+      b = tf.compat.v1.get_variable(name=b_name, shape=b_shape,
         dtype=tf.float32, initializer=self.b_init, trainable=True)
       trainable_variables.append(b)
 
@@ -142,10 +142,10 @@ class DaeModule(AeModule):
           w_gdn_shape = [w_shape[-2], w_shape[-2]]
         else:
           w_gdn_shape = [w_shape[-1], w_shape[-1]]
-        w_gdn = tf.get_variable(name="w_gdn_"+str(layer_id), shape=w_gdn_shape,
+        w_gdn = tf.compat.v1.get_variable(name="w_gdn_"+str(layer_id), shape=w_gdn_shape,
           dtype=tf.float32, initializer=self.w_gdn_init, trainable=True)
         trainable_variables.append(w_gdn)
-        b_gdn = tf.get_variable(name="b_gdn_"+str(layer_id), shape=b_shape,
+        b_gdn = tf.compat.v1.get_variable(name="b_gdn_"+str(layer_id), shape=b_shape,
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
         trainable_variables.append(b_gdn)
         #gdn_inverse = True if layer_id >= self.num_encoder_layers else False
@@ -155,8 +155,8 @@ class DaeModule(AeModule):
           self.gdn_b_thresh_min, self.gdn_eps, decode, conv)
       else:
         output_tensor = activation_function(pre_act)
-      #output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
-      output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
+      output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
+      #output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, trainable_variables
 
   def build_encoder(self, input_tensor, activation_functions):
@@ -274,17 +274,17 @@ class DaeModule(AeModule):
     return dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list
 
   def build_graph(self):
-    with tf.variable_scope(self.variable_scope) as scope:
-      with tf.variable_scope("weight_inits") as scope:
-        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev = 1e-2, dtype=tf.float32)
-        self.b_init = tf.initializers.zeros(dtype=tf.float32)
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
+      with tf.compat.v1.variable_scope("weight_inits") as scope:
+        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev = 1e-2)
+        self.b_init = tf.initializers.zeros()
 
-      with tf.variable_scope("gdn_weight_inits") as scope:
+      with tf.compat.v1.variable_scope("gdn_weight_inits") as scope:
         self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
           off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
         self.w_igdn_init = self.w_gdn_init
         b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
-        self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
+        self.b_gdn_init = tf.initializers.constant(b_init_const)
         self.b_igdn_init = self.b_gdn_init
 
       self.u_list = [self.data_tensor]
@@ -307,10 +307,10 @@ class DaeModule(AeModule):
       else:
         self.num_latent = self.output_channels[-1]
 
-      with tf.variable_scope("inference") as scope:
+      with tf.compat.v1.variable_scope("inference") as scope:
         self.a = tf.identity(enc_u_list[-1], name="activity")
 
-      with tf.variable_scope("probability_estimate") as scope:
+      with tf.compat.v1.variable_scope("probability_estimate") as scope:
         self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_latent, self.num_triangles)
 
         ll = ef.log_likelihood(tf.nn.sigmoid(tf.reshape(self.a, [tf.shape(self.a)[0], -1])),
@@ -332,7 +332,7 @@ class DaeModule(AeModule):
       self.w_gdn_list += dec_w_gdn_list
       self.b_gdn_list += dec_b_gdn_list
 
-      with tf.variable_scope("norm_weights") as scope:
+      with tf.compat.v1.variable_scope("norm_weights") as scope:
         w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
         self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
           axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
@@ -347,7 +347,7 @@ class DaeModule(AeModule):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
 
-      with tf.variable_scope("output") as scope:
+      with tf.compat.v1.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
       self.compute_total_loss()

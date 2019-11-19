@@ -20,9 +20,9 @@ class SaeModel(AeModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("auto_placeholders") as scope:
-          self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
-          self.target_act = tf.placeholder(tf.float32, shape=(), name="target_act")
+        with tf.compat.v1.variable_scope("auto_placeholders") as scope:
+          self.sparse_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="sparse_mult")
+          self.target_act = tf.compat.v1.placeholder(tf.float32, shape=(), name="target_act")
     super(SaeModel, self).build_graph_from_input(input_node)
 
   def get_encodings(self):
@@ -40,7 +40,7 @@ class SaeModel(AeModel):
     """
     update_dict = super(SaeModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    sparse_loss =  tf.get_default_session().run(self.module.loss_dict["sparse_loss"], feed_dict)
+    sparse_loss =  tf.compat.v1.get_default_session().run(self.module.loss_dict["sparse_loss"], feed_dict)
     stat_dict = {"sparse_loss":sparse_loss}
     update_dict.update(stat_dict)
     return update_dict

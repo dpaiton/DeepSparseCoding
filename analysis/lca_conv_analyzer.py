@@ -23,7 +23,7 @@ class LcaConvAnalyzer(LcaAnalyzer):
       with self.model.graph.as_default():
         self.u_list = [self.model.module.u_zeros]
         self.a_list = [self.model.module.threshold_units(self.u_list[0])]
-        self.psnr_list = [tf.constant(0.0, dtype=tf.float32)]
+        self.psnr_list = [tf.constant(0.0)]#, dtype=tf.float32)]
         current_recon = self.model.compute_recon_from_encoding(self.a_list[0])
         current_loss_list = [
           [self.model.module.compute_recon_loss(current_recon)],
@@ -54,9 +54,9 @@ class LcaConvAnalyzer(LcaAnalyzer):
     a = np.zeros([num_imgs, num_steps]+self.model.module.u_shape, dtype=np.float32)
     psnr = np.zeros((num_imgs, num_steps), dtype=np.float32)
     losses = [{} for _ in range(num_imgs)]
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
       sess.graph.finalize() # Graph is read-only after this statement
       self.model.load_full_model(sess, self.analysis_params.cp_loc)

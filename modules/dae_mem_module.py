@@ -96,17 +96,17 @@ class DaeMemModule(DaeModule):
 
 
   def build_graph(self):
-    with tf.variable_scope(self.variable_scope) as scope:
-      with tf.variable_scope("weight_inits") as scope:
-        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev = 1e-2, dtype=tf.float32)
-        self.b_init = tf.initializers.zeros(dtype=tf.float32)
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
+      with tf.compat.v1.variable_scope("weight_inits") as scope:
+        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev = 1e-2)
+        self.b_init = tf.initializers.zeros()
 
-      with tf.variable_scope("gdn_weight_inits") as scope:
+      with tf.compat.v1.variable_scope("gdn_weight_inits") as scope:
         self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
           off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
         self.w_igdn_init = self.w_gdn_init
         b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
-        self.b_gdn_init = tf.initializers.constant(b_init_const, dtype=tf.float32)
+        self.b_gdn_init = tf.initializers.constant(b_init_const)
         self.b_igdn_init = self.b_gdn_init
 
       self.u_list = [self.data_tensor]
@@ -130,10 +130,10 @@ class DaeMemModule(DaeModule):
       else:
         self.num_latent = self.output_channels[-1]
 
-      with tf.variable_scope("inference") as scope:
+      with tf.compat.v1.variable_scope("inference") as scope:
         self.a = tf.identity(enc_u_list[-1], name="activity")
 
-      with tf.variable_scope("probability_estimate") as scope:
+      with tf.compat.v1.variable_scope("probability_estimate") as scope:
         self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_latent, self.num_triangles)
 
         ll = ef.log_likelihood(tf.nn.sigmoid(tf.reshape(self.a, [tf.shape(self.a)[0], -1])),
@@ -152,7 +152,7 @@ class DaeMemModule(DaeModule):
       self.w_gdn_list += dec_w_gdn_list
       self.b_gdn_list += dec_b_gdn_list
 
-      with tf.variable_scope("norm_weights") as scope:
+      with tf.compat.v1.variable_scope("norm_weights") as scope:
         w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
         self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
           axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
@@ -167,7 +167,7 @@ class DaeMemModule(DaeModule):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
 
-      with tf.variable_scope("output") as scope:
+      with tf.compat.v1.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
 
       self.compute_total_loss()
