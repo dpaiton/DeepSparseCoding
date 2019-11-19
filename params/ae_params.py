@@ -56,9 +56,10 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.vectorize_data = True
       self.rescale_data = False
-      self.standardize_data = False
-      self.tf_standardize_data = True
+      self.standardize_data = True
+      self.tf_standardize_data = False
       self.center_data = False
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
