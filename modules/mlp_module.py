@@ -189,7 +189,7 @@ class MlpModule(object):
       fc_out = tf.nn.dropout(fc_out, rate=1-self.dropout[layer_id])
       #fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
       if self.max_pool[layer_id]:
-        fc_out = tf.nn.maxpool2d(fc_out, ksize=self.max_pool_ksize[layer_id],
+        fc_out = tf.compat.v1.nn.max_pool2d(fc_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
     return fc_out, w, b
 
