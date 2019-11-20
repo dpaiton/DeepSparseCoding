@@ -29,8 +29,8 @@ class DaeModel(AeModel):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.ent_mult = tf.placeholder(tf.float32, shape=(), name="entropy_mult")
-          self.noise_var_mult = tf.placeholder(tf.float32, shape=(), name="noise_variance_mult")
+          self.ent_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="entropy_mult")
+          self.noise_var_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="noise_variance_mult")
 
     super(DaeModel, self).build_graph_from_input(input_node)
 

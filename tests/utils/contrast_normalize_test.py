@@ -14,7 +14,7 @@ class ContrastNormalizeDataTest(tf.test.TestCase):
     rand_state = np.random.RandomState(1234)
     gpu_args = [True, False] if tf.test.is_gpu_available(cuda_only=True) else [False]
     for use_gpu in gpu_args:
-      with self.test_session(use_gpu=use_gpu):
+      with self.session(use_gpu=use_gpu):
         data = rand_state.normal(rand_mean, rand_var, size=[num_rows, num_cols, 1])
         data_cn = dp.contrast_normalize(data)
 

@@ -319,7 +319,7 @@ class DaeModule(AeModule):
           for _ in range(self.num_mle_steps)]
 
       noise_var = self.noise_var_mult*(self.latent_max-self.latent_min)/(2*self.num_quant_bins)
-      noise = tf.random_uniform(shape=tf.stack(tf.shape(self.u_list[-1])),minval=-noise_var,
+      noise = tf.random.uniform(shape=tf.stack(tf.shape(self.u_list[-1])),minval=-noise_var,
         maxval=noise_var)
       a_noise = tf.add(noise,self.u_list[-1])
 

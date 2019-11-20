@@ -158,7 +158,7 @@ class MlpModule(object):
             beta=0.75, name='norm1')
 
       if self.max_pool[layer_id]:
-        conv_out = tf.nn.max_pool(conv_out, ksize=self.max_pool_ksize[layer_id],
+        conv_out = tf.compat.v1.nn.max_pool2d(conv_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
 
       if self.lrn[layer_id] is not None:
@@ -189,7 +189,7 @@ class MlpModule(object):
       fc_out = tf.nn.dropout(fc_out, rate=1-self.dropout[layer_id])
       #fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
       if self.max_pool[layer_id]:
-        fc_out = tf.nn.max_pool(fc_out, ksize=self.max_pool_ksize[layer_id],
+        fc_out = tf.nn.maxpool2d(fc_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
     return fc_out, w, b
 
@@ -209,8 +209,11 @@ class MlpModule(object):
     #act_funcs = [tf.nn.relu,]*(self.num_fc_layers-1) + [tf.identity]
     for fc_layer_id in range(self.num_fc_layers):
       layer_id = fc_layer_id + self.num_conv_layers
-      a_resh = tf.contrib.layers.flatten(act_list[layer_id])
-      w_shape = [a_resh.get_shape()[1].value, self.fc_output_channels[fc_layer_id]]
+      #DEPRECATE a_resh = tf.compat.v1.layers.flatten(act_list[layer_id])
+      #DEPRECATE w_shape = [a_resh.get_shape()[1].value, self.fc_output_channels[fc_layer_id]]
+      layer_shape = act_list[layer_id].get_shape().as_list()[1:]
+      a_resh = tf.reshape(act_list[layer_id], [tf.shape(act_list[layer_id])[0], -1]) # flatten
+      w_shape = [np.prod(layer_shape), self.fc_output_channels[fc_layer_id]]
       a_out, w, b = self.fc_layer_maker(layer_id, a_resh, w_shape, self.output_channels[layer_id],
         self.act_funcs[layer_id])
       act_list.append(a_out)

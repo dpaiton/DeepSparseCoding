@@ -95,13 +95,13 @@ class LcaModule(object):
       with tf.compat.v1.variable_scope("constants") as scope:
         u_full_shape = tf.stack([tf.shape(self.data_tensor)[0]]+self.u_shape)
         self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
-        #self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
+        #self.u_noise = tf.random.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
         #  dtype=tf.float32, name="u_noise")
 
       w_norm_dim = list(range(len(self.w_shape)-1)) # normalize across input dim(s)
       with tf.compat.v1.variable_scope("weights") as scope:
         self.weight_scope = tf.compat.v1.get_variable_scope()
-        w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0,
+        w_init = tf.nn.l2_normalize(tf.random.truncated_normal(self.w_shape, mean=0.0,
           stddev=0.5, dtype=tf.float32), axis=w_norm_dim, epsilon=self.eps, name="w_init")
         self.w = tf.compat.v1.get_variable(name="w", dtype=tf.float32, initializer=w_init,
           trainable=True)

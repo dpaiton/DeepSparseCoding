@@ -58,7 +58,7 @@ class IcaSubspaceModel(Model):
           with tf.compat.v1.variable_scope("output") as scope:
               self.recon = tf.matmul(self.s, self.w_analy, name="recon")
           with tf.compat.v1.variable_scope("orthonormalize") as scope:
-              self.orthonorm_weights = tf.assign(self.w_analy, self.orthonorm_weights(self.w_analy))
+              self.orthonorm_weights = tf.compat.v1.assign(self.w_analy, self.orthonorm_weights(self.w_analy))
       self.graph_built = True
 
     def get_encodings(self):
@@ -85,7 +85,7 @@ class IcaSubspaceModel(Model):
       s, u, v = tf.linalg.svd(m)
       new_s = tf.linalg.diag(tf.pow(s, -0.5))
       rot = tf.matmul(tf.matmul(u, new_s), v, adjoint_b=True)
-      return tf.matmul(tf.real(rot), w)
+      return tf.matmul(tf.math.real(rot), w)
 
     def compute_weight_gradients(self, optimizer, weight_op=None):
       W = weight_op

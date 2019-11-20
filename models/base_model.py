@@ -198,10 +198,10 @@ class Model(object):
                 optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rates,
                   name="grad_optimizer_"+weight_name)
               elif self.params.optimizer == "adam":
-                optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
+                optimizer = tf.compat.v1.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
                   epsilon=1e-07, name="adam_optimizer_"+weight_name)
               elif self.params.optimizer == "adadelta":
-                optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
+                optimizer = tf.compat.v1.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
                   name="adadelta_optimizer_"+weight_name)
               elif self.params.optimizer == "lbfgsb":
                 optimizer = None
@@ -212,7 +212,7 @@ class Model(object):
               gstep = self.global_step if w_idx == 0 else None # Only increment once
               if self.params.optimizer == "lbfgsb": # BFGS doesn't actually need the update op
                 if w_idx == 0:
-                  sch_apply_grads.append(tf.assign_add(self.global_step, 1))
+                  sch_apply_grads.append(tf.compat.v1.assign_add(self.global_step, 1))
                 else:
                   sch_apply_grads.append(None)
               else:

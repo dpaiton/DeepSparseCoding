@@ -92,7 +92,7 @@ class VaeModule(AeModule):
 
   def gen_noise(self, noise_type, shape):
     if noise_type == "standard_normal":
-      return tf.random_normal(shape)
+      return tf.random.normal(shape)
     assert False, ("Noise type "+noise_type+" not supported")
 
   def build_graph(self):

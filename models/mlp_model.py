@@ -27,10 +27,10 @@ class MlpModel(Model):
     #Placeholders for using adv or clean examples
     with tf.compat.v1.variable_scope("placeholders") as scope:
       #This is a swith used internally to use clean or adv examples
-      self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
+      self.use_adv_input = tf.compat.v1.placeholder(tf.bool, shape=(), name="use_adv_input")
     with tf.compat.v1.variable_scope("auto_placeholders") as scope:
       #This is a schedule flag to determine if we're training on adv examples
-      self.train_on_adversarial = tf.placeholder(tf.bool, shape=(), name="train_on_adversarial")
+      self.train_on_adversarial = tf.compat.v1.placeholder(tf.bool, shape=(), name="train_on_adversarial")
     self.adv_module = ClassAdversarialModule(input_node, self.use_adv_input,
       self.params.num_classes, self.params.adversarial_num_steps, self.params.adversarial_step_size,
       max_step=self.params.adversarial_max_change,
@@ -74,9 +74,9 @@ class MlpModel(Model):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.compat.v1.variable_scope("label_placeholders") as scope:
-          self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
+          self.label_placeholder = tf.compat.v1.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
         with tf.compat.v1.variable_scope("placeholders") as scope:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+          self.dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
         self.mlp_module = self.build_mlp_module(input_node)
         self.trainable_variables.update(self.mlp_module.trainable_variables)

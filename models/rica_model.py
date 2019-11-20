@@ -62,7 +62,7 @@ class RicaModel(Model):
           self.sparse_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="sparse_mult")
 
         with tf.compat.v1.variable_scope("weights") as scope:
-          w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0),
+          w_init = tf.nn.l2_normalize(tf.random.truncated_normal(self.w_shape, mean=0.0, stddev=1.0),
             axis=[0], name="w_init")
           w_unnormalized = tf.compat.v1.get_variable(name="w", dtype=tf.float32, initializer=w_init,
             trainable=True)

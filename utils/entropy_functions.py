@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 def construct_thetas(num_latent, num_tri):
-    theta_init = tf.truncated_normal((num_latent, num_tri), mean=1.0, stddev=0.01,
+    theta_init = tf.random.truncated_normal((num_latent, num_tri), mean=1.0, stddev=0.01,
       dtype=tf.float32, name="theta_init")
     return (tf.Variable(initial_value=theta_init, name="thetas"), theta_init)
 

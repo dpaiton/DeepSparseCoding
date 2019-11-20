@@ -46,13 +46,13 @@ class IcaModel(Model):
           self.w_synth = tf.compat.v1.get_variable(name="w_synth", dtype=tf.float32,
             initializer=Q.astype(np.float32), trainable=True)
           # w_analysis is W in Bell & Sejnowski 1997, which is used to compute the activations
-          self.w_analysis = tf.matrix_inverse(self.w_synth, name="w_analysis")
+          self.w_analysis = tf.linalg.inv(self.w_synth, name="w_analysis")
           self.trainable_variables[self.w_synth.name] = self.w_synth
 
           # Bell & Sejnowsky 1997
           #self.w_analysis = tf.compat.v1.get_variable(name="w_analysis", dtype=tf.float32,
           #  initializer=Q.astype(np.float32), trainable=True)
-          #self.w_synth = tf.matrix_inverse(self.w_analysis, name="w_synth")
+          #self.w_synth = tf.linalg.inv(self.w_analysis, name="w_synth")
           #self.trainable_variables[self.w_analysis.name] = self.w_analysis
 
         with tf.compat.v1.variable_scope("inference") as scope:
