@@ -29,7 +29,7 @@ class IcaModel(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("weights") as scope:
+        with tf.compat.v1.variable_scope("weights") as scope:
           ## Q matrix from QR decomp is guaranteed to be orthonormal and
           ## non-singular, which prevents a gradient explosion from inverting
           ## the weight matrix.
@@ -43,26 +43,26 @@ class IcaModel(Model):
 
           # VS 265 solution
           # w_synth (synthesis) is A in Bell & Sejnowski 1997, which are the basis functions
-          self.w_synth = tf.get_variable(name="w_synth", dtype=tf.float32,
+          self.w_synth = tf.compat.v1.get_variable(name="w_synth", dtype=tf.float32,
             initializer=Q.astype(np.float32), trainable=True)
           # w_analysis is W in Bell & Sejnowski 1997, which is used to compute the activations
-          self.w_analysis = tf.matrix_inverse(self.w_synth, name="w_analysis")
+          self.w_analysis = tf.linalg.inv(self.w_synth, name="w_analysis")
           self.trainable_variables[self.w_synth.name] = self.w_synth
 
           # Bell & Sejnowsky 1997
-          #self.w_analysis = tf.get_variable(name="w_analysis", dtype=tf.float32,
+          #self.w_analysis = tf.compat.v1.get_variable(name="w_analysis", dtype=tf.float32,
           #  initializer=Q.astype(np.float32), trainable=True)
-          #self.w_synth = tf.matrix_inverse(self.w_analysis, name="w_synth")
+          #self.w_synth = tf.linalg.inv(self.w_analysis, name="w_synth")
           #self.trainable_variables[self.w_analysis.name] = self.w_analysis
 
-        with tf.variable_scope("inference") as scope:
+        with tf.compat.v1.variable_scope("inference") as scope:
           self.a = tf.matmul(input_node, self.w_analysis, name="activity")
           if self.params.prior.lower() == "laplacian":
             self.z = tf.sign(self.a)
           else: #It must be laplacian or cauchy
             self.z = (2*self.a) / (1 + tf.pow(self.a, 2.0))
 
-        with tf.variable_scope("output") as scope:
+        with tf.compat.v1.variable_scope("output") as scope:
           self.reconstruction = tf.matmul(self.a, self.w_synth, name="reconstruction")
 
     self.graph_built = True
@@ -129,7 +129,7 @@ class IcaModel(Model):
       grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
       grad_name_list.append(grad_name)
       learning_rate_dict[grad_name] = self.get_schedule("weight_lr")[w_idx]
-    out_vals =  tf.get_default_session().run(eval_list, feed_dict)
+    out_vals =  tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step, a_vals, z_vals, recon_data = out_vals[:4]
     input_max = np.max(input_data)
     input_mean = np.mean(input_data)
@@ -176,7 +176,7 @@ class IcaModel(Model):
     super(IcaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w_analysis,  self.a, self.z]
-    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     weights, a_vals, z_vals = eval_out[1:]
     #input_data = dp.reshape_data(input_data, flatten=False)[0]

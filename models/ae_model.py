@@ -42,47 +42,47 @@ class AeModel(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("auto_placeholders") as scope:
+        with tf.compat.v1.variable_scope("auto_placeholders") as scope:
           #TODO: Change decay_mult & norm_mult to w_decay_mult, w_norm_mult
-          self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
-          self.norm_mult = tf.placeholder(tf.float32, shape=(), name="norm_mult")
+          self.decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="decay_mult")
+          self.norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="norm_mult")
 
-        with tf.variable_scope("placeholders") as scope:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+        with tf.compat.v1.variable_scope("placeholders") as scope:
+          self.dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
-          self.latent_input = tf.placeholder(tf.float32, name="latent_input")
+          self.latent_input = tf.compat.v1.placeholder(tf.float32, name="latent_input")
 
         self.module = self.build_module(input_node)
         self.trainable_variables.update(self.module.trainable_variables)
 
-        with tf.variable_scope("norm_weights") as scope:
+        with tf.compat.v1.variable_scope("norm_weights") as scope:
           self.norm_weights = tf.group(self.module.norm_w, name="l2_normalization")
 
-        with tf.variable_scope("inference") as scope:
+        with tf.compat.v1.variable_scope("inference") as scope:
           self.a = tf.identity(self.module.a, name="activity")
 
-        with tf.variable_scope("output") as scope:
+        with tf.compat.v1.variable_scope("output") as scope:
           self.reconstruction = tf.identity(self.module.reconstruction, name="reconstruction")
 
         # first index grabs u_list, second index grabs recon
         #Need to build this in same namescope as the orig decoder
-        with tf.variable_scope(self.module.variable_scope):
+        with tf.compat.v1.variable_scope(self.module.variable_scope):
           self.decoder_recon = self.module.build_decoder(self.latent_input,
             self.act_funcs[self.module.num_encoder_layers:])[0][-1]
 
-        with tf.variable_scope("performance_metrics") as scope:
-          with tf.variable_scope("reconstruction_quality"):
+        with tf.compat.v1.variable_scope("performance_metrics") as scope:
+          with tf.compat.v1.variable_scope("reconstruction_quality"):
             self.MSE = tf.reduce_mean(tf.square(tf.subtract(input_node,
               self.module.reconstruction)), axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(input_node, axes=[1])[1]
-            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), self.MSE)),
+            self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.divide(tf.square(pixel_var), self.MSE)),
               name="recon_quality")
 
   def compute_recon_from_placeholder(self):
     return self.decoder_recon
 
   def compute_recon_from_encoding(self, a_in):
-    with tf.variable_scope(self.module.variable_scope):
+    with tf.compat.v1.variable_scope(self.module.variable_scope):
       recon = self.module.build_decoder(a_in, self.act_funcs[self.module.num_encoder_layers:])[0][-1]
     return recon
 
@@ -127,7 +127,7 @@ class AeModel(Model):
       grad_name = weight_grad_var[0][1].name.split('/')[-1].split(':')[0] #2nd is np.split
       grad_name_list.append(grad_name)
 
-    out_vals =  tf.get_default_session().run(eval_list, feed_dict)
+    out_vals =  tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, decay_loss, total_loss, a_vals, recon, mse = out_vals[0:7]
     mse_mean = np.mean(mse)
     input_mean = np.mean(input_data)
@@ -168,7 +168,7 @@ class AeModel(Model):
       names.append(var_name)
       tf_vars.append(var)
 
-    np_vars = tf.get_default_session().run(tf_vars, feed_dict)
+    np_vars = tf.compat.v1.get_default_session().run(tf_vars, feed_dict)
     for var_name, np_v in zip(names, np_vars):
       v_max = np.max(np_v)
       v_min = np.min(np_v)
@@ -195,7 +195,7 @@ class AeModel(Model):
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.module.w_list[0], self.module.w_list[-1],
       self.module.b_list, self.module.u_list[1:]]
-    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     w_enc, w_dec, b_list, activations = eval_out[1:]
     recon = activations[-1]

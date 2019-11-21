@@ -25,12 +25,12 @@ class MlpModel(Model):
 
   def build_adv_module(self, input_node):
     #Placeholders for using adv or clean examples
-    with tf.variable_scope("placeholders") as scope:
+    with tf.compat.v1.variable_scope("placeholders") as scope:
       #This is a swith used internally to use clean or adv examples
-      self.use_adv_input = tf.placeholder(tf.bool, shape=(), name="use_adv_input")
-    with tf.variable_scope("auto_placeholders") as scope:
+      self.use_adv_input = tf.compat.v1.placeholder(tf.bool, shape=(), name="use_adv_input")
+    with tf.compat.v1.variable_scope("auto_placeholders") as scope:
       #This is a schedule flag to determine if we're training on adv examples
-      self.train_on_adversarial = tf.placeholder(tf.bool, shape=(), name="train_on_adversarial")
+      self.train_on_adversarial = tf.compat.v1.placeholder(tf.bool, shape=(), name="train_on_adversarial")
     self.adv_module = ClassAdversarialModule(input_node, self.use_adv_input,
       self.params.num_classes, self.params.adversarial_num_steps, self.params.adversarial_step_size,
       max_step=self.params.adversarial_max_change,
@@ -73,20 +73,20 @@ class MlpModel(Model):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("label_placeholders") as scope:
-          self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
-        with tf.variable_scope("placeholders") as scope:
-          self.dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+        with tf.compat.v1.variable_scope("label_placeholders") as scope:
+          self.label_placeholder = tf.compat.v1.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
+        with tf.compat.v1.variable_scope("placeholders") as scope:
+          self.dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],
             name="dropout_keep_probs")
         self.mlp_module = self.build_mlp_module(input_node)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
         #TODO analysis depends on this name for label ests. Can we abstract this?
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
-        with tf.variable_scope("performance_metrics") as scope:
-          with tf.variable_scope("prediction_bools"):
+        with tf.compat.v1.variable_scope("performance_metrics") as scope:
+          with tf.compat.v1.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.variable_scope("accuracy"):
+          with tf.compat.v1.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
@@ -106,7 +106,7 @@ class MlpModel(Model):
 
   #def modify_input(self, feed_dict):
   def modify_input(self, feed_dict, train_on_adversarial):
-    sess = tf.get_default_session()
+    sess = tf.compat.v1.get_default_session()
     if train_on_adversarial:
       #TODO add in rand_state and target_generation_method here
       #Generate adversarial examples to store within internal variable
@@ -141,7 +141,7 @@ class MlpModel(Model):
     """
     update_dict = super(MlpModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    sess = tf.get_default_session()
+    sess = tf.compat.v1.get_default_session()
     train_on_adversarial = feed_dict[self.train_on_adversarial]
     if(train_on_adversarial):
       adv_feed_dict = feed_dict.copy()
@@ -182,8 +182,8 @@ class MlpModel(Model):
       grad_name_list.append(grad_name)
       learning_rate_list.append(self.learning_rates[self.sched_idx][w_idx])
     stat_dict = {}
-    out_vals =  tf.get_default_session().run(eval_list, feed_dict)
-    out_lr = tf.get_default_session().run(learning_rate_list, feed_dict)
+    out_vals =  tf.compat.v1.get_default_session().run(eval_list, feed_dict)
+    out_lr = tf.compat.v1.get_default_session().run(learning_rate_list, feed_dict)
     for grad, name, lr in zip(out_vals, grad_name_list, out_lr):
       grad_max = np.array(grad.max())
       grad_min = np.array(grad.min())
@@ -204,7 +204,7 @@ class MlpModel(Model):
     train_on_adversarial = feed_dict[self.train_on_adversarial]
     if(train_on_adversarial):
       eval_list += [self.adv_module.get_adv_input()]
-    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     activity = eval_out[1]

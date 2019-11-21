@@ -6,21 +6,21 @@ class BatchNormalizationModule(object):
   Implements batch normalization
   Inputs:
     a_in [tensor] feature map (or vector) for layer
-    norm_decay_mult [tf.placeholder] decay multiplier
+    norm_decay_mult [tf.compat.v1.placeholder] decay multiplier
     reduc_axes [list of ints] what axes to reduce over; default is for fc layer,
       [0,1,2] should be used for a conv layer
   """
   def __init__(self, a_in, norm_decay_mult, eps, reduc_axes, variable_scope="batch_norm"):
     self.trainable_variables = TrainableVariableDict()
 
-    with tf.variable_scope(variable_scope) as scope:
+    with tf.compat.v1.variable_scope(variable_scope) as scope:
       bn_scale_name = "scale_var"
-      batch_norm_scale = tf.get_variable(name=bn_scale_name,
+      batch_norm_scale = tf.compat.v1.get_variable(name=bn_scale_name,
         dtype=tf.float32, initializer=tf.constant(1.0))
       self.trainable_variables[batch_norm_scale.name] = batch_norm_scale
 
       bn_shift_name = "shift_var"
-      batch_norm_shift = tf.get_variable(name=bn_shift_name,
+      batch_norm_shift = tf.compat.v1.get_variable(name=bn_shift_name,
         dtype=tf.float32, initializer=tf.constant(0.0))
       self.trainable_variables[batch_norm_shift.name] = batch_norm_shift
 

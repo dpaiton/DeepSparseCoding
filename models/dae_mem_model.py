@@ -31,19 +31,19 @@ class DaeMemModel(DaeModel):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("auto_placeholders") as scope:
-          self.ent_mult = tf.placeholder(tf.float32, shape=(), name="entropy_mult")
+        with tf.compat.v1.variable_scope("auto_placeholders") as scope:
+          self.ent_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="entropy_mult")
 
         # this is where you construct mem noise using self.num_latent#
-        with tf.variable_scope("placeholders") as scope:
-          self.memristor_std_eps = tf.placeholder(tf.float32, shape=[None, None],
+        with tf.compat.v1.variable_scope("placeholders") as scope:
+          self.memristor_std_eps = tf.compat.v1.placeholder(tf.float32, shape=[None, None],
             name="memristor_std_eps")
         # REMEMBER!!!: If using memristor_type = 'rram', std_eps will be the width of the uniform noise, not gauss mult
     super(DaeModel, self).build_graph_from_input(input_node)
 
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("probability_estimate") as scope:
+        with tf.compat.v1.variable_scope("probability_estimate") as scope:
           self.mle_update = self.module.mle_update
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):

@@ -29,14 +29,14 @@ class DaeModel(AeModel):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.name_scope("auto_placeholders") as scope:
-          self.ent_mult = tf.placeholder(tf.float32, shape=(), name="entropy_mult")
-          self.noise_var_mult = tf.placeholder(tf.float32, shape=(), name="noise_variance_mult")
+          self.ent_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="entropy_mult")
+          self.noise_var_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="noise_variance_mult")
 
     super(DaeModel, self).build_graph_from_input(input_node)
 
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("probability_estimate") as scope:
+        with tf.compat.v1.variable_scope("probability_estimate") as scope:
           self.mle_update = self.module.mle_update
 
   def get_encodings(self):
@@ -55,7 +55,7 @@ class DaeModel(AeModel):
     update_dict = super(DaeModel, self).generate_update_dict(input_data, input_labels, batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.module.loss_dict["entropy_loss"], self.module.loss_dict["ramp_loss"]]
-    eval_out =  tf.get_default_session().run(eval_list, feed_dict)
+    eval_out =  tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     stat_dict = {"entropy_loss": eval_out[0],
       "ramp_loss": eval_out[1]}
     update_dict.update(stat_dict)

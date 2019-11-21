@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 def construct_thetas(num_latent, num_tri):
-    theta_init = tf.truncated_normal((num_latent, num_tri), mean=1.0, stddev=0.01,
+    theta_init = tf.random.truncated_normal((num_latent, num_tri), mean=1.0, stddev=0.01,
       dtype=tf.float32, name="theta_init")
     return (tf.Variable(initial_value=theta_init, name="thetas"), theta_init)
 
@@ -55,9 +55,9 @@ def prob_est(latent_vals, thetas, tri_locs):
 def safe_log(probs, eps=1e-9, units="nats"):
   if units == "nats":
     logprob = tf.where(tf.less_equal(probs, tf.zeros_like(probs)+eps, name="prob_le_zero"),
-      tf.zeros_like(probs), tf.log(probs, name="log_prob"), name="safelog_where")
+      tf.zeros_like(probs), tf.math.log(probs, name="log_prob"), name="safelog_where")
   elif units == "bits":
-    tf_log_2 = tf.divide(tf.log(probs), tf.log(tf.constant(2.0)), name="log_2")
+    tf_log_2 = tf.divide(tf.math.log(probs), tf.math.log(tf.constant(2.0)), name="log_2")
     logprob = tf.where(tf.less_equal(probs, tf.zeros_like(probs)+eps, name="prob_le_zero"),
       tf.zeros_like(probs), tf_log_2, name="safelog_where")
   else:

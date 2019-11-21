@@ -27,7 +27,7 @@ class ReshapeDataTest(tf.test.TestCase):
     flatten_list = [None, True, False]
     gpu_args = [True, False] if tf.test.is_gpu_available(cuda_only=True) else [False]
     for use_gpu in gpu_args:
-      with self.test_session(use_gpu=use_gpu):
+      with self.session(use_gpu=use_gpu):
         for num_examples in num_examples_list:
           orig_num_examples = num_examples
           for num_rows, num_cols in zip(num_rows_list, num_cols_list): #assumed to be square

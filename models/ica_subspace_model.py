@@ -45,20 +45,20 @@ class IcaSubspaceModel(Model):
     def build_graph_from_input(self, input_node):
       with tf.device(self.params.device):
         with self.graph.as_default():
-          with tf.variable_scope("weights") as scope:
+          with tf.compat.v1.variable_scope("weights") as scope:
             Q = self.init_weight("gaussian")
-            self.w_analy = tf.get_variable(name="w_analy",
+            self.w_analy = tf.compat.v1.get_variable(name="w_analy",
               dtype=tf.float32,
               initializer=Q.astype(np.float32),
               trainable=True)
             self.w_synth = tf.transpose(self.w_analy, name="w_synth")
             self.trainable_variables[self.w_analy.name] = self.w_analy
-          with tf.variable_scope("inference") as scope:
+          with tf.compat.v1.variable_scope("inference") as scope:
               self.s = tf.matmul(input_node, tf.transpose(self.w_analy), name="latent_vars")
-          with tf.variable_scope("output") as scope:
+          with tf.compat.v1.variable_scope("output") as scope:
               self.recon = tf.matmul(self.s, self.w_analy, name="recon")
-          with tf.variable_scope("orthonormalize") as scope:
-              self.orthonorm_weights = tf.assign(self.w_analy, self.orthonorm_weights(self.w_analy))
+          with tf.compat.v1.variable_scope("orthonormalize") as scope:
+              self.orthonorm_weights = tf.compat.v1.assign(self.w_analy, self.orthonorm_weights(self.w_analy))
       self.graph_built = True
 
     def get_encodings(self):
@@ -85,7 +85,7 @@ class IcaSubspaceModel(Model):
       s, u, v = tf.linalg.svd(m)
       new_s = tf.linalg.diag(tf.pow(s, -0.5))
       rot = tf.matmul(tf.matmul(u, new_s), v, adjoint_b=True)
-      return tf.matmul(tf.real(rot), w)
+      return tf.matmul(tf.math.real(rot), w)
 
     def compute_weight_gradients(self, optimizer, weight_op=None):
       W = weight_op
@@ -114,7 +114,7 @@ class IcaSubspaceModel(Model):
       update_dict = super(IcaSubspaceModel, self).generate_update_dict(input_data, input_labels, batch_step)
       feed_dict = self.get_feed_dict(input_data, input_labels)
       eval_list  = [self.global_step, self.s, self.recon, self.w_analy, self.w_grad]
-      out_vals = tf.get_default_session().run(eval_list, feed_dict)
+      out_vals = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
       stat_dict = {
         "global_step": out_vals[0],
         "latent_vars": out_vals[1],
@@ -130,7 +130,7 @@ class IcaSubspaceModel(Model):
       ## ADD FUCNITONS
       feed_dict = self.get_feed_dict(input_data, input_labels)
       eval_list = [self.global_step, self.w_synth, self.w_analy, self.s, self.w_grad]
-      eval_out = tf.get_default_session().run(eval_list, feed_dict)
+      eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
       # step
       curr_step = str(eval_out[0])
       w_shape = [self.params.num_neurons, self.params.patch_edge_size, self.params.patch_edge_size, 1]

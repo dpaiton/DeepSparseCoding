@@ -36,9 +36,9 @@ def build_multilayer_network(x, n_, f='tanh'):
         f = tf.nn.relu
     # FIXME Pass parameters
     n_layers = len(n_) - 1
-    W_ = [tf.get_variable(name='W{}'.format(i),
+    W_ = [tf.compat.v1.get_variable(name='W{}'.format(i),
                           shape=(n_[i], n_[i+1])) for i in range(n_layers)]
-    b_ = [tf.get_variable(name='b{}'.format(i),
+    b_ = [tf.compat.v1.get_variable(name='b{}'.format(i),
                           shape=(n_[i+1],)) for i in range(n_layers)]
     in_ = x
     for W, b in zip(W_, b_):
@@ -105,9 +105,8 @@ def memristor_output(v, eps, vs, mus, sigs, interp_width, error_rate=0.0):
         #indices  = tf.boolean_mask(tf.shuffle(tf.range(tf.size(mean))), mask)
         #indices = np.random.permutation(mean.size)[:num_corrupt]
         #mean[np.unravel_index(indeces,mean.shape)] = 1.1*np.amin(mean)
-    # NOTE: dropout takes rate term in 1.13, not keep_probs
-    #mean_drop = tf.nn.dropout(mean, rate=error_rate)
-    mean_drop = tf.nn.dropout(mean, keep_prob=1-error_rate)
+    mean_drop = tf.nn.dropout(mean, rate=error_rate)
+    #mean_drop = tf.nn.dropout(mean, keep_prob=1-error_rate)
     drop_val = tf.multiply(1.1, tf.reduce_min(mean))
     drop_val_tensor = tf.multiply(drop_val, tf.ones_like(mean))
     mean = tf.where(tf.equal(mean_drop, tf.constant(0.0)), drop_val_tensor, mean)

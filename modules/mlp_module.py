@@ -130,14 +130,14 @@ class MlpModule(object):
     self.build_graph()
 
   def conv_layer_maker(self, layer_id, a_in, w_shape, strides, b_shape, act_func):
-    with tf.variable_scope("layer"+str(layer_id)) as scope:
+    with tf.compat.v1.variable_scope("layer"+str(layer_id)) as scope:
       w_name = "conv_w_"+str(layer_id)
-      w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
       self.trainable_variables[w.name] = w
 
       b_name = "conv_b_"+str(layer_id)
-      b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
+      b = tf.compat.v1.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
 
@@ -148,8 +148,8 @@ class MlpModule(object):
           reduc_axes=[0,1,2], variable_scope="batch_norm_"+str(layer_id))
         conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
-      #conv_out = tf.nn.dropout(conv_out, rate=1-self.dropout[layer_id])
-      conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
+      conv_out = tf.nn.dropout(conv_out, rate=1-self.dropout[layer_id])
+      #conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
 
       if self.lrn[layer_id] is not None:
         if self.lrn[layer_id] == "pre":
@@ -158,7 +158,7 @@ class MlpModule(object):
             beta=0.75, name='norm1')
 
       if self.max_pool[layer_id]:
-        conv_out = tf.nn.max_pool(conv_out, ksize=self.max_pool_ksize[layer_id],
+        conv_out = tf.compat.v1.nn.max_pool2d(conv_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
 
       if self.lrn[layer_id] is not None:
@@ -169,14 +169,14 @@ class MlpModule(object):
     return conv_out, w, b
 
   def fc_layer_maker(self, layer_id, a_in, w_shape, b_shape, act_func):
-    with tf.variable_scope("layer"+str(layer_id)) as scope:
+    with tf.compat.v1.variable_scope("layer"+str(layer_id)) as scope:
       w_name = "fc_w_"+str(layer_id)
-      w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
       self.trainable_variables[w.name] = w
 
       b_name = "fc_b_"+str(layer_id)
-      b = tf.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
+      b = tf.compat.v1.get_variable(name=b_name, shape=b_shape, dtype=tf.float32,
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
 
@@ -186,10 +186,10 @@ class MlpModule(object):
           variable_scope="batch_norm_"+str(layer_id))
         fc_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
-      #fc_out = tf.nn.dropout(fc_out, rate=1-self.dropout[layer_id])
-      fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
+      fc_out = tf.nn.dropout(fc_out, rate=1-self.dropout[layer_id])
+      #fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
       if self.max_pool[layer_id]:
-        fc_out = tf.nn.max_pool(fc_out, ksize=self.max_pool_ksize[layer_id],
+        fc_out = tf.compat.v1.nn.max_pool2d(fc_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
     return fc_out, w, b
 
@@ -209,8 +209,11 @@ class MlpModule(object):
     #act_funcs = [tf.nn.relu,]*(self.num_fc_layers-1) + [tf.identity]
     for fc_layer_id in range(self.num_fc_layers):
       layer_id = fc_layer_id + self.num_conv_layers
-      a_resh = tf.contrib.layers.flatten(act_list[layer_id])
-      w_shape = [a_resh.get_shape()[1].value, self.fc_output_channels[fc_layer_id]]
+      #DEPRECATE a_resh = tf.compat.v1.layers.flatten(act_list[layer_id])
+      #DEPRECATE w_shape = [a_resh.get_shape()[1].value, self.fc_output_channels[fc_layer_id]]
+      layer_shape = act_list[layer_id].get_shape().as_list()[1:]
+      a_resh = tf.reshape(act_list[layer_id], [tf.shape(act_list[layer_id])[0], -1]) # flatten
+      w_shape = [np.prod(layer_shape), self.fc_output_channels[fc_layer_id]]
       a_out, w, b = self.fc_layer_maker(layer_id, a_resh, w_shape, self.output_channels[layer_id],
         self.act_funcs[layer_id])
       act_list.append(a_out)
@@ -219,13 +222,13 @@ class MlpModule(object):
     return act_list, w_list, b_list
 
   def compute_weight_decay_loss(self):
-    with tf.variable_scope("w_decay"):
+    with tf.compat.v1.variable_scope("w_decay"):
       w_decay_list = [tf.reduce_sum(tf.square(w)) for w in self.weight_list]
       decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n(w_decay_list))
     return decay_loss
 
   def compute_weight_norm_loss(self):
-    with tf.variable_scope("w_norm"):
+    with tf.compat.v1.variable_scope("w_norm"):
       w_norm_list = []
       for w in self.weight_list:
         reduc_axis = np.arange(1, len(w.get_shape().as_list()))
@@ -238,20 +241,20 @@ class MlpModule(object):
     """
     Build an MLP TensorFlow Graph.
     """
-    with tf.variable_scope(self.variable_scope) as scope:
-      with tf.variable_scope("weight_inits") as scope:
-        self.w_init = tf.truncated_normal_initializer(stddev=0.01, dtype=tf.float32)
-        self.b_init = tf.initializers.constant(0.1, dtype=tf.float32)
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
+      with tf.compat.v1.variable_scope("weight_inits") as scope:
+        self.w_init = tf.truncated_normal_initializer(stddev=0.01)
+        self.b_init = tf.initializers.constant(0.1)
 
       self.layer_list, self.weight_list, self.bias_list = self.make_layers()
 
-      with tf.variable_scope("output") as scope:
-        with tf.variable_scope("label_estimate"):
+      with tf.compat.v1.variable_scope("output") as scope:
+        with tf.compat.v1.variable_scope("label_estimate"):
           self.label_est = tf.nn.softmax(self.layer_list[-1])
 
-      with tf.variable_scope("loss") as scope:
-        with tf.variable_scope("supervised"):
-          with tf.variable_scope(self.loss_type):
+      with tf.compat.v1.variable_scope("loss") as scope:
+        with tf.compat.v1.variable_scope("supervised"):
+          with tf.compat.v1.variable_scope(self.loss_type):
             if(self.loss_type == "softmax_cross_entropy"):
               ## For semi-supervised learning, loss is 0 if there is no label
               self.label_mult = tf.reduce_sum(self.label_tensor, axis=[1]) # vector with len [batch]
@@ -262,7 +265,7 @@ class MlpModule(object):
                 logits=self.layer_list[-1]))
 
               #self.cross_entropy_loss = (self.label_mult
-              #  * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.log(tf.clip_by_value(
+              #  * -tf.reduce_sum(tf.multiply(self.label_tensor, tf.math.log(tf.clip_by_value(
               #  self.label_est, self.eps, 1.0))), axis=[1])) # vector with len [batch]
               self.sum_loss = self.cross_entropy_loss
               #Doing this to avoid divide by zero

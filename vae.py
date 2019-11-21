@@ -197,7 +197,7 @@ vae_params.data_shape = list(data["train"].shape[1:])
 
 vae_model.setup(vae_params)
 
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
 with tf.Session(config=config, graph=vae_model.graph) as sess:
   sess.run(vae_model.init_op)

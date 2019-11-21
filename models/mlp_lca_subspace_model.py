@@ -22,8 +22,8 @@ class MlpLcaSubspaceModel(MlpLcaModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("auto_placeholders") as scope:
-          self.group_orth_mult = tf.placeholder(tf.float32, shape=(), name="group_orth_mult")
+        with tf.compat.v1.variable_scope("auto_placeholders") as scope:
+          self.group_orth_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="group_orth_mult")
     super(MlpLcaSubspaceModel, self).build_graph_from_input(input_node)
 
   def get_encodings(self):
@@ -43,6 +43,6 @@ class MlpLcaSubspaceModel(MlpLcaModel):
       batch_step)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.lca_module.loss_dict["orthogonalization_loss"]]
-    out_vals =  tf.get_default_session().run(eval_list, feed_dict)[0]
+    out_vals =  tf.compat.v1.get_default_session().run(eval_list, feed_dict)[0]
     update_dict.update({"lca_orthogonalization_loss":out_vals,})
     return update_dict

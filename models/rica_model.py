@@ -27,16 +27,16 @@ class RicaModel(Model):
     return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")
 
   def compute_recon_loss(self, a_in):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       recon_loss = tf.multiply(self.recon_mult,
         tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon_from_encoding(a_in),
         self.input_placeholder)), axis=[1])), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       sparse_loss = tf.multiply(self.sparse_mult,
-        tf.reduce_mean(tf.reduce_sum(tf.log(tf.cosh(a_in)), axis=[1])), name="sparse_loss")
+        tf.reduce_mean(tf.reduce_sum(tf.math.log(tf.cosh(a_in)), axis=[1])), name="sparse_loss")
     return sparse_loss
 
   def compute_total_loss(self, a_in, loss_funcs):
@@ -57,38 +57,38 @@ class RicaModel(Model):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("auto_placeholders") as scope:
-          self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult") # lambda
-          self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
+        with tf.compat.v1.variable_scope("auto_placeholders") as scope:
+          self.recon_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="recon_mult") # lambda
+          self.sparse_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-        with tf.variable_scope("weights") as scope:
-          w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0, stddev=1.0,
-            dtype=tf.float32), axis=[0], name="w_init")
-          w_unnormalized = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
+        with tf.compat.v1.variable_scope("weights") as scope:
+          w_init = tf.nn.l2_normalize(tf.random.truncated_normal(self.w_shape, mean=0.0, stddev=1.0),
+            axis=[0], name="w_init")
+          w_unnormalized = tf.compat.v1.get_variable(name="w", dtype=tf.float32, initializer=w_init,
             trainable=True)
           self.trainable_variables[w_unnormalized.name] = w_unnormalized
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0],
             keepdims=True), self.params.eps))
           self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
 
-        with tf.variable_scope("inference") as scope:
+        with tf.compat.v1.variable_scope("inference") as scope:
           self.a = tf.matmul(input_node, self.w, name="activity")
 
-        with tf.variable_scope("output") as scope:
+        with tf.compat.v1.variable_scope("output") as scope:
           self.reconstruction = self.compute_recon_from_encoding(self.a)
 
-        with tf.variable_scope("loss") as scope:
+        with tf.compat.v1.variable_scope("loss") as scope:
           loss_funcs = self.get_loss_funcs()
           self.loss_dict = dict(zip(
             [key for key in loss_funcs.keys()], [func(self.a) for func in loss_funcs.values()]))
           self.total_loss = self.compute_total_loss(self.a, loss_funcs)
 
-        with tf.variable_scope("performance_metrics") as scope:
-          with tf.variable_scope("reconstruction_quality"):
+        with tf.compat.v1.variable_scope("performance_metrics") as scope:
+          with tf.compat.v1.variable_scope("reconstruction_quality"):
             MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(input_node, axes=[1])[1]
-            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
+            self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
 
@@ -123,7 +123,7 @@ class RicaModel(Model):
         eval_list.append(weight_grad_var[0][0]) # [grad(0) or var(1)][value(0) or name[1]]
         grad_name = weight_grad_var[0][1].name.split('/')[1].split(':')[0] #2nd is np.split
         grad_name_list.append(grad_name)
-    out_vals =  tf.get_default_session().run(eval_list, feed_dict)
+    out_vals =  tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step, recon_loss, sparse_loss, total_loss, a_vals, recon = out_vals[0:6]
     input_mean = np.mean(input_data)
     input_max = np.max(input_data)
@@ -165,7 +165,7 @@ class RicaModel(Model):
     super(RicaModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
     eval_list = [self.global_step, self.w, self.reconstruction,  self.a]
-    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, activity = eval_out[1:]

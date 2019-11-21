@@ -55,7 +55,7 @@ class LcaModule(object):
     return lca_threshold(u_in, self.thresh_type, self.rectify_a, self.sparse_mult, name)
 
   def step_inference(self, u_in, a_in, b, g, step):
-    with tf.variable_scope("update_u"+str(step)) as scope:
+    with tf.compat.v1.variable_scope("update_u"+str(step)) as scope:
       lca_explain_away = tf.matmul(a_in, g, name="explaining_away")
       du = tf.subtract(tf.subtract(b, lca_explain_away), u_in, name="du")
       u_out = tf.add(u_in, tf.multiply(self.step_size, du))
@@ -76,7 +76,7 @@ class LcaModule(object):
     return tf.matmul(input_tensor, tf.transpose(self.w), name=name)
 
   def compute_recon_loss(self, recon):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(recon.shape))) # Want to avg over batch, sum over the rest
       recon_loss = tf.reduce_mean(0.5 *
         tf.reduce_sum(tf.square(tf.subtract(self.data_tensor, recon)),
@@ -84,43 +84,43 @@ class LcaModule(object):
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
       sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(tf.abs(a_in),
         axis=reduc_dim), name="sparse_loss")
     return sparse_loss
 
   def build_graph(self):
-    with tf.variable_scope(self.variable_scope) as scope:
-      with tf.variable_scope("constants") as scope:
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
+      with tf.compat.v1.variable_scope("constants") as scope:
         u_full_shape = tf.stack([tf.shape(self.data_tensor)[0]]+self.u_shape)
         self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
-        #self.u_noise = tf.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
+        #self.u_noise = tf.random.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
         #  dtype=tf.float32, name="u_noise")
 
       w_norm_dim = list(range(len(self.w_shape)-1)) # normalize across input dim(s)
-      with tf.variable_scope("weights") as scope:
-        self.weight_scope = tf.get_variable_scope()
-        w_init = tf.nn.l2_normalize(tf.truncated_normal(self.w_shape, mean=0.0,
+      with tf.compat.v1.variable_scope("weights") as scope:
+        self.weight_scope = tf.compat.v1.get_variable_scope()
+        w_init = tf.nn.l2_normalize(tf.random.truncated_normal(self.w_shape, mean=0.0,
           stddev=0.5, dtype=tf.float32), axis=w_norm_dim, epsilon=self.eps, name="w_init")
-        self.w = tf.get_variable(name="w", dtype=tf.float32, initializer=w_init,
+        self.w = tf.compat.v1.get_variable(name="w", dtype=tf.float32, initializer=w_init,
           trainable=True)
         self.trainable_variables[self.w.name] = self.w
 
-      with tf.variable_scope("norm_weights") as scope:
+      with tf.compat.v1.variable_scope("norm_weights") as scope:
         self.norm_w = self.w.assign(tf.nn.l2_normalize(self.w, axis=w_norm_dim,
           epsilon=self.eps, name="row_l2_norm"))
 
-      with tf.variable_scope("inference") as scope:
-        self.inference_scope = tf.get_variable_scope()
+      with tf.compat.v1.variable_scope("inference") as scope:
+        self.inference_scope = tf.compat.v1.get_variable_scope()
         u_list, a_list = self.infer_coefficients()
         self.u = tf.identity(u_list[-1], name="u")
         self.a = tf.identity(a_list[-1], name="activity")
 
-      with tf.variable_scope("output") as scope:
+      with tf.compat.v1.variable_scope("output") as scope:
         self.reconstruction = self.build_decoder(self.a, name="reconstruction")
 
-      with tf.variable_scope("loss") as scope:
+      with tf.compat.v1.variable_scope("loss") as scope:
         self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
           "sparse_loss":self.compute_sparse_loss(self.a)}
         self.total_loss = tf.add_n([val for val in self.loss_dict.values()], name="total_loss")
