@@ -172,12 +172,26 @@ class AeModule(object):
         b_shape = w_shape[-1]
       b = tf.compat.v1.get_variable(name=b_name, shape=b_shape,
         dtype=tf.float32, initializer=self.b_init, trainable=True)
-
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       output_tensor = activation_function(pre_act)
       output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
       #output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, w, b
+
+  def flatten_feature_map(self, feature_map):
+    """
+    Flatten input tensor from [batch, y, x, f] to [batch, y*x*f]
+    """
+    map_shape = feature_map.get_shape().as_list()
+    if(len(map_shape) == 4):
+      (batch, y, x, f) = map_shape
+      prev_input_features = y * x * f
+      resh_map  = tf.reshape(feature_map, [-1, prev_input_features])
+    elif(len(map_shape) == 2):
+      resh_map = feature_map
+    else:
+      assert False, ("Input feature_map has incorrect ndim")
+    return resh_map
 
   def build_encoder(self, input_tensor, activation_functions):
     enc_u_list = [input_tensor]
@@ -198,21 +212,11 @@ class AeModule(object):
     # Make fc layers second
     for fc_layer_id in range(self.num_fc_layers):
       layer_id = fc_layer_id + self.num_conv_layers
-
-      if fc_layer_id == 0:
-        # Input needs to be reshaped to [batch, num_units] for FC layers
-        enc_shape = enc_u_list[-1].get_shape().as_list()
-        if len(enc_shape) == 4:
-          (batch, y, x, f) = enc_shape
-          prev_input_features = y * x * f # Flatten input (input_tensor or last conv layer)
-          in_tensor  = tf.reshape(enc_u_list[-1], [-1, prev_input_features])
-        elif(len(enc_shape) == 2):
-          in_tensor = enc_u_list[-1]
-        else:
-          assert False, ("Final conv encoder output or input_tensor has incorrect ndim")
+      if fc_layer_id == 0: # Input needs to be reshaped to [batch, num_units] for FC layers
+        in_tensor = self.flatten_feature_map(enc_u_list[-1])
+        prev_input_features = in_tensor.get_shape().as_list()[1]
       else:
         in_tensor = enc_u_list[layer_id]
-
       w_shape = [int(prev_input_features), int(self.output_channels[layer_id])]
       u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[layer_id],
         w_shape, conv=False, decode=False)

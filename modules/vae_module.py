@@ -126,10 +126,6 @@ class VaeModule(AeModule):
         shape=w_shape, dtype=tf.float32,
         initializer=self.w_xavier_init, trainable=True)
         #initializer=self.w_init, trainable=True)
-      #if self.layer_types[-1] == "conv":
-      #  b_shape = w_shape[-2]
-      #else:
-      #  b_shape = w_shape[-1]
       self.b_enc_std = tf.compat.v1.get_variable(name="b_enc_"+str(self.num_encoder_layers)+"_std",
         shape=b_shape, dtype=tf.float32, initializer=self.b_init, trainable=True)
       self.trainable_variables[self.w_enc_std.name] = self.w_enc_std
@@ -144,8 +140,8 @@ class VaeModule(AeModule):
       else:
         #self.latent_logvar = 1e-8 + tf.nn.softplus(tf.matmul(self.u_list[-1],
         #  self.w_enc_std) + self.b_enc_std) # std must be positive
-        self.latent_logvar = tf.add(tf.matmul(self.u_list[-1], self.w_enc_std),
-          self.b_enc_std)
+        flat_u = self.flatten_feature_map(self.u_list[-1])
+        self.latent_logvar = tf.add(tf.matmul(flat_u, self.w_enc_std), self.b_enc_std)
 
       noise = self.gen_noise(noise_type="standard_normal", shape=tf.shape(self.latent_logvar))
       self.act = tf.identity(self.reparameterize(self.latent_mean,

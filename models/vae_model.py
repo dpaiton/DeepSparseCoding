@@ -113,7 +113,7 @@ class VaeModel(AeModel):
       save_filename=(self.params.disp_dir+"generated_images"
       +"_v"+self.params.version+"_"+str(current_step).zfill(5)+".png"))
 
-    if self.params.layer_types[-1] == "fc":
+    if self.params.ae_layer_types[-1] == "fc":
       # display a 30x30 2D manifold of digits
       n = 30
       digit_size = int(np.sqrt(self.params.num_pixels))
@@ -148,7 +148,7 @@ class VaeModel(AeModel):
       fig.savefig(self.params.disp_dir+"generated_latent_interpolation"+filename_suffix)
       plt.close(fig)
 
-    if input_labels is not None and self.params.layer_types[-1] == "fc":
+    if input_labels is not None and self.params.ae_layer_types[-1] == "fc":
       z_mean = tf.compat.v1.get_default_session().run(self.get_encodings(), feed_dict)
       fig, ax = plt.subplots(1, figsize=(12, 10))
       sc = ax.scatter(z_mean[:, 0], z_mean[:, 1], c=dp.one_hot_to_dense(input_labels))

@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "ae"
-    self.model_name = "ae_768"
+    self.model_name = "ae_deep"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -65,8 +65,6 @@ class params(BaseParams):
       self.batch_size = 100
       self.ae_output_channels = [768, 256, 256, 128, 64]#[768]
       self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
-      self.optimizer = "annealed_sgd"
-      self.batch_size = 100
       self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
       self.ae_dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
       self.log_int = 100
