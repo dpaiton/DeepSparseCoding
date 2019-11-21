@@ -978,9 +978,6 @@ class Analyzer(object):
     return neuron_angles, plot_matrix
 
   def bf_projections(self, bf0, bf1):
-    """
-    TODO: Deprecate this and use dp.bf_projections
-    """
     return dp.bf_projections(bf0, bf1)
 
   def neuron_visualization_analysis(self, save_info=""):
