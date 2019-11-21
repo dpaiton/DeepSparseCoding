@@ -40,12 +40,12 @@ class NeuronVisualizationModule(object):
     self.build_init_graph()
 
   def build_init_graph(self):
-    with tf.variable_scope(self.variable_scope) as scope:
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       # These placeholders are here since they're only needed for construct adv examples
-      with tf.variable_scope("placeholders") as scope:
-        self.selection_vector = tf.placeholder(tf.float32, shape=(None),
+      with tf.compat.v1.variable_scope("placeholders") as scope:
+        self.selection_vector = tf.compat.v1.placeholder(tf.float32, shape=(None),
           name="selection_vector")
-      with tf.variable_scope("input_var"):
+      with tf.compat.v1.variable_scope("input_var"):
         vis_init = tf.identity(self.data_tensor)
         self.vis_var = tf.Variable(vis_init, dtype=tf.float32, trainable=True,
           validate_shape=False, name="vis_var")
@@ -70,10 +70,10 @@ class NeuronVisualizationModule(object):
     Inputs:
       layer_activity: tf variable for neuron layer activations
     """
-    with tf.variable_scope(self.variable_scope) as scope:
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       self.layer_activity = layer_activity + tf.random.normal(tf.shape(layer_activity), mean=0.001,
         stddev=0.001)
-      with tf.variable_scope("loss") as scope:
+      with tf.compat.v1.variable_scope("loss") as scope:
         if(self.method == "erhan"):
           self.selected_activities = tf.matmul(self.layer_activity, self.selection_vector,
             name="selected_activities")
@@ -94,14 +94,14 @@ class NeuronVisualizationModule(object):
         else:
           assert False, ("method " + self.method +" not recognized.\n"+
             "Options are 'erhan'.")
-      with tf.variable_scope("optimizer") as scope:
+      with tf.compat.v1.variable_scope("optimizer") as scope:
         if(self.optimizer == "adam"):
           self.vis_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
           # code below ensures that adam variables are also reset when the reset op is run
           initializer_ops = [v.initializer for v in self.vis_opt.variables()]
           self.reset = tf.group(initializer_ops + [self.reset])
         elif(self.optimizer == "sgd"):
-          self.vis_opt = tf.train.GradientDescentOptimizer(learning_rate=self.step_size)
+          self.vis_opt = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=self.step_size)
         else:
           assert False, ("optimizer must be 'adam' or 'sgd', not '"+str(self.optimizer)+"'.")
         grads_and_vars = self.vis_opt.compute_gradients(self.vis_loss, var_list=[self.vis_var])
@@ -130,7 +130,7 @@ class NeuronVisualizationModule(object):
       save_int = self.num_steps + 1
     if(stim_save_int is None): # If stim_save_int is none, don't save at all
       stim_save_int = self.num_steps + 1
-    sess = tf.get_default_session()
+    sess = tf.compat.v1.get_default_session()
     sess.run(self.reset, feed_dict=feed_dict) # Reset input to orig image
     # Always store orig image
     eval_vect = [self.vis_image, self.selected_activities, self.vis_loss]

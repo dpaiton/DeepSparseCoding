@@ -40,18 +40,18 @@ class MlpVaeModel(MlpModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("auto_placeholders") as scope:
-          self.label_placeholder = tf.placeholder(tf.float32,
+        with tf.compat.v1.variable_scope("auto_placeholders") as scope:
+          self.label_placeholder = tf.compat.v1.placeholder(tf.float32,
             shape=self.label_shape, name="input_labels")
-          self.decay_mult = tf.placeholder(tf.float32, shape=(), name="decay_mult")
-          self.norm_mult = tf.placeholder(tf.float32, shape=(), name="norm_mult")
-          self.kld_mult = tf.placeholder(tf.float32, shape=(), name="kld_mult")
-          self.train_vae = tf.placeholder(tf.bool, shape=(), name="train_vae")
+          self.decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="decay_mult")
+          self.norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="norm_mult")
+          self.kld_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="kld_mult")
+          self.train_vae = tf.compat.v1.placeholder(tf.bool, shape=(), name="train_vae")
 
-        with tf.variable_scope("placeholders") as scope:
-          self.mlp_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+        with tf.compat.v1.variable_scope("placeholders") as scope:
+          self.mlp_dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],
             name="mlp_dropout_keep_probs")
-          self.ae_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+          self.ae_dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],
             name="ae_dropout_keep_probs")
 
         self.train_vae = tf.cast(self.train_vae, tf.float32)
@@ -74,24 +74,24 @@ class MlpVaeModel(MlpModel):
         self.mlp_module = self.build_mlp_module(mlp_input)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.variable_scope("loss") as scope:
+        with tf.compat.v1.variable_scope("loss") as scope:
           #Loss switches based on train_vae flag
           self.total_loss = self.train_vae * self.vae_module.total_loss + \
             (1-self.train_vae) * self.mlp_module.total_loss
 
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
-        with tf.variable_scope("performance_metrics") as scope:
+        with tf.compat.v1.variable_scope("performance_metrics") as scope:
           #VAE metrics
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.vae_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
-          with tf.variable_scope("prediction_bools"):
+          with tf.compat.v1.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.variable_scope("accuracy"):
+          with tf.compat.v1.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
@@ -127,7 +127,7 @@ class MlpVaeModel(MlpModel):
     eval_list = [self.vae_module.loss_dict["recon_loss"],
       self.vae_module.a, self.vae_module.reconstruction, self.pSNRdB]
 
-    out_vals =  tf.get_default_session().run(eval_list, feed_dict)
+    out_vals =  tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     recon_loss, vae_a_vals, recon, pSNRdB\
       = out_vals[0:4]
 
@@ -166,7 +166,7 @@ class MlpVaeModel(MlpModel):
 
     eval_list = [self.global_step, self.vae_module.w_list[0],
       self.vae_module.reconstruction, self.vae_module.a]
-    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, recon, vae_activity = eval_out[1:]

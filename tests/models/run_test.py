@@ -29,9 +29,9 @@ def testBasic(self):
   model.setup(params)
   model.write_saver_defs()
 
-  config = tf.ConfigProto()
+  config = tf.compat.v1.ConfigProto()
   config.gpu_options.allow_growth = True
-  with tf.Session(config=config, graph=model.graph) as sess:
+  with tf.compat.v1.Session(config=config, graph=model.graph) as sess:
     sess.run(model.init_op,
       feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
     sess.graph.finalize() # Graph is read-only after this statement

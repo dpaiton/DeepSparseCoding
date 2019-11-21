@@ -37,14 +37,14 @@ class ClassAdversarialModule(object):
     self.build_init_graph()
 
   def build_init_graph(self):
-    with tf.variable_scope(self.variable_scope) as scope:
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       #These placeholders are here since they're only needed for construct adv examples
-      with tf.variable_scope("placeholders") as scope:
-        self.adv_target = tf.placeholder(tf.float32, shape=[None, self.num_classes],
+      with tf.compat.v1.variable_scope("placeholders") as scope:
+        self.adv_target = tf.compat.v1.placeholder(tf.float32, shape=[None, self.num_classes],
           name="adversarial_target_data")
-        self.recon_mult = tf.placeholder(tf.float32, shape=(), name="recon_mult")
+        self.recon_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="recon_mult")
 
-      with tf.variable_scope("input_var"):
+      with tf.compat.v1.variable_scope("input_var"):
         #Adversarial pertubation
         self.adv_var = tf.Variable(tf.zeros_like(self.data_tensor),
           dtype=tf.float32, trainable=True, validate_shape=False, name="adv_var")
@@ -71,7 +71,7 @@ class ClassAdversarialModule(object):
           self.adv_image = tfc.upper_bound(tfc.lower_bound(
             self.adv_image, self.clip_range[0]), self.clip_range[1])
 
-      with tf.variable_scope("input_switch"):
+      with tf.compat.v1.variable_scope("input_switch"):
         self.adv_switch_input = tf.cond(self.use_adv_input,
           true_fn=lambda: self.adv_image, false_fn=lambda: self.data_tensor,
           strict=True)
@@ -80,12 +80,12 @@ class ClassAdversarialModule(object):
     return self.adv_switch_input
 
   def build_adversarial_ops(self, label_est, model_logits=None, label_gt=None):
-    with tf.variable_scope(self.variable_scope) as scope:
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       self.label_est = label_est
       self.model_logits = model_logits
       self.label_gt = label_gt
 
-      with tf.variable_scope("loss") as scope:
+      with tf.compat.v1.variable_scope("loss") as scope:
         if(self.attack_method == "kurakin_untargeted"):
           #self.adv_loss = tf.reduce_sum(-loss, name="sum_loss")
           label_classes = tf.argmax(self.label_gt, axis=-1)
@@ -93,7 +93,7 @@ class ClassAdversarialModule(object):
             labels=label_classes, logits=self.model_logits))
         elif(self.attack_method == "kurakin_targeted"):
           #self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
-          #  tf.log(self.label_est+1e-6)))
+          #  tf.math.log(self.label_est+1e-6)))
           label_classes = tf.argmax(self.adv_target, axis=-1)
           self.adv_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(
             labels=label_classes, logits=self.model_logits))
@@ -130,7 +130,7 @@ class ClassAdversarialModule(object):
           assert False, ("attack_method " + self.attack_method +" not recognized. "+
             "Options are \"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
 
-      with tf.variable_scope("optimizer") as scope:
+      with tf.compat.v1.variable_scope("optimizer") as scope:
         if(self.attack_method == "kurakin_untargeted" or self.attack_method == "kurakin_targeted"):
           self.adv_grad = -tf.sign(tf.gradients(self.adv_loss, self.adv_var)[0])
           self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
@@ -192,7 +192,7 @@ class ClassAdversarialModule(object):
       save_int = self.num_steps + 1
 
     #Reset input to orig image
-    sess = tf.get_default_session()
+    sess = tf.compat.v1.get_default_session()
     sess.run(self.reset, feed_dict=feed_dict)
     #Always store orig image
     [orig_img, output, loss] = sess.run([self.adv_image, self.label_est, self.adv_loss],

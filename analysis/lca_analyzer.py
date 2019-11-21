@@ -83,9 +83,9 @@ class LcaAnalyzer(Analyzer):
     num_neurons = self.model_params.num_neurons
     u = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32) # membrane potential
     a = np.zeros((int(num_imgs*steps_per_image), num_neurons), dtype=np.float32) # output activity
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       inference_idx = 1 # first step of inference is zeros
@@ -134,7 +134,7 @@ class LcaAnalyzer(Analyzer):
         self.u_list = [self.model.module.u_zeros]
         self.a_list = [self.model.module.threshold_units(self.u_list[0])]
         self.ga_list = [tf.matmul(self.a_list[0], self.lca_g)]
-        self.psnr_list = [tf.constant(0.0, dtype=tf.float32)]
+        self.psnr_list = [tf.constant(0.0)]#, dtype=tf.float32)]
         current_recon = self.model.compute_recon_from_encoding(self.a_list[0])
         current_loss_list = [
           [self.model.module.compute_recon_loss(current_recon)],
@@ -169,9 +169,9 @@ class LcaAnalyzer(Analyzer):
     psnr = np.zeros((num_imgs, num_steps), dtype=np.float32)
     sparse_mult = self.model.get_schedule(key="sparse_mult")
     losses = [{} for _ in range(num_imgs)]
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       sess.run(self.model.init_op, self.model.get_feed_dict(images[0, None, ...]))
       sess.graph.finalize() # Graph is read-only after this statement
       self.model.load_full_model(sess, self.analysis_params.cp_loc)

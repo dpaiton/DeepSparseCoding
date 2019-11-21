@@ -76,11 +76,11 @@ class AeModule(object):
     self.build_graph()
 
   def compute_weight_norm_loss(self):
-    #with tf.variable_scope("w_norm"):
+    #with tf.compat.v1.variable_scope("w_norm"):
     #  num_neurons = self.output_channels + self.output_channels[::-1]
     #  w_norm_list = [tf.square(num_neurons[w_idx] - tf.reduce_sum(tf.square(w)))
     #    for w_idx, w in enumerate(self.w_list)]
-    with tf.variable_scope("w_norm"):
+    with tf.compat.v1.variable_scope("w_norm"):
       num_neurons = self.output_channels
       w_norm_list = []
       for w in self.w_list:
@@ -91,13 +91,13 @@ class AeModule(object):
     return norm_loss
 
   def compute_weight_decay_loss(self):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       w_decay_list = [tf.reduce_sum(tf.square(w)) for w in self.w_list]
       decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n(w_decay_list))
     return decay_loss
 
   def compute_recon_loss(self, reconstruction):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(reconstruction.shape)))# We want to avg over batch
       recon_loss = 0.5 * tf.reduce_mean(
         tf.reduce_sum(tf.square(tf.subtract(reconstruction, self.data_tensor)),
@@ -105,7 +105,7 @@ class AeModule(object):
     return recon_loss
 
   def compute_total_loss(self):
-    with tf.variable_scope("loss") as scope:
+    with tf.compat.v1.variable_scope("loss") as scope:
       self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
         "weight_decay_loss":self.compute_weight_decay_loss(),
         "weight_norm_loss":self.compute_weight_norm_loss()}
@@ -143,7 +143,7 @@ class AeModule(object):
       num_layers: 10
       weight_id = num_layers - (layer_id + 1)
     """
-    with tf.variable_scope("layer"+str(layer_id), reuse=tf.AUTO_REUSE) as scope:
+    with tf.compat.v1.variable_scope("layer"+str(layer_id), reuse=tf.compat.v1.AUTO_REUSE) as scope:
       if self.tie_decoder_weights:
         w_read_id = self.num_layers - (layer_id+1)
       else:
@@ -152,17 +152,17 @@ class AeModule(object):
       name_prefix = "conv_" if conv else "fc_"
       w_name = name_prefix+"w_"+str(w_read_id)
       # TODO: params to switch init type
-      w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_normal_init, trainable=True)
 
-      #w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      #w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
       #  initializer=self.w_xavier_init, trainable=True)
 
       #if decode:
-      #  w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      #  w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
       #    initializer=self.w_normed_dec_init, trainable=True)
       #else:
-      #  w = tf.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+      #  w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
       #    initializer=self.w_normed_enc_init, trainable=True)
 
       b_name = name_prefix+"b_"+str(layer_id)
@@ -170,13 +170,13 @@ class AeModule(object):
         b_shape = w_shape[-2]
       else:
         b_shape = w_shape[-1]
-      b = tf.get_variable(name=b_name, shape=b_shape,
+      b = tf.compat.v1.get_variable(name=b_name, shape=b_shape,
         dtype=tf.float32, initializer=self.b_init, trainable=True)
 
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       output_tensor = activation_function(pre_act)
-      #output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
-      output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
+      output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
+      #output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, w, b
 
   def build_encoder(self, input_tensor, activation_functions):
@@ -270,15 +270,15 @@ class AeModule(object):
     return dec_u_list, dec_w_list, dec_b_list
 
   def build_graph(self):
-    with tf.variable_scope(self.variable_scope) as scope:
-      with tf.variable_scope("weight_inits") as scope:
-        self.w_normal_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.001, dtype=tf.float32)
-        self.w_xavier_init = tf.contrib.layers.xavier_initializer(uniform=False, dtype=tf.float32)
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
+      with tf.compat.v1.variable_scope("weight_inits") as scope:
+        self.w_normal_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.001)
+        self.w_xavier_init = tf.contrib.layers.xavier_initializer(uniform=False)
         self.w_normed_enc_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
           axis=0, epsilon=1e-12, dtype=tf.float32) #TODO: Fix axis to be general to conv layers
         self.w_normed_dec_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
           axis=-1, epsilon=1e-12, dtype=tf.float32)
-        self.b_init = tf.initializers.constant(1e-4, dtype=tf.float32)
+        self.b_init = tf.initializers.constant(1e-4)
       self.u_list = [self.data_tensor]
       self.w_list = []
       self.b_list = []
@@ -289,7 +289,7 @@ class AeModule(object):
       self.u_list += enc_u_list[1:] # build_encoder() will place self.u_list[0] as enc_u_list[0]
       self.w_list += enc_w_list
       self.b_list += enc_b_list
-      with tf.variable_scope("inference") as scope:
+      with tf.compat.v1.variable_scope("inference") as scope:
         self.a = tf.identity(enc_u_list[-1], name="activity")
       dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
         self.act_funcs[self.num_encoder_layers:])
@@ -297,7 +297,7 @@ class AeModule(object):
       if not self.tie_decoder_weights:
         self.w_list += dec_w_list
       self.b_list += dec_b_list
-      with tf.variable_scope("norm_weights") as scope:
+      with tf.compat.v1.variable_scope("norm_weights") as scope:
         w_enc_norm_dim = list(range(len(self.w_list[0].get_shape().as_list())-1))
         self.norm_enc_w = self.w_list[0].assign(tf.nn.l2_normalize(self.w_list[0],
           axis=w_enc_norm_dim, epsilon=1e-8, name="row_l2_norm"))
@@ -307,6 +307,6 @@ class AeModule(object):
       for w,b in zip(self.w_list, self.b_list):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
-      with tf.variable_scope("output") as scope:
+      with tf.compat.v1.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
       self.compute_total_loss()

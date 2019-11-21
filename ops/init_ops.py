@@ -38,7 +38,8 @@ class L2NormalizedTruncatedNormalInitializer(init_ops.TruncatedNormal):
   def __init__(self, mean=0.0, stddev=1.0, axis=None, epsilon=1e-12, seed=None, dtype=dtypes.float32):
     self.axis = axis
     self.epsilon = epsilon
-    super(L2NormalizedTruncatedNormalInitializer, self).__init__(mean, stddev, seed, dtype)
+    self.dtype = dtype
+    super(L2NormalizedTruncatedNormalInitializer, self).__init__(mean, stddev, seed)
 
   def __call__(self, shape, dtype=None, partition_info=None):
     if dtype is None:

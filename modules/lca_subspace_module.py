@@ -77,14 +77,14 @@ class LcaSubspaceModule(LcaModule):
     return a_out
 
   def compute_sparse_loss(self, a_in):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       sigmas = self.group_amplitudes(a_in) # [num_batch, num_groups]
       sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(sigmas, axis=1),
         name="group_sparse_loss")
     return sparse_loss
 
   def compute_group_orthogonalization_loss(self):
-    with tf.variable_scope("unsupervised"):
+    with tf.compat.v1.variable_scope("unsupervised"):
       # For each group
         # assemble matrix of W = [num_pixels, num_neurons_in_group]
         # compute E =  ( W^T * W ) - I
@@ -108,17 +108,17 @@ class LcaSubspaceModule(LcaModule):
 
   def build_graph(self):
     super(LcaSubspaceModule, self).build_graph()
-    with tf.variable_scope(self.variable_scope) as scope:
-      with tf.variable_scope(self.inference_scope):
+    with tf.compat.v1.variable_scope(self.variable_scope) as scope:
+      with tf.compat.v1.variable_scope(self.inference_scope):
         self.group_activity = tf.identity(self.group_amplitudes(self.a),
           name="group_activity")
         self.group_angles = tf.identity(self.group_directions(self.a,
           self.reshape_groups_per_neuron(self.group_activity)), name="group_directions")
-      with tf.variable_scope(self.weight_scope):
+      with tf.compat.v1.variable_scope(self.weight_scope):
         self.group_weights = tf.reshape(self.w,
           shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group],
           name="group_weights")
-      with tf.variable_scope("loss") as scope:
+      with tf.compat.v1.variable_scope("loss") as scope:
         self.loss_dict = {"recon_loss":self.compute_recon_loss(self.reconstruction),
           "sparse_loss":self.compute_sparse_loss(self.a),
           "orthogonalization_loss":self.compute_group_orthogonalization_loss()}

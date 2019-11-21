@@ -82,10 +82,10 @@ sess = tf.InteractiveSession()
 embedding_var = tf.Variable(latent_representation, name="image_embedding") # Model embedding
 #embedding_var = tf.Variable(latent_representation[tsne_params.eval_key], name="image_embedding") # Model embedding
 #embedding_var = tf.Variable(input_data, name="image_embedding") # Identity embedding
-tf.global_variables_initializer().run()
+tf.compat.v1.global_variables_initializer().run()
 
-saver = tf.train.Saver()
-summary_writer = tf.summary.FileWriter(analyzer.analysis_out_dir+"/embedding/")
+saver = tf.compat.v1.train.Saver()
+summary_writer = tf.compat.v1.summary.FileWriter(analyzer.analysis_out_dir+"/embedding/")
 
 config = projector.ProjectorConfig()
 embedding = config.embeddings.add()

@@ -42,9 +42,9 @@ class LcaPcaAnalyzer(LcaAnalyzer):
     """
     Computes the 2nd layer output code for a set of images.
     """
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(images)
       feed_dict[self.model.full_cov] = cov
       sess.run(self.model.init_op, feed_dict)
@@ -53,7 +53,7 @@ class LcaPcaAnalyzer(LcaAnalyzer):
     return activations
 
   def cov_analysis(self, dataset, save_info=""):
-    with tf.Session(graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(graph=self.model.graph) as sess:
       sess.run(self.model.init_op,
         feed_dict={self.model.x:np.zeros([self.model_params.batch_size,
         self.model_params.num_pixels], dtype=np.float32)})
@@ -72,7 +72,7 @@ class LcaPcaAnalyzer(LcaAnalyzer):
           act_cov = act_cov + sess.run(self.model.act_cov, feed_dict)
         num_cov_in_avg += 1
       act_cov = act_cov / num_cov_in_avg
-    with tf.Session(graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(graph=self.model.graph) as sess:
       sess.run(self.model.init_op, feed_dict={self.model.x:dataset.images})
       self.model.load_full_model(sess, self.analysis_params.analysis_params.cp_loc)
       feed_dict = self.model.get_feed_dict(dataset.images)

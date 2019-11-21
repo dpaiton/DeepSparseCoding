@@ -9,11 +9,11 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "vae"
-    self.model_name = "vae_deep_denoising"
+    self.model_name = "test"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
-    self.rescale_data = True
+    self.rescale_data = False
     self.center_data = False
     self.standardize_data = False
     self.tf_standardize_data = False
@@ -62,21 +62,42 @@ class params(BaseParams):
       self.batch_size = 100
       self.log_int = 100
       self.cp_int = 5e5
-      self.gen_plot_int = 5e5
-      self.noise_level = 0.08
-      self.ae_layer_types = ["fc", "fc", "fc"]
-      self.ae_output_channels = [768, 256, 64]#[768]
-      self.recon_loss_type = "mse" # "mse" or "crossentropy"
-      self.ae_activation_functions = ["lrelu", "lrelu", "identity", "lrelu", "lrelu", "relu"]#["relu", "relu"]
-      self.ae_dropout = [0.5, 0.8, 1.0, 0.8, 0.8, 1.0]#[1.0, 1.0]
+      self.gen_plot_int = 1e4
+      self.noise_level = 0.00
+      self.tf_standardize_data = False#True
+
+      #self.noise_level = 0.08
+      #self.layer_types = ["fc", "fc", "fc"]
+      #self.output_channels = [768, 256, 64]#[768]
+      #self.recon_loss_type = "mse" # "mse" or "crossentropy"
+      #self.activation_functions = ["lrelu", "lrelu", "identity", "lrelu", "lrelu", "relu"]#["relu", "relu"]
+      #self.dropout = [0.5, 0.8, 1.0, 0.8, 0.8, 1.0]#[1.0, 1.0]
+
+      self.vectorize_data = False
+      self.layer_types = ["conv", "conv", "fc"]
+      self.conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
+      self.patch_size = [(3, 3)]*2
+
+      #self.vectorize_data = False
+      #self.layer_types = ["conv", "conv", "conv"]
+      #self.conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
+      #self.patch_size = [(3, 3)]*len(self.layer_types)
+
+      #self.vectorize_data = True
+      #self.layer_types = ["fc", "fc", "fc"]
+
+      self.output_channels = [32, 64, 50]
+      self.recon_loss_type = "mse"
+      self.activation_functions = ["relu", "relu", "identity"]*2
+      self.dropout = [1.0]*len(self.activation_functions)
       for schedule_idx in range(len(self.schedule)):
-        self.schedule[schedule_idx]["num_batches"] = int(2e6)
-        self.schedule[schedule_idx]["weight_lr"] = 8e-4
+        self.schedule[schedule_idx]["num_batches"] = int(6e4)#int(2e6)
+        self.schedule[schedule_idx]["weight_lr"] = 0.001#8e-4
         self.schedule[schedule_idx]["kld_mult"] = 1.0
         self.schedule[schedule_idx]["decay_mult"] = 0.0
-        self.schedule[schedule_idx]["norm_mult"] = 2e-4
-        self.schedule[schedule_idx]["decay_steps"] = int(0.7*self.schedule[schedule_idx]["num_batches"])
-        self.schedule[schedule_idx]["decay_rate"] = 0.9
+        self.schedule[schedule_idx]["norm_mult"] = 0.0#2e-4
+        self.schedule[schedule_idx]["decay_steps"] = int(1.0*self.schedule[schedule_idx]["num_batches"])
+        self.schedule[schedule_idx]["decay_rate"] = 1.0
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"

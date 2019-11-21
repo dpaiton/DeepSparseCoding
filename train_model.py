@@ -51,9 +51,9 @@ if hasattr(params, "norm_data") and params.norm_data:
 ## Write model weight savers for checkpointing and visualizing graph
 model.write_saver_defs()
 
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
-with tf.Session(config=config, graph=model.graph) as sess:
+with tf.compat.v1.Session(config=config, graph=model.graph) as sess:
   #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
   #sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
 

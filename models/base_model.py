@@ -171,7 +171,7 @@ class Model(object):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("optimizers") as scope:
+        with tf.compat.v1.variable_scope("optimizers") as scope:
           self.grads_and_vars = list() # [sch_idx][weight_idx]
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
@@ -186,7 +186,7 @@ class Model(object):
             weight_ops = [self.trainable_variables[weight] for weight in sch["weights"]]
             for w_idx, weight in enumerate(sch["weights"]):
               weight_name = weight.split("/")[-1].split(":")[0]
-              learning_rates = tf.train.exponential_decay(
+              learning_rates = tf.compat.v1.train.exponential_decay(
                 learning_rate=sch["weight_lr"][w_idx],
                 global_step=self.global_step,
                 decay_steps=sch["decay_steps"][w_idx],
@@ -195,13 +195,13 @@ class Model(object):
                 name="annealing_schedule_"+weight_name)
               sch_lrs.append(learning_rates)
               if self.params.optimizer == "annealed_sgd": # TODO: rename to "sgd"
-                optimizer = tf.train.GradientDescentOptimizer(learning_rates,
+                optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rates,
                   name="grad_optimizer_"+weight_name)
               elif self.params.optimizer == "adam":
-                optimizer = tf.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
+                optimizer = tf.compat.v1.train.AdamOptimizer(learning_rates, beta1=0.9, beta2=0.99,
                   epsilon=1e-07, name="adam_optimizer_"+weight_name)
               elif self.params.optimizer == "adadelta":
-                optimizer = tf.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
+                optimizer = tf.compat.v1.train.AdadeltaOptimizer(learning_rates, epsilon=1e-07,
                   name="adadelta_optimizer_"+weight_name)
               elif self.params.optimizer == "lbfgsb":
                 optimizer = None
@@ -212,7 +212,7 @@ class Model(object):
               gstep = self.global_step if w_idx == 0 else None # Only increment once
               if self.params.optimizer == "lbfgsb": # BFGS doesn't actually need the update op
                 if w_idx == 0:
-                  sch_apply_grads.append(tf.assign_add(self.global_step, 1))
+                  sch_apply_grads.append(tf.compat.v1.assign_add(self.global_step, 1))
                 else:
                   sch_apply_grads.append(None)
               else:
@@ -230,16 +230,16 @@ class Model(object):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("initialization") as scope:
-          self.init_op = tf.group(tf.global_variables_initializer(),
-            tf.local_variables_initializer())
+        with tf.compat.v1.variable_scope("initialization") as scope:
+          self.init_op = tf.group(tf.compat.v1.global_variables_initializer(),
+            tf.compat.v1.local_variables_initializer())
 
   def get_load_vars(self):
     """
     Get variables for loading
     TODO: add option to load train_vars from cp logfile
     """
-    all_vars = tf.global_variables()
+    all_vars = tf.compat.v1.global_variables()
     if self.params.cp_load_var is None:
       load_v = [v for v in all_vars if v not in self.full_model_load_ignore]
     else:
@@ -262,12 +262,12 @@ class Model(object):
     """Add savers to graph"""
     with self.graph.as_default():
       #Loop through to find variables to ignore
-      all_vars = tf.global_variables()
+      all_vars = tf.compat.v1.global_variables()
       load_vars = [v for v in all_vars if v not in self.full_model_load_ignore]
-      self.full_saver = tf.train.Saver(max_to_keep=self.params.max_cp_to_keep,
+      self.full_saver = tf.compat.v1.train.Saver(max_to_keep=self.params.max_cp_to_keep,
         var_list=load_vars)
       if self.params.cp_load:
-        self.loader = tf.train.Saver(var_list=self.get_load_vars())
+        self.loader = tf.compat.v1.train.Saver(var_list=self.get_load_vars())
     self.savers_constructed = True
 
   def write_saver_defs(self):
@@ -282,8 +282,8 @@ class Model(object):
   def write_graph(self, graph_def):
     """Write graph structure to protobuf file"""
     write_name = self.params.model_name+"_v"+self.params.version+".pb"
-    self.writer = tf.summary.FileWriter(self.params.save_dir, graph=self.graph)
-    tf.train.write_graph(graph_def,
+    self.writer = tf.compat.v1.summary.FileWriter(self.params.save_dir, graph=self.graph)
+    tf.io.write_graph(graph_def,
       logdir=self.params.save_dir, name=write_name, as_text=False)
     self.logger.log_info("Graph def saved in file %s"%self.params.save_dir+write_name)
 
@@ -301,7 +301,7 @@ class Model(object):
     """
     Load checkpoint model into session.
     Inputs:
-      session: tf.Session() that you want to load into
+      session: tf.compat.v1.Session() that you want to load into
       model_dir: String specifying the path to the checkpoint
     """
     assert self.params.cp_load == True, ("cp_load must be set to true to load a checkpoint")
@@ -311,7 +311,7 @@ class Model(object):
     """
     Load checkpoint model into session.
     Inputs:
-      session: tf.Session() that you want to load into
+      session: tf.compat.v1.Session() that you want to load into
       model_dir: String specifying the path to the checkpoint
     """
     self.full_saver.restore(session, model_dir)
@@ -385,7 +385,7 @@ class Model(object):
   def build_input_placeholder(self):
     with tf.device(self.params.device):
       with self.graph.as_default():
-        self.input_placeholder = tf.placeholder(tf.float32,
+        self.input_placeholder = tf.compat.v1.placeholder(tf.float32,
           shape=self.get_input_shape(), name="input_data")
     return self.input_placeholder
 
@@ -403,7 +403,7 @@ class Model(object):
   def add_step_counter_to_graph(self):
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("step_counter") as scope:
+        with tf.compat.v1.variable_scope("step_counter") as scope:
           self.global_step = tf.Variable(0, trainable=False, name="global_step")
 
   #If build_graph gets called it will build placeholder first, then call build_graph_from_input
@@ -620,10 +620,10 @@ class Model(object):
     for key in dict_keys:
       evals[key] = []
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
 
-    sess = tf.get_default_session()
+    sess = tf.compat.v1.get_default_session()
     for it in range(num_iterations):
       batch_start_idx = int(it * batch_size)
       batch_end_idx = int(np.min([batch_start_idx + batch_size, num_data]))

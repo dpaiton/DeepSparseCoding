@@ -8,7 +8,7 @@ class IcaPcaModel(IcaModel):
     """Build the TensorFlow graph object"""
     super(IcaPcaModel, self).build_graph_from_input(input_node)
     with self.graph.as_default():
-      with tf.variable_scope("covariance") as scope:
+      with tf.compat.v1.variable_scope("covariance") as scope:
         self.act_corr = tf.divide(tf.matmul(tf.transpose(tf.nn.relu(self.a)),
           tf.nn.relu(self.a)), tf.to_float(tf.shape(input_node)[0]), name="a_corr_matrix")
         act_centered = tf.nn.relu(self.a) - tf.reduce_mean(tf.nn.relu(self.a), axis=[1],
@@ -16,8 +16,8 @@ class IcaPcaModel(IcaModel):
         self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
           tf.to_float(tf.shape(input_node)[0]), name="a_cov_matrix")
 
-      with tf.variable_scope("pooling_filters") as scope:
-        self.full_cov = tf.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),
+      with tf.compat.v1.variable_scope("pooling_filters") as scope:
+        self.full_cov = tf.compat.v1.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),
           name="full_covariance_matrix")
         s, u, v = tf.svd(self.full_cov, full_matrices=True, name="a_svd")
         top_vecs = u[:, :self.num_pooling_units]

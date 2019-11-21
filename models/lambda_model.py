@@ -24,12 +24,12 @@ class LambdaModel(Model):
     """
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("placeholders") as scope:
+        with tf.compat.v1.variable_scope("placeholders") as scope:
           weight_init = np.identity(self.data_dim, dtype=np.float32)
-          self.weight_placeholder = tf.placeholder_with_default(weight_init,
+          self.weight_placeholder = tf.compat.v1.placeholder_with_default(weight_init,
             shape=[self.data_dim, self.data_dim], name="weights")
 
-        with tf.variable_scope("inference") as scope:
+        with tf.compat.v1.variable_scope("inference") as scope:
           self.a = self.params.activation_function(tf.matmul(input_node, self.weight_placeholder,
             name="activity"))
 

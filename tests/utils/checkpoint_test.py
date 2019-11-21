@@ -58,9 +58,9 @@ class CheckpointTest(tf.test.TestCase):
     params, dataset, model = self.buildModel("test_checkpoints_", load_style="none")
     schedule_index = 0 # Not testing support for multiple schedules
 
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=model.graph) as sess:
       sess.run(model.init_op,
         feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
       sess.graph.finalize() # Graph is read-only after this statement
@@ -81,9 +81,9 @@ class CheckpointTest(tf.test.TestCase):
 
     #Test loading all variables
     params, dataset, model = self.buildModel("test_checkpoints_", load_style="all")
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=model.graph) as sess:
       sess.run(model.init_op,
         feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
       sess.graph.finalize() # Graph is read-only after this statement
@@ -105,9 +105,9 @@ class CheckpointTest(tf.test.TestCase):
     #Test loading specific variables
     #Only loading in first layer weights and biases
     params, dataset, model = self.buildModel("test_checkpoints_", load_style="partial")
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=model.graph) as sess:
       sess.run(model.init_op,
         feed_dict={model.input_placeholder:np.zeros([params.batch_size]+params.data_shape, dtype=np.float32)})
       sess.graph.finalize() # Graph is read-only after this statement

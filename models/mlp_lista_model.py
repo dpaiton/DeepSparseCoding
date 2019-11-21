@@ -43,28 +43,28 @@ class MlpListaModel(MlpModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.variable_scope("auto_placeholders") as scope:
-          self.label_placeholder = tf.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
-          self.sparse_mult = tf.placeholder(tf.float32, shape=(), name="sparse_mult")
+        with tf.compat.v1.variable_scope("auto_placeholders") as scope:
+          self.label_placeholder = tf.compat.v1.placeholder(tf.float32, shape=self.label_shape, name="input_labels")
+          self.sparse_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="sparse_mult")
 
-        with tf.variable_scope("placeholders") as scope:
-          self.mlp_dropout_keep_probs = tf.placeholder(tf.float32, shape=[None],
+        with tf.compat.v1.variable_scope("placeholders") as scope:
+          self.mlp_dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],
             name="mlp_dropout_keep_probs")
 
         # LISTA module
-        with tf.variable_scope("weight_inits") as scope:
-          self.w_init = tf.truncated_normal_initializer(mean=0, stddev=0.05, dtype=tf.float32)
+        with tf.compat.v1.variable_scope("weight_inits") as scope:
+          self.w_init = tf.truncated_normal_initializer(mean=0, stddev=0.05)
           self.s_init = init_ops.GDNGammaInitializer(diagonal_gain=0.0, off_diagonal_gain=0.001,
             dtype=tf.float32)
 
-        with tf.variable_scope("weights") as scope:
-          self.w = tf.get_variable(name="w_enc", shape=self.w_shape, dtype=tf.float32,
+        with tf.compat.v1.variable_scope("weights") as scope:
+          self.w = tf.compat.v1.get_variable(name="w_enc", shape=self.w_shape, dtype=tf.float32,
             initializer=self.w_init, trainable=True)
           #w is not added to trainable variables, so will not update
-          self.s = tf.get_variable(name="lateral_connectivity", shape=self.s_shape,
+          self.s = tf.compat.v1.get_variable(name="lateral_connectivity", shape=self.s_shape,
             dtype=tf.float32, initializer=self.s_init, trainable=True)
 
-        with tf.variable_scope("inference") as scope:
+        with tf.compat.v1.variable_scope("inference") as scope:
           feedforward_drive = tf.matmul(input_node, self.w, name="feedforward_drive")
           self.a_list = [lca_threshold(feedforward_drive, self.params.thresh_type,
             self.params.rectify_a, self.sparse_mult, name="a_init")]
@@ -78,18 +78,18 @@ class MlpListaModel(MlpModel):
         self.mlp_module = self.build_mlp_module(self.a)
         self.trainable_variables.update(self.mlp_module.trainable_variables)
 
-        with tf.variable_scope("loss") as scope:
+        with tf.compat.v1.variable_scope("loss") as scope:
           self.total_loss =  self.mlp_module.total_loss
 
         #Give this var a name
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
 
-        with tf.variable_scope("performance_metrics") as scope:
+        with tf.compat.v1.variable_scope("performance_metrics") as scope:
           #LISTA metrics
-          with tf.variable_scope("prediction_bools"):
+          with tf.compat.v1.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
               tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
-          with tf.variable_scope("accuracy"):
+          with tf.compat.v1.variable_scope("accuracy"):
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
@@ -125,7 +125,7 @@ class MlpListaModel(MlpModel):
     feed_dict = self.get_feed_dict(input_data, input_labels)
 
     eval_list = [self.global_step, self.w, self.a]
-    eval_out = tf.get_default_session().run(eval_list, feed_dict)
+    eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     weights, lista_activity = eval_out[1:]
