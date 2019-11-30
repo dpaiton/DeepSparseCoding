@@ -9,7 +9,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "ae"
-    self.model_name = "ae_deep"
+    self.model_name = "test"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -22,7 +22,7 @@ class params(BaseParams):
     self.lpf_cutoff = 0.7
     self.extract_patches = False
     self.batch_size = 100
-    self.tie_decoder_weights = False
+    self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
     #Specify number of neurons for encoder
@@ -56,17 +56,57 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.vectorize_data = True
       self.rescale_data = False
       self.standardize_data = True
       self.tf_standardize_data = False
       self.center_data = False
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.ae_output_channels = [768, 256, 256, 128, 64]#[768]
-      self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
-      self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
-      self.ae_dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
+
+      #self.vectorize_data = True
+      #self.ae_output_channels = [768, 256, 256, 128, 64]#[768]
+      #self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
+      #self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
+      #self.ae_dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
+
+      self.vectorize_data = False
+      self.ae_layer_types = ["conv", "conv", "conv"]
+      self.ae_layer_types += ["fc"]
+      self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
+      self.ae_patch_size = [(3, 3)]*3
+      self.ae_enc_channels = [32, 64, 25]
+      self.ae_dec_channels = [784]
+
+      #self.vectorize_data = False
+      #self.ae_layer_types = ["conv", "conv", "conv"]
+      #self.ae_layer_types += self.ae_layer_types[::-1]
+      #self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
+      #self.ae_conv_strides += self.ae_conv_strides[::-1]
+      #self.ae_patch_size = [(3, 3)]*3
+      #self.ae_patch_size += self.ae_patch_size[::-1]
+      #self.ae_enc_channels = [32, 64, 25]
+      #self.ae_dec_channels = [64, 32, 1]
+
+      #self.vectorize_data = False
+      #self.ae_layer_types = ["conv", "conv", "fc"]
+      #self.ae_layer_types += self.ae_layer_types[::-1]
+      #self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
+      #self.ae_conv_strides += self.ae_conv_strides[::-1]
+      #self.ae_patch_size = [(3, 3)]*2
+      #self.ae_patch_size += self.ae_patch_size[::-1]
+      #self.ae_enc_channels = [32, 64, 25]
+      #self.ae_dec_channels = [None, 32, 1]
+
+      #self.vectorize_data = True
+      #self.ae_enc_channels = [256, 128, 64]
+      #self.ae_dec_channels = [128, 256, 784]
+      #self.ae_layer_types = ["fc"]*(len(self.ae_dec_channels)+len(self.ae_dec_channels))
+
+      self.tie_dec_weights = False
+      self.mirror_dec_architecture = False
+      self.ae_activation_functions = ["lrelu"]*len(self.ae_layer_types)
+      self.ae_dropout = [1.0]*len(self.ae_layer_types)
+
       self.log_int = 100
       self.cp_int = int(5e5)
       self.gen_plot_int = int(5e5)
@@ -164,7 +204,7 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 16
-    self.tie_decoder_weights = False
+    self.tie_dec_weights = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4

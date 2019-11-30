@@ -22,7 +22,22 @@ class AeModel(Model):
     """
     super(AeModel, self).load_params(params)
     self.input_shape = [None,] + self.params.data_shape
-    self.num_latent = self.params.ae_output_channels[-1]
+    if self.params.mirror_dec_architecture:
+      num_enc_layers = len(self.params.ae_enc_channels)
+      self.params.ae_activation_functions = self.params.ae_activation_functions[:num_enc_layers]
+      self.params.ae_activation_functions += self.params.ae_activation_functions[::-1]
+      self.params.ae_layer_types = self.params.ae_layer_types[:num_enc_layers]
+      self.params.ae_layer_types += self.params.ae_layer_types[::-1]
+      self.params.ae_conv_strides = self.params.ae_conv_strides[:num_enc_layers]
+      self.params.ae_conv_strides += self.params.ae_conv_strides[::-1]
+      self.params.ae_patch_size = self.params.ae_patch_size[:num_enc_layers]
+      self.params.ae_patch_size += self.params.ae_patch_size[::-1]
+      self.params.ae_dec_channels = self.params.ae_enc_channels[::-1][1:]
+      self.params.ae_dec_channels += [self.params.data_shape[-1]]
+      self.params.ae_dropout = self.params.ae_dropout[:num_enc_layers]
+      self.params.ae_dropout += self.params.ae_dropout[::-1]
+    self.num_latent = self.params.ae_enc_channels[-1]
+    self.ae_output_channels = self.params.ae_enc_channels + self.params.ae_dec_channels
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.ae_activation_functions]
     if np.all([layer_type == "fc" for layer_type in self.params.ae_layer_types]):
@@ -32,10 +47,10 @@ class AeModel(Model):
         ("Dropout parameter must be a list of size " + str(len(self.params.ae_activation_functions)))
 
   def build_module(self, input_node):
-    module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
-      self.params.ae_patch_size, self.params.ae_conv_strides, self.decay_mult, self.norm_mult,
-      self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
-      self.params.norm_w_init, variable_scope="ae")
+    module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
+      self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
+      self.decay_mult, self.norm_mult, self.act_funcs, self.ae_dropout_keep_probs,
+      self.params.tie_dec_weights, self.params.norm_w_init, variable_scope="ae")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -67,23 +82,33 @@ class AeModel(Model):
         # first index grabs u_list, second index grabs recon
         #Need to build this in same namescope as the orig decoder
         with tf.compat.v1.variable_scope(self.module.variable_scope):
-          self.decoder_recon = self.module.build_decoder(self.latent_input,
-            self.act_funcs[self.module.num_encoder_layers:])[0][-1]
+          self.dec_recon = self.module.build_decoder(self.latent_input,
+            self.act_funcs[self.module.num_enc_layers:])[0][-1]
 
         with tf.compat.v1.variable_scope("performance_metrics") as scope:
           with tf.compat.v1.variable_scope("reconstruction_quality"):
-            self.MSE = tf.reduce_mean(tf.square(tf.subtract(input_node,
-              self.module.reconstruction)), axis=[1, 0], name="mean_squared_error")
+            recon_shape = self.module.reconstruction.get_shape()
+            data_shape = input_node.get_shape()
+            if(recon_shape.ndims != data_shape.ndims):
+              if(np.prod(recon_shape.as_list()[1:]) == np.prod(data_shape.as_list()[1:])):
+                self.MSE = tf.reduce_mean(tf.square(tf.subtract(input_node,
+                  tf.reshape(self.module.reconstruction, tf.shape(input_node)))),
+                  axis=[1, 0], name="mean_sauared_error")
+              else:
+                assert False, ("Reconstructiion and input must have the same size")
+            else:
+              self.MSE = tf.reduce_mean(tf.square(tf.subtract(input_node,
+                self.module.reconstruction)), axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(input_node, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.divide(tf.square(pixel_var), self.MSE)),
               name="recon_quality")
 
   def compute_recon_from_placeholder(self):
-    return self.decoder_recon
+    return self.dec_recon
 
   def compute_recon_from_encoding(self, a_in):
     with tf.compat.v1.variable_scope(self.module.variable_scope):
-      recon = self.module.build_decoder(a_in, self.act_funcs[self.module.num_encoder_layers:])[0][-1]
+      recon = self.module.build_decoder(a_in, self.act_funcs[self.module.num_enc_layers:])[0][-1]
     return recon
 
   def get_feed_dict(self, input_data, input_labels=None, dict_args=None, is_test=False):
@@ -209,7 +234,7 @@ class AeModel(Model):
       w_enc_img = np.transpose(w_enc, (3, 0, 1, 2))
     w_enc_img = dp.norm_weights(w_enc_img)
 
-    if(not self.params.tie_decoder_weights):
+    if(not self.params.tie_dec_weights):
       if(len(w_dec.shape) == 2):
         w_dec_norm = np.linalg.norm(w_dec, axis=1, keepdims=False)
         w_dec_img = dp.reshape_data(w_dec, flatten=False)[0]
@@ -231,7 +256,7 @@ class AeModel(Model):
       title="w_enc l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
       save_filename=self.params.disp_dir+"w_enc_norm"+filename_suffix)
 
-    if(not self.params.tie_decoder_weights):
+    if(not self.params.tie_dec_weights):
       fig = pf.plot_data_tiled(w_dec_img, normalize=False,
         title="Decoding weights at step "+current_step, vmin=None, vmax=None,
         save_filename=self.params.disp_dir+"w_dec"+filename_suffix)
