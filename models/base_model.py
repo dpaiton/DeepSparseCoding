@@ -37,7 +37,8 @@ class Model(object):
 
   def check_schedule_type(self, val, target_type, target_len):
     if (type(val) == list):
-      assert len(val) == target_len
+      assert len(val) == target_len, ("list len=%g is not correct, it should be %g"%(
+        len(val), target_len))
       out_val = val
     else: #scalar is used
       out_val = [val,] * target_len
@@ -57,12 +58,7 @@ class Model(object):
       if sched["weights"] is not None: # schedule specificies specific variables for trainable vars
         assert type(sched["weights"]) == list
       else: # scalar is used
-        #assert type(sched["weight_lr"]) == float
-        #assert type(sched["decay_steps"]) == int
-        #assert type(sched["decay_rate"]) == float
-        #assert type(sched["staircase"]) == bool
         sched["weights"] = self.get_trainable_variable_names()
-
       target_len = len(sched["weights"])
       sched["weight_lr"] = self.check_schedule_type(sched["weight_lr"], float, target_len)
       sched["decay_steps"] = self.check_schedule_type(sched["decay_steps"], int, target_len)

@@ -128,9 +128,11 @@ class params(BaseParams):
       self.standardize_data = True
       self.rescale_data = False
       self.ae_layer_types = ["conv"]
-      self.ae_output_channels = [256]
+      self.ae_enc_channels = [256]
       self.ae_patch_size = [(12, 12)]
       self.ae_conv_strides = [(1, 2, 2, 1)]
+      self.tie_dec_weights = False
+      self.mirror_dec_architecture = True
       self.optimizer = "adam"
       self.batch_size = 100
       self.ae_activation_functions = ["relu", "identity"]
@@ -165,13 +167,12 @@ class params(BaseParams):
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      #self.ae_output_channels = [1536, 768, 256, 64]
-      #self.ae_output_channels = [768, 256, 32]
-      self.ae_output_channels = [768]
-      self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
-      self.optimizer = "annealed_sgd"
       self.batch_size = 100
-      self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
+      self.tie_dec_weights = False
+      self.mirror_dec_architecture = True
+      self.ae_enc_channels = [768, 256, 64]
+      self.ae_layer_types = ["fc"]*len(self.ae_enc_channels)
+      self.optimizer = "annealed_sgd"
       self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
       self.ae_dropout = [0.3] * (len(self.ae_activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
       self.log_int = 100
@@ -199,30 +200,41 @@ class params(BaseParams):
       assert False, ("Data type "+data_type+" is not supported.")
 
   def set_test_params(self, data_type):
-    #TODO: allow for test_params to be list of params to be run individually
     self.set_data_params(data_type)
     self.epoch_size = 50
     self.batch_size = 10
     self.num_edge_pixels = 16
-    self.tie_dec_weights = False
     for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
+    self.ae_activation_functions = ["relu"] * 6
+    self.ae_dropout = [1.0] * 6
     # Test 1
-    #self.ae_layer_types = ["fc", "fc", "fc"]
-    #self.vectorize_data = True
-    #self.ae_output_channels = [30, 20, 10]
+    self.test_param_variants = [
+      {"vectorize_data":True,
+      "tie_dec_weights":True,
+      "mirror_dec_architecture":False,
+      "ae_layer_types":["fc", "fc", "fc", "fc", "fc", "fc"],
+      "ae_enc_channels":[30, 20, 10],
+      "ae_dec_channels":[20, 30, self.num_edge_pixels**2]}]
     # Test 2
-    #self.ae_layer_types = ["conv", "conv", "conv"]
-    #self.vectorize_data = False
-    #self.ae_output_channels = [30, 20, 10]
-    #self.ae_patch_size = [(8,8), (4,4), (2,2)]
-    #self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
+    self.test_param_variants += [
+      {"vectorize_data":False,
+      "tie_dec_weights":True,
+      "mirror_dec_architecture":False,
+      "ae_layer_types":["conv", "conv", "conv", "conv", "conv", "conv"],
+      "ae_enc_channels":[30, 20, 10],
+      "ae_dec_channels":[20, 30, 1],
+      "ae_patch_size":[(8,8), (4,4), (2,2), (2,2), (4,4), (8,8)],
+      "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1),
+      (1, 1, 1, 1), (1, 1, 1, 1), (1, 2, 2, 1)]}]
     # Test 3
-    self.ae_layer_types = ["conv", "conv", "fc"]
-    self.vectorize_data = False
-    self.ae_output_channels = [30, 20, 10]
-    self.ae_patch_size = [(8,8), (4,4)]
-    self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
-    self.ae_activation_functions = ["relu"] * (2 * len(self.ae_output_channels) - 1) + ["identity"]
-    self.ae_dropout = [1.0] * len(self.ae_activation_functions)
+    self.test_param_variants += [
+      {"vectorize_data":False,
+      "tie_dec_weights":False,
+      "mirror_dec_architecture":True,
+      "ae_layer_types":["conv", "conv", "fc"],
+      "ae_enc_channels":[30, 20, 10],
+      "ae_patch_size":[(8,8), (4,4)],
+      "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1)]}]

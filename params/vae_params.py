@@ -23,9 +23,10 @@ class params(BaseParams):
     # Last element in list is the size of the latent space
     # Decoder will automatically build the transpose of the encoder
     self.ae_layer_types = ["fc", "fc"]
-    self.ae_output_channels = [512, 50]
+    self.ae_enc_channels = [512, 50]
     self.ae_activation_functions = ["relu", "identity", "relu", "identity"]
     self.ae_dropout = [1.0]*4
+    self.mirror_dec_architecture = True
     self.noise_level = 0.0 # std of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_decoder_weights = False
@@ -67,9 +68,10 @@ class params(BaseParams):
       self.ae_layer_types = ["conv", "conv", "fc"]
       self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
       self.ae_patch_size = [(3, 3)]*2
-      self.ae_output_channels = [32, 64, 25]
+      self.ae_enc_channels = [32, 64, 25]
       self.ae_activation_functions = ["lrelu", "lrelu", "sigmoid", "lrelu", "lrelu", "sigmoid"]
       self.ae_dropout = [1.0]*len(self.ae_activation_functions)
+      self.mirror_dec_architecture = True
       self.recon_loss_type = "mse"
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["num_batches"] = int(1e5)#int(2e6)
@@ -93,17 +95,29 @@ class params(BaseParams):
     self.set_data_params(data_type)
     self.epoch_size = 50
     self.batch_size = 10
-    self.num_edge_pixels = 8
-    self.vectorize_data = True
+    self.num_edge_pixels = 16
     for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.ae_activation_functions = ["relu", "identity", "relu", "identity"]
-    self.ae_dropout = [1.0]*len(self.ae_activation_functions)
-    self.ae_output_channels = [20, 10]
+    self.ae_activation_functions = ["relu"] * 6
+    self.ae_dropout = [1.0] * 6
     # Test 1
-    self.ae_layer_types = ["fc", "fc"]
+    self.test_param_variants = [
+      {"vectorize_data":False,
+      "tie_dec_weights":False,
+      "mirror_dec_architecture":False,
+      "ae_layer_types":["conv", "conv", "conv", "fc"],
+      "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)],
+      "ae_patch_size":[(3, 3)]*3,
+      "ae_enc_channels":[32, 64, 25],
+      "ae_dec_channels":[784]}]
     # Test 2
-    #self.ae_layer_types = ["conv", "conv"]
-    #self.ae_conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-    #self.ae_patch_size = [(3, 3), (3, 3)]
+    self.test_param_variants += [
+      {"vectorize_data":False,
+      "tie_dec_weights":False,
+      "mirror_dec_architecture":True,
+      "ae_layer_types":["conv", "conv", "fc"],
+      "ae_enc_channels":[30, 20, 10],
+      "ae_patch_size":[(8,8), (4,4)],
+      "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1)]}]
