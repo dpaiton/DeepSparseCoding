@@ -30,13 +30,14 @@ class params(BaseParams):
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
+    self.mirror_dec_architecture = True
     self.ae_layer_types = ["fc", "fc", "fc"]
-    self.ae_output_channels = [1500, 1000, 50]
-    self.tie_decoder_weights = False
+    self.ae_enc_channels = [1500, 1000, 50]
+    self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
     self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-    self.ae_dropout = [1.0]*6
+    self.ae_dropout = [1.0]*len(self.ae_activation_functions)
     self.num_triangles = 30
     self.mle_step_size = 0.01
     self.num_mle_steps = 30
@@ -65,7 +66,6 @@ class params(BaseParams):
     self.gen_plot_int = 10000
     self.save_plots = True
     self.num_pixels = self.patch_edge_size**2
-
     self.schedule = [
       {"num_batches": int(1e6),
       "weights": None,
@@ -83,7 +83,7 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.ae_layer_types = ["fc", "fc", "fc"]
-      self.ae_output_channels = [1568, 784, 50]
+      self.ae_enc_channels = [1568, 784, 50]
       self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
       self.ae_dropout = [1.0]*len(self.ae_activation_functions)
 
@@ -105,14 +105,15 @@ class params(BaseParams):
     self.batch_size = 11
     self.num_edge_pixels = 8
     self.vectorize_data = False
-    self.tie_decoder_weights = False
+    self.tie_dec_weights = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.ae_layer_types = ["conv", "conv"]
-    self.ae_output_channels = [20, 10]
-    self.ae_conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-    self.ae_patch_size = [(3, 3), (3, 3)]
-    self.ae_activation_functions = ["gdn", "gdn", "gdn", "identity"]
     self.ae_dropout = [1.0]*4
-    self.vectorize_data = False
+    self.test_param_variants = [
+      {"ae_layer_types":["conv", "conv"],
+      "vectorize_data":False,
+      "ae_enc_channels":[20, 10],
+      "ae_conv_strides":[(1, 1, 1, 1), (1, 1, 1, 1)],
+      "ae_patch_size":[(3, 3), (3, 3)],
+      "ae_activation_functions":["gdn", "gdn", "gdn", "identity"]}]

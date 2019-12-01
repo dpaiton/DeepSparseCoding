@@ -16,7 +16,9 @@ def testBasic(self):
   params = pp.get_params(self.model_type) # Import params
   params.set_test_params(self.data_type)
   original_schedule = copy.deepcopy(params.schedule)
-  for idx, variant in enumerate(params.test_param_variants):
+  if not hasattr(params, "test_param_variants"):
+    params.test_param_variants = list(dict())
+  for variant in params.test_param_variants:
     for key in variant.keys():
       setattr(params, key, variant[key])
     params.schedule = copy.deepcopy(original_schedule)
@@ -49,7 +51,7 @@ def testBasic(self):
 
 
 #Make class with specific model_type name in class name
-model_list = ["ae"]#mp.get_model_list()
+model_list = mp.get_model_list()
 data_type = "synthetic"
 for model_type in model_list:
   #Define class name with model_type

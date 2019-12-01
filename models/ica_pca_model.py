@@ -9,11 +9,11 @@ class IcaPcaModel(IcaModel):
     super(IcaPcaModel, self).build_graph_from_input(input_node)
     with self.graph.as_default():
       with tf.compat.v1.variable_scope("covariance") as scope:
-        self.act_corr = tf.divide(tf.matmul(tf.transpose(tf.nn.relu(self.a)),
+        self.act_corr = tf.math.divide(tf.matmul(tf.transpose(tf.nn.relu(self.a)),
           tf.nn.relu(self.a)), tf.to_float(tf.shape(input_node)[0]), name="a_corr_matrix")
         act_centered = tf.nn.relu(self.a) - tf.reduce_mean(tf.nn.relu(self.a), axis=[1],
           keep_dims=True)
-        self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
+        self.act_cov = tf.math.divide(tf.matmul(tf.transpose(act_centered), act_centered),
           tf.to_float(tf.shape(input_node)[0]), name="a_cov_matrix")
 
       with tf.compat.v1.variable_scope("pooling_filters") as scope:

@@ -15,7 +15,7 @@ class LcaPcaModel(LcaModel):
             name="full_covariance_matrix")
           self.eigen_vals, self.eigen_vecs = tf.linalg.eigh(self.full_cov, name="eig_decomp")
           self.inv_sigma = tf.where(self.eigen_vals<1e-3,
-            tf.linalg.tensor_diag(tf.divide(1.0,
+            tf.linalg.tensor_diag(tf.math.divide(1.0,
             tf.sqrt(self.eigen_vals + self.params.eps))),
             tf.linalg.tensor_diag(tf.zeros_like(self.eigen_vals)),
             name="inv_sigma")
@@ -28,7 +28,7 @@ class LcaPcaModel(LcaModel):
         with tf.compat.v1.variable_scope("covariance") as scope:
           act_centered = self.get_encodings() - tf.reduce_mean(self.get_encodings(),
             axis=[1], keepdims=True)
-          self.act_cov = tf.divide(tf.matmul(tf.transpose(act_centered), act_centered),
+          self.act_cov = tf.math.divide(tf.matmul(tf.transpose(act_centered), act_centered),
             tf.cast(tf.shape(input_node)[0], dtype=tf.float32), name="a_cov_matrix")
 
         with tf.compat.v1.variable_scope("inference") as scope:

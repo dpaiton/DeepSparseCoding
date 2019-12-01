@@ -11,9 +11,9 @@ class AeModule(object):
     Autoencoder module
     Inputs:
       data_tensor
-      enc_channels: a list of encoder layer as defined by the number of output channels
+      enc_channels [list of ints] the number of output channels per encoder layer
         Last entry is the number of latent units
-      dec_channels: a list of decoder layers as defined by the number of output channels
+      dec_channels [list of ints] the number of output channels per decoder layer
         Last entry must be the number of input pixels for FC layers and channels for CONV layers
       decay_mult: tradeoff multiplier for weight decay loss
       norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)

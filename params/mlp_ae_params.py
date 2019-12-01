@@ -31,13 +31,14 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     # AE Params
-    self.ae_output_channels = [768, 256, 64]
-    self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
+    self.mirror_dec_architecture = True
+    self.ae_enc_channels = [768, 256, 64]
+    self.ae_layer_types = ["fc"]*len(self.ae_enc_channels)
     self.ae_patch_size = []
     self.ae_conv_strides = []
-    self.ae_activation_functions = ["relu"] * 2 * len(self.ae_output_channels)
+    self.ae_activation_functions = ["relu"] * 2 * len(self.ae_enc_channels)
     self.ae_dropout = [0.5, 0.7, 1.0, 0.7, 0.7, 1.0]
-    self.tie_decoder_weights = False
+    self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
     self.optimizer = "annealed_sgd"
@@ -48,7 +49,7 @@ class params(BaseParams):
     self.num_classes = 10
     self.mlp_layer_types = ["fc", "fc", "fc"]
     self.mlp_output_channels = [300, 500, self.num_classes]
-    self.mlp_activation_functions = ["relu"]*len(self.ae_output_channels)
+    self.mlp_activation_functions = ["relu"]*len(self.ae_enc_channels)
     self.mlp_patch_size = []
     self.mlp_conv_strides = []
     self.batch_norm = [None, None, None]
@@ -138,11 +139,12 @@ class params(BaseParams):
       self.cp_int = 1e4
       self.gen_plot_int = 1e4
       # AE params
-      self.ae_output_channels = [768, 256, 64]
-      self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
+      self.mirror_dec_architecture = True
+      self.ae_enc_channels = [768, 256, 64]
+      self.ae_layer_types = ["fc"]*len(self.ae_enc_channels)
       self.ae_patch_size = []
       self.ae_conv_strides = []
-      self.ae_activation_functions = ["relu"] * 2 * len(self.ae_output_channels)
+      self.ae_activation_functions = ["relu"] * 2 * len(self.ae_enc_channels)
       self.ae_dropout = [0.5, 0.7, 1.0, 0.7, 0.7, 1.0]
       self.cp_load = True
       self.train_on_recon = False  # if False, train on latent activations
@@ -213,9 +215,10 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.ae_layer_types = ["fc"]
-      self.ae_output_channels = [768]
+      self.mirror_dec_architecture = True
+      self.ae_enc_channels = [768]
       self.ae_activation_functions = ["relu", "relu"]
-      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
+      self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [16, 16, 1]
       self.num_classes = 2

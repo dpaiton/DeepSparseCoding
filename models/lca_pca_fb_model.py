@@ -39,11 +39,11 @@ class LcaPcaFbModel(LcaPcaModel):
     #masked_vals = tf.where(tf.greater(self.eigen_vals, 1e-2), self.eigen_vals,
     #  tf.multiply(1e-2, tf.ones_like(self.eigen_vals)))
     #fb_loss = tf.multiply(self.fb_mult,
-    #  tf.reduce_sum(tf.square(tf.divide(current_b, masked_vals)), axis=1),
+    #  tf.reduce_sum(tf.square(tf.math.divide(current_b, masked_vals)), axis=1),
     #  name="feedback")
 
     #fb_loss = tf.multiply(self.fb_mult,
-    #  tf.reduce_sum(tf.square(tf.divide(current_b, self.eigen_vals)), axis=1), name="feedback")
+    #  tf.reduce_sum(tf.square(tf.math.divide(current_b, self.eigen_vals)), axis=1), name="feedback")
 
     fb_loss = tf.multiply(self.fb_mult, tf.reduce_sum(tf.square(tf.matmul(tf.matmul(current_b,
       tf.transpose(self.eigen_vecs)), self.inv_sigma)), axis=1), name="feedback")

@@ -4,6 +4,7 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
 from models.mlp_model import MlpModel
+from models.vae_model import VaeModel
 from modules.vae_module import VaeModule
 from modules.mlp_module import MlpModule
 from modules.activations import activation_picker
@@ -16,6 +17,7 @@ class MlpVaeModel(MlpModel):
      params: [obj] model parameters
     """
     super(MlpVaeModel, self).load_params(params)
+    VaeModel.ae_load_params(self, params)
     # Network Size
     self.vector_inputs = True
     self.input_shape = [None, self.params.num_pixels]
@@ -29,11 +31,11 @@ class MlpVaeModel(MlpModel):
       self.params.ae_conv_strides = []
 
   def build_vae_module(self, input_node):
-    module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
-      self.params.ae_patch_size, self.params.ae_conv_strides, self.decay_mult, self.norm_mult,
-      self.kld_mult, self.ae_act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
-      self.params.noise_level, self.params.recon_loss_type, self.params.norm_w_init,
-      variable_scope="vae")
+    module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
+      self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
+      self.decay_mult, self.norm_mult, self.kld_mult, self.ae_act_funcs,
+      self.ae_dropout_keep_probs, self.params.tie_dec_weights, self.params.noise_level,
+      self.params.recon_loss_type, self.params.norm_w_init, variable_scope="vae")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -86,7 +88,7 @@ class MlpVaeModel(MlpModel):
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.vae_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
-          self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
+          self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.math.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
           with tf.compat.v1.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),

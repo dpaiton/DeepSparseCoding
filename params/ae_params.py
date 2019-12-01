@@ -25,11 +25,9 @@ class params(BaseParams):
     self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
-    #Specify number of neurons for encoder
-    #Last element in list is the size of the latent space
-    #Decoder will automatically build the transpose of the encoder
+    self.mirror_dec_architecture = True
     self.ae_layer_types = ["fc", "fc"]
-    self.ae_output_channels = [512, 50]
+    self.ae_enc_channels = [512, 50]
     self.ae_patch_size = []
     self.ae_conv_strides = []
     self.ae_activation_functions = ["relu", "relu", "relu", "identity"]
@@ -64,8 +62,8 @@ class params(BaseParams):
       self.batch_size = 100
 
       #self.vectorize_data = True
-      #self.ae_output_channels = [768, 256, 256, 128, 64]#[768]
-      #self.ae_layer_types = ["fc"]*len(self.ae_output_channels)
+      #self.ae_enc_channels = [768, 256, 256, 128, 64]#[768]
+      #self.ae_layer_types = ["fc"]*len(self.ae_enc_channels)
       #self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
       #self.ae_dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
 
@@ -129,8 +127,8 @@ class params(BaseParams):
       self.rescale_data = False
       self.ae_layer_types = ["conv"]
       self.ae_enc_channels = [256]
-      self.ae_patch_size = [(12, 12)]
-      self.ae_conv_strides = [(1, 2, 2, 1)]
+      self.ae_patch_size = [(8, 8)]
+      self.ae_conv_strides = [(1, 1, 1, 1)]
       self.tie_dec_weights = False
       self.mirror_dec_architecture = True
       self.optimizer = "adam"

@@ -84,8 +84,8 @@ def gauss_interp(samp, xs, ys, interp_width, ratio=0.75):
     norm_factor = (np.sqrt(2 * np.pi) * sig / interp_width).astype(np.float32)
     norm_factor = np.array(norm_factor, dtype=np.float32)
     gauss_mean = tf.subtract(collapsed_samp, xs)
-    gauss = tf.exp(tf.multiply(-0.5, tf.divide(tf.square(gauss_mean), tf.square(sig))))
-    output = tf.reduce_sum(tf.multiply(tf.divide(ys, norm_factor), gauss), axis=[1])
+    gauss = tf.exp(tf.multiply(-0.5, tf.math.divide(tf.square(gauss_mean), tf.square(sig))))
+    output = tf.reduce_sum(tf.multiply(tf.math.divide(ys, norm_factor), gauss), axis=[1])
     return output
 
 def memristor_output(v, eps, vs, mus, sigs, interp_width, error_rate=0.0):

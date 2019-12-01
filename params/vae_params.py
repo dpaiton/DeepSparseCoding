@@ -29,7 +29,7 @@ class params(BaseParams):
     self.mirror_dec_architecture = True
     self.noise_level = 0.0 # std of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
-    self.tie_decoder_weights = False
+    self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
     self.optimizer = "adam"
@@ -65,13 +65,13 @@ class params(BaseParams):
       self.standardize_data = False
       self.tf_standardize_data = False
       self.vectorize_data = False
+      self.mirror_dec_architecture = True
       self.ae_layer_types = ["conv", "conv", "fc"]
       self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
       self.ae_patch_size = [(3, 3)]*2
       self.ae_enc_channels = [32, 64, 25]
       self.ae_activation_functions = ["lrelu", "lrelu", "sigmoid", "lrelu", "lrelu", "sigmoid"]
       self.ae_dropout = [1.0]*len(self.ae_activation_functions)
-      self.mirror_dec_architecture = True
       self.recon_loss_type = "mse"
       for schedule_idx in range(len(self.schedule)):
         self.schedule[schedule_idx]["num_batches"] = int(1e5)#int(2e6)
@@ -106,12 +106,14 @@ class params(BaseParams):
     self.test_param_variants = [
       {"vectorize_data":False,
       "tie_dec_weights":False,
+      "ae_activation_functions":["relu"] * 4,
+      "ae_dropout":[1.0] * 4,
       "mirror_dec_architecture":False,
-      "ae_layer_types":["conv", "conv", "conv", "fc"],
-      "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)],
-      "ae_patch_size":[(3, 3)]*3,
+      "ae_layer_types":["conv", "conv", "fc", "fc"],
+      "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1)],
+      "ae_patch_size":[(3, 3)]*2,
       "ae_enc_channels":[32, 64, 25],
-      "ae_dec_channels":[784]}]
+      "ae_dec_channels":[256]}]
     # Test 2
     self.test_param_variants += [
       {"vectorize_data":False,

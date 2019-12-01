@@ -69,7 +69,7 @@ class RicaModel(Model):
           self.trainable_variables[w_unnormalized.name] = w_unnormalized
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0],
             keepdims=True), self.params.eps))
-          self.w = tf.divide(w_unnormalized, w_norm, name="w_norm")
+          self.w = tf.math.divide(w_unnormalized, w_norm, name="w_norm")
 
         with tf.compat.v1.variable_scope("inference") as scope:
           self.a = tf.matmul(input_node, self.w, name="activity")
@@ -88,7 +88,7 @@ class RicaModel(Model):
             MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
             pixel_var = tf.nn.moments(input_node, axes=[1])[1]
-            self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.divide(tf.square(pixel_var), MSE)),
+            self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.math.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
 

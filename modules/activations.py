@@ -27,7 +27,7 @@ def sigmoid(a_in):
 
 def shift_sigmoid(a_in, beta=1.0, name=None):
   """Hyperbolic tangent non-linearity"""
-  a_out = tf.subtract(tf.multiply(2.0, tf.divide(1.0,
+  a_out = tf.subtract(tf.multiply(2.0, tf.math.divide(1.0,
     tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0, name=name)
   return a_out
 
@@ -53,7 +53,7 @@ def gdn(u_in, w, b, w_thresh_min, b_thresh_min, eps, inverse, conv, name=None):
   if inverse:
     u_out = tf.multiply(u_in, gdn_mult, name=name)
   else:
-    u_out = tf.divide(u_in, gdn_mult, name=name)
+    u_out = tf.math.divide(u_in, gdn_mult, name=name)
   return u_out, gdn_mult
 
 def lca_threshold(u_in, thresh_type, rectify, sparse_threshold, name=None):

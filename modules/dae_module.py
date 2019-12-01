@@ -6,16 +6,19 @@ from ops.init_ops import GDNGammaInitializer
 from modules.activations import activation_picker
 
 class DaeModule(AeModule):
-  def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides, ent_mult,
+  def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size, conv_strides, ent_mult,
     decay_mult, norm_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size,
     num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
-    gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_decoder_weights,
+    gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_dec_weights,
     norm_w_init, variable_scope="dae"):
     """
     Divisive Autoencoder module
     Inputs:
       data_tensor
-      output_channels: a list of channels to make, also defines number of layers
+      enc_channels [list of ints] the number of output channels per encoder layer
+        Last entry is the number of latent units
+      dec_channels [list of ints] the number of output channels per decoder layer
+        Last entry must be the number of input pixels for FC layers and channels for CONV layers
       ent_mult: tradeoff multiplier for latent entropy loss
       decay_mult: tradeoff multiplier for weight decay loss
       norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
@@ -65,9 +68,9 @@ class DaeModule(AeModule):
     #  self.latent_conv = True
     #else:
     #  self.latent_conv = False
-    super(DaeModule, self).__init__(data_tensor, layer_types, output_channels, patch_size,
-      conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_decoder_weights, norm_w_init,
-      variable_scope)
+    super(DaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
+      patch_size, conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_dec_weights,
+      norm_w_init, variable_scope)
 
   def compute_entropies(self, a_in):
     a_probs = ef.prob_est(a_in, self.mle_thetas, self.triangle_centers)
@@ -107,7 +110,6 @@ class DaeModule(AeModule):
     Make layer that does act(u*w+b) where * is a dot product or convolution
     Example case for w_read_id logic:
       layer_id: [0 1 2 3 4] [5 6 7 8 9]
-
                               10-6  10-7  10-8 10-9  10-10
       weight_id: [0 1 2 3 4] [ 4     3     2     1     0 ]
       num_layers: 10
@@ -115,18 +117,16 @@ class DaeModule(AeModule):
     """
     trainable_variables = []
     with tf.compat.v1.variable_scope("layer"+str(layer_id), reuse=tf.compat.v1.AUTO_REUSE) as scope:
-      if self.tie_decoder_weights:
-        w_read_id = self.num_layers - (layer_id+1)
+      if self.tie_dec_weights:
+        w_read_id = self.num_layers - (layer_id + 1)
       else:
         w_read_id = layer_id
-
       name_prefix = "conv_" if conv else "fc_"
       w_name = name_prefix+"w_"+str(w_read_id)
       w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
         initializer=self.w_init, trainable=True)
       trainable_variables.append(w)
-
-      b_name = name_prefix+"b_"+str(layer_id)
+      b_name = name_prefix + "b_" + str(layer_id)
       if conv and decode:
         b_shape = w_shape[-2]
       else:
@@ -134,7 +134,6 @@ class DaeModule(AeModule):
       b = tf.compat.v1.get_variable(name=b_name, shape=b_shape,
         dtype=tf.float32, initializer=self.b_init, trainable=True)
       trainable_variables.append(b)
-
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       if activation_function == activation_picker("gdn"):
         #if self.latent_conv and decode:
@@ -148,7 +147,7 @@ class DaeModule(AeModule):
         b_gdn = tf.compat.v1.get_variable(name="b_gdn_"+str(layer_id), shape=b_shape,
           dtype=tf.float32, initializer=self.b_gdn_init, trainable=True)
         trainable_variables.append(b_gdn)
-        #gdn_inverse = True if layer_id >= self.num_encoder_layers else False
+        #gdn_inverse = True if layer_id >= self.num_enc_layers else False
         #output_tensor, gdn_mult = activation_function(pre_act, w_gdn, b_gdn, self.gdn_w_thresh_min,
         #  self.gdn_b_thresh_min, self.gdn_eps, gdn_inverse, conv=self.latent_conv)
         output_tensor, gdn_mult = activation_function(pre_act, w_gdn, b_gdn, self.gdn_w_thresh_min,
@@ -167,7 +166,7 @@ class DaeModule(AeModule):
     enc_b_gdn_list = []
     prev_input_features = input_tensor.get_shape().as_list()[-1]
     # Make conv layers first
-    for layer_id in range(self.num_conv_layers):
+    for layer_id in range(self.num_enc_conv_layers):
       w_shape = [int(self.patch_size_y[layer_id]), int(self.patch_size_x[layer_id]),
         int(prev_input_features), int(self.output_channels[layer_id])]
       u_out, trainable_variables = self.layer_maker(layer_id, enc_u_list[layer_id],
@@ -182,25 +181,24 @@ class DaeModule(AeModule):
       enc_w_list.append(w)
       enc_b_list.append(b)
       prev_input_features = int(self.output_channels[layer_id])
-
     # Make fc layers second
-    for fc_layer_id in range(self.num_fc_layers):
-      layer_id = fc_layer_id + self.num_conv_layers
-
-      if fc_layer_id == 0:
+    for enc_fc_layer_id in range(self.num_enc_fc_layers):
+      layer_id = enc_fc_layer_id + self.num_enc_conv_layers
+      if enc_fc_layer_id == 0:
         # Input needs to be reshaped to [batch, num_units] for FC layers
-        enc_shape = enc_u_list[-1].get_shape().as_list()
-        if len(enc_shape) == 4:
-          (batch, y, x, f) = enc_shape
-          prev_input_features = y * x * f # Flatten input (input_tensor or last conv layer)
-          in_tensor  = tf.reshape(enc_u_list[-1], [-1, prev_input_features])
-        elif(len(enc_shape) == 2):
-          in_tensor = enc_u_list[-1]
-        else:
-          assert False, ("Final conv encoder output or input_tensor has incorrect ndim")
+        #enc_shape = enc_u_list[-1].get_shape().as_list()
+        #if len(enc_shape) == 4:
+        #  (batch, y, x, f) = enc_shape
+        #  prev_input_features = y * x * f # Flatten input (input_tensor or last conv layer)
+        #  in_tensor  = tf.reshape(enc_u_list[-1], [-1, prev_input_features])
+        #elif(len(enc_shape) == 2):
+        #  in_tensor = enc_u_list[-1]
+        #else:
+        #  assert False, ("Final conv encoder output or input_tensor has incorrect ndim")
+        in_tensor = self.flatten_feature_map(enc_u_list[-1])
+        prev_input_features = in_tensor.get_shape().as_list()[1]
       else:
         in_tensor = enc_u_list[layer_id]
-
       w_shape = [int(prev_input_features), int(self.output_channels[layer_id])]
       u_out, trainable_variables = self.layer_maker(layer_id, in_tensor,
         activation_functions[layer_id], w_shape, conv=False, decode=False)
@@ -223,12 +221,24 @@ class DaeModule(AeModule):
     dec_w_gdn_list = []
     dec_b_gdn_list = []
     # Build FC layers first
-    for dec_layer_id in range(self.num_fc_layers):
-      layer_id = self.num_encoder_layers + dec_layer_id
-      #Corresponding enc layer
-      enc_w_id = -(dec_layer_id+1)
-      w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()[::-1]
-      u_out, trainable_variables = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
+    for dec_layer_id in range(self.num_dec_fc_layers):
+      layer_id = self.num_enc_layers + dec_layer_id
+      input_shape = dec_u_list[dec_layer_id].get_shape()
+      if input_shape.ndims == 4: # if final enc layer was conv then flatten
+        in_tensor = self.flatten_feature_map(dec_u_list[dec_layer_id])
+      else: # final enc layer was fc
+        in_tensor = dec_u_liast[dec_layer_id]
+      if dec_layer_id == self.num_dec_fc_layers - 1 and self.num_dec_conv_layers > 0:
+        # If there are decoder conv layers, then
+        # the last decoder FC layer needs to output a vector of the correct length
+        # correct_length = feature_map_y * feature_map_x * feature_map_f
+        # where feature_map_f = self.dec_channels[dec_layer_id]
+        conv_layer_shapes = self.get_dec_shapes(self.data_tensor.get_shape())
+        out_channels = np.prod(conv_layer_shapes[0])
+      else:
+        out_channels = self.dec_channels[dec_layer_id]
+      w_shape = [in_tensor.get_shape()[-1], out_channels]
+      u_out, trainable_variables = self.layer_maker(layer_id, in_tensor,
         activation_functions[dec_layer_id], w_shape, conv=False, decode=True)
       if activation_functions[dec_layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
@@ -239,27 +249,28 @@ class DaeModule(AeModule):
       dec_u_list.append(u_out)
       dec_w_list.append(w)
       dec_b_list.append(b)
-
     # Build conv layers second
-    for dec_conv_layer_id in range(self.num_conv_layers):
-      dec_layer_id = self.num_fc_layers + dec_conv_layer_id
-      layer_id = self.num_encoder_layers + dec_layer_id
-
-      if dec_conv_layer_id == 0:
-        #Reshape flat vector for next conv
-        u_list_id = -(self.num_fc_layers + 1)
-        enc_shape = self.enc_u_list[u_list_id].get_shape().as_list()
-        if len(enc_shape) == 4:
-          (batch, y, x, f) = self.enc_u_list[u_list_id].get_shape().as_list()
-          in_tensor = tf.reshape(dec_u_list[-1], [-1, y, x, f])
-        else:
-          in_tensor = dec_u_list[-1]
-      else:
-        u_list_id = -(dec_layer_id + 1) # u_list_id is the id for the INPUT of this layer
+    for dec_conv_layer_id in range(self.num_dec_conv_layers):
+      dec_layer_id = self.num_dec_fc_layers + dec_conv_layer_id
+      layer_id = self.num_enc_layers + dec_layer_id
+      input_shape = dec_u_list[dec_layer_id].get_shape()
+      if input_shape.ndims == 4: # prev layer was conv
+        (batch, y, x, f) = input_shape
         in_tensor = dec_u_list[dec_layer_id]
-
-      enc_w_id = -(dec_layer_id + 1)
-      w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()
+        w_shape = [
+          self.patch_size_y[self.num_enc_conv_layers + dec_conv_layer_id],
+          self.patch_size_x[self.num_enc_conv_layers + dec_conv_layer_id],
+          self.dec_channels[dec_layer_id],
+          f]
+      else: # prev layer was fc
+        conv_layer_shapes = self.get_dec_shapes(self.data_tensor.get_shape())
+        new_shape = [-1] + conv_layer_shapes[dec_conv_layer_id]
+        in_tensor = tf.reshape(dec_u_list[dec_layer_id], new_shape)
+        w_shape = [
+          self.patch_size_y[self.num_enc_conv_layers + dec_conv_layer_id],
+          self.patch_size_x[self.num_enc_conv_layers + dec_conv_layer_id],
+          self.dec_channels[dec_layer_id],
+          new_shape[-1]]
       u_out, trainable_variables = self.layer_maker(layer_id, in_tensor, activation_functions[dec_conv_layer_id],
         w_shape, conv=True, decode=True)
       if activation_functions[dec_layer_id] == activation_picker("gdn"):
@@ -293,7 +304,7 @@ class DaeModule(AeModule):
       self.w_gdn_list = []
       self.b_gdn_list = []
       enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list = \
-        self.build_encoder(self.u_list[0], self.act_funcs[:self.num_encoder_layers])
+        self.build_encoder(self.u_list[0], self.act_funcs[:self.num_enc_layers])
       self.enc_u_list = enc_u_list
       self.enc_w_list = enc_w_list
       self.u_list += enc_u_list
@@ -324,9 +335,9 @@ class DaeModule(AeModule):
       a_noise = tf.add(noise,self.u_list[-1])
 
       dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \
-        self.build_decoder(a_noise, self.act_funcs[self.num_encoder_layers:])
+        self.build_decoder(a_noise, self.act_funcs[self.num_enc_layers:])
       self.u_list += dec_u_list
-      if not self.tie_decoder_weights:
+      if not self.tie_dec_weights:
         self.w_list += dec_w_list
       self.b_list += dec_b_list
       self.w_gdn_list += dec_w_gdn_list

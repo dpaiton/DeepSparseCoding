@@ -42,12 +42,13 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     self.ae_layer_types = ["fc", "fc", "fc"]
-    self.ae_output_channels = [1500, 1000, 50]
-    self.tie_decoder_weights = False
+    self.mirror_dec_architecture = True
+    self.ae_enc_channels = [1500, 1000, 50]
+    self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
     self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
-    self.ae_dropout = [1.0]*6
+    self.ae_dropout = [1.0]*len(self.ae_activation_functions)
     self.num_triangles = 30
     self.mle_step_size = 0.01
     self.num_mle_steps = 30
@@ -88,8 +89,10 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.vectorize_data = True
       self.ae_layer_types = ["fc", "fc", "fc"]
-      self.ae_output_channels = [768, 512, 50]
+      self.mirror_dec_architecture = True
+      self.ae_enc_channels = [768, 512, 50]
       self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
       self.ae_dropout = [1.0]*len(self.ae_activation_functions)
       self.cp_int = int(1e5)
@@ -115,17 +118,18 @@ class params(BaseParams):
       self.epoch_size = 50
       self.batch_size = 12
       self.num_edge_pixels = 8
-      self.tie_decoder_weights = False
+      self.tie_dec_weights = False
+      self.vectorize_data = False
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 1e-4
       self.ae_layer_types = ["conv", "conv"]
-      self.ae_output_channels = [20, 10]
+      self.mirror_dec_architecture = True
+      self.ae_enc_channels = [20, 10]
       self.ae_conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
       self.ae_patch_size = [(3, 3), (3, 3)]
       self.ae_activation_functions = ["gdn", "gdn", "gdn", "identity"]
-      self.ae_dropout = [1.0]*4
-      self.vectorize_data = False
+      self.ae_dropout = [1.0]*len(self.ae_activation_functions)
     else:
       assert False, ("Data type "+data_type+" is not supported.")
 
@@ -134,15 +138,16 @@ class params(BaseParams):
     self.epoch_size = 50
     self.batch_size = 11
     self.num_edge_pixels = 8
-    self.tie_decoder_weights = False
+    self.tie_dec_weights = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.vectorize_data = False
-    self.ae_layer_types = ["conv", "conv"]
-    self.ae_output_channels = [20, 10]
-    self.ae_conv_strides = [(1, 1, 1, 1), (1, 1, 1, 1)]
-    self.ae_patch_size = [(3, 3), (3, 3)]
-    self.ae_activation_functions = ["gdn", "gdn", "gdn", "identity"]
-    self.ae_dropout = [1.0]*len(self.ae_activation_functions)
-    self.vectorize_data = False
+    self.ae_dropout = [1.0]*4
+    self.mirror_dec_architecture = True
+    self.test_param_variants = [
+      {"ae_layer_types":["conv", "conv"],
+      "ae_enc_channels":[20, 10],
+      "ae_conv_strides":[(1, 1, 1, 1), (1, 1, 1, 1)],
+      "ae_patch_size":[(3, 3), (3, 3)],
+      "ae_activation_functions":["gdn", "gdn", "gdn", "identity"]}]

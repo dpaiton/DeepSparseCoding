@@ -25,11 +25,11 @@ class VaeModel(AeModel):
     super(VaeModel, self).__init__()
 
   def build_module(self, input_node):
-    module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
-      self.params.ae_patch_size, self.params.ae_conv_strides, self.decay_mult, self.norm_mult,
-      self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
-      self.params.noise_level, self.params.recon_loss_type, self.params.norm_w_init,
-      variable_scope="vae")
+    module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
+      self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
+      self.decay_mult, self.norm_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
+      self.params.tie_dec_weights, self.params.noise_level, self.params.recon_loss_type,
+      self.params.norm_w_init, variable_scope="vae")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -85,7 +85,7 @@ class VaeModel(AeModel):
     #fig = pf.plot_activity_hist(b_enc_std, title="Encoding Bias Std Histogram",
     #  save_filename=(self.disp_dir+"b_enc_std_hist_v"+self.version+"-"
     #  +current_step.zfill(5)+".png"))
-    latent_layer = self.module.num_encoder_layers-1
+    latent_layer = self.module.num_enc_layers-1
     fig = pf.plot_activity_hist(w_enc_std.reshape((-1, w_enc_std.shape[-1])),
       title="Activity Encoder "+str(latent_layer)+" Std Histogram",
       save_filename=self.params.disp_dir+"act_enc_"+str(latent_layer)+"_std_hist"+filename_suffix)

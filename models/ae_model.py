@@ -21,6 +21,9 @@ class AeModel(Model):
      params: [obj] model parameters
     """
     super(AeModel, self).load_params(params)
+    self.ae_load_params(params)
+
+  def ae_load_params(self, params):
     self.input_shape = [None,] + self.params.data_shape
     if self.params.mirror_dec_architecture:
       num_enc_layers = len(self.params.ae_enc_channels)
@@ -28,10 +31,11 @@ class AeModel(Model):
       self.params.ae_activation_functions += self.params.ae_activation_functions[::-1]
       self.params.ae_layer_types = self.params.ae_layer_types[:num_enc_layers]
       self.params.ae_layer_types += self.params.ae_layer_types[::-1]
-      self.params.ae_conv_strides = self.params.ae_conv_strides[:num_enc_layers]
-      self.params.ae_conv_strides += self.params.ae_conv_strides[::-1]
-      self.params.ae_patch_size = self.params.ae_patch_size[:num_enc_layers]
-      self.params.ae_patch_size += self.params.ae_patch_size[::-1]
+      if("conv" in self.params.ae_layer_types):
+        self.params.ae_conv_strides = self.params.ae_conv_strides[:num_enc_layers]
+        self.params.ae_conv_strides += self.params.ae_conv_strides[::-1]
+        self.params.ae_patch_size = self.params.ae_patch_size[:num_enc_layers]
+        self.params.ae_patch_size += self.params.ae_patch_size[::-1]
       self.params.ae_dec_channels = self.params.ae_enc_channels[::-1][1:]
       self.params.ae_dec_channels += [self.params.data_shape[-1]]
       self.params.ae_dropout = self.params.ae_dropout[:num_enc_layers]
@@ -100,8 +104,8 @@ class AeModel(Model):
               self.MSE = tf.reduce_mean(tf.square(tf.subtract(input_node,
                 self.module.reconstruction)), axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(input_node, axes=[1])[1]
-            self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.divide(tf.square(pixel_var), self.MSE)),
-              name="recon_quality")
+            self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.math.divide(tf.square(pixel_var),
+              self.MSE)), name="recon_quality")
 
   def compute_recon_from_placeholder(self):
     return self.dec_recon

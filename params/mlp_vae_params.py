@@ -31,14 +31,15 @@ class params(BaseParams):
     self.batch_size = 100
     # VAE Params
     self.ae_layer_types = ["fc"]
-    self.ae_output_channels = [768]
+    self.mirror_dec_architecture = True
+    self.ae_enc_channels = [768]
     self.ae_patch_size = []
     self.ae_conv_strides = []
     self.ae_activation_functions = ["lrelu", "sigmoid"]
-    self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
+    self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
     self.noise_level = 0.01 # std of noise added to the input data
     self.recon_loss_type = "mse" # or "cross-entropy"
-    self.tie_decoder_weights = False
+    self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
     self.optimizer = "adam"
@@ -143,7 +144,7 @@ class params(BaseParams):
       self.extract_patches = False
       self.cp_load = True
       self.ae_layer_types = ["fc"]
-      self.ae_output_channels = [768]
+      self.ae_enc_channels = [768]
       self.ae_activation_functions = ["lrelu", "sigmoid"]
       # MLP params
       self.train_on_recon = True # if False, train on activations
@@ -177,12 +178,12 @@ class params(BaseParams):
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
+      self.ae_enc_channels = [768]
+      self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [16, 16, 1]
       self.num_classes = 2
       self.ae_layer_types = ["fc"]
-      self.ae_output_channels = [768]
       self.ae_activation_functions = ["lrelu", "sigmoid"]
       self.mlp_layer_types = ["conv", "fc", "fc"]
       self.mlp_output_channels = [128, 768, self.num_classes]

@@ -143,7 +143,7 @@ class BaseParams(object):
     train_on_recon [bool] if set, train on autoencoder reconstructions; otherwise, train on autoencoder latent encodings
 
   ae
-    tie_decoder_weights [bool] if set, the decoder weights will equal the transpose of the encoder weights
+    tie_dec_weights [bool] if set, the decoder weights will equal the transpose of the encoder weights
 
   vae
     noise_level [float] standard deviation of noise added to the input data for denoising vae
