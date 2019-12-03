@@ -56,6 +56,8 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.optimizer = "adam"#"annealed_sgd"#"adam"
+      self.num_edge_pixels = 28
+      self.num_data_channels = 1
       self.batch_size = 100
       self.log_int = 100
       self.cp_int = 5e5
@@ -87,6 +89,7 @@ class params(BaseParams):
       self.epoch_size = 1000
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
+      self.num_data_channels = 1
 
     else:
       assert False, ("Data type "+data_type+" is not supported.")
@@ -95,7 +98,6 @@ class params(BaseParams):
     self.set_data_params(data_type)
     self.epoch_size = 50
     self.batch_size = 10
-    self.num_edge_pixels = 16
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2
@@ -113,7 +115,7 @@ class params(BaseParams):
       "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1)],
       "ae_patch_size":[(3, 3)]*2,
       "ae_enc_channels":[32, 64, 25],
-      "ae_dec_channels":[256]}]
+      "ae_dec_channels":[int(self.num_edge_pixels**2)]}]
     # Test 2
     self.test_param_variants += [
       {"vectorize_data":False,

@@ -3,13 +3,9 @@ from params.base_params import BaseParams
 
 class params(BaseParams):
   def __init__(self):
-    """
-    Additional modifiable parameters:
-      TODO
-    """
     super(params, self).__init__()
     self.model_type = "ae"
-    self.model_name = "test"
+    self.model_name = "ae"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -54,57 +50,22 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.num_edge_pixels = 28
+      self.num_data_channels = 1
       self.rescale_data = False
       self.standardize_data = True
       self.tf_standardize_data = False
       self.center_data = False
       self.optimizer = "annealed_sgd"
       self.batch_size = 100
-
-      #self.vectorize_data = True
-      #self.ae_enc_channels = [768, 256, 256, 128, 64]#[768]
-      #self.ae_layer_types = ["fc"]*len(self.ae_enc_channels)
-      #self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
-      #self.ae_dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]#0.5, 1.0]#[0.35, 1.0]
-
-      self.vectorize_data = False
-      self.ae_layer_types = ["conv", "conv", "conv"]
-      self.ae_layer_types += ["fc"]
-      self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
-      self.ae_patch_size = [(3, 3)]*3
-      self.ae_enc_channels = [32, 64, 25]
-      self.ae_dec_channels = [784]
-
-      #self.vectorize_data = False
-      #self.ae_layer_types = ["conv", "conv", "conv"]
-      #self.ae_layer_types += self.ae_layer_types[::-1]
-      #self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
-      #self.ae_conv_strides += self.ae_conv_strides[::-1]
-      #self.ae_patch_size = [(3, 3)]*3
-      #self.ae_patch_size += self.ae_patch_size[::-1]
-      #self.ae_enc_channels = [32, 64, 25]
-      #self.ae_dec_channels = [64, 32, 1]
-
-      #self.vectorize_data = False
-      #self.ae_layer_types = ["conv", "conv", "fc"]
-      #self.ae_layer_types += self.ae_layer_types[::-1]
-      #self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1)]
-      #self.ae_conv_strides += self.ae_conv_strides[::-1]
-      #self.ae_patch_size = [(3, 3)]*2
-      #self.ae_patch_size += self.ae_patch_size[::-1]
-      #self.ae_enc_channels = [32, 64, 25]
-      #self.ae_dec_channels = [None, 32, 1]
-
-      #self.vectorize_data = True
-      #self.ae_enc_channels = [256, 128, 64]
-      #self.ae_dec_channels = [128, 256, 784]
-      #self.ae_layer_types = ["fc"]*(len(self.ae_dec_channels)+len(self.ae_dec_channels))
-
+      self.vectorize_data = True
       self.tie_dec_weights = False
       self.mirror_dec_architecture = False
-      self.ae_activation_functions = ["lrelu"]*len(self.ae_layer_types)
-      self.ae_dropout = [1.0]*len(self.ae_layer_types)
-
+      self.ae_enc_channels = [768, 256, 256, 128, 64]
+      self.ae_dec_channels = self.ae_enc_channels[::-1][1:]+[784]
+      self.ae_layer_types = ["fc"]*2*len(self.ae_enc_channels)
+      self.ae_activation_functions = ["lrelu"] * (len(self.ae_layer_types) - 1) + ["identity"]
+      self.ae_dropout = [0.5, 0.7, 0.7, 0.7, 1.0, 0.7, 0.7, 0.7, 0.7, 1.0]
       self.log_int = 100
       self.cp_int = int(5e5)
       self.gen_plot_int = int(5e5)
@@ -122,6 +83,8 @@ class params(BaseParams):
 
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
+      self.num_edge_pixels = 32
+      self.num_data_channels = 3
       self.vectorize_data = False
       self.standardize_data = True
       self.rescale_data = False
@@ -162,6 +125,8 @@ class params(BaseParams):
       self.extract_patches = True
       self.num_patches = 1e6
       self.patch_edge_size = 16
+      self.num_edge_pixels = self.patch_edge_size
+      self.num_data_channels = 1
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
@@ -193,6 +158,7 @@ class params(BaseParams):
       self.epoch_size = 1000
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
+      self.num_data_channels = 1
 
     else:
       assert False, ("Data type "+data_type+" is not supported.")
@@ -201,7 +167,6 @@ class params(BaseParams):
     self.set_data_params(data_type)
     self.epoch_size = 50
     self.batch_size = 10
-    self.num_edge_pixels = 16
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2
@@ -215,7 +180,7 @@ class params(BaseParams):
       "mirror_dec_architecture":False,
       "ae_layer_types":["fc", "fc", "fc", "fc", "fc", "fc"],
       "ae_enc_channels":[30, 20, 10],
-      "ae_dec_channels":[20, 30, self.num_edge_pixels**2]}]
+      "ae_dec_channels":[20, 30, self.num_edge_pixels**2*self.num_data_channels]}]
     # Test 2
     self.test_param_variants += [
       {"vectorize_data":False,
@@ -236,3 +201,13 @@ class params(BaseParams):
       "ae_enc_channels":[30, 20, 10],
       "ae_patch_size":[(8,8), (4,4)],
       "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1)]}]
+    # Test 4
+    self.test_param_variants += [
+      {"vectorize_data":False,
+      "tie_dec_weights":False,
+      "mirror_dec_architecture":False,
+      "ae_layer_types":["conv", "conv", "conv", "fc"],
+      "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)],
+      "ae_patch_size":[(3, 3)]*3,
+      "ae_enc_channels":[32, 64, 25],
+      "ae_dec_channels":[self.num_edge_pixels**2*self.num_data_channels]}]

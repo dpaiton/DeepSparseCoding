@@ -10,8 +10,8 @@ class params(BaseParams):
       synthetic_noise: noise to create synthetic channels (e.g. upper/lower bounds for RRAM data with write verify)
     """
     super(params, self).__init__()
-    self.model_type = "dae"
-    self.model_name = "dae_test"
+    self.model_type = "dae_mem"
+    self.model_name = "dae_mem"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False

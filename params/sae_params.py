@@ -66,6 +66,8 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.num_edge_pixels = 28
+      self.num_data_channels = 1
       self.log_int = 100
       self.cp_int = int(1e6)
       self.gen_plot_int = int(1e6)
@@ -93,6 +95,8 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
+      self.num_edge_pixels = self.patch_edge_size
+      self.num_data_channels = 1
       self.batch_size = 100
       self.vectorize_data = True
       self.rescale_data = False
@@ -120,6 +124,8 @@ class params(BaseParams):
 
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
+      self.num_edge_pixels = 32
+      self.num_data_channels = 3
       self.vectorize_data = False
       self.standardize_data = False
       self.tf_standardize_data = True
@@ -161,6 +167,8 @@ class params(BaseParams):
       self.extract_patches = True
       self.num_patches = 1e6
       self.patch_edge_size = 16
+      self.num_edge_pixels = self.patch_edge_size
+      self.num_data_channels = 1
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
@@ -180,6 +188,7 @@ class params(BaseParams):
       self.epoch_size = 1000
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
+      self.num_data_channels = 1
       self.vectorize_data = True
       self.rescale_data = True
       self.whiten_data = False
@@ -202,7 +211,6 @@ class params(BaseParams):
     self.set_data_params(data_type)
     self.epoch_size = 50
     self.batch_size = 10
-    self.num_edge_pixels = 8
     self.num_patches = 100
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2

@@ -25,7 +25,7 @@ class AeModel(Model):
 
   def ae_load_params(self, params):
     self.input_shape = [None,] + self.params.data_shape
-    if self.params.mirror_dec_architecture:
+    if self.params.mirror_dec_architecture: # Mirror each param as if the full amount is not specified
       num_enc_layers = len(self.params.ae_enc_channels)
       self.params.ae_activation_functions = self.params.ae_activation_functions[:num_enc_layers]
       self.params.ae_activation_functions += self.params.ae_activation_functions[::-1]
@@ -41,7 +41,6 @@ class AeModel(Model):
       self.params.ae_dropout = self.params.ae_dropout[:num_enc_layers]
       self.params.ae_dropout += self.params.ae_dropout[::-1]
     self.num_latent = self.params.ae_enc_channels[-1]
-    self.ae_output_channels = self.params.ae_enc_channels + self.params.ae_dec_channels
     self.act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.ae_activation_functions]
     if np.all([layer_type == "fc" for layer_type in self.params.ae_layer_types]):

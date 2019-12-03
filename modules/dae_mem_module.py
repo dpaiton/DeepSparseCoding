@@ -97,8 +97,6 @@ class DaeMemModule(DaeModule):
     u_out = tf.reshape(r, shape=tf.shape(u_in), name="mem_r")
     return u_out
 
-
-
   def build_graph(self):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       with tf.compat.v1.variable_scope("weight_inits") as scope:
@@ -120,19 +118,16 @@ class DaeMemModule(DaeModule):
       self.b_gdn_list = []
       enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list = \
         self.build_encoder(self.u_list[0], self.act_funcs[:self.num_enc_layers])
-      self.enc_u_list = enc_u_list
-      self.enc_w_list = enc_w_list
-      self.u_list += enc_u_list
+      self.u_list += enc_u_list[1:]
       self.w_list += enc_w_list
       self.b_list += enc_b_list
       self.w_gdn_list += enc_w_gdn_list
       self.b_gdn_list += enc_b_gdn_list
 
-      u_shape = self.u_list[-1].get_shape().as_list()
-      if self.layer_types[-1] == "conv":
-        self.num_latent = np.prod(u_shape[1:])
+      if self.enc_layer_types[-1] == "conv":
+        self.num_latent = int(np.prod(self.u_list[-1].get_shape()[1:]))
       else:
-        self.num_latent = self.output_channels[-1]
+        self.num_latent = self.enc_channels[-1]
 
       with tf.compat.v1.variable_scope("inference") as scope:
         self.a = tf.identity(enc_u_list[-1], name="activity")
@@ -149,7 +144,7 @@ class DaeMemModule(DaeModule):
 
       dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \
         self.build_decoder(a_noise, self.act_funcs[self.num_enc_layers:])
-      self.u_list += dec_u_list
+      self.u_list += dec_u_list[1:]
       if not self.tie_dec_weights:
         self.w_list += dec_w_list
       self.b_list += dec_b_list
@@ -163,15 +158,12 @@ class DaeMemModule(DaeModule):
         self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
           axis=-1, epsilon=1e-8, name="col_l2_norm"))
         self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
-
       for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
         self.trainable_variables[w_gdn.name] = w_gdn
         self.trainable_variables[b_gdn.name] = b_gdn
       for w, b in zip(self.w_list, self.b_list):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
-
       with tf.compat.v1.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
-
       self.compute_total_loss()

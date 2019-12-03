@@ -22,7 +22,7 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "dae"
-    self.model_name = "dae_test"
+    self.model_name = "dae"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -90,8 +90,8 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.vectorize_data = True
-      self.ae_layer_types = ["fc", "fc", "fc"]
       self.mirror_dec_architecture = True
+      self.ae_layer_types = ["fc", "fc", "fc"]
       self.ae_enc_channels = [768, 512, 50]
       self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
       self.ae_dropout = [1.0]*len(self.ae_activation_functions)

@@ -34,7 +34,6 @@ class AeModule(object):
     self.data_tensor = data_tensor
     self.enc_channels = enc_channels
     self.dec_channels = dec_channels
-    self.output_channels = self.enc_channels + self.dec_channels
     self.patch_size_y = [int(size[0]) for size in patch_size]
     self.patch_size_x = [int(size[1]) for size in patch_size]
     self.dropout = dropout
@@ -257,13 +256,13 @@ class AeModule(object):
     # Make conv layers first
     for layer_id in range(self.num_enc_conv_layers):
       w_shape = [self.patch_size_y[layer_id], self.patch_size_x[layer_id],
-        int(prev_input_features), int(self.output_channels[layer_id])]
+        int(prev_input_features), int(self.enc_channels[layer_id])]
       u_out, w, b = self.layer_maker(layer_id, enc_u_list[layer_id],
         activation_functions[layer_id], w_shape, conv=True, decode=False)
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
-      prev_input_features = int(self.output_channels[layer_id])
+      prev_input_features = int(self.enc_channels[layer_id])
     # Make fc layers second
     for enc_fc_layer_id in range(self.num_enc_fc_layers):
       layer_id = enc_fc_layer_id + self.num_enc_conv_layers
@@ -272,13 +271,13 @@ class AeModule(object):
         prev_input_features = in_tensor.get_shape().as_list()[1]
       else:
         in_tensor = enc_u_list[layer_id]
-      w_shape = [int(prev_input_features), int(self.output_channels[layer_id])]
+      w_shape = [int(prev_input_features), int(self.enc_channels[layer_id])]
       u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[layer_id],
         w_shape, conv=False, decode=False)
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
-      prev_input_features = int(self.output_channels[layer_id])
+      prev_input_features = int(self.enc_channels[layer_id])
     return enc_u_list, enc_w_list, enc_b_list
 
   def build_decoder(self, input_tensor, activation_functions):
@@ -357,7 +356,7 @@ class AeModule(object):
       self.b_list += enc_b_list
       with tf.compat.v1.variable_scope("inference") as scope:
         self.a = tf.identity(enc_u_list[-1], name="activity")
-      dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
+      dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.a,
         self.act_funcs[self.num_enc_layers:])
       self.u_list += dec_u_list[1:] # build_decoder() will place self.u_list[-1] as dec_u_list[0]
       if not self.tie_dec_weights:

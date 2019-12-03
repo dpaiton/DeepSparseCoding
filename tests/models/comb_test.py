@@ -165,7 +165,6 @@ def testBasic(self):
     params.data_shape = list(dataset["train"].shape[1:])
     model.setup(params)
     model.write_saver_defs()
-
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.compat.v1.Session(config=config, graph=model.graph) as sess:

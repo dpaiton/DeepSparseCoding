@@ -74,10 +74,12 @@ def gauss_interp(samp, xs, ys, interp_width, ratio=0.75):
     -------
     interp_func : tf.tensor (batch_size, n_m)
     """
-    #samp_shape = samp.get_shape()
     samp_shape = tf.shape(samp)
-    collapsed_samp = tf.reshape(samp,
-      shape=tf.stack([samp_shape[0], 1, samp_shape[1]*samp_shape[2]*samp_shape[3]]))
+    if samp.get_shape().ndims == 4:
+      collapsed_samp = tf.reshape(samp,
+        shape=tf.stack([samp_shape[0], 1, samp_shape[1]*samp_shape[2]*samp_shape[3]]))
+    else:
+      collapsed_samp = tf.expand_dims(samp, 1)
     xs = tf.cast(tf.expand_dims(xs, 0), tf.float32)  # (1, n_p, n_m)
     ys = tf.cast(tf.expand_dims(ys, 0), tf.float32)  # (1, n_p, n_m)
     sig = (ratio * interp_width).astype(np.float32) # spacing of xs
