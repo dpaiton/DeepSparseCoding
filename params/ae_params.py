@@ -134,7 +134,7 @@ class params(BaseParams):
       self.tie_dec_weights = False
       self.mirror_dec_architecture = True
       self.ae_enc_channels = [768, 256, 64]
-      self.ae_layer_types = ["fc"]*len(self.ae_enc_channels)
+      self.ae_layer_types = ["fc"]*(2*len(self.ae_enc_channels))
       self.optimizer = "annealed_sgd"
       self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
       self.ae_dropout = [0.3] * (len(self.ae_activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
@@ -171,13 +171,13 @@ class params(BaseParams):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.ae_activation_functions = ["relu"] * 6
-    self.ae_dropout = [1.0] * 6
     # Test 1
     self.test_param_variants = [
       {"vectorize_data":True,
       "tie_dec_weights":True,
       "mirror_dec_architecture":False,
+      "ae_activation_functions":["relu"]*6,
+      "ae_dropout":[1.0]*6,
       "ae_layer_types":["fc", "fc", "fc", "fc", "fc", "fc"],
       "ae_enc_channels":[30, 20, 10],
       "ae_dec_channels":[20, 30, self.num_edge_pixels**2*self.num_data_channels]}]
@@ -186,6 +186,8 @@ class params(BaseParams):
       {"vectorize_data":False,
       "tie_dec_weights":True,
       "mirror_dec_architecture":False,
+      "ae_activation_functions":["relu"]*6,
+      "ae_dropout":[1.0]*6,
       "ae_layer_types":["conv", "conv", "conv", "conv", "conv", "conv"],
       "ae_enc_channels":[30, 20, 10],
       "ae_dec_channels":[20, 30, 1],
@@ -197,6 +199,8 @@ class params(BaseParams):
       {"vectorize_data":False,
       "tie_dec_weights":False,
       "mirror_dec_architecture":True,
+      "ae_activation_functions":["relu"]*6,
+      "ae_dropout":[1.0]*6,
       "ae_layer_types":["conv", "conv", "fc"],
       "ae_enc_channels":[30, 20, 10],
       "ae_patch_size":[(8,8), (4,4)],
@@ -206,6 +210,8 @@ class params(BaseParams):
       {"vectorize_data":False,
       "tie_dec_weights":False,
       "mirror_dec_architecture":False,
+      "ae_activation_functions":["relu"]*4,
+      "ae_dropout":[1.0]*4,
       "ae_layer_types":["conv", "conv", "conv", "fc"],
       "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)],
       "ae_patch_size":[(3, 3)]*3,
