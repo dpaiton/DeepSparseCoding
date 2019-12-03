@@ -8,7 +8,7 @@ from modules.ae_module import AeModule
 class VaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
     conv_strides, w_decay_mult, w_norm_mult, kld_mult, act_funcs, dropout, tie_dec_weights,
-    noise_level, recon_loss_type, norm_w_init, variable_scope="vae"):
+    noise_level, recon_loss_type, w_init_type, variable_scope="vae"):
     """
     Variational Autoencoder module
     Inputs:
@@ -26,7 +26,7 @@ class VaeModule(AeModule):
       recon_loss_type [str] either "mse" or the cross entropy loss used in Kingma & Welling
       conv_strides [list] list of strides for convolution [batch, y, x, channels]
       patch_size: number of (y, x) inputs for convolutional patches
-      norm_w_init: if True, l2 normalize w_init,
+      w_init_type: if True, l2 normalize w_init,
         reducing over [0] axis on enc and [-1] axis on dec
       variable_scope [str] specifies the variable_scope for the module
     Outputs:
@@ -44,7 +44,7 @@ class VaeModule(AeModule):
     self.kld_mult = kld_mult
     super(VaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
       patch_size, conv_strides, w_decay_mult, w_norm_mult, act_funcs, dropout, tie_dec_weights,
-      norm_w_init, variable_scope)
+      w_init_type, variable_scope)
 
   def compute_recon_loss(self, reconstruction):
     if self.recon_loss_type == "mse":
@@ -123,9 +123,6 @@ class VaeModule(AeModule):
       self.b_list = []
       enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
         self.act_funcs[:self.num_enc_layers])
-      self.enc_u_list = enc_u_list # TODO: use u_list instead of enc_u_list in ae_module
-      self.enc_w_list = enc_w_list
-      self.enc_b_list = enc_b_list
       self.u_list += enc_u_list[:-1] # don't store the mean value in u_list
       self.w_list += enc_w_list
       self.b_list += enc_b_list
@@ -142,7 +139,7 @@ class VaeModule(AeModule):
       self.trainable_variables[self.w_enc_std.name] = self.w_enc_std
       self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
 
-      self.latent_mean = self.enc_u_list[-1]
+      self.latent_mean = enc_u_list[-1]
       self.a = self.latent_mean # alias for AE model
 
       if self.layer_types[-1] == "conv":

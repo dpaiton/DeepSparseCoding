@@ -40,7 +40,7 @@ class params(BaseParams):
     self.ae_dropout = [0.5, 0.7, 1.0, 0.7, 0.7, 1.0]
     self.tie_dec_weights = False
     self.norm_weights = False
-    self.norm_w_init = False
+    self.w_init_type = "normal"
     self.optimizer = "sgd"
     # MLP Params
     self.train_on_recon = False # if False, train on AE latent activations

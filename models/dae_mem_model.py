@@ -23,7 +23,7 @@ class DaeMemModel(DaeModel):
       self.params.gdn_eps, self.params.memristor_data_loc, self.params.memristor_type,
       self.memristor_std_eps, self.params.synthetic_noise, self.params.mem_error_rate,
       self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_dec_weights,
-      self.params.norm_w_init, variable_scope="dae_mem")
+      self.params.w_init_type, variable_scope="dae_mem")
     return module
 
   def build_graph_from_input(self, input_node):

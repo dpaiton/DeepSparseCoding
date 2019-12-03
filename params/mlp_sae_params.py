@@ -38,7 +38,7 @@ class params(BaseParams):
     self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
     self.tie_dec_weights = False
     self.norm_weights = False
-    self.norm_w_init = False
+    self.w_init_type = "normal"
     self.optimizer = "adam"
     # MLP Params
     self.train_on_recon = False # if False, train on SAE latent activations

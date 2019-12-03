@@ -22,7 +22,7 @@ class DaeModel(AeModel):
       self.noise_var_mult, self.params.gdn_w_init_const, self.params.gdn_b_init_const,
       self.params.gdn_w_thresh_min, self.params.gdn_b_thresh_min, self.params.gdn_eps,
       self.act_funcs, self.ae_dropout_keep_probs, self.params.tie_dec_weights,
-      self.params.norm_w_init, variable_scope="dae")
+      self.params.w_init_type, variable_scope="dae")
     return module
 
   def build_graph_from_input(self, input_node):

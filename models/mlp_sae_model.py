@@ -37,7 +37,7 @@ class MlpSaeModel(MlpModel):
     module = SaeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
       self.sparse_mult, self.w_decay_mult, self.w_norm_mult, self.target_act, self.ae_act_funcs,
-      self.ae_dropout_keep_probs, self.params.tie_dec_weights, self.params.norm_w_init,
+      self.ae_dropout_keep_probs, self.params.tie_dec_weights, self.params.w_init_type,
       variable_scope="sae")
     return module
 

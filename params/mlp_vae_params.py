@@ -41,7 +41,7 @@ class params(BaseParams):
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_dec_weights = False
     self.norm_weights = False
-    self.norm_w_init = False
+    self.w_init_type = "normal"
     self.optimizer = "adam"
     # MLP Params
     self.train_on_recon = True # if False, train on LCA latent activations

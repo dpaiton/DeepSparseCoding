@@ -131,7 +131,6 @@ class BaseParams(object):
       len must be equal to the len of output_channels
     [mlp_ / ae_] patch_size [list of tuples] each element in the list denotes conv (patch_y, patch_x)
       len must be equal to the len of output_channels
-    norm_w_init [bool] if set, l2 normalize w_init
 
   mlp; lambda
     eval_batch_size [int] batch size for evaluating model on training data
@@ -156,6 +155,7 @@ class BaseParams(object):
       this is used to set the architecture for testing.
       if the input is vectorized, then this should equal the square root of the input length
     tie_dec_weights [bool] if set, the decoder weights will equal the transpose of the encoder weights
+    w_init_type: [str] which w_init to use, options are 'normal', 'xavier', or 'l2_normed'
 
   vae
     noise_level [float] standard deviation of noise added to the input data for denoising vae

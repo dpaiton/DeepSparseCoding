@@ -10,7 +10,7 @@ class DaeModule(AeModule):
     w_decay_mult, w_norm_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size,
     num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
     gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_dec_weights,
-    norm_w_init, variable_scope="dae"):
+    w_init_type, variable_scope="dae"):
     """
     Divisive Autoencoder module
     Inputs:
@@ -43,8 +43,6 @@ class DaeModule(AeModule):
       conv: if True, do convolution
       conv_strides: list of strides for convolution [batch, y, x, channels]
       patch_size: number of (y, x) inputs for convolutional patches
-      norm_w_init: if True, l2 normalize w_init,
-        reducing over [0] axis on enc and [-1] axis on dec
       variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -66,7 +64,7 @@ class DaeModule(AeModule):
     self.gdn_eps = gdn_eps
     super(DaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
       patch_size, conv_strides, w_decay_mult, w_norm_mult, act_funcs, dropout, tie_dec_weights,
-      norm_w_init, variable_scope)
+      w_init_type, variable_scope)
 
   def compute_entropies(self, a_in):
     a_probs = ef.prob_est(a_in, self.mle_thetas, self.triangle_centers)

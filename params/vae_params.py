@@ -31,7 +31,7 @@ class params(BaseParams):
     self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_dec_weights = False
     self.norm_weights = False
-    self.norm_w_init = False
+    self.w_init_type = "normal"
     self.optimizer = "adam"
     self.cp_int = 1e4
     self.max_cp_to_keep = 1

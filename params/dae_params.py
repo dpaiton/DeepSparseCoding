@@ -46,7 +46,7 @@ class params(BaseParams):
     self.ae_enc_channels = [1500, 1000, 50]
     self.tie_dec_weights = False
     self.norm_weights = False
-    self.norm_w_init = False
+    self.w_init_type = "normal"
     self.ae_activation_functions = ["gdn", "gdn", "gdn", "gdn", "gdn", "identity"]
     self.ae_dropout = [1.0]*len(self.ae_activation_functions)
     self.num_triangles = 30

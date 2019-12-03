@@ -37,7 +37,7 @@ class MlpAeModel(MlpModel):
     module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
       self.w_decay_mult, self.w_norm_mult, self.ae_act_funcs, self.ae_dropout_keep_probs,
-      self.params.tie_dec_weights, self.params.norm_w_init, variable_scope="ae")
+      self.params.tie_dec_weights, self.params.w_init_type, variable_scope="ae")
     return module
 
   def build_graph_from_input(self, input_node):

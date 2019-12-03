@@ -13,7 +13,7 @@ class DaeMemModule(DaeModule):
     num_triangles, mle_step_size, num_mle_steps, gdn_w_init_const, gdn_b_init_const,
     gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, memristor_data_loc, memristor_type,
     memristor_std_eps, synthetic_noise, mem_error_rate, act_funcs, dropout, tie_dec_weights,
-    norm_w_init,  variable_scope="dae_mem"):
+    w_init_type,  variable_scope="dae_mem"):
     """
     Divisive Autoencoder module
     Inputs:
@@ -48,8 +48,6 @@ class DaeMemModule(DaeModule):
       conv: if True, do convolution
       conv_strides: list of strides for convolution [batch, y, x, channels]
       patch_size: number of (y, x) inputs for convolutional patches
-      norm_w_init: if True, l2 normalize w_init,
-        reducing over [0] axis on enc and [-1] axis on dec
       variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -66,7 +64,7 @@ class DaeMemModule(DaeModule):
       patch_size, conv_strides, ent_mult, w_decay_mult, w_norm_mult, bounds_slope, latent_min,
       latent_max, num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult,
       gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs,
-      dropout, tie_dec_weights, norm_w_init, variable_scope)
+      dropout, tie_dec_weights, w_init_type, variable_scope)
 
   def memristorize(self, u_in, memristor_std_eps, memristor_type=None, synthetic_noise=None):
     if memristor_type is None:

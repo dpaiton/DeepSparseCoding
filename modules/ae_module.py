@@ -4,9 +4,9 @@ from ops.init_ops import L2NormalizedTruncatedNormalInitializer
 from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
-  def __init__(self, data_tensor, layer_types, enc_channels, dec_channels,
-    patch_size, conv_strides, w_decay_mult, w_norm_mult, act_funcs,
-    dropout, tie_dec_weights, norm_w_init, variable_scope="ae"):
+  def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
+    conv_strides, w_decay_mult, w_norm_mult, act_funcs, dropout, tie_dec_weights,
+    w_init_type, variable_scope="ae"):
     """
     Autoencoder module
     Inputs:
@@ -22,8 +22,7 @@ class AeModule(object):
       conv: if True, do convolution
       conv_strides: list of strides for convolution [batch, y, x, channels]
       patch_size: number of (y, x) inputs for convolutional patches
-      norm_w_init: if True, l2 normalize w_init,
-        reducing over [0] axis on enc and [-1] axis on dec
+      w_init_type: [str] which w_init to use, options are 'normal', 'xavier', or 'l2_normed'
       variable_scope: specifies the variable_scope for the module
     Outputs:
       dictionary
@@ -69,6 +68,7 @@ class AeModule(object):
       self.batch_size, self.num_pixels_y, self.num_pixels_x, self.num_channels = \
         self.data_tensor.get_shape()
       self.num_pixels = self.num_pixels_y * self.num_pixels_x * self.num_channels
+    self.w_init_type = w_init_type
     # Parameter checks
     if self.enc_layer_types[0] == "conv":
       assert data_ndim == 4, (
@@ -221,19 +221,22 @@ class AeModule(object):
         w_read_id = layer_id
       name_prefix = "conv_" if conv else "fc_"
       w_name = name_prefix+"w_"+str(w_read_id)
-      # TODO: params to switch init type
-      w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-        initializer=self.w_normal_init, trainable=True)
-
-      #w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-      #  initializer=self.w_xavier_init, trainable=True)
-
-      #if decode:
-      #  w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-      #    initializer=self.w_normed_dec_init, trainable=True)
-      #else:
-      #  w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
-      #    initializer=self.w_normed_enc_init, trainable=True)
+      if self.w_init_type.lower() == "normal":
+        w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+          initializer=self.w_normal_init, trainable=True)
+      elif self.w_init_type.lower() == "xavier":
+        w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+          initializer=self.w_xavier_init, trainable=True)
+      elif self.w_init_type.lower() == "l2_normed":
+        if decode:
+          w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+            initializer=self.w_normed_dec_init, trainable=True)
+        else:
+          w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
+            initializer=self.w_normed_enc_init, trainable=True)
+      else:
+        assert False, ("w_init_type parameter must be 'normal', 'xavier', or 'l2_normed', not %s"%(
+          self.w_init_type))
 
       b_name = name_prefix+"b_"+str(layer_id)
       if conv and decode:

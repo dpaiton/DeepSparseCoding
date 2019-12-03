@@ -8,7 +8,7 @@ from modules.activations import sigmoid
 class SaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
     conv_strides, sparse_mult, w_decay_mult, w_norm_mult, target_act, act_funcs, dropout,
-    tie_dec_weights, norm_w_init, variable_scope="sae"):
+    tie_dec_weights, w_init_type, variable_scope="sae"):
     """
     Implementation of sparse autoencoder described in Andrew Ng's 2011 Stanford CS294A lecture notes
     Sigmoidal activation function
@@ -27,7 +27,7 @@ class SaeModule(AeModule):
       conv: if True, do convolution
       conv_strides: list of strides for convolution [batch, y, x, channels]
       patch_size: number of (y, x) inputs for convolutional patches
-      norm_w_init: if True, l2 normalize w_init,
+      w_init_type: if True, l2 normalize w_init,
         reducing over [0] axis on enc and [-1] axis on dec
       variable_scope - specifies the variable_scope for the module
     Outputs:
@@ -37,7 +37,7 @@ class SaeModule(AeModule):
     self.target_act = target_act
     super(SaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
       patch_size, conv_strides, w_decay_mult, w_norm_mult, act_funcs, dropout, tie_dec_weights,
-      norm_w_init, variable_scope)
+      w_init_type, variable_scope)
 
   def compute_sparse_loss(self, a_in):
     with tf.compat.v1.variable_scope("unsupervised"):

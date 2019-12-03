@@ -20,7 +20,7 @@ class params(BaseParams):
     self.batch_size = 100
     self.tie_dec_weights = False
     self.norm_weights = False
-    self.norm_w_init = False
+    self.w_init_type = "normal"
     self.mirror_dec_architecture = True
     self.ae_layer_types = ["fc", "fc"]
     self.ae_enc_channels = [512, 50]
@@ -70,7 +70,7 @@ class params(BaseParams):
       self.cp_int = int(5e5)
       self.gen_plot_int = int(5e5)
       self.norm_weights = False
-      self.norm_w_init = False
+      self.w_init_type = "normal"
       self.schedule = [
         {"num_batches": int(1e6),
         "weights": None,
@@ -142,7 +142,7 @@ class params(BaseParams):
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
       self.norm_weights = False
-      self.norm_w_init = False
+      self.w_init_type = "normal"
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(6e5)
         self.schedule[sched_idx]["weights"] = None

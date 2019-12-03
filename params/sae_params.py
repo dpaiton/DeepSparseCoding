@@ -29,7 +29,7 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.tie_dec_weights = False
     self.norm_weights = False
-    self.norm_w_init = False
+    self.w_init_type = "normal"
     self.batch_size = 100
     self.ae_layer_types = ["fc"]
     self.ae_enc_channels = [768]
@@ -79,7 +79,7 @@ class params(BaseParams):
       self.extract_patches = False
       self.ae_enc_channels = [768]
       self.mirror_dec_architecture = True
-      self.norm_w_init = False
+      self.w_init_type = "normal"
       self.ae_layer_types = ["fc", "fc"]
       self.ae_activation_functions = ["sigmoid", "identity"]
       self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
