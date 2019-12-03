@@ -98,8 +98,8 @@ class params(BaseParams):
       #{"weights": None,
       #"train_vae": True,
       #"num_batches": int(3e5),
-      #"decay_mult": 0.0,
-      #"norm_mult": 0.0,
+      #"w_decay_mult": 0.0,
+      #"w_norm_mult": 0.0,
       #"kld_mult": 1/self.batch_size,
       #"weight_lr": 0.001,
       #"decay_steps": int(3e5*0.8),
@@ -121,8 +121,8 @@ class params(BaseParams):
       "train_on_adversarial": False,
       "train_vae": False,
       "num_batches": int(1e4),
-      "decay_mult": 0.0,
-      "norm_mult": 0.0,
+      "w_decay_mult": 0.0,
+      "w_norm_mult": 0.0,
       "kld_mult": 1/self.batch_size,
       "weight_lr": 0.01,
       "decay_steps": int(1e4*0.8),
@@ -213,6 +213,6 @@ class params(BaseParams):
       self.schedule[sched_idx]["train_vae"] = True
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["kld_mult"] = 1.0
-      self.schedule[sched_idx]["decay_mult"] = 0.0
+      self.schedule[sched_idx]["w_decay_mult"] = 0.0
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4

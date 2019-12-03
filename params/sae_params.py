@@ -53,8 +53,8 @@ class params(BaseParams):
     self.schedule = [
       {"weights": None,
       "num_batches": int(1e5),
-      "decay_mult": 0.01,
-      "norm_mult": 0.0,
+      "w_decay_mult": 0.01,
+      "w_norm_mult": 0.0,
       "sparse_mult": 5.0, # How important is the sparse loss (tradeoff parameter)
       "target_act": 0.05, # Target firing rate for neurons
       "weight_lr": 0.002,
@@ -86,8 +86,8 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(5e6)
         self.schedule[sched_idx]["weight_lr"] = 0.01#0.0002
-        self.schedule[sched_idx]["decay_mult"] = 0.005#0.00
-        self.schedule[sched_idx]["norm_mult"] = 0.0#2e-3
+        self.schedule[sched_idx]["w_decay_mult"] = 0.005#0.00
+        self.schedule[sched_idx]["w_norm_mult"] = 0.0#2e-3
         self.schedule[sched_idx]["target_act"] = 0.09#0.20
         self.schedule[sched_idx]["sparse_mult"] = 0.02#0.10
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
@@ -114,8 +114,8 @@ class params(BaseParams):
       self.gen_plot_int = int(2e5)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
-        self.schedule[sched_idx]["decay_mult"] = 0.06#0.04
-        self.schedule[sched_idx]["norm_mult"] = 1.00
+        self.schedule[sched_idx]["w_decay_mult"] = 0.06#0.04
+        self.schedule[sched_idx]["w_norm_mult"] = 1.00
         self.schedule[sched_idx]["target_act"] = 0.01
         self.schedule[sched_idx]["sparse_mult"] = 8#5.0
         self.schedule[sched_idx]["weight_lr"] = 0.002
@@ -148,8 +148,8 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 0.001
-        self.schedule[sched_idx]["decay_mult"] = 0.05
-        self.schedule[sched_idx]["norm_mult"] = 0.0
+        self.schedule[sched_idx]["w_decay_mult"] = 0.05
+        self.schedule[sched_idx]["w_norm_mult"] = 0.0
         self.schedule[sched_idx]["target_act"] = 0.10
         self.schedule[sched_idx]["sparse_mult"] = 100.0
         self.schedule[sched_idx]["decay_steps"] = int(0.6*self.schedule[sched_idx]["num_batches"])
@@ -177,8 +177,8 @@ class params(BaseParams):
       self.ae_activation_functions = ["sigmoid", "identity"]
       self.ae_dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["decay_mult"] = 0.008
-        self.schedule[sched_idx]["norm_mult"] = 0.0
+        self.schedule[sched_idx]["w_decay_mult"] = 0.008
+        self.schedule[sched_idx]["w_norm_mult"] = 0.0
         self.schedule[sched_idx]["sparse_mult"] = 5.0
         self.schedule[sched_idx]["target_act"] = 0.05
         self.schedule[sched_idx]["weight_lr"] = 0.002
@@ -199,7 +199,7 @@ class params(BaseParams):
       self.ae_dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e5)
-        self.schedule[sched_idx]["decay_mult"] = 0.03
+        self.schedule[sched_idx]["w_decay_mult"] = 0.03
         self.schedule[sched_idx]["sparse_mult"] = 0.15
         self.schedule[sched_idx]["target_act"] = 0.2
         self.schedule[sched_idx]["weight_lr"] = 1e-3
@@ -214,7 +214,7 @@ class params(BaseParams):
     self.num_patches = 100
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
-      self.schedule[sched_idx]["decay_mult"] = 0.03
+      self.schedule[sched_idx]["w_decay_mult"] = 0.03
       self.schedule[sched_idx]["sparse_mult"] = 0.15
       self.schedule[sched_idx]["target_act"] = 0.2
       self.schedule[sched_idx]["weight_lr"] = 1e-4

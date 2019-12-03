@@ -7,7 +7,7 @@ from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
-    conv_strides, decay_mult, norm_mult, kld_mult, act_funcs, dropout, tie_dec_weights,
+    conv_strides, w_decay_mult, w_norm_mult, kld_mult, act_funcs, dropout, tie_dec_weights,
     noise_level, recon_loss_type, norm_w_init, variable_scope="vae"):
     """
     Variational Autoencoder module
@@ -17,8 +17,8 @@ class VaeModule(AeModule):
         Last entry is the number of latent units
       dec_channels [list of ints] the number of output channels per decoder layer
         Last entry must be the number of input pixels for FC layers and channels for CONV layers
-      decay_mult [float] tradeoff multiplier for weight decay loss
-      norm_mult [float] tradeoff multiplier for weight norm loss (asks weight norm to == 1)
+      w_decay_mult [float] tradeoff multiplier for weight decay loss
+      w_norm_mult [float] tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       kld_mult [float] tradeoff multiplier for latent variational kld loss
       act_funcs [list of functions] activation functions
       dropout [list of floats] specifies the keep probability or None
@@ -43,7 +43,7 @@ class VaeModule(AeModule):
     self.recon_loss_type = recon_loss_type
     self.kld_mult = kld_mult
     super(VaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
-      patch_size, conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_dec_weights,
+      patch_size, conv_strides, w_decay_mult, w_norm_mult, act_funcs, dropout, tie_dec_weights,
       norm_w_init, variable_scope)
 
   def compute_recon_loss(self, reconstruction):

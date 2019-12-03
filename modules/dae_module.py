@@ -7,7 +7,7 @@ from modules.activations import activation_picker
 
 class DaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size, conv_strides, ent_mult,
-    decay_mult, norm_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size,
+    w_decay_mult, w_norm_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size,
     num_mle_steps, num_quant_bins, noise_var_mult, gdn_w_init_const, gdn_b_init_const,
     gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs, dropout, tie_dec_weights,
     norm_w_init, variable_scope="dae"):
@@ -20,8 +20,8 @@ class DaeModule(AeModule):
       dec_channels [list of ints] the number of output channels per decoder layer
         Last entry must be the number of input pixels for FC layers and channels for CONV layers
       ent_mult: tradeoff multiplier for latent entropy loss
-      decay_mult: tradeoff multiplier for weight decay loss
-      norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
+      w_decay_mult: tradeoff multiplier for weight decay loss
+      w_norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       bounds_slope: slope for out of bounds loss (two relus back to back)
       latent_min: min value you want for latent variable (max value for left relu)
       latent_max: max value you want for latent variable (max value for right relu)
@@ -65,7 +65,7 @@ class DaeModule(AeModule):
     self.gdn_b_thresh_min = gdn_b_thresh_min
     self.gdn_eps = gdn_eps
     super(DaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
-      patch_size, conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_dec_weights,
+      patch_size, conv_strides, w_decay_mult, w_norm_mult, act_funcs, dropout, tie_dec_weights,
       norm_w_init, variable_scope)
 
   def compute_entropies(self, a_in):

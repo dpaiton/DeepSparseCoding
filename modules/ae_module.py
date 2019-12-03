@@ -5,7 +5,7 @@ from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels,
-    patch_size, conv_strides, decay_mult, norm_mult, act_funcs,
+    patch_size, conv_strides, w_decay_mult, w_norm_mult, act_funcs,
     dropout, tie_dec_weights, norm_w_init, variable_scope="ae"):
     """
     Autoencoder module
@@ -15,8 +15,8 @@ class AeModule(object):
         Last entry is the number of latent units
       dec_channels [list of ints] the number of output channels per decoder layer
         Last entry must be the number of input pixels for FC layers and channels for CONV layers
-      decay_mult: tradeoff multiplier for weight decay loss
-      norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
+      w_decay_mult: tradeoff multiplier for weight decay loss
+      w_norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       act_funcs: activation functions
       dropout: specifies the keep probability or None
       conv: if True, do convolution
@@ -37,8 +37,8 @@ class AeModule(object):
     self.patch_size_y = [int(size[0]) for size in patch_size]
     self.patch_size_x = [int(size[1]) for size in patch_size]
     self.dropout = dropout
-    self.decay_mult = decay_mult
-    self.norm_mult = norm_mult
+    self.w_decay_mult = w_decay_mult
+    self.w_norm_mult = w_norm_mult
     self.act_funcs = act_funcs
     self.num_enc_layers = len(self.enc_channels)
     self.num_dec_layers = len(self.dec_channels)
@@ -110,13 +110,13 @@ class AeModule(object):
         reduc_axis = np.arange(1, len(w.get_shape().as_list()))
         w_norm = tf.reduce_sum(tf.square(1 - tf.reduce_sum(tf.square(w), axis=reduc_axis)))
         w_norm_list.append(w_norm)
-      norm_loss = tf.multiply(0.5*self.norm_mult, tf.add_n(w_norm_list))
+      norm_loss = tf.multiply(0.5 * self.w_norm_mult, tf.add_n(w_norm_list))
     return norm_loss
 
   def compute_weight_decay_loss(self):
     with tf.compat.v1.variable_scope("unsupervised"):
       w_decay_list = [tf.reduce_sum(tf.square(w)) for w in self.w_list]
-      decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n(w_decay_list))
+      decay_loss = tf.multiply(0.5*self.w_decay_mult, tf.add_n(w_decay_list))
     return decay_loss
 
   def compute_recon_loss(self, reconstruction):

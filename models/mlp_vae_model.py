@@ -33,7 +33,7 @@ class MlpVaeModel(MlpModel):
   def build_vae_module(self, input_node):
     module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
-      self.decay_mult, self.norm_mult, self.kld_mult, self.ae_act_funcs,
+      self.w_decay_mult, self.w_norm_mult, self.kld_mult, self.ae_act_funcs,
       self.ae_dropout_keep_probs, self.params.tie_dec_weights, self.params.noise_level,
       self.params.recon_loss_type, self.params.norm_w_init, variable_scope="vae")
     return module
@@ -45,8 +45,8 @@ class MlpVaeModel(MlpModel):
         with tf.compat.v1.variable_scope("auto_placeholders") as scope:
           self.label_placeholder = tf.compat.v1.placeholder(tf.float32,
             shape=self.label_shape, name="input_labels")
-          self.decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="decay_mult")
-          self.norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="norm_mult")
+          self.w_decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="w_decay_mult")
+          self.w_norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="w_norm_mult")
           self.kld_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="kld_mult")
           self.train_vae = tf.compat.v1.placeholder(tf.bool, shape=(), name="train_vae")
 

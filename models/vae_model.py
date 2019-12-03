@@ -27,7 +27,7 @@ class VaeModel(AeModel):
   def build_module(self, input_node):
     module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
-      self.decay_mult, self.norm_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
+      self.w_decay_mult, self.w_norm_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
       self.params.tie_dec_weights, self.params.noise_level, self.params.recon_loss_type,
       self.params.norm_w_init, variable_scope="vae")
     return module

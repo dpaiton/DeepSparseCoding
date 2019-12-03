@@ -77,8 +77,8 @@ class params(BaseParams):
       {"num_batches": int(1e6),
       "weights": None,
       "entropy_mult": 0.1,
-      "decay_mult": 0.03,
-      "norm_mult": 0.0,
+      "w_decay_mult": 0.03,
+      "w_norm_mult": 0.0,
       "noise_variance_mult": 0.08,
       "weight_lr": 1e-5,
       "decay_steps": int(1e6*0.4),
@@ -100,7 +100,7 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["entropy_mult"] = 0.001
-        self.schedule[sched_idx]["decay_mult"] = 0.001
+        self.schedule[sched_idx]["w_decay_mult"] = 0.001
         self.schedule[sched_idx]["noise_variance_mult"] = 0.001
         self.schedule[sched_idx]["weight_lr"] = 1e-3
 

@@ -36,18 +36,9 @@ class MlpAeModel(MlpModel):
   def build_ae_module(self, input_node):
     module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
-      self.decay_mult, self.norm_mult, self.ae_act_funcs, self.ae_dropout_keep_probs,
+      self.w_decay_mult, self.w_norm_mult, self.ae_act_funcs, self.ae_dropout_keep_probs,
       self.params.tie_dec_weights, self.params.norm_w_init, variable_scope="ae")
     return module
-
-  #def build_mlp_module(self, input_node):
-  #  module = MlpModule(input_node, self.label_placeholder, self.params.mlp_layer_types,
-  #    self.params.mlp_output_channels, self.params.batch_norm, self.mlp_dropout_keep_probs,
-  #    self.params.max_pool, self.params.max_pool_ksize, self.params.max_pool_strides,
-  #    self.params.mlp_patch_size, self.params.mlp_conv_strides, self.mlp_act_funcs,
-  #    self.params.eps, lrn=self.params.lrn, loss_type="softmax_cross_entropy",
-  #    decay_mult=self.params.mlp_decay_mult, norm_mult=self.params.mlp_norm_mult)
-  #  return module
 
   def build_graph_from_input(self, input_node):
     """Build the TensorFlow graph object"""
@@ -56,8 +47,8 @@ class MlpAeModel(MlpModel):
         with tf.compat.v1.variable_scope("auto_placeholders") as scope:
           self.label_placeholder = tf.compat.v1.placeholder(tf.float32,
             shape=self.label_shape, name="input_labels")
-          self.decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="decay_mult")
-          self.norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="norm_mult")
+          self.w_decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="w_decay_mult")
+          self.w_norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="w_norm_mult")
           self.train_ae = tf.compat.v1.placeholder(tf.bool, shape=(), name="train_ae")
 
         with tf.compat.v1.variable_scope("placeholders") as sess:

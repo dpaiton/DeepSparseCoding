@@ -16,7 +16,7 @@ class DaeMemModel(DaeModel):
   def build_module(self, input_node):
     module = DaeMemModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
-      self.ent_mult, self.decay_mult, self.norm_mult, self.params.bounds_slope,
+      self.ent_mult, self.w_decay_mult, self.w_norm_mult, self.params.bounds_slope,
       self.params.latent_min, self.params.latent_max, self.params.num_triangles,
       self.params.mle_step_size, self.params.num_mle_steps, self.params.gdn_w_init_const,
       self.params.gdn_b_init_const, self.params.gdn_w_thresh_min, self.params.gdn_b_thresh_min,

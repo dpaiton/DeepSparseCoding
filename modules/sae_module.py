@@ -7,7 +7,7 @@ from modules.activations import sigmoid
 
 class SaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
-    conv_strides, sparse_mult, decay_mult, norm_mult, target_act, act_funcs, dropout,
+    conv_strides, sparse_mult, w_decay_mult, w_norm_mult, target_act, act_funcs, dropout,
     tie_dec_weights, norm_w_init, variable_scope="sae"):
     """
     Implementation of sparse autoencoder described in Andrew Ng's 2011 Stanford CS294A lecture notes
@@ -20,8 +20,8 @@ class SaeModule(AeModule):
         Last entry is the number of latent units
       dec_channels [list of ints] the number of output channels per decoder layer
         Last entry must be the number of input pixels for FC layers and channels for CONV layers
-      decay_mult -  weight decay multiplier
-      norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
+      w_decay_mult -  weight decay multiplier
+      w_norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       act_funcs - activation functions
       dropout: specifies the keep probability or None
       conv: if True, do convolution
@@ -36,7 +36,7 @@ class SaeModule(AeModule):
     self.sparse_mult = sparse_mult
     self.target_act = target_act
     super(SaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
-      patch_size, conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_dec_weights,
+      patch_size, conv_strides, w_decay_mult, w_norm_mult, act_funcs, dropout, tie_dec_weights,
       norm_w_init, variable_scope)
 
   def compute_sparse_loss(self, a_in):

@@ -52,7 +52,7 @@ class AeModel(Model):
   def build_module(self, input_node):
     module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
-      self.decay_mult, self.norm_mult, self.act_funcs, self.ae_dropout_keep_probs,
+      self.w_decay_mult, self.w_norm_mult, self.act_funcs, self.ae_dropout_keep_probs,
       self.params.tie_dec_weights, self.params.norm_w_init, variable_scope="ae")
     return module
 
@@ -61,9 +61,8 @@ class AeModel(Model):
     with tf.device(self.params.device):
       with self.graph.as_default():
         with tf.compat.v1.variable_scope("auto_placeholders") as scope:
-          #TODO: Change decay_mult & norm_mult to w_decay_mult, w_norm_mult
-          self.decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="decay_mult")
-          self.norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="norm_mult")
+          self.w_decay_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="w_decay_mult")
+          self.w_norm_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="w_norm_mult")
 
         with tf.compat.v1.variable_scope("placeholders") as scope:
           self.ae_dropout_keep_probs = tf.compat.v1.placeholder(tf.float32, shape=[None],

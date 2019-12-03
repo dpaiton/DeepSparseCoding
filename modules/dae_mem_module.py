@@ -9,7 +9,7 @@ from utils import mem_utils
 
 class DaeMemModule(DaeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
-    conv_strides, ent_mult, decay_mult, norm_mult, bounds_slope, latent_min, latent_max,
+    conv_strides, ent_mult, w_decay_mult, w_norm_mult, bounds_slope, latent_min, latent_max,
     num_triangles, mle_step_size, num_mle_steps, gdn_w_init_const, gdn_b_init_const,
     gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, memristor_data_loc, memristor_type,
     memristor_std_eps, synthetic_noise, mem_error_rate, act_funcs, dropout, tie_dec_weights,
@@ -23,8 +23,8 @@ class DaeMemModule(DaeModule):
       dec_channels [list of ints] the number of output channels per decoder layer
         Last entry must be the number of input pixels for FC layers and channels for CONV layers
       ent_mult: tradeoff multiplier for latent entropy loss
-      decay_mult: tradeoff multiplier for weight decay loss
-      norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
+      w_decay_mult: tradeoff multiplier for weight decay loss
+      w_norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       bounds_slope: slope for out of bounds loss (two relus back to back)
       latent_min: min value you want for latent variable (max value for left relu)
       latent_max: max value you want for latent variable (max value for right relu)
@@ -63,7 +63,7 @@ class DaeMemModule(DaeModule):
     noise_var_mult = 0 # for the mem module we only want memristor noise, not mem + quantization noise
     num_quant_bins = 10 # just setting this to something non-zero so there's no chance of breaking
     super(DaeMemModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
-      patch_size, conv_strides, ent_mult, decay_mult, norm_mult, bounds_slope, latent_min,
+      patch_size, conv_strides, ent_mult, w_decay_mult, w_norm_mult, bounds_slope, latent_min,
       latent_max, num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult,
       gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs,
       dropout, tie_dec_weights, norm_w_init, variable_scope)

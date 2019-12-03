@@ -39,8 +39,8 @@ class params(BaseParams):
     self.schedule = [
       {"num_batches": int(3e5),
       "weights": None,
-      "decay_mult": 0.01,
-      "norm_mult": 0.00,
+      "w_decay_mult": 0.01,
+      "w_norm_mult": 0.00,
       "weight_lr": 1e-4,
       "decay_steps": int(3e5*0.4),
       "decay_rate": 0.9,
@@ -74,8 +74,8 @@ class params(BaseParams):
       self.schedule = [
         {"num_batches": int(1e6),
         "weights": None,
-        "decay_mult": 0.0,#1e-4,
-        "norm_mult": 1e-4,#2e-4,#0.0,
+        "w_decay_mult": 0.0,#1e-4,
+        "w_norm_mult": 1e-4,#2e-4,#0.0,
         "weight_lr": 0.002,
         "decay_steps": int(6e5),
         "decay_rate": 0.5,
@@ -103,8 +103,8 @@ class params(BaseParams):
       self.schedule = [
         {"num_batches": int(1e6),
         "weights": None,
-        "decay_mult": 0.001,
-        "norm_mult": 0.00,
+        "w_decay_mult": 0.001,
+        "w_norm_mult": 0.00,
         "weight_lr": 0.001,
         "decay_steps": int(800000),
         "decay_rate": 0.8,
@@ -146,8 +146,8 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(6e5)
         self.schedule[sched_idx]["weights"] = None
-        self.schedule[sched_idx]["decay_mult"] = 2e-3
-        self.schedule[sched_idx]["norm_mult"] = 1e-4
+        self.schedule[sched_idx]["w_decay_mult"] = 2e-3
+        self.schedule[sched_idx]["w_norm_mult"] = 1e-4
         self.schedule[sched_idx]["weight_lr"] = 1e-3
         self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["num_batches"]*0.8)
         self.schedule[sched_idx]["decay_rate"] = 0.5
