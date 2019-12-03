@@ -24,7 +24,7 @@ class params(ica_params):
     self.patch_variance_threshold = 1e-6
     self.batch_size = 100
     self.prior = "laplacian" # "cauchy"
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.num_pooling_units = 50
     self.cp_int = 10000
     self.max_cp_to_keep = 2

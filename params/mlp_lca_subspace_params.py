@@ -52,7 +52,7 @@ class params(BaseParams):
     self.rectify_a = True
     self.norm_weights = True
     self.thresh_type = "soft"
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     # MLP Params
     self.train_on_recon = TRAIN_ON_RECON # if False, train on LCA latent activations
     self.num_val = 10000

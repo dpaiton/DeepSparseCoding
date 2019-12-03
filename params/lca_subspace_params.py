@@ -30,7 +30,7 @@ class params(BaseParams):
     self.dt = 0.001
     self.tau = 0.03
     self.norm_weights = True
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.cp_int = int(1e5)
     self.max_cp_to_keep = 1
     self.cp_load = False

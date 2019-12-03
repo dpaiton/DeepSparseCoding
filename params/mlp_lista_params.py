@@ -34,7 +34,7 @@ class params(BaseParams):
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     # LCA Params
     self.num_steps = 50
     self.dt = 0.001

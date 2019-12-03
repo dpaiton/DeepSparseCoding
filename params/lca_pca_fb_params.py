@@ -19,7 +19,7 @@ class params(lca_pca_params):
     self.num_steps = 50
     self.rectify_a = True
     self.thresh_type = "soft"
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.cp_load = False

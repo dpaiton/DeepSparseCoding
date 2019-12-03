@@ -19,7 +19,7 @@ class params(BaseParams):
     else:
       self.model_name = "mlp_768"
     self.version = "0.0"
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.vectorize_data = False
     self.standardize_data = False
     self.tf_standardize_data = False

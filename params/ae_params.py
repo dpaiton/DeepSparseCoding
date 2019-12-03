@@ -28,7 +28,7 @@ class params(BaseParams):
     self.ae_conv_strides = []
     self.ae_activation_functions = ["relu", "relu", "relu", "identity"]
     self.ae_dropout = [1.0]*4
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.cp_load = False
@@ -56,7 +56,7 @@ class params(BaseParams):
       self.standardize_data = True
       self.tf_standardize_data = False
       self.center_data = False
-      self.optimizer = "annealed_sgd"
+      self.optimizer = "sgd"
       self.batch_size = 100
       self.vectorize_data = True
       self.tie_dec_weights = False
@@ -135,7 +135,7 @@ class params(BaseParams):
       self.mirror_dec_architecture = True
       self.ae_enc_channels = [768, 256, 64]
       self.ae_layer_types = ["fc"]*(2*len(self.ae_enc_channels))
-      self.optimizer = "annealed_sgd"
+      self.optimizer = "sgd"
       self.ae_activation_functions = ["relu"] * (2 * len(self.ae_layer_types) - 1) + ["identity"]
       self.ae_dropout = [0.3] * (len(self.ae_activation_functions) - 1) + [1.0]#[0.5, 0.5, 0.7, 1.0, 0.7, 0.7, 0.7, 1.0]
       self.log_int = 100

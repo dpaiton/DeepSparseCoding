@@ -35,7 +35,7 @@ class BaseParams(object):
     num_patches [int] how many patches to divide image up into
     num_pixels [int] total number of pixels in the input image
     optimizer [str] which optimization algorithm to use
-                can be "annealed_sgd" (default) or "adam"
+                can be "sgd" (default) or "adam"
     out_dir [str] base directory for all model outputs
     overlapping_patches [bool] if set, extract patches from overlapping locations in the input images
       if False, patches are extracted by evenly tiling the input images
@@ -210,7 +210,7 @@ class BaseParams(object):
     self.extract_patches = False
     self.num_images = 150
     self.batch_size = 100
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.norm_weights = False
     self.cp_int = 10000
     self.max_cp_to_keep = 1

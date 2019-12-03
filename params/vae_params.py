@@ -55,7 +55,7 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
-      self.optimizer = "adam"#"annealed_sgd"#"adam"
+      self.optimizer = "adam"#"sgd"
       self.num_edge_pixels = 28
       self.num_data_channels = 1
       self.batch_size = 100

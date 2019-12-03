@@ -38,7 +38,7 @@ class params(BaseParams):
     self.ae_conv_strides = []
     self.ae_activation_functions = ["sigmoid", "identity"]
     self.ae_dropout = [1.0]*2
-    self.optimizer = "annealed_sgd"#"adam"
+    self.optimizer = "sgd"#"adam"
     self.cp_int = int(1e5)
     self.max_cp_to_keep = 1
     self.cp_load = False

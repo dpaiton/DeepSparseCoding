@@ -54,7 +54,7 @@ class params(BaseParams):
     self.memristor_type = "rram"
     self.synthetic_noise = np.sqrt(2.0)
     self.mem_error_rate = 0.0
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.cp_load = False

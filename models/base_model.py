@@ -190,7 +190,7 @@ class Model(object):
                 staircase=sch["staircase"][w_idx],
                 name="annealing_schedule_"+weight_name)
               sch_lrs.append(learning_rates)
-              if self.params.optimizer == "annealed_sgd": # TODO: rename to "sgd"
+              if self.params.optimizer == "sgd":
                 optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rates,
                   name="grad_optimizer_"+weight_name)
               elif self.params.optimizer == "adam":

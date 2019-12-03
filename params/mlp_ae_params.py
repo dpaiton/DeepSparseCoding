@@ -41,7 +41,7 @@ class params(BaseParams):
     self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     # MLP Params
     self.train_on_recon = False # if False, train on AE latent activations
     self.num_val = 10000

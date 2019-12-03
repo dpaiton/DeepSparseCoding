@@ -17,7 +17,7 @@ class params(ica_params):
     self.patch_edge_size = 16
     self.batch_size = 50
     self.prior = "laplacian" #"cauchy"
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.cp_int = 1000
     self.log_int = 300
     self.log_to_file = True

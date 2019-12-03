@@ -30,7 +30,7 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     self.num_neurons = 768
-    self.optimizer = "lbfgsb" #"adam"#"annealed_sgd"
+    self.optimizer = "lbfgsb" #"adam"#"sgd"
     self.maxiter = 15000
     self.cp_int = 100000
     self.max_cp_to_keep = 1

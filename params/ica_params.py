@@ -28,7 +28,7 @@ class params(BaseParams):
     self.patch_variance_threshold = 0
     self.batch_size = 50
     self.prior = "laplacian" #"cauchy"
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.cp_int = 1000
     self.max_cp_to_keep = 1
     self.cp_load = False

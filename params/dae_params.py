@@ -61,7 +61,7 @@ class params(BaseParams):
     self.gdn_w_thresh_min = 1e-6
     self.gdn_b_thresh_min = 1e-6
     self.gdn_eps = 1e-6
-    self.optimizer = "annealed_sgd"
+    self.optimizer = "sgd"
     self.cp_int = 10000
     self.max_cp_to_keep = 1
     self.cp_load = False
