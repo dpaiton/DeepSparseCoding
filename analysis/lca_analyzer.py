@@ -157,7 +157,7 @@ class LcaAnalyzer(Analyzer):
           self.loss_dict["total_loss"].append(tf.add_n(current_loss_list, name="total_loss"))
           MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.input_placeholder, current_recon)))
           pixel_var = tf.nn.moments(self.model.input_placeholder, axes=[1])[1]
-          current_pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)))
+          current_pSNRdB = tf.multiply(10.0, ef.safe_log(tf.math.divide(tf.square(pixel_var), MSE)))
           self.psnr_list.append(current_pSNRdB)
 
   def evaluate_inference(self, images, num_steps):

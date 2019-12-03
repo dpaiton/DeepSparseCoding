@@ -6,14 +6,17 @@ from utils.trainable_variable_dict import TrainableVariableDict
 from modules.ae_module import AeModule
 
 class VaeModule(AeModule):
-  def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides,
-    decay_mult, norm_mult, kld_mult, act_funcs, dropout, tie_decoder_weights, noise_level,
-    recon_loss_type, norm_w_init, variable_scope="vae"):
+  def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
+    conv_strides, decay_mult, norm_mult, kld_mult, act_funcs, dropout, tie_dec_weights,
+    noise_level, recon_loss_type, norm_w_init, variable_scope="vae"):
     """
     Variational Autoencoder module
     Inputs:
       data_tensor
-      output_channels [list of ints] A list of channels to make, also defines number of layers
+      enc_channels [list of ints] the number of output channels per encoder layer
+        Last entry is the number of latent units
+      dec_channels [list of ints] the number of output channels per decoder layer
+        Last entry must be the number of input pixels for FC layers and channels for CONV layers
       decay_mult [float] tradeoff multiplier for weight decay loss
       norm_mult [float] tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       kld_mult [float] tradeoff multiplier for latent variational kld loss
@@ -39,14 +42,22 @@ class VaeModule(AeModule):
         self.corrupt_data = tf.identity(data_tensor, name="clean_data")
     self.recon_loss_type = recon_loss_type
     self.kld_mult = kld_mult
-    super(VaeModule, self).__init__(data_tensor, layer_types, output_channels, patch_size,
-      conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_decoder_weights, norm_w_init,
-      variable_scope)
+    super(VaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
+      patch_size, conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_dec_weights,
+      norm_w_init, variable_scope)
 
   def compute_recon_loss(self, reconstruction):
     if self.recon_loss_type == "mse":
       return super(VaeModule, self).compute_recon_loss(reconstruction)
     elif self.recon_loss_type == "crossentropy":
+      # If the encoder and decoder are different types (conv vs fc) then there may be a shape mismatch
+      recon_shape = reconstruction.get_shape()
+      data_shape = self.data_tensor.get_shape()
+      if(recon_shape.ndims != data_shape.ndims):
+        if(np.prod(recon_shape.as_list()[1:]) == np.prod(data_shape.as_list()[1:])):
+          reconstruction = tf.reshape(reconstruction, tf.shape(self.data_tensor))
+        else:
+          assert False, ("Reconstructiion and input must have the same size")
       reduc_dim = list(range(1, len(reconstruction.shape)))# We want to avg over batch
       #recon_loss = tf.reduce_mean(-tf.reduce_sum(self.data_tensor * ef.safe_log(reconstruction) \
       #  + (1-self.data_tensor) * ef.safe_log(1-reconstruction), axis=reduc_dim))
@@ -111,7 +122,7 @@ class VaeModule(AeModule):
       self.w_list = []
       self.b_list = []
       enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
-        self.act_funcs[:self.num_encoder_layers])
+        self.act_funcs[:self.num_enc_layers])
       self.enc_u_list = enc_u_list # TODO: use u_list instead of enc_u_list in ae_module
       self.enc_w_list = enc_w_list
       self.enc_b_list = enc_b_list
@@ -122,11 +133,11 @@ class VaeModule(AeModule):
       # Add variance computation from encoder
       w_shape = self.w_list[-1].get_shape().as_list() # same shape as mean weights
       b_shape = self.b_list[-1].get_shape().as_list() # same shape as mean bias
-      self.w_enc_std = tf.compat.v1.get_variable(name="w_enc_"+str(self.num_encoder_layers)+"_std",
+      self.w_enc_std = tf.compat.v1.get_variable(name="w_enc_"+str(self.num_enc_layers)+"_std",
         shape=w_shape, dtype=tf.float32,
         initializer=self.w_xavier_init, trainable=True)
         #initializer=self.w_init, trainable=True)
-      self.b_enc_std = tf.compat.v1.get_variable(name="b_enc_"+str(self.num_encoder_layers)+"_std",
+      self.b_enc_std = tf.compat.v1.get_variable(name="b_enc_"+str(self.num_enc_layers)+"_std",
         shape=b_shape, dtype=tf.float32, initializer=self.b_init, trainable=True)
       self.trainable_variables[self.w_enc_std.name] = self.w_enc_std
       self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
@@ -136,7 +147,7 @@ class VaeModule(AeModule):
 
       if self.layer_types[-1] == "conv":
         self.latent_logvar = tf.add(tf.nn.conv2d(self.u_list[-1], self.w_enc_std,
-          self.conv_strides[self.num_encoder_layers-1], padding="SAME"), self.b_enc_std)
+          self.conv_strides[self.num_enc_layers-1], padding="SAME"), self.b_enc_std)
       else:
         #self.latent_logvar = 1e-8 + tf.nn.softplus(tf.matmul(self.u_list[-1],
         #  self.w_enc_std) + self.b_enc_std) # std must be positive
@@ -149,7 +160,7 @@ class VaeModule(AeModule):
       self.u_list.append(self.act)
 
       dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
-        self.act_funcs[self.num_encoder_layers:])
+        self.act_funcs[self.num_enc_layers:])
       self.u_list += dec_u_list
       self.w_list += dec_w_list
       self.b_list += dec_b_list

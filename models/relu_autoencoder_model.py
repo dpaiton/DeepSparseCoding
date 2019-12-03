@@ -27,7 +27,7 @@ class ReluAutoencoderModel(Model):
 
   def sigmoid(self, a_in, beta=1):
     """Hyperbolic tangent non-linearity"""
-    a_out = tf.subtract(tf.multiply(2.0, tf.divide(1.0,
+    a_out = tf.subtract(tf.multiply(2.0, tf.math.divide(1.0,
       tf.add(1.0, tf.exp(tf.multiply(-beta, a_in))))), 1.0)
     return a_out
 
@@ -133,7 +133,7 @@ class ReluAutoencoderModel(Model):
             MSE = tf.reduce_mean(tf.square(tf.subtract(self.input_placeholder,
               self.reconstruction)), axis=[1, 0], name="mean_squared_error")
             pixel_var = tf.nn.moments(self.input_placeholder, axes=[1])[1]
-            self.pSNRdB = tf.multiply(10.0, tf.log(tf.divide(tf.square(pixel_var), MSE)),
+            self.pSNRdB = tf.multiply(10.0, tf.log(tf.math.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True
 

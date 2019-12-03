@@ -114,6 +114,7 @@ class BaseParams(object):
     max_pool_strides [list of tuple] each tuple indicates the stride of the sliding window for each dimension of the input tensor
       None if corresponding max_pool is False
       must be the same len as output_channels
+    mlp_output_channels [list of int] number of outputs per layer
     num_labeled [int] how many of the training images should be assigned a label (for semi-supervised training)
     val_on_cp [bool] if set, compute and log validation performance when checkpointing
 
@@ -128,8 +129,6 @@ class BaseParams(object):
       len must be equal to the len of output_channels
     [mlp_ / ae_] layer_types [list of str] weight connectivity type, either "conv" or "fc"
       len must be equal to the len of output_channels
-    [mlp_ / ae_] output_channels [list of int] number of outputs per layer
-      len must be equal to the len of output_channels
     [mlp_ / ae_] patch_size [list of tuples] each element in the list denotes conv (patch_y, patch_x)
       len must be equal to the len of output_channels
     norm_w_init [bool] if set, l2 normalize w_init
@@ -143,7 +142,20 @@ class BaseParams(object):
     train_on_recon [bool] if set, train on autoencoder reconstructions; otherwise, train on autoencoder latent encodings
 
   ae
-    tie_decoder_weights [bool] if set, the decoder weights will equal the transpose of the encoder weights
+    enc_channels [list of ints] the number of output channels per encoder layer
+      Last entry is the number of latent units
+    dec_channels [list of ints] the number of output channels per decoder layer
+      Last entry must be the number of input pixels for FC layers and channels for CONV layers
+    mirror_dec_architecture [bool] if set, mirror the decoder architecture to match the encoder
+      this will ignore all parameter entries that have index greater than len(enc_channels)
+      each relevant parameter is set to be the mirror of the encoder portion
+      parameters set (in ae_model) are: ae_activation_functions, ae_layer_types, ae_conv_strides, ae_patch_size, ae_dec_channels, ae_dropout
+    num_data_channels [int] number of channels in the input
+      this is used to set the architecture for testing
+    num_edge_pixels [int] number of pixels in an edge of the square input
+      this is used to set the architecture for testing.
+      if the input is vectorized, then this should equal the square root of the input length
+    tie_dec_weights [bool] if set, the decoder weights will equal the transpose of the encoder weights
 
   vae
     noise_level [float] standard deviation of noise added to the input data for denoising vae

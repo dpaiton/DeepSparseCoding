@@ -4,13 +4,17 @@ from ops.init_ops import L2NormalizedTruncatedNormalInitializer
 from utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
-  def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides,
-    decay_mult, norm_mult, act_funcs, dropout, tie_decoder_weights, norm_w_init, variable_scope="ae"):
+  def __init__(self, data_tensor, layer_types, enc_channels, dec_channels,
+    patch_size, conv_strides, decay_mult, norm_mult, act_funcs,
+    dropout, tie_dec_weights, norm_w_init, variable_scope="ae"):
     """
     Autoencoder module
     Inputs:
       data_tensor
-      output_channels: a list of channels to make, also defines number of layers
+      enc_channels [list of ints] the number of output channels per encoder layer
+        Last entry is the number of latent units
+      dec_channels [list of ints] the number of output channels per decoder layer
+        Last entry must be the number of input pixels for FC layers and channels for CONV layers
       decay_mult: tradeoff multiplier for weight decay loss
       norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       act_funcs: activation functions
@@ -28,42 +32,67 @@ class AeModule(object):
     self.variable_scope = variable_scope
     self.trainable_variables = TrainableVariableDict()
     self.data_tensor = data_tensor
-    self.layer_types = layer_types
-    self.output_channels = output_channels
-    self.patch_size_y = [size[0] for size in patch_size]
-    self.patch_size_x = [size[1] for size in patch_size]
-    self.conv_strides = conv_strides
+    self.enc_channels = enc_channels
+    self.dec_channels = dec_channels
+    self.patch_size_y = [int(size[0]) for size in patch_size]
+    self.patch_size_x = [int(size[1]) for size in patch_size]
     self.dropout = dropout
     self.decay_mult = decay_mult
     self.norm_mult = norm_mult
     self.act_funcs = act_funcs
-    self.tie_decoder_weights = tie_decoder_weights
-    self.num_conv_layers = layer_types.count("conv")
-    self.num_fc_layers = layer_types.count("fc")
-    self.num_encoder_layers = self.num_fc_layers + self.num_conv_layers
-    self.num_decoder_layers = self.num_encoder_layers
-    self.num_layers = self.num_encoder_layers + self.num_decoder_layers
+    self.num_enc_layers = len(self.enc_channels)
+    self.num_dec_layers = len(self.dec_channels)
+    self.tie_dec_weights = tie_dec_weights
+    self.enc_layer_types = layer_types[:self.num_enc_layers]
+    self.dec_layer_types = layer_types[self.num_enc_layers:]
+    self.layer_types = [self.enc_layer_types, self.dec_layer_types]
+    self.num_enc_conv_layers = self.enc_layer_types.count("conv")
+    self.num_dec_conv_layers = self.dec_layer_types.count("conv")
+    self.num_conv_layers = self.num_enc_conv_layers + self.num_dec_conv_layers
+    self.num_enc_fc_layers = self.enc_layer_types.count("fc")
+    self.num_dec_fc_layers = self.dec_layer_types.count("fc")
+    self.num_fc_layers = self.num_enc_fc_layers + self.num_dec_fc_layers
+    self.num_layers = self.num_enc_layers + self.num_dec_layers
     data_ndim = len(data_tensor.get_shape().as_list())
+    self.all_strides = [] # Full list of strides, including FC layers
+    for enc_conv_id in range(self.num_enc_conv_layers):
+      self.all_strides.append(self.conv_strides[enc_conv_id])
+    for enc_fc_id in range(self.num_enc_fc_layers):
+      self.all_strides.append(None)
+    for dec_fc_id in range(self.num_dec_fc_layers):
+      self.all_strides.append(None)
+    for dec_conv_id in range(self.num_dec_conv_layers):
+      self.all_strides.append(self.conv_strides[self.num_enc_conv_layers + dec_conv_id])
     if data_ndim == 2:
       self.batch_size, self.num_pixels = self.data_tensor.get_shape()
     else:
       self.batch_size, self.num_pixels_y, self.num_pixels_x, self.num_channels = \
         self.data_tensor.get_shape()
       self.num_pixels = self.num_pixels_y * self.num_pixels_x * self.num_channels
-    if layer_types[0] == "conv":
+    # Parameter checks
+    if self.enc_layer_types[0] == "conv":
       assert data_ndim == 4, (
         "Module requires data_tensor to have shape" +
         " [batch, num_pixels_y, num_pixels_x, num_features] if first layer is conv")
     else:
       assert data_ndim == 2, (
         "Module requires data_tensor to have shape [batch, num_pixels]")
-    if self.num_conv_layers > 0:
-      assert np.all("conv" in self.layer_types[:self.num_conv_layers]), \
-        ("Conv layers must come before fc layers")
-    assert len(self.layer_types) == self.num_encoder_layers, \
+    if(self.tie_dec_weights):
+      assert self.num_enc_layers == self.num_dec_layers, (
+        "num_enc_layers must equal num_dec_layers, but are %g and %g"%(
+        self.num_enc_layers, self.num_dec_layers))
+    if self.num_enc_conv_layers > 0 and self.num_enc_fc_layers > 0:
+      assert np.all("conv" in self.enc_layer_types[:self.num_enc_conv_layers]), \
+        ("Encoder conv layers must come before fc layers")
+    if self.num_dec_conv_layers > 0 and self.num_dec_fc_layers > 0:
+      assert np.all("fc" in self.dec_layer_types[:self.num_dec_fc_layers]), \
+        ("Decoder fc layers must come before conv layers")
+    assert self.num_enc_layers == len(self.enc_layer_types), \
+      ("The number of encoder channels must match the number of encoder layer types")
+    assert self.num_dec_layers == len(self.dec_layer_types), \
+      ("The number of decoder channels must match the number of decoder layer types")
+    assert all([layer_type in ["conv", "fc"] for layer_type in layer_types]), \
       ("All layer_types must be conv or fc")
-    assert len(self.output_channels) == self.num_encoder_layers, \
-      ("output_channels must be a list of size " + str(self.num_encoder_layers))
     assert len(self.patch_size_y) == self.num_conv_layers, \
       ("patch_size_y must be a list of size " + str(self.num_conv_layers))
     assert len(self.patch_size_x) == self.num_conv_layers, \
@@ -72,16 +101,10 @@ class AeModule(object):
       ("conv_strides must be a list of size " + str(self.num_conv_layers))
     assert len(self.act_funcs) == self.num_layers, \
       ("act_funcs parameter must be a list of size " + str(self.num_layers))
-    self.conv_strides = self.conv_strides + [None]*(self.num_fc_layers*2) + self.conv_strides[::-1]
     self.build_graph()
 
   def compute_weight_norm_loss(self):
-    #with tf.compat.v1.variable_scope("w_norm"):
-    #  num_neurons = self.output_channels + self.output_channels[::-1]
-    #  w_norm_list = [tf.square(num_neurons[w_idx] - tf.reduce_sum(tf.square(w)))
-    #    for w_idx, w in enumerate(self.w_list)]
     with tf.compat.v1.variable_scope("w_norm"):
-      num_neurons = self.output_channels
       w_norm_list = []
       for w in self.w_list:
         reduc_axis = np.arange(1, len(w.get_shape().as_list()))
@@ -98,6 +121,14 @@ class AeModule(object):
 
   def compute_recon_loss(self, reconstruction):
     with tf.compat.v1.variable_scope("unsupervised"):
+      # If the encoder and decoder are different types (conv vs fc) then there may be a shape mismatch
+      recon_shape = reconstruction.get_shape()
+      data_shape = self.data_tensor.get_shape()
+      if(recon_shape.ndims != data_shape.ndims):
+        if(np.prod(recon_shape.as_list()[1:]) == np.prod(data_shape.as_list()[1:])):
+          reconstruction = tf.reshape(reconstruction, tf.shape(self.data_tensor))
+        else:
+          assert False, ("Reconstructiion and input must have the same size")
       reduc_dim = list(range(1, len(reconstruction.shape)))# We want to avg over batch
       recon_loss = 0.5 * tf.reduce_mean(
         tf.reduce_sum(tf.square(tf.subtract(reconstruction, self.data_tensor)),
@@ -111,9 +142,49 @@ class AeModule(object):
         "weight_norm_loss":self.compute_weight_norm_loss()}
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
+  def flatten_feature_map(self, feature_map):
+    """
+    Flatten input tensor from [batch, y, x, f] to [batch, y*x*f]
+    """
+    map_shape = feature_map.get_shape()
+    if(map_shape.ndims == 4):
+      (batch, y, x, f) = map_shape
+      prev_input_features = int(y * x * f)
+      resh_map  = tf.reshape(feature_map, [-1, prev_input_features])
+    elif(map_shape.ndims == 2):
+      resh_map = feature_map
+    else:
+      assert False, ("Input feature_map has incorrect ndims")
+    return resh_map
+
+  def get_dec_shapes(self, input_shape):
+    # The following assumes decoder fc->conv operation mirrors encoder conv->fc
+    conv_output_length = tf.python.keras.utils.conv_utils.conv_output_length
+    in_y, in_x, in_f = input_shape[1:]
+    dec_conv_strides = self.conv_strides[:-self.num_dec_conv_layers]
+    filter_size_y = self.patch_size_y[:-self.num_dec_conv_layers]
+    filter_size_x = self.patch_size_x[:-self.num_dec_conv_layers]
+    dec_channels = self.dec_channels[:self.num_dec_conv_layers][::-1]
+    last_enc_conv_channels = self.enc_channels[self.num_enc_conv_layers-1]
+    dec_channels[-1] = last_enc_conv_channels
+    layer_shapes = [[int(in_y), int(in_x), int(in_f)]]
+    for layer_id in range(self.num_dec_conv_layers):
+      out_y = conv_output_length(
+        input_length=layer_shapes[layer_id][0],
+        filter_size=filter_size_y[layer_id],
+        padding="same",
+        stride=dec_conv_strides[layer_id][1])
+      out_x = conv_output_length(
+        input_length=layer_shapes[layer_id][1],
+        filter_size=filter_size_x[layer_id],
+        padding="same",
+        stride=dec_conv_strides[layer_id][2])
+      layer_shapes.append([int(out_y), int(out_x), int(dec_channels[layer_id])])
+    return layer_shapes[::-1]
+
   def compute_pre_activation(self, layer_id, input_tensor, w, b, conv, decode):
     if conv:
-      strides = self.conv_strides[layer_id]
+      strides = self.all_strides[layer_id]
       if decode:
         height_const = tf.shape(input_tensor)[1] % strides[1]
         out_height = (tf.shape(input_tensor)[1] * strides[1]) - height_const
@@ -144,11 +215,10 @@ class AeModule(object):
       weight_id = num_layers - (layer_id + 1)
     """
     with tf.compat.v1.variable_scope("layer"+str(layer_id), reuse=tf.compat.v1.AUTO_REUSE) as scope:
-      if self.tie_decoder_weights:
+      if self.tie_dec_weights:
         w_read_id = self.num_layers - (layer_id+1)
       else:
         w_read_id = layer_id
-
       name_prefix = "conv_" if conv else "fc_"
       w_name = name_prefix+"w_"+str(w_read_id)
       # TODO: params to switch init type
@@ -178,95 +248,88 @@ class AeModule(object):
       #output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
     return output_tensor, w, b
 
-  def flatten_feature_map(self, feature_map):
-    """
-    Flatten input tensor from [batch, y, x, f] to [batch, y*x*f]
-    """
-    map_shape = feature_map.get_shape().as_list()
-    if(len(map_shape) == 4):
-      (batch, y, x, f) = map_shape
-      prev_input_features = y * x * f
-      resh_map  = tf.reshape(feature_map, [-1, prev_input_features])
-    elif(len(map_shape) == 2):
-      resh_map = feature_map
-    else:
-      assert False, ("Input feature_map has incorrect ndim")
-    return resh_map
-
   def build_encoder(self, input_tensor, activation_functions):
     enc_u_list = [input_tensor]
     enc_w_list = []
     enc_b_list = []
     prev_input_features = input_tensor.get_shape().as_list()[-1]
     # Make conv layers first
-    for layer_id in range(self.num_conv_layers):
-      w_shape = [int(self.patch_size_y[layer_id]), int(self.patch_size_x[layer_id]),
-        int(prev_input_features), int(self.output_channels[layer_id])]
+    for layer_id in range(self.num_enc_conv_layers):
+      w_shape = [self.patch_size_y[layer_id], self.patch_size_x[layer_id],
+        int(prev_input_features), int(self.enc_channels[layer_id])]
       u_out, w, b = self.layer_maker(layer_id, enc_u_list[layer_id],
         activation_functions[layer_id], w_shape, conv=True, decode=False)
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
-      prev_input_features = int(self.output_channels[layer_id])
-
+      prev_input_features = int(self.enc_channels[layer_id])
     # Make fc layers second
-    for fc_layer_id in range(self.num_fc_layers):
-      layer_id = fc_layer_id + self.num_conv_layers
-      if fc_layer_id == 0: # Input needs to be reshaped to [batch, num_units] for FC layers
+    for enc_fc_layer_id in range(self.num_enc_fc_layers):
+      layer_id = enc_fc_layer_id + self.num_enc_conv_layers
+      if enc_fc_layer_id == 0: # Input needs to be reshaped to [batch, num_units] for FC layers
         in_tensor = self.flatten_feature_map(enc_u_list[-1])
         prev_input_features = in_tensor.get_shape().as_list()[1]
       else:
         in_tensor = enc_u_list[layer_id]
-      w_shape = [int(prev_input_features), int(self.output_channels[layer_id])]
+      w_shape = [int(prev_input_features), int(self.enc_channels[layer_id])]
       u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[layer_id],
         w_shape, conv=False, decode=False)
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
-      prev_input_features = int(self.output_channels[layer_id])
+      prev_input_features = int(self.enc_channels[layer_id])
     return enc_u_list, enc_w_list, enc_b_list
 
-  #TODO this decoder is asserting (in module's __init__) that the decoder mirrors the encoder
-  # We would like this to not be true
-  # Also, we currently need enc_u_list and enc_w_list for inferring conv input shapes and w_shape,
-  #  we'd like to compute this in __init__ as self.w_shapes
   def build_decoder(self, input_tensor, activation_functions):
     dec_u_list = [input_tensor]
     dec_w_list = []
     dec_b_list = []
     # Build FC layers first
-    for dec_layer_id in range(self.num_fc_layers):
-      layer_id = self.num_encoder_layers + dec_layer_id
-      #Corresponding enc layer
-      enc_w_id = -(dec_layer_id+1)
-      w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()[::-1]
-      u_out, w, b = self.layer_maker(layer_id, dec_u_list[dec_layer_id],
+    for dec_layer_id in range(self.num_dec_fc_layers):
+      layer_id = self.num_enc_layers + dec_layer_id
+      input_shape = dec_u_list[dec_layer_id].get_shape()
+      if input_shape.ndims == 4: # if final enc layer was conv then flatten
+        in_tensor = self.flatten_feature_map(dec_u_list[dec_layer_id])
+      else: # final enc layer was fc
+        in_tensor = dec_u_list[dec_layer_id]
+      if dec_layer_id == self.num_dec_fc_layers - 1 and self.num_dec_conv_layers > 0:
+        # If there are decoder conv layers, then
+        # the last decoder FC layer needs to output a vector of the correct length
+        # correct_length = feature_map_y * feature_map_x * feature_map_f
+        # where feature_map_f = self.dec_channels[dec_layer_id]
+        conv_layer_shapes = self.get_dec_shapes(self.data_tensor.get_shape())
+        out_channels = np.prod(conv_layer_shapes[0])
+      else:
+        out_channels = self.dec_channels[dec_layer_id]
+      w_shape = [in_tensor.get_shape()[-1], out_channels]
+      u_out, w, b = self.layer_maker(layer_id, in_tensor,
         activation_functions[dec_layer_id], w_shape, conv=False, decode=True)
       dec_u_list.append(u_out)
       dec_w_list.append(w)
       dec_b_list.append(b)
-
     # Build conv layers second
-    for dec_conv_layer_id in range(self.num_conv_layers):
-      dec_layer_id = self.num_fc_layers + dec_conv_layer_id
-      layer_id = self.num_encoder_layers + dec_layer_id
-
-      if dec_conv_layer_id == 0:
-        #Reshape flat vector for next conv
-        u_list_id = -(self.num_fc_layers + 1)
-        enc_shape = self.enc_u_list[u_list_id].get_shape().as_list()
-        if len(enc_shape) == 4:
-          (batch, y, x, f) = self.enc_u_list[u_list_id].get_shape().as_list()
-          in_tensor = tf.reshape(dec_u_list[-1], [-1, y, x, f])
-        else:
-          in_tensor = dec_u_list[-1]
-      else:
-        u_list_id = -(dec_layer_id + 1) # u_list_id is the id for the INPUT of this layer
+    for dec_conv_layer_id in range(self.num_dec_conv_layers):
+      dec_layer_id = self.num_dec_fc_layers + dec_conv_layer_id
+      layer_id = self.num_enc_layers + dec_layer_id
+      input_shape = dec_u_list[dec_layer_id].get_shape()
+      if input_shape.ndims == 4: # prev layer was conv
+        (batch, y, x, f) = input_shape
         in_tensor = dec_u_list[dec_layer_id]
-
-      enc_w_id = -(dec_layer_id + 1)
-      w_shape = self.enc_w_list[enc_w_id].get_shape().as_list()
-      u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[dec_conv_layer_id],
+        w_shape = [
+          self.patch_size_y[self.num_enc_conv_layers + dec_conv_layer_id],
+          self.patch_size_x[self.num_enc_conv_layers + dec_conv_layer_id],
+          self.dec_channels[dec_layer_id],
+          f]
+      else: # prev layer was fc
+        conv_layer_shapes = self.get_dec_shapes(self.data_tensor.get_shape())
+        new_shape = [-1] + conv_layer_shapes[dec_conv_layer_id]
+        in_tensor = tf.reshape(dec_u_list[dec_layer_id], new_shape)
+        w_shape = [
+          self.patch_size_y[self.num_enc_conv_layers + dec_conv_layer_id],
+          self.patch_size_x[self.num_enc_conv_layers + dec_conv_layer_id],
+          self.dec_channels[dec_layer_id],
+          new_shape[-1]]
+      u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[dec_layer_id],
         w_shape, conv=True, decode=True)
       dec_u_list.append(u_out)
       dec_w_list.append(w)
@@ -287,18 +350,16 @@ class AeModule(object):
       self.w_list = []
       self.b_list = []
       enc_u_list, enc_w_list, enc_b_list = self.build_encoder(self.u_list[0],
-        self.act_funcs[:self.num_encoder_layers])
-      self.enc_u_list = enc_u_list # TODO: Remove the dependency for these member variables for build_decoder
-      self.enc_w_list = enc_w_list
+        self.act_funcs[:self.num_enc_layers])
       self.u_list += enc_u_list[1:] # build_encoder() will place self.u_list[0] as enc_u_list[0]
       self.w_list += enc_w_list
       self.b_list += enc_b_list
       with tf.compat.v1.variable_scope("inference") as scope:
         self.a = tf.identity(enc_u_list[-1], name="activity")
-      dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.u_list[-1],
-        self.act_funcs[self.num_encoder_layers:])
+      dec_u_list, dec_w_list, dec_b_list = self.build_decoder(self.a,
+        self.act_funcs[self.num_enc_layers:])
       self.u_list += dec_u_list[1:] # build_decoder() will place self.u_list[-1] as dec_u_list[0]
-      if not self.tie_decoder_weights:
+      if not self.tie_dec_weights:
         self.w_list += dec_w_list
       self.b_list += dec_b_list
       with tf.compat.v1.variable_scope("norm_weights") as scope:

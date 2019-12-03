@@ -156,13 +156,15 @@ def testBasic(self):
     params.set_test_params(self.data_type)
     params.model_name = "test_all_"+params.model_name
     params.out_dir += "tests/"
+    if hasattr(params, "test_param_variants"):
+      for key in params.test_param_variants[0].keys():
+        setattr(params, key, params.test_param_variants[0][key])
     dataset = ds.get_data(params) # Import data
     dataset = model.preprocess_dataset(dataset, params)
     dataset = model.reshape_dataset(dataset, params)
     params.data_shape = list(dataset["train"].shape[1:])
     model.setup(params)
     model.write_saver_defs()
-
     config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
     with tf.compat.v1.Session(config=config, graph=model.graph) as sess:

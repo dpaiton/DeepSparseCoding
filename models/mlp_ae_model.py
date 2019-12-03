@@ -4,6 +4,7 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
 from modules.ae_module import AeModule
+from models.ae_model import AeModel
 from models.mlp_model import MlpModel
 from modules.mlp_module import MlpModule
 from modules.activations import activation_picker
@@ -16,6 +17,7 @@ class MlpAeModel(MlpModel):
      params: [obj] model parameters
     """
     super(MlpAeModel, self).load_params(params)
+    AeModel.ae_load_params(self, params)
     # Network Size
     self.vector_inputs = True
     self.input_shape = [None, self.params.num_pixels]
@@ -32,10 +34,10 @@ class MlpAeModel(MlpModel):
       self.params.mlp_conv_strides = []
 
   def build_ae_module(self, input_node):
-    module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_output_channels,
-      self.params.ae_patch_size, self.params.ae_conv_strides, self.decay_mult, self.norm_mult,
-      self.ae_act_funcs, self.ae_dropout_keep_probs, self.params.tie_decoder_weights,
-      self.params.norm_w_init, variable_scope="ae")
+    module = AeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
+      self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
+      self.decay_mult, self.norm_mult, self.ae_act_funcs, self.ae_dropout_keep_probs,
+      self.params.tie_dec_weights, self.params.norm_w_init, variable_scope="ae")
     return module
 
   #def build_mlp_module(self, input_node):
@@ -96,7 +98,7 @@ class MlpAeModel(MlpModel):
           MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.ae_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
           pixel_var = tf.nn.moments(input_node, axes=[1])[1]
-          self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.divide(tf.square(pixel_var), MSE)),
+          self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.math.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
           with tf.compat.v1.variable_scope("prediction_bools"):
             self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),

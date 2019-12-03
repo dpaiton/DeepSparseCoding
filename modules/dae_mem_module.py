@@ -8,16 +8,20 @@ from utils import get_data
 from utils import mem_utils
 
 class DaeMemModule(DaeModule):
-  def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides, ent_mult,
-    decay_mult, norm_mult, bounds_slope, latent_min, latent_max, num_triangles, mle_step_size,
-    num_mle_steps, gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps,
-    memristor_data_loc, memristor_type, memristor_std_eps, synthetic_noise, mem_error_rate,
-    act_funcs, dropout, tie_decoder_weights, norm_w_init,  variable_scope="dae_mem"):
+  def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
+    conv_strides, ent_mult, decay_mult, norm_mult, bounds_slope, latent_min, latent_max,
+    num_triangles, mle_step_size, num_mle_steps, gdn_w_init_const, gdn_b_init_const,
+    gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, memristor_data_loc, memristor_type,
+    memristor_std_eps, synthetic_noise, mem_error_rate, act_funcs, dropout, tie_dec_weights,
+    norm_w_init,  variable_scope="dae_mem"):
     """
     Divisive Autoencoder module
     Inputs:
       data_tensor
-      output_channels: a list of channels to make, also defines number of layers
+      enc_channels [list of ints] the number of output channels per encoder layer
+        Last entry is the number of latent units
+      dec_channels [list of ints] the number of output channels per decoder layer
+        Last entry must be the number of input pixels for FC layers and channels for CONV layers
       ent_mult: tradeoff multiplier for latent entropy loss
       decay_mult: tradeoff multiplier for weight decay loss
       norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
@@ -58,11 +62,11 @@ class DaeMemModule(DaeModule):
     self.mem_error_rate = mem_error_rate
     noise_var_mult = 0 # for the mem module we only want memristor noise, not mem + quantization noise
     num_quant_bins = 10 # just setting this to something non-zero so there's no chance of breaking
-    super(DaeMemModule, self).__init__(data_tensor, layer_types, output_channels, patch_size,
-      conv_strides, ent_mult, decay_mult, norm_mult, bounds_slope, latent_min, latent_max,
-      num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult,
+    super(DaeMemModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
+      patch_size, conv_strides, ent_mult, decay_mult, norm_mult, bounds_slope, latent_min,
+      latent_max, num_triangles, mle_step_size, num_mle_steps, num_quant_bins, noise_var_mult,
       gdn_w_init_const, gdn_b_init_const, gdn_w_thresh_min, gdn_b_thresh_min, gdn_eps, act_funcs,
-      dropout, tie_decoder_weights, norm_w_init, variable_scope)
+      dropout, tie_dec_weights, norm_w_init, variable_scope)
 
   def memristorize(self, u_in, memristor_std_eps, memristor_type=None, synthetic_noise=None):
     if memristor_type is None:
@@ -93,8 +97,6 @@ class DaeMemModule(DaeModule):
     u_out = tf.reshape(r, shape=tf.shape(u_in), name="mem_r")
     return u_out
 
-
-
   def build_graph(self):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       with tf.compat.v1.variable_scope("weight_inits") as scope:
@@ -115,20 +117,17 @@ class DaeMemModule(DaeModule):
       self.w_gdn_list = []
       self.b_gdn_list = []
       enc_u_list, enc_w_list, enc_b_list, enc_w_gdn_list, enc_b_gdn_list = \
-        self.build_encoder(self.u_list[0], self.act_funcs[:self.num_encoder_layers])
-      self.enc_u_list = enc_u_list
-      self.enc_w_list = enc_w_list
-      self.u_list += enc_u_list
+        self.build_encoder(self.u_list[0], self.act_funcs[:self.num_enc_layers])
+      self.u_list += enc_u_list[1:]
       self.w_list += enc_w_list
       self.b_list += enc_b_list
       self.w_gdn_list += enc_w_gdn_list
       self.b_gdn_list += enc_b_gdn_list
 
-      u_shape = self.u_list[-1].get_shape().as_list()
-      if self.layer_types[-1] == "conv":
-        self.num_latent = np.prod(u_shape[1:])
+      if self.enc_layer_types[-1] == "conv":
+        self.num_latent = int(np.prod(self.u_list[-1].get_shape()[1:]))
       else:
-        self.num_latent = self.output_channels[-1]
+        self.num_latent = self.enc_channels[-1]
 
       with tf.compat.v1.variable_scope("inference") as scope:
         self.a = tf.identity(enc_u_list[-1], name="activity")
@@ -144,9 +143,9 @@ class DaeMemModule(DaeModule):
       a_noise = self.memristorize(self.u_list[-1], self.memristor_std_eps, self.memristor_type, self.synthetic_noise)
 
       dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \
-        self.build_decoder(a_noise, self.act_funcs[self.num_encoder_layers:])
-      self.u_list += dec_u_list
-      if not self.tie_decoder_weights:
+        self.build_decoder(a_noise, self.act_funcs[self.num_enc_layers:])
+      self.u_list += dec_u_list[1:]
+      if not self.tie_dec_weights:
         self.w_list += dec_w_list
       self.b_list += dec_b_list
       self.w_gdn_list += dec_w_gdn_list
@@ -159,15 +158,12 @@ class DaeMemModule(DaeModule):
         self.norm_dec_w = self.w_list[-1].assign(tf.nn.l2_normalize(self.w_list[-1],
           axis=-1, epsilon=1e-8, name="col_l2_norm"))
         self.norm_w = tf.group(self.norm_enc_w, self.norm_dec_w, name="l2_norm_weights")
-
       for w_gdn, b_gdn in zip(self.w_gdn_list, self.b_gdn_list):
         self.trainable_variables[w_gdn.name] = w_gdn
         self.trainable_variables[b_gdn.name] = b_gdn
       for w, b in zip(self.w_list, self.b_list):
         self.trainable_variables[w.name] = w
         self.trainable_variables[b.name] = b
-
       with tf.compat.v1.variable_scope("output") as scope:
         self.reconstruction = tf.identity(self.u_list[-1], name="reconstruction")
-
       self.compute_total_loss()

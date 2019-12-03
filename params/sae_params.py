@@ -5,7 +5,6 @@ class params(BaseParams):
   def __init__(self):
     """
     Additional modifiable parameters:
-      ae_output_channels [list of ints]
       ae_activation_functions [list of strs]
     """
     super(params, self).__init__()
@@ -28,12 +27,13 @@ class params(BaseParams):
     self.overlapping_patches = True
     self.randomize_patches = True
     self.patch_variance_threshold = 0.0
-    self.tie_decoder_weights = False
+    self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
     self.batch_size = 100
     self.ae_layer_types = ["fc"]
-    self.ae_output_channels = [768]
+    self.ae_enc_channels = [768]
+    self.mirror_dec_architecture = True
     self.ae_patch_size = []
     self.ae_conv_strides = []
     self.ae_activation_functions = ["sigmoid", "identity"]
@@ -66,6 +66,8 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.num_edge_pixels = 28
+      self.num_data_channels = 1
       self.log_int = 100
       self.cp_int = int(1e6)
       self.gen_plot_int = int(1e6)
@@ -75,10 +77,12 @@ class params(BaseParams):
       self.standardize_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.ae_output_channels = [768]
+      self.ae_enc_channels = [768]
+      self.mirror_dec_architecture = True
       self.norm_w_init = False
+      self.ae_layer_types = ["fc", "fc"]
       self.ae_activation_functions = ["sigmoid", "identity"]
-      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
+      self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(5e6)
         self.schedule[sched_idx]["weight_lr"] = 0.01#0.0002
@@ -91,6 +95,8 @@ class params(BaseParams):
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
+      self.num_edge_pixels = self.patch_edge_size
+      self.num_data_channels = 1
       self.batch_size = 100
       self.vectorize_data = True
       self.rescale_data = False
@@ -99,7 +105,8 @@ class params(BaseParams):
       self.whiten_method = "FT"
       self.whiten_batch_size = 10
       self.extract_patches = True
-      self.ae_output_channels = [768]
+      self.ae_enc_channels = [768]
+      self.mirror_dec_architecture = True
       self.ae_activation_functions = ["sigmoid", "identity"]
       self.ae_dropout = [1.0]*2
       self.log_int = 100
@@ -117,6 +124,8 @@ class params(BaseParams):
 
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
+      self.num_edge_pixels = 32
+      self.num_data_channels = 3
       self.vectorize_data = False
       self.standardize_data = False
       self.tf_standardize_data = True
@@ -127,14 +136,15 @@ class params(BaseParams):
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
-      self.tie_decoder_weights = True
+      self.tie_dec_weights = True
       self.ae_layer_types = ["conv"]
-      self.ae_output_channels = [256]
+      self.ae_enc_channels = [256]
+      self.mirror_dec_architecture = True
       self.ae_patch_size = [(12, 12)]
       self.ae_conv_strides = [(1, 2, 2, 1)]
       self.ae_activation_functions = ["sigmoid", "identity"]
       self.optimizer = "adam"
-      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
+      self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e6)
         self.schedule[sched_idx]["weight_lr"] = 0.001
@@ -157,10 +167,13 @@ class params(BaseParams):
       self.extract_patches = True
       self.num_patches = 1e6
       self.patch_edge_size = 16
+      self.num_edge_pixels = self.patch_edge_size
+      self.num_data_channels = 1
       self.overlapping_patches = True
       self.randomize_patches = True
       self.patch_variance_threshold = 0.0
-      self.ae_output_channels = [768]
+      self.mirror_dec_architecture = True
+      self.ae_enc_channels = [768]
       self.ae_activation_functions = ["sigmoid", "identity"]
       self.ae_dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
@@ -175,11 +188,13 @@ class params(BaseParams):
       self.epoch_size = 1000
       self.dist_type = "gaussian"
       self.num_edge_pixels = 16
+      self.num_data_channels = 1
       self.vectorize_data = True
       self.rescale_data = True
       self.whiten_data = False
       self.extract_patches = False
-      self.ae_output_channels = [768]
+      self.ae_enc_channels = [768]
+      self.mirror_dec_architecture = True
       self.ae_activation_functions = ["sigmoid", "identity"]
       self.ae_dropout = [1.0]*2
       for sched_idx in range(len(self.schedule)):
@@ -196,7 +211,6 @@ class params(BaseParams):
     self.set_data_params(data_type)
     self.epoch_size = 50
     self.batch_size = 10
-    self.num_edge_pixels = 8
     self.num_patches = 100
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
@@ -204,8 +218,10 @@ class params(BaseParams):
       self.schedule[sched_idx]["sparse_mult"] = 0.15
       self.schedule[sched_idx]["target_act"] = 0.2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
-    self.ae_layer_types = ["fc"]
-    self.vectorize_data = True
-    self.ae_output_channels = [30]
-    self.ae_activation_functions = ["sigmoid", "identity"]
-    self.ae_dropout = [1.0]*len(self.ae_activation_functions)
+    self.ae_dropout = [1.0]*2
+    self.mirror_dec_architecture = True
+    self.test_param_variants = [
+      {"ae_layer_types":["fc"],
+      "vectorize_data":True,
+      "ae_enc_channels":[30],
+      "ae_activation_functions":["sigmoid", "identity"]}]

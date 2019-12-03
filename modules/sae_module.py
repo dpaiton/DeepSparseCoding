@@ -6,9 +6,9 @@ from modules.ae_module import AeModule
 from modules.activations import sigmoid
 
 class SaeModule(AeModule):
-  def __init__(self, data_tensor, layer_types, output_channels, patch_size, conv_strides,
-    sparse_mult, decay_mult, norm_mult, target_act, act_funcs, dropout, tie_decoder_weights,
-    norm_w_init, variable_scope="sae"):
+  def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
+    conv_strides, sparse_mult, decay_mult, norm_mult, target_act, act_funcs, dropout,
+    tie_dec_weights, norm_w_init, variable_scope="sae"):
     """
     Implementation of sparse autoencoder described in Andrew Ng's 2011 Stanford CS294A lecture notes
     Sigmoidal activation function
@@ -16,7 +16,10 @@ class SaeModule(AeModule):
     Linear reconstructions - input images do not have 0-1 range
     Inputs:
       data_tensor
-      output_channels - a list of channels to make, also defines number of layers
+      enc_channels [list of ints] the number of output channels per encoder layer
+        Last entry is the number of latent units
+      dec_channels [list of ints] the number of output channels per decoder layer
+        Last entry must be the number of input pixels for FC layers and channels for CONV layers
       decay_mult -  weight decay multiplier
       norm_mult: tradeoff multiplier for weight norm loss (asks weight norm to == 1)
       act_funcs - activation functions
@@ -32,9 +35,9 @@ class SaeModule(AeModule):
     """
     self.sparse_mult = sparse_mult
     self.target_act = target_act
-    super(SaeModule, self).__init__(data_tensor, layer_types, output_channels,
-      patch_size, conv_strides, decay_mult, norm_mult, act_funcs, dropout,
-      tie_decoder_weights, norm_w_init, variable_scope)
+    super(SaeModule, self).__init__(data_tensor, layer_types, enc_channels, dec_channels,
+      patch_size, conv_strides, decay_mult, norm_mult, act_funcs, dropout, tie_dec_weights,
+      norm_w_init, variable_scope)
 
   def compute_sparse_loss(self, a_in):
     with tf.compat.v1.variable_scope("unsupervised"):

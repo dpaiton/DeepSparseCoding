@@ -61,7 +61,7 @@ class LcaSubspaceModule(LcaModule):
     sigms shape [num_batch, num_neurons]
     directions shape [num_batch, num_neurons]
     """
-    directions = tf.where(tf.greater(sigmas, 0.0), tf.divide(a_in, sigmas, name=name),
+    directions = tf.where(tf.greater(sigmas, 0.0), tf.math.divide(a_in, sigmas, name=name),
       tf.zeros_like(sigmas))
     return directions
 

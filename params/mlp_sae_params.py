@@ -29,13 +29,14 @@ class params(BaseParams):
     self.patch_variance_threshold = 0.0
     self.batch_size = 100
     # SAE Params
-    self.ae_output_channels = [768]
+    self.mirror_dec_architecture = True
+    self.ae_enc_channels = [768]
     self.ae_layer_types = ["fc"]
     self.ae_patch_size = []
     self.ae_conv_strides = []
     self.ae_activation_functions = ["sigmoid", "identity"]
-    self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
-    self.tie_decoder_weights = False
+    self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
+    self.tie_dec_weights = False
     self.norm_weights = False
     self.norm_w_init = False
     self.optimizer = "adam"
@@ -130,9 +131,9 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.ae_layer_types = ["fc"]
-      self.ae_output_channels = [768]
+      self.ae_enc_channels = [768]
       self.ae_activation_functions = ["sigmoid", "identity"]
-      self.mlp_dropout = [1.0]*2*len(self.ae_output_channels)
+      self.mlp_dropout = [1.0]*2*len(self.ae_enc_channels)
       self.cp_int = 1e3
       self.gen_plot_int = 1e5
       self.cp_load = True
@@ -205,9 +206,9 @@ class params(BaseParams):
       self.whiten_data = False
       self.extract_patches = False
       self.ae_layer_types = ["fc"]
-      self.ae_output_channels = [768]
+      self.ae_enc_channels = [768]
       self.ae_activation_functions = ["sigmoid", "identity"]
-      self.ae_dropout = [1.0]*2*len(self.ae_output_channels)
+      self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
       self.train_on_recon = True # if False, train on activations
       self.full_data_shape = [16, 16, 1]
       self.num_classes = 2
