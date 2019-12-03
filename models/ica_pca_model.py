@@ -20,6 +20,6 @@ class IcaPcaModel(IcaModel):
         self.full_cov = tf.compat.v1.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),
           name="full_covariance_matrix")
         s, u, v = tf.svd(self.full_cov, full_matrices=True, name="a_svd")
-        top_vecs = u[:, :self.num_pooling_units]
+        top_vecs = u[:, :self.params.num_pooling_units]
         self.pooling_filters = tf.transpose(tf.matmul(top_vecs, tf.transpose(top_vecs)),
           name="pooling_filters")

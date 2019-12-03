@@ -210,10 +210,10 @@ class params(BaseParams):
       {"vectorize_data":False,
       "tie_dec_weights":False,
       "mirror_dec_architecture":False,
-      "ae_activation_functions":["relu"]*4,
-      "ae_dropout":[1.0]*4,
       "ae_layer_types":["conv", "conv", "conv", "fc"],
       "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)],
       "ae_patch_size":[(3, 3)]*3,
       "ae_enc_channels":[32, 64, 25],
+      "ae_activation_functions":["relu"]*4,
+      "ae_dropout":[1.0]*4,
       "ae_dec_channels":[self.num_edge_pixels**2*self.num_data_channels]}]

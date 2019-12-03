@@ -82,14 +82,6 @@ def get_params(model_type):
     return sae.params()
   if model_type.lower() == "vae":
     return vae.params()
-  #if model_type.lower() == "gdn_autoencoder":
-  #  return ga.params()
-  #if model_type.lower() == "gdn_conv_autoencoder":
-  #  return cga.params()
-  #if model_type.lower() == "gdn_conv_decoder":
-  #  return cgd.params()
-  #if model_type.lower() == "relu_autoencoder":
-  #  return ra.params()
   assert False, (model_type+" is not a supported model_type")
 
 def list_all_params():

@@ -32,7 +32,7 @@ class params(lca_pca_params):
     self.gen_plot_int = 100
     self.save_plots = True
     self.schedule = [
-      {"weights": ["lca/weights/w:0"],
+      {"weights": None,
       "num_batches": int(1e4),
       "sparse_mult": 0.08,
       "fb_mult": 1e-3,
@@ -40,3 +40,55 @@ class params(lca_pca_params):
       "decay_steps": [int(1e4*0.6)],
       "decay_rate": [0.5],
       "staircase": [True]}]
+
+  def set_data_params(self, data_type):
+    self.data_type = data_type
+    if data_type.lower() == "mnist":
+      self.model_name += "_mnist"
+      self.vectorize_data = True
+      self.rescale_data = False
+      self.standardize_data = True
+      self.whiten_data = False
+      self.extract_patches = False
+      self.rectify_a = True
+      self.num_neurons = 1536
+      self.thresh_type = "soft"
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e5)
+      self.log_int = int(1e2)
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(5e5)
+        self.schedule[sched_idx]["sparse_mult"] = 0.3#0.15
+        self.schedule[sched_idx]["weight_lr"] = 0.1
+        self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.5
+
+    elif data_type.lower() == "synthetic":
+      self.model_name += "_synthetic"
+      self.epoch_size = 1000
+      self.dist_type = "gaussian"
+      self.num_edge_pixels = 16
+      self.vectorize_data = True
+      self.rescale_data = True
+      self.whiten_data = False
+      self.extract_patches = False
+      self.num_neurons = 768
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.21
+        self.schedule[sched_idx]["weight_lr"] = 0.1
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+
+    else:
+      assert False, ("Data type "+data_type+" is not supported.")
+
+  def set_test_params(self, data_type):
+    self.set_data_params(data_type)
+    self.epoch_size = 50
+    self.batch_size = 10
+    self.num_edge_pixels = 8
+    for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["num_batches"] = 2
+      self.schedule[sched_idx]["weight_lr"] = 1e-4
+    self.num_neurons = 100
+    self.num_steps = 5

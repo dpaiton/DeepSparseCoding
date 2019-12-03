@@ -38,9 +38,47 @@ class params(ica_params):
     self.gen_plot_int = 500
     self.save_plots = True
     self.schedule = [
-      {"weights": ["a"],
+      {"weights": None,
       "weight_lr": [0.01],
       "num_batches": int(1e4),
       "decay_steps": [int(1e4*0.8)],
       "decay_rate": [0.7],
       "staircase": [True]}]
+
+  def set_data_params(self, data_type):
+    self.data_type = data_type
+    if self.data_type.lower() == "vanhateren":
+      self.model_name += "_vh"
+      self.batch_size = 50
+      self.vectorize_data = True
+      self.rescale_data = False
+      self.whiten_data = True
+      self.whiten_method = "ZCA"
+      self.lpf_data = True # only for ZCA/PCA
+      self.lpf_cutoff = 0.7
+      self.whiten_batch_size = 10
+      self.extract_patches = True
+      self.patch_edge_size = 16
+      self.thresh_type = "soft"
+      self.cp_int = int(1e5)
+      self.log_int = int(1e2)
+      self.gen_plot_int = int(2e4)
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(5e5)
+        self.schedule[sched_idx]["weight_lr"] = 0.001
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+
+    elif self.data_type.lower() == "synthetic":
+      self.model_name += "_synthetic"
+      self.epoch_size = 1000
+      self.dist_type = "gaussian"
+      self.num_edge_pixels = 16
+
+  def set_test_params(self, data_type):
+    self.set_data_params(data_type)
+    self.epoch_size = 50
+    self.batch_size = 10
+    self.num_patches = 50
+    for sched_idx in range(len(self.schedule)):
+      self.schedule[sched_idx]["num_batches"] = 2
+      self.schedule[sched_idx]["weight_lr"] = 1e-4

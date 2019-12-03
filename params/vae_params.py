@@ -75,14 +75,61 @@ class params(BaseParams):
       self.ae_activation_functions = ["lrelu", "lrelu", "sigmoid", "lrelu", "lrelu", "sigmoid"]
       self.ae_dropout = [1.0]*len(self.ae_activation_functions)
       self.recon_loss_type = "mse"
-      for schedule_idx in range(len(self.schedule)):
-        self.schedule[schedule_idx]["num_batches"] = int(1e5)#int(2e6)
-        self.schedule[schedule_idx]["weight_lr"] = 1e-4
-        self.schedule[schedule_idx]["kld_mult"] = 1.0
-        self.schedule[schedule_idx]["w_decay_mult"] = 1e-3
-        self.schedule[schedule_idx]["w_norm_mult"] = 0.0#2e-4
-        self.schedule[schedule_idx]["decay_steps"] = int(1.0*self.schedule[schedule_idx]["num_batches"])
-        self.schedule[schedule_idx]["decay_rate"] = 1.0
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["num_batches"] = int(1e5)#int(2e6)
+        self.schedule[sched_idx]["weight_lr"] = 1e-4
+        self.schedule[sched_idx]["kld_mult"] = 1.0
+        self.schedule[sched_idx]["w_decay_mult"] = 1e-3
+        self.schedule[sched_idx]["w_norm_mult"] = 0.0#2e-4
+        self.schedule[sched_idx]["decay_steps"] = int(1.0*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 1.0
+
+    elif data_type.lower() == "vanhateren":
+      self.model_name += "_vh"
+      self.rescale_data = False
+      self.vectorize_data = True
+      self.whiten_data = True
+      self.tf_standardize_data = False
+      self.standardize_data = False
+      self.whiten_data = True
+      self.whiten_method = "FT"
+      self.whiten_batch_size = 10
+      self.lpf_data = False
+      self.lpf_cutoff = 0.7
+      self.extract_patches = True
+      self.num_patches = 1e6
+      self.patch_edge_size = 16
+      self.num_edge_pixels = self.patch_edge_size
+      self.num_data_channels = 1
+      self.overlapping_patches = True
+      self.randomize_patches = True
+      self.patch_variance_threshold = 0.0
+      self.batch_size = 100
+      self.tie_dec_weights = False
+      self.mirror_dec_architecture = False
+      self.ae_layer_types = ["conv", "conv", "conv", "fc"]
+      self.ae_conv_strides = [(1, 2, 2, 1), (1, 1, 1, 1), (1, 1, 1, 1)]
+      self.ae_patch_size = [(3, 3)]*3
+      self.ae_enc_channels = [32, 64, 25]
+      self.ae_activation_functions = ["lrelu"]*len(self.ae_layer_types)
+      self.ae_dropout = [1.0]*len(self.ae_layer_types)
+      self.ae_dec_channels = [self.num_edge_pixels**2*self.num_data_channels]
+      self.optimizer = "sgd"
+      self.log_int = 100
+      self.cp_int = int(1e5)
+      self.gen_plot_int = int(1e5)
+      self.norm_weights = False
+      self.w_init_type = "normal"
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["weights"] = None
+        self.schedule[sched_idx]["num_batches"] = int(6e5)
+        self.schedule[sched_idx]["weight_lr"] = 1e-3
+        self.schedule[sched_idx]["kld_mult"] = 1.0
+        self.schedule[sched_idx]["w_decay_mult"] = 2e-3
+        self.schedule[sched_idx]["w_norm_mult"] = 1e-4
+        self.schedule[sched_idx]["decay_steps"] = int(self.schedule[sched_idx]["num_batches"]*0.8)
+        self.schedule[sched_idx]["decay_rate"] = 0.5
+        self.schedule[sched_idx]["staircase"] = True
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
