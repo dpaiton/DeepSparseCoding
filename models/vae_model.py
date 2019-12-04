@@ -6,6 +6,7 @@ import utils.data_processing as dp
 import utils.entropy_functions as ef
 from models.ae_model import AeModel
 from modules.vae_module import VaeModule
+from modules.activations import activation_picker
 
 class VaeModel(AeModel):
   def __init__(self):
@@ -24,12 +25,26 @@ class VaeModel(AeModel):
     """
     super(VaeModel, self).__init__()
 
+  def ae_load_params(self, params):
+    super(VaeModel, self).ae_load_params(params)
+    self.vae_mean_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.vae_mean_activation_functions]
+    self.vae_var_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.vae_var_activation_functions]
+    self.num_latent = self.params.vae_mean_channels[-1]
+
   def build_module(self, input_node):
     module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
-      self.w_decay_mult, self.w_norm_mult, self.kld_mult, self.act_funcs, self.ae_dropout_keep_probs,
-      self.params.tie_dec_weights, self.params.noise_level, self.params.recon_loss_type,
-      self.params.w_init_type, variable_scope="vae")
+      self.vae_mean_act_funcs, self.params.vae_mean_layer_types,
+      self.params.vae_mean_channels, self.params.vae_mean_patch_size,
+      self.params.vae_mean_conv_strides, self.params.vae_mean_dropout,
+      self.vae_var_act_funcs, self.params.vae_var_layer_types, self.params.vae_var_channels,
+      self.params.vae_var_patch_size, self.params.vae_var_conv_strides, self.params.vae_var_dropout,
+      self.w_decay_mult, self.w_norm_mult, self.kld_mult, self.act_funcs,
+      self.ae_dropout_keep_probs, self.params.tie_dec_weights, self.params.noise_level,
+      self.params.recon_loss_type, self.params.latent_prior, self.params.w_init_type,
+      variable_scope="vae")
     return module
 
   def build_graph_from_input(self, input_node):
@@ -69,42 +84,33 @@ class VaeModel(AeModel):
     """
     super(VaeModel, self).generate_plots(input_data, input_labels)
     feed_dict = self.get_feed_dict(input_data, input_labels)
-    eval_list = [self.global_step, self.module.w_enc_std, self.module.b_enc_std, self.module.act]
+    eval_list = [self.global_step, self.module.act]
     if self.params.noise_level > 0.0:
       eval_list += [self.module.corrupt_data]
     eval_out = tf.compat.v1.get_default_session().run(eval_list, feed_dict)
     current_step = str(eval_out[0])
-    w_enc_std = eval_out[1]
-    b_enc_std = eval_out[2]
-    latent_code = eval_out[3]
+    latent_code = eval_out[1]
     if self.params.noise_level > 0.0:
-      corrupt_data  = eval_out[4]
-    w_enc_std_norm = np.linalg.norm(w_enc_std, axis=0, keepdims=False)
+      corrupt_data  = eval_out[2]
     filename_suffix = "_v"+self.params.version+"_"+current_step.zfill(5)+".png"
     #TODO histogram with large bins is broken
     #fig = pf.plot_activity_hist(b_enc_std, title="Encoding Bias Std Histogram",
     #  save_filename=(self.disp_dir+"b_enc_std_hist_v"+self.version+"-"
     #  +current_step.zfill(5)+".png"))
     latent_layer = self.module.num_enc_layers-1
-    fig = pf.plot_activity_hist(w_enc_std.reshape((-1, w_enc_std.shape[-1])),
-      title="Activity Encoder "+str(latent_layer)+" Std Histogram",
-      save_filename=self.params.disp_dir+"act_enc_"+str(latent_layer)+"_std_hist"+filename_suffix)
-    fig = pf.plot_bar(w_enc_std_norm.reshape(-1), num_xticks=5,
-      title="w_enc_"+str(latent_layer)+"_std l2 norm", xlabel="Basis Index", ylabel="L2 Norm",
-      save_filename=self.params.disp_dir+"w_enc_"+str(latent_layer)+"_std_norm"+filename_suffix)
     if self.params.noise_level > 0.0:
       corrupt_data = dp.reshape_data(corrupt_data, flatten=False)[0]
       fig = pf.plot_data_tiled(corrupt_data, normalize=False,
         title="Corrupted Images at step "+current_step,
         save_filename=self.params.disp_dir+"corrupt_images"+filename_suffix)
-
     # Plot generated digits
     latent_shape = latent_code.shape[1:]
     randoms = [np.random.normal(0, 1, latent_shape) for _ in range(self.params.batch_size)]
     feed_dict[self.latent_input] = np.stack(randoms, axis=0)
     feed_dict[self.ae_dropout_keep_probs] = [1.0] * len(self.params.ae_dropout)
     imgs = tf.compat.v1.get_default_session().run(self.compute_recon_from_placeholder(), feed_dict)
-    imgs = imgs.reshape(imgs.shape[0], 28, 28, 1)
+    imgs = imgs.reshape(imgs.shape[0], self.params.num_edge_pixels, self.params.num_edge_pixels,
+      self.params.num_data_channels)
     #if imgs.ndim == 2:
     #  imgs = np.stack([np.reshape(imgs[i], [28, 28, 1]) for i in range(len(imgs))], axis=0)
     imgs = (imgs - np.min(imgs)) / (np.max(imgs) - np.min(imgs))
@@ -112,7 +118,6 @@ class VaeModel(AeModel):
       title="Generated images", vmin=0, vmax=1,
       save_filename=(self.params.disp_dir+"generated_images"
       +"_v"+self.params.version+"_"+str(current_step).zfill(5)+".png"))
-
     if self.params.ae_layer_types[-1] == "fc":
       # display a 30x30 2D manifold of digits
       n = 30
@@ -127,7 +132,8 @@ class VaeModel(AeModel):
         for j, xi in enumerate(grid_x):
           z_sample = np.array([[xi, yi]+[0.0]*(num_z-2)])
           feed_dict[self.latent_input] = z_sample
-          x_decoded = tf.compat.v1.get_default_session().run(self.compute_recon_from_placeholder(), feed_dict)
+          x_decoded = tf.compat.v1.get_default_session().run(self.compute_recon_from_placeholder(),
+            feed_dict)
           digit = x_decoded[0].reshape(digit_size, digit_size)
           figure_img[i * digit_size: (i + 1) * digit_size,
             j * digit_size: (j + 1) * digit_size] = digit
@@ -147,7 +153,6 @@ class VaeModel(AeModel):
       ax.imshow(figure_img, cmap='Greys_r')
       fig.savefig(self.params.disp_dir+"generated_latent_interpolation"+filename_suffix)
       plt.close(fig)
-
     if input_labels is not None and self.params.ae_layer_types[-1] == "fc":
       z_mean = tf.compat.v1.get_default_session().run(self.get_encodings(), feed_dict)
       fig, ax = plt.subplots(1, figsize=(12, 10))

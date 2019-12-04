@@ -96,7 +96,7 @@ class DaeModule(AeModule):
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
   def layer_maker(self, layer_id, input_tensor, activation_function, w_shape,
-    conv=False, decode=False):
+    conv=False, decode=False, tie_dec_weights=False):
     """
     Make layer that does act(u*w+b) where * is a dot product or convolution
     Example case for w_read_id logic:
@@ -108,7 +108,7 @@ class DaeModule(AeModule):
     """
     trainable_variables = []
     with tf.compat.v1.variable_scope("layer"+str(layer_id), reuse=tf.compat.v1.AUTO_REUSE) as scope:
-      if self.tie_dec_weights:
+      if tie_dec_weights:
         w_read_id = self.num_layers - (layer_id + 1)
       else:
         w_read_id = layer_id
@@ -157,7 +157,7 @@ class DaeModule(AeModule):
       w_shape = [self.patch_size_y[layer_id], self.patch_size_x[layer_id],
         int(prev_input_features), int(self.enc_channels[layer_id])]
       u_out, trainable_variables = self.layer_maker(layer_id, enc_u_list[layer_id],
-        activation_functions[layer_id], w_shape, conv=True, decode=False)
+        activation_functions[layer_id], w_shape, conv=True, decode=False, tie_dec_weights=False)
       if activation_functions[layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
         enc_w_gdn_list.append(w_gdn)
@@ -178,7 +178,7 @@ class DaeModule(AeModule):
         in_tensor = enc_u_list[layer_id]
       w_shape = [int(prev_input_features), int(self.enc_channels[layer_id])]
       u_out, trainable_variables = self.layer_maker(layer_id, in_tensor,
-        activation_functions[layer_id], w_shape, conv=False, decode=False)
+        activation_functions[layer_id], w_shape, conv=False, decode=False, tie_dec_weights=False)
       if activation_functions[layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
         enc_w_gdn_list.append(w_gdn)
@@ -216,7 +216,7 @@ class DaeModule(AeModule):
         out_channels = self.dec_channels[dec_layer_id]
       w_shape = [in_tensor.get_shape()[-1], out_channels]
       u_out, trainable_variables = self.layer_maker(layer_id, in_tensor,
-        activation_functions[dec_layer_id], w_shape, conv=False, decode=True)
+        activation_functions[dec_layer_id], w_shape, conv=False, decode=True, tie_dec_weights=False)
       if activation_functions[dec_layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
         dec_w_gdn_list.append(w_gdn)
@@ -249,7 +249,7 @@ class DaeModule(AeModule):
           self.dec_channels[dec_layer_id],
           new_shape[-1]]
       u_out, trainable_variables = self.layer_maker(layer_id, in_tensor, activation_functions[dec_conv_layer_id],
-        w_shape, conv=True, decode=True)
+        w_shape, conv=True, decode=True, tie_dec_weights=False)
       if activation_functions[dec_layer_id] == activation_picker("gdn"):
         w, b, w_gdn, b_gdn = trainable_variables
         dec_w_gdn_list.append(w_gdn)
