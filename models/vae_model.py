@@ -23,10 +23,13 @@ class VaeModel(AeModel):
     G Barello, AS Charles, JW Pillow (2018) - Sparse-Coding Variational Auto-Encoders
     https://www.biorxiv.org/content/biorxiv/early/2018/08/29/399246.full.pdf
     """
-    super(VaeModel, self).__init__()
+    super(VaeModel, self).__init__() # will call super.load_params() and super.ae_load_params()
 
-  def ae_load_params(self, params):
-    super(VaeModel, self).ae_load_params(params)
+  def load_params(self, params):
+    super(VaeModel, self).load_params(params)
+    self.vae_load_params(params) # only vae-specific params
+
+  def vae_load_params(self, params):
     self.vae_mean_act_funcs = [activation_picker(act_func_str)
       for act_func_str in self.params.vae_mean_activation_functions]
     self.vae_var_act_funcs = [activation_picker(act_func_str)

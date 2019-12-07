@@ -4,6 +4,7 @@ import utils.plot_functions as pf
 import utils.data_processing as dp
 import utils.entropy_functions as ef
 from models.mlp_model import MlpModel
+from models.ae_model import AeModel
 from models.vae_model import VaeModel
 from modules.vae_module import VaeModule
 from modules.mlp_module import MlpModule
@@ -17,7 +18,8 @@ class MlpVaeModel(MlpModel):
      params: [obj] model parameters
     """
     super(MlpVaeModel, self).load_params(params)
-    VaeModel.ae_load_params(self, params)
+    AeModel.ae_load_params(self, params)
+    VaeModel.vae_load_params(self, params)
     # Network Size
     self.vector_inputs = True
     self.input_shape = [None, self.params.num_pixels]
@@ -29,13 +31,24 @@ class MlpVaeModel(MlpModel):
     if np.all([layer_type == "fc" for layer_type in self.params.ae_layer_types]):
       self.params.ae_patch_size = []
       self.params.ae_conv_strides = []
+    self.vae_mean_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.vae_mean_activation_functions]
+    self.vae_var_act_funcs = [activation_picker(act_func_str)
+      for act_func_str in self.params.vae_var_activation_functions]
+    self.num_latent = self.params.vae_mean_channels[-1]
 
   def build_vae_module(self, input_node):
     module = VaeModule(input_node, self.params.ae_layer_types, self.params.ae_enc_channels,
       self.params.ae_dec_channels, self.params.ae_patch_size, self.params.ae_conv_strides,
+      self.vae_mean_act_funcs, self.params.vae_mean_layer_types,
+      self.params.vae_mean_channels, self.params.vae_mean_patch_size,
+      self.params.vae_mean_conv_strides, self.params.vae_mean_dropout,
+      self.vae_var_act_funcs, self.params.vae_var_layer_types, self.params.vae_var_channels,
+      self.params.vae_var_patch_size, self.params.vae_var_conv_strides, self.params.vae_var_dropout,
       self.w_decay_mult, self.w_norm_mult, self.kld_mult, self.ae_act_funcs,
       self.ae_dropout_keep_probs, self.params.tie_dec_weights, self.params.noise_level,
-      self.params.recon_loss_type, self.params.w_init_type, variable_scope="vae")
+      self.params.recon_loss_type, self.params.latent_prior, self.params.w_init_type,
+      variable_scope="vae")
     return module
 
   def build_graph_from_input(self, input_node):
