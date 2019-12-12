@@ -46,7 +46,7 @@ class VaeModel(AeModel):
       self.params.vae_var_patch_size, self.params.vae_var_conv_strides, self.params.vae_var_dropout,
       self.w_decay_mult, self.w_norm_mult, self.kld_mult, self.act_funcs,
       self.ae_dropout_keep_probs, self.params.tie_dec_weights, self.params.noise_level,
-      self.params.recon_loss_type, self.params.latent_prior, self.params.w_init_type,
+      self.params.prior_params, self.params.w_init_type,
       variable_scope="vae")
     return module
 

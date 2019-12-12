@@ -49,8 +49,11 @@ class params(BaseParams):
     self.vae_var_dropout = [1.0]*len(self.vae_var_layer_types)
     self.vae_var_conv_strides = []
     self.vae_var_patch_size = []
-    self.latent_prior = "standard_normal"#"laplacian"
-    self.recon_loss_type = "mse" # or "cross-entropy"
+    self.prior_params = {
+      "posterior_prior":"gauss_gasus",
+      "gauss_prior_mean":0.0,
+      "gauss_prior_std":1.0
+    }
     self.noise_level = 0.01 # std of noise added to the input data
     self.tie_dec_weights = False
     self.norm_weights = False

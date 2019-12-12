@@ -23,8 +23,14 @@ class params(BaseParams):
     # Last element in list is the size of the latent space
     # Decoder will automatically build the transpose of the encoder
     self.noise_level = 0.0 # std of noise added to the input data
-    self.latent_prior = "standard_normal"#"laplacian"
-    self.recon_loss_type = "mse" # or "cross-entropy"
+    self.prior_params = {
+      "posterior_prior":"gauss_gasus",
+      "gauss_mean":0.0,
+      "gauss_std":1.0,
+      "cauchy_location":0.0,
+      "cauchy_scale":0.2,
+      "laplace_scale":1.0
+    }
     self.tie_dec_weights = False
     self.norm_weights = False
     self.w_init_type = "normal"
@@ -82,8 +88,14 @@ class params(BaseParams):
       self.vae_var_dropout = [1.0]*len(self.vae_var_layer_types)
       self.vae_var_conv_strides = []
       self.vae_var_patch_size = []
-      self.vae_prior = "standard_normal"#"laplacian"
-      self.recon_loss_type = "mse"
+      self.prior_params = {
+        "posterior_prior":"gauss_gasus",
+        "gauss_mean":0.0,
+        "gauss_std":1.0,
+        "cauchy_location":0.0,
+        "cauchy_scale":0.2,
+        "laplace_scale":1.0
+      }
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(1e5)#int(2e6)
         self.schedule[sched_idx]["weight_lr"] = 1e-4
@@ -182,7 +194,6 @@ class params(BaseParams):
     self.vae_var_dropout = [1.0]*len(self.vae_var_layer_types)
     self.vae_var_conv_strides = []
     self.vae_var_patch_size = []
-    self.vae_prior = "laplacian"#"standard_normal"
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["weights"] = None
       self.schedule[sched_idx]["num_batches"] = 2
@@ -193,6 +204,7 @@ class params(BaseParams):
     self.test_param_variants = [
       {"vectorize_data":False,
       "tie_dec_weights":False,
+      "posterior_prior":"gauss_gauss",#laplacian",
       "ae_activation_functions":["relu"] * 4,
       "ae_dropout":[1.0] * 4,
       "mirror_dec_architecture":False,
@@ -206,6 +218,17 @@ class params(BaseParams):
       {"vectorize_data":False,
       "tie_dec_weights":False,
       "mirror_dec_architecture":True,
+      "posterior_prior":"gauss_gauss",
+      "ae_layer_types":["conv", "conv", "fc"],
+      "ae_enc_channels":[30, 20, 10],
+      "ae_patch_size":[(8,8), (4,4)],
+      "ae_conv_strides":[(1, 2, 2, 1), (1, 1, 1, 1)]}]
+    # Test 3
+    self.test_param_variants += [
+      {"vectorize_data":False,
+      "tie_dec_weights":False,
+      "mirror_dec_architecture":True,
+      "posterior_prior":"cauchy_cauchy",
       "ae_layer_types":["conv", "conv", "fc"],
       "ae_enc_channels":[30, 20, 10],
       "ae_patch_size":[(8,8), (4,4)],

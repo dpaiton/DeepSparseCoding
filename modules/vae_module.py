@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 from ops.init_ops import L2NormalizedTruncatedNormalInitializer
 import utils.entropy_functions as ef
 from utils.trainable_variable_dict import TrainableVariableDict
@@ -10,7 +11,7 @@ class VaeModule(AeModule):
     conv_strides, mean_act_funcs, mean_layer_types, mean_channels, mean_patch_size,
     mean_conv_strides, mean_dropout, var_act_funcs, var_layer_types, var_channels,
     var_patch_size, var_conv_strides, var_dropout, w_decay_mult, w_norm_mult, kld_mult,
-    act_funcs, dropout, tie_dec_weights, noise_level, recon_loss_type, latent_prior, w_init_type,
+    act_funcs, dropout, tie_dec_weights, noise_level, prior_params, w_init_type,
     variable_scope="vae"):
     """
     Variational Autoencoder module
@@ -27,7 +28,7 @@ class VaeModule(AeModule):
       mean_layer_types - same format as layer_types but for vae mean
       mean_channels - same format as channels but for vae mean
       mean_patch_size - same format as patch_size but for vae mean
-      var_act_funcs - same format as act_funcs but for vae var 
+      var_act_funcs - same format as act_funcs but for vae var
       var_layer_types - same format as layer_types but for vae var
       var_channels - same format as channels but for vae var
       var_patch_size - same format as patch_size but for vae var
@@ -37,8 +38,14 @@ class VaeModule(AeModule):
       act_funcs [list of functions] activation functions
       dropout [list of floats] specifies the keep probability or None
       noise_level [float] stddev of noise to be added to the input (for denoising VAE)
-      latent_prior [str] either "standard_normal" or "laplacian" - Prior used for latent KLD loss term
-      recon_loss_type [str] either "mse" or the cross entropy loss used in Kingma & Welling
+      prior_params [dict] containing keys for posterior & prior parameters
+        posterior_prior [str] either "gauss_gauss" or "gauss_laplacian"
+          posterior and prior used for latent KLD loss term
+        gauss_mean [float]
+        gauss_var [float]
+        cauchy_location [float]
+        cauchy_scale [float]
+        laplace_scale [float]
       w_init_type: if True, l2 normalize w_init,
         reducing over [0] axis on enc and [-1] axis on dec
       variable_scope [str] specifies the variable_scope for the module
@@ -53,8 +60,8 @@ class VaeModule(AeModule):
             data_tensor, name="noisy_data")
       else:
         self.corrupt_data = tf.identity(data_tensor, name="clean_data")
-    self.latent_prior = latent_prior
-    self.recon_loss_type = recon_loss_type
+    self.prior_params = prior_params
+    self.posterior_prior = self.prior_params["posterior_prior"]
     self.kld_mult = kld_mult
     self.mean_act_funcs = mean_act_funcs
     self.mean_layer_types = mean_layer_types
@@ -99,50 +106,30 @@ class VaeModule(AeModule):
       assert np.all("fc" in self.var_layer_types), (
         "vae_var_layer_types must all be 'conv' if enc_layer_types[-1] == 'fc'")
 
-  def compute_recon_loss(self, reconstruction):
-    if self.recon_loss_type == "mse":
-      return super(VaeModule, self).compute_recon_loss(reconstruction)
-    elif self.recon_loss_type == "crossentropy":
-      # If the encoder and decoder are different types (conv vs fc) then there may be a shape mismatch
-      recon_shape = reconstruction.get_shape()
-      data_shape = self.data_tensor.get_shape()
-      if(recon_shape.ndims != data_shape.ndims):
-        if(np.prod(recon_shape.as_list()[1:]) == np.prod(data_shape.as_list()[1:])):
-          reconstruction = tf.reshape(reconstruction, tf.shape(self.data_tensor))
-        else:
-          assert False, ("Reconstructiion and input must have the same size")
-      reduc_dim = list(range(1, len(reconstruction.shape)))# We want to avg over batch
-      #recon_loss = tf.reduce_mean(-tf.reduce_sum(self.data_tensor * ef.safe_log(reconstruction) \
-      #  + (1-self.data_tensor) * ef.safe_log(1-reconstruction), axis=reduc_dim))
-      #return recon_loss
-      recon_loss = tf.reduce_mean(-tf.reduce_sum(
-        tf.nn.softmax_cross_entropy_with_logits_v2(reconstruction, self.data_tensor),
-        axis=[-1]))#reduc_dim))
-      return recon_loss
-    else:
-      assert False, ("recon_loss_type param must be `mse` or `crossentropy`")
-
-  def log_normal_pdf(self, sample, mean, logvar, raxis=1):
-    log2pi = tf.math.log(2. * np.pi)
-    lnp = tf.reduce_sum(
-      -0.5 * (tf.square(sample - mean) * tf.exp(-logvar) + logvar + log2pi),
-      axis=raxis)
-    return lnp
-
-  def compute_latent_loss(self, act, mean, logvar):
+  def compute_latent_loss(self, act, dist_param1, dist_param2):
     with tf.compat.v1.variable_scope("latent"):
-      if self.latent_prior.lower() == "standard_normal":
-        reduc_dim = list(range(1, len(mean.shape))) # Want to avg over batch, sum over the rest
-        latent_loss = self.kld_mult * tf.reduce_mean(-0.5 * tf.reduce_sum(1.0 + 2.0 * logvar
-          - tf.square(mean) - tf.exp(2.0 * logvar), reduc_dim))
-        #logpz = self.log_normal_pdf(act, 0., 0., reduc_dim)
-        #logqz_x = self.log_normal_pdf(act, mean, logvar, reduc_dim)
-        #latent_loss = self.kld_mult * tf.reduce_mean(logpz - logqz_x)
-      elif self.latent_prior.lower() == "laplacian":
+      reduc_dim = list(range(1, len(dist_param1.shape))) # Want to avg over batch, sum over the rest
+      if self.posterior_prior.lower() == "gauss_gauss":
+        mean = dist_param1
+        logvar = dist_param2
+        latent_loss = self.kld_mult * tf.reduce_mean(-0.5 * tf.reduce_sum(1.0 + logvar
+          - tf.exp(logvar) - tf.square(mean), reduc_dim))
+      elif self.posterior_prior.lower() == "gauss_laplacian":
         assert False, ("Not implemented.")
+      elif self.posterior_prior.lower() == "cauchy_cauchy":
+          #F Chyzak, F Nielsen (2019) -
+          #  A Closed-Form Formula for the Kullback-Leibler Divergence Between Cauchy Distributions
+          post_loc = dist_param1
+          post_scale = dist_param2
+          prior_loc = self.prior_params["cauchy_location"]
+          prior_scale = self.prior_params["cauchy_scale"]
+          latent_loss = self.kld_mult * tf.reduce_mean(tf.reduce_sum(tf.math.log(
+            tf.divide(tf.square(post_scale + prior_scale) + tf.square(post_loc - prior_loc),
+            4.0 * post_scale * prior_loc)), reduc_dim))
       else:
-        assert False, ("latent_prior parameter must be 'standard_normal' or 'laplacian', not %s"%(
-          self.latent_prior))
+        assert False, (
+          "posterior_prior parameter must be 'cauchy_cauchy', 'gauss_gauss', or 'gauss_laplacian', not %s"%(
+          self.posterior_prior))
     return latent_loss
 
   def compute_total_loss(self):
@@ -153,16 +140,23 @@ class VaeModule(AeModule):
         "latent_loss":self.compute_latent_loss(self.act, self.latent_mean, self.latent_logvar)}
       self.total_loss = tf.add_n([loss for loss in self.loss_dict.values()], name="total_loss")
 
-  def reparameterize(self, mean, logvar, noise):
-    #act = mean + logvar * noise
-    #act = mean + tf.sqrt(tf.exp(logvar)) * noise
-    #act = mean + tf.exp(logvar) * noise
-    act = mean + tf.exp(0.5 * logvar) * noise
+  def reparameterize(self, dist_param1, dist_param2, noise):
+    if "gauss_" in self.posterior_prior: # posterior is gaussian
+      mean = dist_param1
+      logvar = dist_param2
+      act = mean + tf.exp(0.5 * logvar) * noise
+    elif "cauchy_" in self.posterior_prior: # posterior is gaussian
+      loc = dist_param1
+      scale = dist_param2
+      act = loc +  scale * noise
     return act
 
   def gen_noise(self, noise_type, shape):
     if noise_type == "standard_normal":
-      return tf.random.normal(shape)
+      #return tf.random.normal(shape, mean=0., stddev=1.)
+      return tfp.distributions.Normal(loc=0., scale=1.).sample(sample_shape=shape)
+    elif noise_type == "standard_cauchy":
+      return tfp.distributions.Cauchy(loc=0., scale=1.).sample(sample_shape=shape)
     assert False, ("Noise type "+noise_type+" not supported")
 
   def build_vae_encoder(self, input_tensor, activation_functions, num_conv_layers,
@@ -240,7 +234,7 @@ class VaeModule(AeModule):
       for var_w, var_b in zip(var_w_list, var_b_list):
         self.trainable_variables[var_w.name] = var_w
         self.trainable_variables[var_b.name] = var_b
-      self.latent_logvar = var_u_list[-1]
+      self.latent_logvar = var_u_list[-1] # log(sigma**2)
 
       ## Add variance computation from encoder
       #w_shape = self.w_list[-1].get_shape().as_list() # same shape as mean weights
@@ -266,7 +260,11 @@ class VaeModule(AeModule):
       #  flat_u = self.flatten_feature_map(self.u_list[-1])
       #  self.latent_logvar = tf.add(tf.matmul(flat_u, self.w_enc_std), self.b_enc_std)
 
-      noise = self.gen_noise(noise_type="standard_normal", shape=tf.shape(self.latent_logvar))
+      if "gauss_" in self.posterior_prior:
+        noise_type = "standard_normal"
+      elif "cauchy_" in self.posterior_prior:
+        noise_type="standard_cauchy"
+      noise = self.gen_noise(noise_type, shape=tf.shape(self.latent_logvar))
       self.act = tf.identity(self.reparameterize(self.latent_mean,
         self.latent_logvar, noise), name="activity")
       self.u_list.append(self.act)
