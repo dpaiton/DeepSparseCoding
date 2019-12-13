@@ -1,4 +1,4 @@
-DeepSparseCodsing
+DeepSparseCoding
 h5py>= 2.8.0
 imageio>=2.4.1
 ipython>=7.1.1
