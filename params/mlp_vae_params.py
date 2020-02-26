@@ -1,5 +1,4 @@
-import os
-from params.base_params import BaseParams
+from DeepSparseCoding.params.base_params import BaseParams
 
 class params(BaseParams):
   def __init__(self):

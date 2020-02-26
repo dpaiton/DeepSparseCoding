@@ -1,4 +1,3 @@
-from __future__ import division
 import operator
 import numpy as np
 from scipy import stats, interpolate
@@ -19,8 +18,7 @@ from scipy import stats, interpolate
 def h(p):
     """Shannon Information
     """
-    info = -1*np.log2(p) 
- 
+    info = -1*np.log2(p)
     if np.isscalar(info):
         if np.isinf(info) or info == -0.:
             info = 0
@@ -44,14 +42,14 @@ def H2(p):
 def D_KL(p, q):
     '''
     Compute the KL Diveregence of two finite distributions p and q
-    
+
     Params
     ------
     p
         (array) [np]
     q
         (array) [nq]
-        
+
     Returns
     -------
     D_KL
@@ -66,20 +64,20 @@ def D_KL(p, q):
         d = p * np.log2(p / q)
         d[np.logical_not(np.isfinite(d))] = 0
         return np.sum(d)
-        
-        
+
+
 def I(Pyx, Px):
     '''
     Compute the mutual information of distribution Px traveling through
     channel Pyx.
-    
+
     Params
     ------
     Pyx
         (array) [ny, nx]
     Px
         (array) [nx]
-        
+
     Returns
     -------
     I
@@ -92,24 +90,24 @@ def I(Pyx, Px):
 
 #==============================================================================
 # Vectorized Blahut-Arimoto algorithm
-#==============================================================================        
-        
-def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000, 
+#==============================================================================
+
+def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
                    e=np.empty(0), s=0, debug=False, Px0=np.empty(0)):
     '''
     Blahut-Arimoto algorithm for computing the Capacity of a discrete input-output channel
     Based on a matlab code by: Kenneth Shum
     http://home.ie.cuhk.edu.hk/~wkshum/wordpress/?p=825
-    
-    Adapted from Blahut 1972, IEEE Trans. on Info. Theory    
-    
+
+    Adapted from Blahut 1972, IEEE Trans. on Info. Theory
+
     Params
     ----
-        
+
     Pyx
         Discrete conditional probability matrix.
-        (array) [ny, nx] 
-        
+        (array) [ny, nx]
+
     Keywords
     -----
     e
@@ -125,14 +123,14 @@ def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
 
     Outputs
     ----
-    
+
     C
         (float) Capacity in bits
     Px
         (array) [nx] Optimal input distribution
     E
         (float) Expense. Only output if 'e' is defined
-    
+
     '''
     Pyx = Pyx.T # (inputs, outputs)
 
@@ -141,22 +139,22 @@ def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
     Px = [np.ones(m)/m, Px0][Px0.any()] # initial distribution for channel input
     Py = np.ones(n)/n # initial distribution for channel output
     c = np.zeros(m)
-    energy_constraint = e.any()     
+    energy_constraint = e.any()
     D = D_KL(Pyx, Py) #Vector
 
-   
+
     temp = Pyx / np.c_[np.sum(Pyx,1)]
-    ind = np.isfinite(temp)    
+    ind = np.isfinite(temp)
     Pyx[ind] = temp[ind]
 
 
-    #Optimizaiton    
+    #Optimizaiton
     for i_iter in np.arange(iterations):
 
         if energy_constraint:
             c = np.exp( D - s*e )
         else:
-            c = np.exp( D )                
+            c = np.exp( D )
 
         #Update
         Px = Px * c
@@ -167,7 +165,7 @@ def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
         IL = np.log(np.dot(Px, c))
         IU = np.log(max(c))
 
-                           
+
         if debug:
             if energy_constraint:
                 E = np.dot(Px, e)
@@ -178,8 +176,8 @@ def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
             else:
                 print ('\nIL: %.2e IU: %.2e' % (IL, IU))
                 print ('Iter: %d' % (i_iter+1))
-            
-        if tolerance:    
+
+        if tolerance:
             if IU-IL < tolerance:
                 break
 
@@ -191,7 +189,7 @@ def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
         print ('C:', C)
 
 
-    if energy_constraint:    
+    if energy_constraint:
         E = np.dot(Px, e)
         return C, Px, E
     else:
@@ -200,10 +198,10 @@ def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
 
 
 
-        
+
 # def rate_distortion()
 # Rate-Distortion is for SOURCE compression.
-# It calculates the lower bound of required description length to compress and 
+# It calculates the lower bound of required description length to compress and
 # reconstruct a GIVEN source (Px (can be multidimensional and dependent, like in images)).
 # It does NOT tell you how to achieve that compression 'codebook and code points', except
 # for simple cases like independent (iid) gaussian sources. In that case it actually works out that
@@ -214,7 +212,7 @@ def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
 # 1) WHAT information should be transmitted? (source coding)
 # 2) HOW should it be transmitted? (channel coding)
 
-# These two problems can be separated by Shannon's separation theorem, and the distortion 
+# These two problems can be separated by Shannon's separation theorem, and the distortion
 # will never exceed D(R) as long as R < C.
 
 # But what of joint coding?
@@ -227,7 +225,7 @@ def blahut_arimoto(Pyx, tolerance = 1e-2, iterations = 1000,
 def find_closest(vector, value):
     ''' Find the closest index of a vector to a value. If value is a vector,
     returns an array of indicies that are closest to the values. Rounds down.
-    ''' 
+    '''
     if isinstance(value, np.ndarray) or isinstance(value, list):
         diff = np.outer(vector, np.ones(len(value))) - np.outer(np.ones(len(vector)), value)
         inds = np.argmin( np.abs(diff), axis=0)
@@ -236,7 +234,7 @@ def find_closest(vector, value):
     return inds
 
 
-    
+
 def calc_subsample_inds(x, y, xinputs=None, ydividers=None):
     ''' Find closest indexes for a discetization of x and y
     '''
@@ -257,20 +255,20 @@ def subsample(Pyx, xinds, yinds):
     dividers yinds(row).
     '''
     Pyx_sub = np.zeros( [len(yinds)+1, len(xinds)])
-    bounds = np.r_[0, yinds, Pyx.shape[0]]     
-    
+    bounds = np.r_[0, yinds, Pyx.shape[0]]
+
 
     for i in np.arange(len(bounds)-1):
         bl = bounds[i]
         bu = bounds[i+1]
         Pyx_sub[i,:] = np.sum(Pyx[bl:bu, xinds], axis = 0)
-            
-    # Normalize        
+
+    # Normalize
     Pyx_sub = Pyx_sub / np.sum(Pyx_sub, axis=0)
-    
+
     return Pyx_sub
-    
-    
+
+
 def quantize(Pyx, x, y, xinputs=None, ydividers=None):
     '''Chops up a matrix Pyx, into xinputs columns, and sums rows between
     y dividers
@@ -302,44 +300,44 @@ def Q(Varray, Rarray, nx=2000, ny=2000,print_points=True):
     '''
     Take in all Voltage/Resistance Pairs and return the conditional PDF: Q= P(R|V)
     Performs Gaussian Kernel Density Estimate and Linear Interpolation
-    
+
     Params
     ------
     Varray, Rarray
         ndarray, same size (n_examples,)
-    
+
     Returns
     -------
     Q
         ndarray (__, __)
-    ''' 
+    '''
     V_list = np.sort(np.unique(Varray))
-    
+
     #Gaussian KDE
     Pyx_func = []
-    
+
 
     for i, v in enumerate(V_list):
         idx = (Varray == v)
-        data = Rarray[idx]    
+        data = Rarray[idx]
         if print_points == True:
             print ('%0.2f Volts, %d Points' % (v, sum(idx)))
         Pyx_func.append(stats.gaussian_kde(data, bw_method='scott' )) #scott, silvermann, scalar
-        
-    
+
+
     Pyx_func = FunctionList(Pyx_func)
-            
+
     x = np.linspace(V_list.min(), V_list.max(), nx)
     y = np.linspace(Rarray.min()*0.7, Rarray.max()*1.3, ny)
-    
+
     # Bivariate Spline
     Pyx = np.atleast_2d(Pyx_func(y))
     Pyx_interp = interpolate.RectBivariateSpline( V_list, y, Pyx, kx=3, ky=3, s=0)
     Pyx_new = np.rot90(Pyx_interp(x,y))
-    
+
     # Normalize (each input needs to end up in an output (column=1))
     Pyx_new = Pyx_new / np.sum(Pyx_new, axis=0)
-    
+
     return Pyx_new, x, y
 
 
@@ -358,7 +356,7 @@ def moments(Varray, Rarray):
         data_mean[i] = np.mean(data)
         data_var[i] = np.var(data)
         Vs[i] = v
-    
+
     return data_mean, data_var, Vs
 
 #==============================================================================
@@ -369,14 +367,14 @@ class FunctionList(object):
         """
         FunctionList is a list of function objects that can be
         added, multiplied, summed, and dot producted with ints/floats,
-        functions, np.array()s, and other FunctionLists. 
-        
+        functions, np.array()s, and other FunctionLists.
+
         This is a bit of a hack to allow for making an array of functions.
-        
+
         Parameters
         ----------
         f_list : list of functions
-        
+
         Examples
         --------
         >>> f = lambda x: x
@@ -387,7 +385,7 @@ class FunctionList(object):
         >>> h(2)
         6
         """
-        if type(f_list) is FunctionList:  
+        if type(f_list) is FunctionList:
             self.f_list = f_list.f_list
         elif hasattr(f_list, '__call__'):
             self.f_list = [f_list]
@@ -414,14 +412,14 @@ class FunctionList(object):
         """ Multiply the function list, elementwise: Returns a function list
         """
         return self.__apply_op(other, op=operator.mul)
- 
+
     def __div__(self, other):
         """ Divide the function list, elementwise: Returns a function list
         """
         return self.__apply_op(other, op=operator.div)
-        
+
     def __apply_op(self, other, op=operator.add):
-        result = []      
+        result = []
 
         if type(other) is FunctionList:
             for i, f in enumerate(self.f_list):
@@ -435,20 +433,20 @@ class FunctionList(object):
 
         elif type(other) in (np.ndarray, list):
             for i, f in enumerate(self.f_list):
-                g = other[i]                
+                g = other[i]
                 result.append( lambda x, f=f, g=g: op(f(x), g) )
 
         elif type(other) in (int, float):
             for f in self.f_list:
                 g = other
                 result.append( lambda x, f=f, g=g: op(f(x), other) )
-                
+
         else:
             print ('Add FunctionList with: FunctionList, ndarray, int, or float')
             pass
         return FunctionList(result)
 
-    def sum(self):        
+    def sum(self):
         result = self.f_list[0]
         for i, g in enumerate(self.f_list[1:]):
             f = result
@@ -457,10 +455,10 @@ class FunctionList(object):
 
     def dot(self, other):
         """Take the dot product of a function vector and either another
-        function vector, or a normal vector.        
+        function vector, or a normal vector.
         """
-        result = self.__mul__(other)        
-        result = result.sum()            
+        result = self.__mul__(other)
+        result = result.sum()
         return result
 
 
@@ -469,20 +467,6 @@ class FunctionList(object):
 
     def __setitem__(self,index,value):
         self.f_list[index] = value
-        
+
     def __len__(self):
         return len(self.f_list)
-
-
-
-
-
-
-
-
-
-
-        
-
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  

@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
-from models.base_model import Model
+
+from DeepSparseCoding.models.base_model import Model
 
 class LambdaModel(Model):
   def __init__(self):

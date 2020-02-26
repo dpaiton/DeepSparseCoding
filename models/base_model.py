@@ -1,9 +1,10 @@
 import os
 import numpy as np
 import tensorflow as tf
-from utils.logger import Logger
-import utils.data_processing as dp
-from utils.trainable_variable_dict import TrainableVariableDict
+
+from DeepSparseCoding.utils.logger import Logger
+import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
 
 class Model(object):
   def __init__(self):

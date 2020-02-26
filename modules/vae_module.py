@@ -1,9 +1,10 @@
 import numpy as np
 import tensorflow as tf
-from ops.init_ops import L2NormalizedTruncatedNormalInitializer
-import utils.entropy_functions as ef
-from utils.trainable_variable_dict import TrainableVariableDict
-from modules.ae_module import AeModule
+
+from DeepSparseCoding.ops.init_ops import L2NormalizedTruncatedNormalInitializer
+import DeepSparseCoding.utils.entropy_functions as ef
+from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
+from DeepSparseCoding.modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,

@@ -2,10 +2,11 @@
 Write functions to import memristor data.
 Written by Ryan Zarcone, 2017
 """
-
+import os
 import numpy as np
 import pandas as pd
-import utils.blahut as blahut
+
+import DeepSparseCoding.utils.blahut as blahut
 
 def get_raw_data(path):
     """
@@ -113,21 +114,20 @@ def get_pcm_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1., synthetic_no
     sigs = np.sqrt(variances)
 
 
-    vs = np.broadcast_to(vs[:,None], (vs.size, n_mem)).astype(np.float32)
-    mus = np.broadcast_to(mus[:,None], (mus.size, n_mem)).astype(np.float32)
-    sigs = np.broadcast_to(sigs[:,None], (sigs.size, n_mem)).astype(np.float32)
+    vs = np.broadcast_to(vs[:, None], (vs.size, n_mem)).astype(np.float32)
+    mus = np.broadcast_to(mus[:, None], (mus.size, n_mem)).astype(np.float32)
+    sigs = np.broadcast_to(sigs[:, None], (sigs.size, n_mem)).astype(np.float32)
 
     return vs, mus, sigs, orig_min_Vs, orig_max_Vs, orig_min_Rs, orig_max_Rs
 
 def get_gauss_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1., synthetic_noise=None):
     """
     Simulates some memristors.
-
     """
     Vs,_ = get_raw_data(path)
     Vs = np.array(Vs)
-    Vs = np.repeat(Vs,10)
-    eta = np.random.normal(0,0.3,len(Vs)) #0.085 for 2.68 bits
+    Vs = np.repeat(Vs, 10)
+    eta = np.random.normal(0, 0.3, len(Vs)) #0.085 for 2.68 bits
     Rs = Vs + eta
     
     orig_min_Vs = np.amin(Vs)
@@ -135,12 +135,12 @@ def get_gauss_data(path, n_mem, num_ext=5, norm_min=-1., norm_max=1., synthetic_
     orig_min_Rs = np.amin(Rs)
     orig_max_Rs = np.amax(Rs)
 
-    Vs = normalizer(Vs,norm_min,norm_max)
-    Rs = normalizer(Rs,norm_min,norm_max)
+    Vs = normalizer(Vs,norm_min, norm_max)
+    Rs = normalizer(Rs,norm_min, norm_max)
 
-    Vs, Rs, _, _ = range_extender(Vs,Rs,num_ext)
+    Vs, Rs, _, _ = range_extender(Vs, Rs, num_ext)
 
-    mus, variances, vs = blahut.moments(Vs,Rs)
+    mus, variances, vs = blahut.moments(Vs, Rs)
     sigs = np.sqrt(varainces)
 
     vs = np.broadcast_to(vs[:,None], (vs.size, n_mem)).astype(np.float32)

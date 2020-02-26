@@ -1,5 +1,4 @@
-import os
-from params.base_params import BaseParams
+from DeepSparseCoding.params.base_params import BaseParams
 
 class params(BaseParams):
   def __init__(self):
@@ -17,7 +16,7 @@ class params(BaseParams):
     super(params, self).__init__()
     self.model_type = "lca"
     self.model_name = "lca_1280"
-    self.version = "5x_0.55"
+    self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
     self.rescale_data = False
@@ -103,7 +102,7 @@ class params(BaseParams):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.55
         self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["num_batches"] = int(2e5)
+        self.schedule[sched_idx]["num_batches"] = 100#int(2e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
 
     elif data_type.lower() == "field":

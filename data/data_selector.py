@@ -1,9 +1,9 @@
-from data.vanHateren import load_vanHateren
-from data.mnist import load_MNIST
-from data.cifar import load_CIFAR
-from data.synthetic import load_synthetic
-from data.field import load_field
-from data.tinyImages import load_tinyImages
+from DeepSparseCoding.data.vanHateren import load_vanHateren
+from DeepSparseCoding.data.mnist import load_MNIST
+from DeepSparseCoding.data.cifar import load_CIFAR
+from DeepSparseCoding.data.synthetic import load_synthetic
+from DeepSparseCoding.data.field import load_field
+from DeepSparseCoding.data.tinyImages import load_tinyImages
 
 """
 Get function that returns the corresponding dataset

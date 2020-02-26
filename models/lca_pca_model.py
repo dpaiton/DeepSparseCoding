@@ -1,6 +1,7 @@
 import tensorflow as tf
-import params.param_picker as pp
-from models.lca_model import LcaModel
+
+import DeepSparseCoding.params.param_picker as pp
+from DeepSparseCoding.models.lca_model import LcaModel
 
 class LcaPcaModel(LcaModel):
   def build_graph_from_input(self, input_node):

@@ -1,11 +1,12 @@
 import numpy as np
 import tensorflow as tf
-import utils.plot_functions as pf
-import utils.data_processing as dp
-from models.base_model import Model
-from modules.mlp_module import MlpModule
-from modules.class_adversarial_module import ClassAdversarialModule
-from modules.activations import activation_picker
+
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.models.base_model import Model
+from DeepSparseCoding.modules.mlp_module import MlpModule
+from DeepSparseCoding.modules.class_adversarial_module import ClassAdversarialModule
+from DeepSparseCoding.modules.activations import activation_picker
 
 class MlpModel(Model):
   def __init__(self):

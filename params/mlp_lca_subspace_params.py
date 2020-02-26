@@ -1,5 +1,4 @@
-import os
-from params.base_params import BaseParams
+from DeepSparseCoding.params.base_params import BaseParams
 
 TRAIN_ON_RECON = False
 

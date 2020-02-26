@@ -1,10 +1,11 @@
 import numpy as np
 import tensorflow as tf
-import utils.plot_functions as pf
-import utils.data_processing as dp
-import utils.entropy_functions as ef
-from models.dae_model import DaeModel
-from modules.dae_mem_module import DaeMemModule
+
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.utils.data_processing as dp
+import DeepSparseCoding.utils.entropy_functions as ef
+from DeepSparseCoding.models.dae_model import DaeModel
+from DeepSparseCoding.modules.dae_mem_module import DaeMemModule
 
 class DaeMemModel(DaeModel):
   def __init__(self):

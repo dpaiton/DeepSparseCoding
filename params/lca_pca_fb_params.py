@@ -1,5 +1,4 @@
-import os
-from params.lca_pca_params import params as lca_pca_params
+from DeepSparseCoding.params.lca_pca_params import params as lca_pca_params
 
 class params(lca_pca_params):
   def __init__(self):

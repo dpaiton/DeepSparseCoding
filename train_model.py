@@ -1,13 +1,19 @@
-import matplotlib
-matplotlib.use("Agg")
-
+import os
+import sys
 import time as ti
 import numpy as np
 import argparse
+
+import matplotlib
+matplotlib.use("Agg")
 import tensorflow as tf
-import params.param_picker as pp
-import models.model_picker as mp
-import data.data_selector as ds
+
+parent_path = os.path.dirname(os.getcwd())
+if parent_path not in sys.path: sys.path.append(parent_path)
+
+import DeepSparseCoding.params.param_picker as pp
+import DeepSparseCoding.models.model_picker as mp
+import DeepSparseCoding.data.data_selector as ds
 
 #from tensorflow.python import debug as tf_debug
 

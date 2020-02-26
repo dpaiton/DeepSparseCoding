@@ -1,13 +1,14 @@
 import numpy as np
 import tensorflow as tf
-import utils.plot_functions as pf
-import utils.data_processing as dp
-import utils.entropy_functions as ef
-from models.mlp_model import MlpModel
-from models.vae_model import VaeModel
-from modules.vae_module import VaeModule
-from modules.mlp_module import MlpModule
-from modules.activations import activation_picker
+
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.utils.data_processing as dp
+import DeepSparseCoding.utils.entropy_functions as ef
+from DeepSparseCoding.models.mlp_model import MlpModel
+from DeepSparseCoding.models.vae_model import VaeModel
+from DeepSparseCoding.modules.vae_module import VaeModule
+from DeepSparseCoding.modules.mlp_module import MlpModule
+from DeepSparseCoding.modules.activations import activation_picker
 
 class MlpVaeModel(MlpModel):
   def load_params(self, params):

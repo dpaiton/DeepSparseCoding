@@ -1,31 +1,27 @@
-import params.base_params as base
-import params.lambda_params as lamb
-import params.mlp_params as mlp
-import params.mlp_lca_subspace_params as mlp_lca_subspace
-import params.mlp_lca_params as mlp_lca
-import params.mlp_ae_params as mlp_ae
-import params.mlp_vae_params as mlp_vae
-import params.mlp_sae_params as mlp_sae
-import params.mlp_lista_params as mlp_lista
-import params.ica_params as ica
-import params.ica_pca_params as ica_pca
-import params.ica_subspace_params as ica_subspace
-import params.rica_params as rica
-import params.lca_params as lca
-import params.lca_pca_params as lca_pca
-import params.lca_pca_fb_params as lca_pca_fb
-import params.lca_subspace_params as lca_subspace
-import params.lca_conv_params as lca_conv
-import params.lista_params as lista
-#import params.gdn_autoencoder_params as ga
-#import params.gdn_conv_autoencoder_params as cga
-#import params.gdn_conv_decoder_params as cgd
-#import params.relu_autoencoder_params as ra
-import params.ae_params as ae
-import params.dae_params as dae
-import params.dae_mem_params as dae_mem
-import params.sae_params as sae
-import params.vae_params as vae
+from DeepSparseCoding.params import base_params as base
+from DeepSparseCoding.params import lambda_params as lamb
+from DeepSparseCoding.params import mlp_params as mlp
+from DeepSparseCoding.params import mlp_lca_subspace_params as mlp_lca_subspace
+from DeepSparseCoding.params import mlp_lca_params as mlp_lca
+from DeepSparseCoding.params import mlp_ae_params as mlp_ae
+from DeepSparseCoding.params import mlp_vae_params as mlp_vae
+from DeepSparseCoding.params import mlp_sae_params as mlp_sae
+from DeepSparseCoding.params import mlp_lista_params as mlp_lista
+from DeepSparseCoding.params import ica_params as ica
+from DeepSparseCoding.params import ica_pca_params as ica_pca
+from DeepSparseCoding.params import ica_subspace_params as ica_subspace
+from DeepSparseCoding.params import rica_params as rica
+from DeepSparseCoding.params import lca_params as lca
+from DeepSparseCoding.params import lca_pca_params as lca_pca
+from DeepSparseCoding.params import lca_pca_fb_params as lca_pca_fb
+from DeepSparseCoding.params import lca_subspace_params as lca_subspace
+from DeepSparseCoding.params import lca_conv_params as lca_conv
+from DeepSparseCoding.params import lista_params as lista
+from DeepSparseCoding.params import ae_params as ae
+from DeepSparseCoding.params import dae_params as dae
+from DeepSparseCoding.params import dae_mem_params as dae_mem
+from DeepSparseCoding.params import sae_params as sae
+from DeepSparseCoding.params import vae_params as vae
 
 """
 Get function that returns the corresponding parameter and schedule files

@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -8,7 +7,8 @@ from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.animation as animation
 from mpl_toolkits import axes_grid1
 import re
-import utils.data_processing as dp
+
+from DeepSparseCoding.utils import data_processing as dp
 
 def plot_ellipse(axis, center, shape, angle, color_val="auto", alpha=1.0, lines=False,
   fill_ellipse=False):
