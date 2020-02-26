@@ -89,7 +89,7 @@ class LcaSubspaceModule(LcaModule):
       # For each group
         # assemble matrix of W = [num_pixels, num_neurons_in_group]
         # compute E =  ( W^T * W ) - I
-        # loss = mean(loss_mult * E)
+        # loss = loss_mult * sum(E)
       group_weights = tf.reshape(self.w,
         shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group], name="group_weights")
       w_orth_list = [
