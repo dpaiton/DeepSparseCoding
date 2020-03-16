@@ -1,10 +1,11 @@
+import time as ti
+import argparse
+
 import matplotlib
 matplotlib.use("Agg")
-
-import time as ti
 import numpy as np
-import argparse
 import tensorflow as tf
+
 import params.param_picker as pp
 import models.model_picker as mp
 import data.data_selector as ds

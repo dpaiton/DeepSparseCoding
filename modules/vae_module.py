@@ -153,7 +153,6 @@ class VaeModule(AeModule):
 
   def gen_noise(self, noise_type, shape):
     if noise_type == "standard_normal":
-      #return tf.random.normal(shape, mean=0., stddev=1.)
       return tfp.distributions.Normal(loc=0., scale=1.).sample(sample_shape=shape)
     elif noise_type == "standard_cauchy":
       return tfp.distributions.Cauchy(loc=0., scale=1.).sample(sample_shape=shape)
@@ -236,34 +235,10 @@ class VaeModule(AeModule):
         self.trainable_variables[var_b.name] = var_b
       self.latent_logvar = var_u_list[-1] # log(sigma**2)
 
-      ## Add variance computation from encoder
-      #w_shape = self.w_list[-1].get_shape().as_list() # same shape as mean weights
-      #b_shape = self.b_list[-1].get_shape().as_list() # same shape as mean bias
-      #self.w_enc_std = tf.compat.v1.get_variable(name="w_enc_"+str(self.num_enc_layers)+"_std",
-      #  shape=w_shape, dtype=tf.float32,
-      #  initializer=self.w_xavier_init, trainable=True)
-      #  #initializer=self.w_init, trainable=True)
-      #self.b_enc_std = tf.compat.v1.get_variable(name="b_enc_"+str(self.num_enc_layers)+"_std",
-      #  shape=b_shape, dtype=tf.float32, initializer=self.b_init, trainable=True)
-      #self.trainable_variables[self.w_enc_std.name] = self.w_enc_std
-      #self.trainable_variables[self.b_enc_std.name] = self.b_enc_std
-
-      #self.latent_mean = enc_u_list[-1]
-      #self.a = self.latent_mean # alias for AE model
-
-      #if self.layer_types[-1] == "conv":
-      #  self.latent_logvar = tf.add(tf.nn.conv2d(self.u_list[-1], self.w_enc_std,
-      #    self.conv_strides[self.num_enc_layers-1], padding="SAME"), self.b_enc_std)
-      #else:
-      #  #self.latent_logvar = 1e-8 + tf.nn.softplus(tf.matmul(self.u_list[-1],
-      #  #  self.w_enc_std) + self.b_enc_std) # std must be positive
-      #  flat_u = self.flatten_feature_map(self.u_list[-1])
-      #  self.latent_logvar = tf.add(tf.matmul(flat_u, self.w_enc_std), self.b_enc_std)
-
       if "gauss_" in self.posterior_prior:
         noise_type = "standard_normal"
       elif "cauchy_" in self.posterior_prior:
-        noise_type="standard_cauchy"
+        noise_type = "standard_cauchy"
       noise = self.gen_noise(noise_type, shape=tf.shape(self.latent_logvar))
       self.act = tf.identity(self.reparameterize(self.latent_mean,
         self.latent_logvar, noise), name="activity")
