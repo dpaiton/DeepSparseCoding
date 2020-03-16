@@ -1,11 +1,11 @@
 import os
 import sys
 import time as ti
-import numpy as np
 import argparse
 
 import matplotlib
 matplotlib.use("Agg")
+import numpy as np
 import tensorflow as tf
 
 parent_path = os.path.dirname(os.getcwd())
