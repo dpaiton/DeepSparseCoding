@@ -1,5 +1,7 @@
-import tensorflow as tf
 import sys
+import os
+
+import tensorflow as tf
 
 #Default test runs if no args specified
 run_comb = False
