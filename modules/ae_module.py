@@ -204,24 +204,23 @@ class AeModule(object):
     return pre_act
 
   def layer_maker(self, layer_id, input_tensor, activation_function, w_shape,
-    conv=False, decode=False):
+    keep_prob=1.0, conv=False, decode=False, tie_dec_weights=False, name_suffix=""):
     """
     Make layer that does act(u*w+b) where * is a dot product or convolution
     Example case for w_read_id logic:
       layer_id: [0 1 2 3 4] [5 6 7 8 9]
-
                               10-6  10-7  10-8 10-9  10-10
       weight_id: [0 1 2 3 4] [ 4     3     2     1     0 ]
       num_layers: 10
       weight_id = num_layers - (layer_id + 1)
     """
     with tf.compat.v1.variable_scope("layer"+str(layer_id), reuse=tf.compat.v1.AUTO_REUSE) as scope:
-      if self.tie_dec_weights:
+      if tie_dec_weights:
         w_read_id = self.num_layers - (layer_id+1)
       else:
         w_read_id = layer_id
       name_prefix = "conv_" if conv else "fc_"
-      w_name = name_prefix+"w_"+str(w_read_id)
+      w_name = name_prefix+"w_"+str(w_read_id)+name_suffix
       if self.w_init_type.lower() == "normal":
         w = tf.compat.v1.get_variable(name=w_name, shape=w_shape, dtype=tf.float32,
           initializer=self.w_normal_init, trainable=True)
@@ -238,8 +237,7 @@ class AeModule(object):
       else:
         assert False, ("w_init_type parameter must be 'normal', 'xavier', or 'l2_normed', not %s"%(
           self.w_init_type))
-
-      b_name = name_prefix+"b_"+str(layer_id)
+      b_name = name_prefix+"b_"+str(layer_id)+name_suffix
       if conv and decode:
         b_shape = w_shape[-2]
       else:
@@ -248,8 +246,8 @@ class AeModule(object):
         dtype=tf.float32, initializer=self.b_init, trainable=True)
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       output_tensor = activation_function(pre_act)
-      output_tensor = tf.nn.dropout(output_tensor, rate=1-self.dropout[layer_id])
-      #output_tensor = tf.nn.dropout(output_tensor, keep_prob=self.dropout[layer_id])
+      output_tensor = tf.nn.dropout(output_tensor, rate=1-keep_prob)
+      #output_tensor = tf.nn.dropout(output_tensor, keep_prob=keep_prob)
     return output_tensor, w, b
 
   def build_encoder(self, input_tensor, activation_functions):
@@ -262,7 +260,8 @@ class AeModule(object):
       w_shape = [self.patch_size_y[layer_id], self.patch_size_x[layer_id],
         int(prev_input_features), int(self.enc_channels[layer_id])]
       u_out, w, b = self.layer_maker(layer_id, enc_u_list[layer_id],
-        activation_functions[layer_id], w_shape, conv=True, decode=False)
+        activation_functions[layer_id], w_shape, keep_prob=self.dropout[layer_id],
+        conv=True, decode=False, tie_dec_weights=self.tie_dec_weights)
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
@@ -277,7 +276,8 @@ class AeModule(object):
         in_tensor = enc_u_list[layer_id]
       w_shape = [int(prev_input_features), int(self.enc_channels[layer_id])]
       u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[layer_id],
-        w_shape, conv=False, decode=False)
+        w_shape, keep_prob=self.dropout[layer_id], conv=False, decode=False,
+        tie_dec_weights=self.tie_dec_weights)
       enc_u_list.append(u_out)
       enc_w_list.append(w)
       enc_b_list.append(b)
@@ -307,7 +307,8 @@ class AeModule(object):
         out_channels = self.dec_channels[dec_layer_id]
       w_shape = [in_tensor.get_shape()[-1], out_channels]
       u_out, w, b = self.layer_maker(layer_id, in_tensor,
-        activation_functions[dec_layer_id], w_shape, conv=False, decode=True)
+        activation_functions[dec_layer_id], w_shape, keep_prob=self.dropout[layer_id],
+        conv=False, decode=True, tie_dec_weights=self.tie_dec_weights)
       dec_u_list.append(u_out)
       dec_w_list.append(w)
       dec_b_list.append(b)
@@ -334,7 +335,8 @@ class AeModule(object):
           self.dec_channels[dec_layer_id],
           new_shape[-1]]
       u_out, w, b = self.layer_maker(layer_id, in_tensor, activation_functions[dec_layer_id],
-        w_shape, conv=True, decode=True)
+        w_shape, keep_prob=self.dropout[layer_id], conv=True, decode=True,
+        tie_dec_weights=self.tie_dec_weights)
       dec_u_list.append(u_out)
       dec_w_list.append(w)
       dec_b_list.append(b)

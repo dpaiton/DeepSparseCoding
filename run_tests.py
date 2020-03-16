@@ -74,7 +74,6 @@ for idx, arg in enumerate(sys.argv):
     run_data = True
     del_idx.append(idx)
 
-
 #Remove all del_idxs
 for idx in del_idx:
   del sys.argv[idx]

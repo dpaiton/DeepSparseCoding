@@ -159,8 +159,9 @@ class BaseParams(object):
 
   vae
     noise_level [float] standard deviation of noise added to the input data for denoising vae
-    recon_loss_type [str] specify the reconstruction loss to be "mse" or "crossentropy"
-      crossentropy assumes binary inputs
+    prior_params [dict] containing keys
+      posterior_prior [str] either "gauss_gauss" or "gauss_laplacian"
+        posterior and prior used for latent KLD loss term
 
   dae
     bounds_slope [float] slope for out of bounds loss (two relus back to b ack)

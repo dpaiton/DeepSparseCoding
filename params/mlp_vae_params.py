@@ -36,8 +36,24 @@ class params(BaseParams):
     self.ae_conv_strides = []
     self.ae_activation_functions = ["lrelu", "sigmoid"]
     self.ae_dropout = [1.0]*2*len(self.ae_enc_channels)
+    self.vae_mean_layer_types = ["fc"]
+    self.vae_mean_channels = [768]
+    self.vae_mean_activation_functions = ["lrelu"]*len(self.vae_mean_layer_types)
+    self.vae_mean_dropout = [1.0]*len(self.vae_mean_layer_types)
+    self.vae_mean_conv_strides = []
+    self.vae_mean_patch_size = []
+    self.vae_var_layer_types = ["fc"]
+    self.vae_var_channels = [768]
+    self.vae_var_activation_functions = ["sigmoid"]*len(self.vae_var_layer_types)
+    self.vae_var_dropout = [1.0]*len(self.vae_var_layer_types)
+    self.vae_var_conv_strides = []
+    self.vae_var_patch_size = []
+    self.prior_params = {
+      "posterior_prior":"gauss_gasus",
+      "gauss_prior_mean":0.0,
+      "gauss_prior_std":1.0
+    }
     self.noise_level = 0.01 # std of noise added to the input data
-    self.recon_loss_type = "mse" # or "cross-entropy"
     self.tie_dec_weights = False
     self.norm_weights = False
     self.w_init_type = "normal"

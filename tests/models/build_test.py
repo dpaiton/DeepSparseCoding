@@ -23,9 +23,21 @@ def testBasic(self):
   original_schedule = copy.deepcopy(params.schedule)
   if not hasattr(params, "test_param_variants"):
     params.test_param_variants = list(dict())
-  for variant in params.test_param_variants:
+  for variant_number, variant in enumerate(params.test_param_variants):
+    print("Test variant number "+str(variant_number))
     for key in variant.keys():
-      setattr(params, key, variant[key])
+      if key == "posterior_prior": # VAE
+        prior_params = {
+          "posterior_prior":variant[key],
+          "gauss_mean":0.0,
+          "gauss_std":1.0,
+          "cauchy_location":0.0,
+          "cauchy_scale":1.0,
+          "laplace_scale":1.0
+        }
+        setattr(params, "prior_params", prior_params)
+      else:
+        setattr(params, key, variant[key])
     params.schedule = copy.deepcopy(original_schedule)
     model = mp.get_model(self.model_type) # Import model
     params.data_type = self.data_type

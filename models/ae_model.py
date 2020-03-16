@@ -16,11 +16,6 @@ class AeModel(Model):
     super(AeModel, self).__init__()
 
   def load_params(self, params):
-    """
-    Load parameters into object
-    Inputs:
-     params: [obj] model parameters
-    """
     super(AeModel, self).load_params(params)
     self.ae_load_params(params)
 
