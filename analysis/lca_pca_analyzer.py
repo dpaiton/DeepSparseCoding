@@ -1,9 +1,11 @@
 import os
+
 import numpy as np
 import tensorflow as tf
-from data.dataset import Dataset
-import utils.data_processing as dp
-from analysis.lca_analyzer import LcaAnalyzer
+
+from DeepSparseCoding.data.dataset import Dataset
+import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.analysis.lca_analyzer import LcaAnalyzer
 
 class LcaPcaAnalyzer(LcaAnalyzer):
   def run_analysis(self, images, labels=None, save_info=""):

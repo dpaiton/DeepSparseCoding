@@ -1,4 +1,4 @@
-from params.ica_params import params as ica_params
+from DeepSparseCoding.params.ica_params import params as ica_params
 
 class params(ica_params):
   def __init__(self):

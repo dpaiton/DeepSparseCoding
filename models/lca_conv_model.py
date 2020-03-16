@@ -1,9 +1,10 @@
 import numpy as np
 import tensorflow as tf
-import utils.plot_functions as pf
-import utils.data_processing as dp
-from models.lca_model import LcaModel
-from modules.lca_conv_module import LcaConvModule
+
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.models.lca_model import LcaModel
+from DeepSparseCoding.modules.lca_conv_module import LcaConvModule
 
 class LcaConvModel(LcaModel):
   """

@@ -1,9 +1,9 @@
-import numpy as np
 import tensorflow as tf
-import utils.plot_functions as pf
-import utils.data_processing as dp
-from models.ae_model import AeModel
-from modules.sae_module import SaeModule
+
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.models.ae_model import AeModel
+from DeepSparseCoding.modules.sae_module import SaeModule
 
 class SaeModel(AeModel):
   def __init__(self):

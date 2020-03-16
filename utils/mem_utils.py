@@ -4,7 +4,7 @@ Written by Ryan Zarcone, 2017
 """
 try:
     from tools import izip
-except: 
+except:
     izip = zip
 import os
 import numpy as np
@@ -208,6 +208,3 @@ class DataAndNoiseGenerator(object):
         image_gen = batch_generator(self.data, batch_size)
         rand_gen = random_generator(self.noise_dim, batch_size)
         return izip(image_gen, rand_gen)
-
-
-

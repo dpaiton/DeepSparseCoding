@@ -1,7 +1,8 @@
 import numpy as np
 import tensorflow as tf
-from utils.trainable_variable_dict import TrainableVariableDict
-from modules.lca_module import LcaModule
+
+from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
+from DeepSparseCoding.modules.lca_module import LcaModule
 
 class LcaSubspaceModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size,
@@ -88,7 +89,7 @@ class LcaSubspaceModule(LcaModule):
       # For each group
         # assemble matrix of W = [num_pixels, num_neurons_in_group]
         # compute E =  ( W^T * W ) - I
-        # loss = mean(loss_mult * E)
+        # loss = loss_mult * sum(E)
       group_weights = tf.reshape(self.w,
         shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group], name="group_weights")
       w_orth_list = [

@@ -1,12 +1,13 @@
 import numpy as np
 import tensorflow as tf
-import utils.plot_functions as pf
-import utils.data_processing as dp
-import utils.entropy_functions as ef
-import ops.init_ops as init_ops
-from models.base_model import Model
-from modules.lca_module import LcaModule
-from modules.mlp_module import MlpModule
+
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.utils.data_processing as dp
+import DeepSparseCoding.utils.entropy_functions as ef
+import DeepSparseCoding.ops.init_ops as init_ops
+from DeepSparseCoding.models.base_model import Model
+from DeepSparseCoding.modules.lca_module import LcaModule
+from DeepSparseCoding.modules.mlp_module import MlpModule
 
 class ListaModel(Model):
   def __init__(self):

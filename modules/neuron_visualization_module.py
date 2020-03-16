@@ -1,7 +1,8 @@
 import numpy as np
 import tensorflow as tf
 import tensorflow_compression as tfc
-import utils.data_processing as dp
+
+import DeepSparseCoding.utils.data_processing as dp
 
 class NeuronVisualizationModule(object):
   def __init__(self, data_tensor, num_steps, step_size, clip_output=True, clip_range=[0.0, 1.0],

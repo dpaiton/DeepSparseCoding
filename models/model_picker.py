@@ -1,27 +1,27 @@
-import params.param_picker as pp
-from models.lambda_model import LambdaModel as lamb
-from models.mlp_model import MlpModel as mlp
-from models.mlp_lca_model import MlpLcaModel as mlp_lca
-from models.mlp_lca_subspace_model import MlpLcaSubspaceModel as mlp_lca_subspace
-from models.mlp_ae_model import MlpAeModel as mlp_ae
-from models.mlp_vae_model import MlpVaeModel as mlp_vae
-from models.mlp_sae_model import MlpSaeModel as mlp_sae
-from models.mlp_lista_model import MlpListaModel as mlp_lista
-from models.ica_model import IcaModel as ica
-from models.ica_subspace_model import IcaSubspaceModel as ica_subspace
-from models.ica_pca_model import IcaPcaModel as ica_pca
-from models.rica_model import RicaModel as rica
-from models.lca_model import LcaModel as lca
-from models.lca_pca_model import LcaPcaModel as lca_pca
-from models.lca_pca_fb_model import LcaPcaFbModel as lca_pca_fb
-from models.lca_subspace_model import LcaSubspaceModel as lca_subspace
-from models.lca_conv_model import LcaConvModel as lca_conv
-from models.lista_model import ListaModel as lista
-from models.ae_model import AeModel as ae
-from models.dae_model import DaeModel as dae
-from models.dae_mem_model import DaeMemModel as dae_mem
-from models.vae_model import VaeModel as vae
-from models.sae_model import SaeModel as sae
+from DeepSparseCoding.params import param_picker as pp
+from DeepSparseCoding.models.lambda_model import LambdaModel as lamb
+from DeepSparseCoding.models.mlp_model import MlpModel as mlp
+from DeepSparseCoding.models.mlp_lca_model import MlpLcaModel as mlp_lca
+from DeepSparseCoding.models.mlp_lca_subspace_model import MlpLcaSubspaceModel as mlp_lca_subspace
+from DeepSparseCoding.models.mlp_ae_model import MlpAeModel as mlp_ae
+from DeepSparseCoding.models.mlp_vae_model import MlpVaeModel as mlp_vae
+from DeepSparseCoding.models.mlp_sae_model import MlpSaeModel as mlp_sae
+from DeepSparseCoding.models.mlp_lista_model import MlpListaModel as mlp_lista
+from DeepSparseCoding.models.ica_model import IcaModel as ica
+from DeepSparseCoding.models.ica_subspace_model import IcaSubspaceModel as ica_subspace
+from DeepSparseCoding.models.ica_pca_model import IcaPcaModel as ica_pca
+from DeepSparseCoding.models.rica_model import RicaModel as rica
+from DeepSparseCoding.models.lca_model import LcaModel as lca
+from DeepSparseCoding.models.lca_pca_model import LcaPcaModel as lca_pca
+from DeepSparseCoding.models.lca_pca_fb_model import LcaPcaFbModel as lca_pca_fb
+from DeepSparseCoding.models.lca_subspace_model import LcaSubspaceModel as lca_subspace
+from DeepSparseCoding.models.lca_conv_model import LcaConvModel as lca_conv
+from DeepSparseCoding.models.lista_model import ListaModel as lista
+from DeepSparseCoding.models.ae_model import AeModel as ae
+from DeepSparseCoding.models.dae_model import DaeModel as dae
+from DeepSparseCoding.models.dae_mem_model import DaeMemModel as dae_mem
+from DeepSparseCoding.models.vae_model import VaeModel as vae
+from DeepSparseCoding.models.sae_model import SaeModel as sae
 
 def get_model(model_type):
   if model_type.lower() == "lambda":

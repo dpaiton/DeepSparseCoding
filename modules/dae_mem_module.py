@@ -1,11 +1,12 @@
 import numpy as np
 import tensorflow as tf
-import utils.entropy_functions as ef
-from modules.dae_module import DaeModule
-from ops.init_ops import GDNGammaInitializer
-from modules.activations import activation_picker
-from utils import get_data
-from utils import mem_utils
+
+import DeepSparseCoding.utils.entropy_functions as ef
+from DeepSparseCoding.modules.dae_module import DaeModule
+from DeepSparseCoding.ops.init_ops import GDNGammaInitializer
+from DeepSparseCoding.modules.activations import activation_picker
+from DeepSparseCoding.utils import get_data
+from DeepSparseCoding.utils import mem_utils
 
 class DaeMemModule(DaeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,
@@ -83,7 +84,7 @@ class DaeMemModule(DaeModule):
     elif len(u_in_shape) == 2:
       n_mem = u_in_shape[1]
     else:
-      assert False, ("What's up with that shape mane??") 
+      assert False, ("u_in_shape has incorrect length")
     (vs_data, mus_data, sigs_data,
       orig_VMIN, orig_VMAX, orig_RMIN,
       orig_RMAX) = get_channel_data(self.memristor_data_loc, n_mem, num_ext=5,

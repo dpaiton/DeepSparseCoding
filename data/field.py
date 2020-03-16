@@ -1,6 +1,7 @@
 import numpy as np
-from data.dataset import Dataset
-import utils.data_processing as dp
+
+from DeepSparseCoding.data.dataset import Dataset
+import DeepSparseCoding.utils.data_processing as dp
 
 class field(object):
   def __init__(self, img_dir, num_images=None, rand_state=np.random.RandomState()):

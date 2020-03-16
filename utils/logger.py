@@ -1,9 +1,10 @@
 import re
 import time
-import numpy as np
-import json as js
 import os
 from copy import deepcopy
+
+import numpy as np
+import json as js
 
 class Logger(object):
   def __init__(self, filename=None, overwrite=True):

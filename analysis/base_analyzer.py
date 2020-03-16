@@ -1,15 +1,17 @@
 import os
+
 import numpy as np
-from utils.logger import Logger
-import utils.plot_functions as pf
-import models.model_picker as mp
-import utils.data_processing as dp
-from data.dataset import Dataset
 import tensorflow as tf
 import tensorflow_compression as tfc
-from modules.class_adversarial_module import ClassAdversarialModule
-from modules.recon_adversarial_module import ReconAdversarialModule
-from modules.neuron_visualization_module import NeuronVisualizationModule
+
+from DeepSparseCoding.utils.logger import Logger
+from DeepSparseCoding.utils import plot_functions as pf
+from DeepSparseCoding.models import model_picker as mp
+from DeepSparseCoding.utils import data_processing as dp
+from DeepSparseCoding.data.dataset import Dataset
+from DeepSparseCoding.modules.class_adversarial_module import ClassAdversarialModule
+from DeepSparseCoding.modules.recon_adversarial_module import ReconAdversarialModule
+from DeepSparseCoding.modules.neuron_visualization_module import NeuronVisualizationModule
 
 class Analyzer(object):
   def setup(self, input_params):

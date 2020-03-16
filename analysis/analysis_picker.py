@@ -1,16 +1,16 @@
-from analysis.lambda_analyzer import LambdaAnalyzer as lamb
-from analysis.mlp_analyzer import MlpAnalyzer as mlp
-from analysis.ica_analyzer import IcaAnalyzer as ica
-from analysis.lca_analyzer import LcaAnalyzer as lca
-from analysis.lca_subspace_analyzer import LcaSubspaceAnalyzer as sub_lca
-from analysis.lca_pca_analyzer import LcaPcaAnalyzer as lca_pca
-from analysis.lca_conv_analyzer import LcaConvAnalyzer as conv_lca
-from analysis.lista_analyzer import ListaAnalyzer as lista
-from analysis.rica_analyzer import RicaAnalyzer as rica
-from analysis.ae_analyzer import AeAnalyzer as ae
-from analysis.sae_analyzer import SaeAnalyzer as sae
-from analysis.vae_analyzer import VaeAnalyzer as vae
-from analysis.gdn_autoencoder_analyzer import GaAnalyzer as ga
+from DeepSparseCoding.analysis.lambda_analyzer import LambdaAnalyzer as lamb
+from DeepSparseCoding.analysis.mlp_analyzer import MlpAnalyzer as mlp
+from DeepSparseCoding.analysis.ica_analyzer import IcaAnalyzer as ica
+from DeepSparseCoding.analysis.lca_analyzer import LcaAnalyzer as lca
+from DeepSparseCoding.analysis.lca_subspace_analyzer import LcaSubspaceAnalyzer as sub_lca
+from DeepSparseCoding.analysis.lca_pca_analyzer import LcaPcaAnalyzer as lca_pca
+from DeepSparseCoding.analysis.lca_conv_analyzer import LcaConvAnalyzer as conv_lca
+from DeepSparseCoding.analysis.lista_analyzer import ListaAnalyzer as lista
+from DeepSparseCoding.analysis.rica_analyzer import RicaAnalyzer as rica
+from DeepSparseCoding.analysis.ae_analyzer import AeAnalyzer as ae
+from DeepSparseCoding.analysis.sae_analyzer import SaeAnalyzer as sae
+from DeepSparseCoding.analysis.vae_analyzer import VaeAnalyzer as vae
+from DeepSparseCoding.analysis.gdn_autoencoder_analyzer import GaAnalyzer as ga
 
 def get_analyzer(model_type):
   if model_type.lower() in ["mlp", "mlp_ae", "mlp_vae", "mlp_lca", "mlp_sae", "mlp_lista"]:

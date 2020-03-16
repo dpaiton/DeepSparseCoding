@@ -1,9 +1,10 @@
 import numpy as np
 import tensorflow as tf
-import utils.entropy_functions as ef
-from modules.ae_module import AeModule
-from ops.init_ops import GDNGammaInitializer
-from modules.activations import activation_picker
+
+import DeepSparseCoding.utils.entropy_functions as ef
+from DeepSparseCoding.modules.ae_module import AeModule
+from DeepSparseCoding.ops.init_ops import GDNGammaInitializer
+from DeepSparseCoding.modules.activations import activation_picker
 
 class DaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size, conv_strides, ent_mult,

@@ -1,7 +1,8 @@
 import numpy as np
 import gzip
-from data.dataset import Dataset
-import utils.data_processing as dp
+
+from DeepSparseCoding.data.dataset import Dataset
+import DeepSparseCoding.utils.data_processing as dp
 
 class MNIST(object):
   def __init__(self, img_dir, lbl_dir, num_val, num_ignored=None,

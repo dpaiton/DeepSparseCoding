@@ -1,8 +1,10 @@
 import os
+
 import numpy as np
 import tensorflow as tf
-from analysis.lca_analyzer import LcaAnalyzer
-import utils.data_processing as dp
+
+from DeepSparseCoding.analysis.lca_analyzer import LcaAnalyzer
+import DeepSparseCoding.utils.data_processing as dp
 
 class LcaSubspaceAnalyzer(LcaAnalyzer):
   def __init__(self):

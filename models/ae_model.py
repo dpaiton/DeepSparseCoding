@@ -1,11 +1,12 @@
 import numpy as np
 import tensorflow as tf
-import utils.plot_functions as pf
-import utils.data_processing as dp
-import utils.entropy_functions as ef
-from models.base_model import Model
-from modules.ae_module import AeModule
-from modules.activations import activation_picker
+
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.utils.data_processing as dp
+import DeepSparseCoding.utils.entropy_functions as ef
+from DeepSparseCoding.models.base_model import Model
+from DeepSparseCoding.modules.ae_module import AeModule
+from DeepSparseCoding.modules.activations import activation_picker
 
 class AeModel(Model):
   def __init__(self):

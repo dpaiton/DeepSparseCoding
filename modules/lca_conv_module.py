@@ -1,8 +1,7 @@
-import numpy as np
 import tensorflow as tf
-from utils.trainable_variable_dict import TrainableVariableDict
-from modules.lca_module import LcaModule
-import pdb
+
+from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
+from DeepSparseCoding.modules.lca_module import LcaModule
 
 class LcaConvModule(LcaModule):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,

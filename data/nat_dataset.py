@@ -1,7 +1,8 @@
 import numpy as np
 import skimage.transform as transform
 import skimage.io as io
-import utils.data_processing as dp
+
+import DeepSparseCoding.utils.data_processing as dp
 
 class Dataset(object):
   def __init__(self, params):

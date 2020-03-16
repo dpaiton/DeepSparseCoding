@@ -1,4 +1,3 @@
-import re
 import numpy as np
 from skimage import measure
 import matplotlib
@@ -10,12 +9,12 @@ import matplotlib.ticker as plticker
 from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 import matplotlib.font_manager
-import tensorflow as tf
-from data.dataset import Dataset
-import data.data_selector as ds
-import utils.data_processing as dp
-import utils.plot_functions as pf
-import analysis.analysis_picker as ap
+
+from DeepSparseCoding.data.dataset import Dataset
+import DeepSparseCoding.data.data_selector as ds
+import DeepSparseCoding.utils.data_processing as dp
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.analysis.analysis_picker as ap
 
 class Arrow3D(FancyArrowPatch):
     def __init__(self, xs, ys, zs, *args, **kwargs):

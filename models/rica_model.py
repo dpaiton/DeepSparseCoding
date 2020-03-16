@@ -1,8 +1,9 @@
 import numpy as np
 import tensorflow as tf
-import utils.plot_functions as pf
-import utils.data_processing as dp
-from models.base_model import Model
+
+import DeepSparseCoding.utils.plot_functions as pf
+import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.models.base_model import Model
 
 class RicaModel(Model):
   """

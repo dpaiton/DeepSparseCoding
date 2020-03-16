@@ -1,7 +1,8 @@
 import numpy as np
 import tensorflow as tf
-from ops.init_ops import L2NormalizedTruncatedNormalInitializer
-from utils.trainable_variable_dict import TrainableVariableDict
+
+from DeepSparseCoding.ops.init_ops import L2NormalizedTruncatedNormalInitializer
+from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
 
 class AeModule(object):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,

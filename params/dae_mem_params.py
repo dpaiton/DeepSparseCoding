@@ -1,6 +1,7 @@
 import os
 import numpy as np
-from params.base_params import BaseParams
+
+from DeepSparseCoding.params.base_params import BaseParams
 
 class params(BaseParams):
   def __init__(self):
@@ -105,15 +106,16 @@ class params(BaseParams):
     self.batch_size = 11
     self.num_edge_pixels = 8
     self.vectorize_data = False
+    self.memristor_type = None # Any memristor_type will  not currently work without a data file
     self.tie_dec_weights = False
     for sched_idx in range(len(self.schedule)):
       self.schedule[sched_idx]["num_batches"] = 2
       self.schedule[sched_idx]["weight_lr"] = 1e-4
     self.ae_dropout = [1.0]*4
     self.test_param_variants = [
-      {"ae_layer_types":["conv", "conv"],
-      "vectorize_data":False,
-      "ae_enc_channels":[20, 10],
-      "ae_conv_strides":[(1, 1, 1, 1), (1, 1, 1, 1)],
-      "ae_patch_size":[(3, 3), (3, 3)],
+      {"ae_layer_types": ["conv", "conv"],
+      "vectorize_data": False,
+      "ae_enc_channels": [20, 10],
+      "ae_conv_strides": [(1, 1, 1, 1), (1, 1, 1, 1)],
+      "ae_patch_size": [(3, 3), (3, 3)],
       "ae_activation_functions":["gdn", "gdn", "gdn", "identity"]}]
