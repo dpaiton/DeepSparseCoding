@@ -7,7 +7,7 @@ import DeepSparseCoding.utils.data_processing as dp
 import DeepSparseCoding.utils.entropy_functions as ef
 from DeepSparseCoding.models.ae_model import AeModel
 from DeepSparseCoding.modules.vae_module import VaeModule
-from DeepSparseCodsing.modules.activations import activation_picker
+from DeepSparseCoding.modules.activations import activation_picker
 
 class VaeModel(AeModel):
   def __init__(self):
