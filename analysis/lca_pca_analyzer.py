@@ -1,80 +1,89 @@
+import os
+
 import numpy as np
 import tensorflow as tf
-from analysis.lca_analyzer import LCA
-import utils.data_processing as dp
-import utils.notebook as nb
 
-class LCA_PCA(LCA):
-  def __init__(self, params):
-    super(LCA_PCA, self).__init__(params)
+from DeepSparseCoding.data.dataset import Dataset
+import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.analysis.lca_analyzer import LcaAnalyzer
 
-  def load_params(self, params):
-    super(LCA_PCA, self).load_params(params)
-    if "rand_seed" in params.keys():
-      self.rand_seed = params["rand_seed"]
-      self.rand_state = np.random.RandomState(self.rand_seed)
-    self.cov_num_images = params["cov_num_images"]
-    self.ft_padding = params["ft_padding"]
-    self.num_gauss_fits = 20
-    self.gauss_thresh = 0.2
-
-  def run_analysis(self, images, save_info=""):
-    self.run_stats = self.get_log_stats()
-    var_names = [
-      "weights/phi:0",
-      "inference/u:0",
-      "inference/activity:0",
-      "output/image_estimate/reconstruction:0",
-      "performance_metrics/reconstruction_quality/recon_quality:0"]
-    self.evals = self.evaluate_model(images, var_names)
-    self.atas = self.compute_atas(self.evals["inference/activity:0"], images)
-    self.cov = self.analyze_cov(images)
-    self.evec_atas = self.compute_atas(self.cov["b"], images)
-    self.pool_atas = self.compute_atas(self.cov["pooled_act"], images)
-    self.bf_stats = dp.get_dictionary_stats(self.evals["weights/phi:0"], padding=self.ft_padding,
-      num_gauss_fits=self.num_gauss_fits, gauss_thresh=self.gauss_thresh)
-    self.inference_stats = self.evaluate_inference(images[73:74])
-    np.savez(self.analysis_out_dir+"analysis_"+save_info+".npz",
-      data={"run_stats":self.run_stats, "evals":self.evals, "atas":self.atas,
-          "evec_atas":self.evec_atas, "pool_atas":self.pool_atas})
-    np.savez(self.analysis_out_dir+"act_cov_"+save_info+".npz", data=self.cov)
-    np.savez(self.analysis_out_dir+"bf_stats_"+save_info+".npz", data=self.bf_stats)
-    np.savez(self.analysis_out_dir+"inference_stats_"+save_info+".npz", data=self.inference_stats)
+class LcaPcaAnalyzer(LcaAnalyzer):
+  def run_analysis(self, images, labels=None, save_info=""):
+    super(LcaPcaAnalyzer, self).run_analysis(images, labels, save_info=save_info)
+    # Need to create a dataset object for cov analysis
+    image_dataset = {"test":Dataset(dp.reshape_data(images, flatten=False)[0], lbls=None)}
+    image_dataset = self.model.reshape_dataset(image_dataset, self.model_params)
+    cov = self.cov_analysis(image_dataset["test"][:self.analysis_params.num_LCA_PCA_cov_images],
+      save_info)
+    self.act_cov, self.a_eigvals, self.a_eigvecs, self.pooling_filters, self.a2, self.pooled_act = cov
+    self.evec_atas = self.compute_atas(self.a2, image_dataset["test"].images)
+    self.pool_atas = self.compute_atas(self.pooled_act, image_dataset["test"].images)
+    np.savez(self.analysis_out_dir+"savefiles/second_layer_atas_"+save_info+".npz",
+      data={"evec_atas":self.evec_atas, "pool_atas":self.pool_atas})
+    self.analysis_logger.log_info("2nd layer activity  analysis is complete.")
 
   def load_analysis(self, save_info=""):
-    file_loc = self.analysis_out_dir+"analysis_"+save_info+".npz"
-    analysis = np.load(file_loc)["data"].item()
-    self.run_stats = analysis["run_stats"]
-    self.evals = analysis["evals"]
-    self.atas = analysis["atas"]
-    self.evec_atas = analysis["evec_atas"]
-    self.pool_atas = analysis["pool_atas"]
-    self.cov = np.load(self.analysis_out_dir+"act_cov_"+save_info+".npz")["data"].item()
-    self.bf_stats = np.load(self.analysis_out_dir+"bf_stats_"+save_info+".npz")["data"].item()
-    self.inference_stats  = np.load(self.analysis_out_dir+"inference_stats_"+save_info+".npz")["data"].item()
+    super(LcaPcaAnalyzer, self).load_analysis(save_info)
+    # pca filters
+    pca_file_loc = self.analysis_out_dir+"pca_"+save_info+".npz"
+    pca_analysis = np.load(pca_file_loc)["data"].item()
+    self.act_cov = pca_analysis["act_cov"]
+    self.a_eigvals = pca_analysis["a_eigvals"]
+    self.a_eigvecs = pca_analysis["a_eigvecs"]
+    self.pooling_filters = pca_analysis["pooling_filters"]
+    self.a2 = pca_analysis["a2"]
+    self.pooled_act = pca_analysis["pooled_act"]
+    # activity triggered averages with 2nd layer units
+    ata_file_loc = self.analysis_out_dir+"second_layers_atas_"+save_info+".npz"
+    if os.path.exists(ata_file_loc):
+      ata_analysis = np.load(ata_file_loc)["data"].item()
+      self.evec_atas = ata_analysis["evec_atas"]
+      self.pool_atas = ata_analysis["pool_atas"]
 
-  def analyze_cov(self, images):
-    num_imgs, num_pixels = images.shape
-    with tf.Session(graph=self.model.graph) as sess:
+  def compute_pooled_activations(self, images, cov):
+    """
+    Computes the 2nd layer output code for a set of images.
+    """
+    config = tf.compat.v1.ConfigProto()
+    config.gpu_options.allow_growth = True
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
+      feed_dict = self.model.get_feed_dict(images)
+      feed_dict[self.model.full_cov] = cov
+      sess.run(self.model.init_op, feed_dict)
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
+      activations = sess.run(self.model.pooled_activity, feed_dict)
+    return activations
+
+  def cov_analysis(self, dataset, save_info=""):
+    with tf.compat.v1.Session(graph=self.model.graph) as sess:
       sess.run(self.model.init_op,
-        feed_dict={self.model.x:np.zeros([num_imgs, num_pixels], dtype=np.float32)})
-      self.model.load_weights(sess, self.cp_loc)
+        feed_dict={self.model.x:np.zeros([self.model_params.batch_size,
+        self.model_params.num_pixels], dtype=np.float32)})
+      self.model.load_full_model(sess, self.analysis_params.cp_loc)
       act_cov = None
       num_cov_in_avg = 0
-      for cov_batch_idx  in nb.log_progress(range(0, self.cov_num_images, self.model.batch_size),
-        every=1):
-        input_data = images[cov_batch_idx:cov_batch_idx+self.model.batch_size, ...]
+      while dataset.curr_epoch_idx + self.model_params.batch_size < dataset.num_examples:
+        if act_cov is not None and num_cov_in_avg == 10: # prevent numerical overflow
+          act_cov /= num_cov_in_avg
+          num_cov_in_avg = 0
+        input_data = dataset.next_batch(self.model_params.batch_size)[0]
         feed_dict = self.model.get_feed_dict(input_data)
         if act_cov is None:
           act_cov = sess.run(self.model.act_cov, feed_dict)
         else:
-          act_cov += sess.run(self.model.act_cov, feed_dict)
+          act_cov = act_cov + sess.run(self.model.act_cov, feed_dict)
         num_cov_in_avg += 1
-      act_cov /= num_cov_in_avg
-      feed_dict = self.model.get_feed_dict(images)
+      act_cov = act_cov / num_cov_in_avg
+    with tf.compat.v1.Session(graph=self.model.graph) as sess:
+      sess.run(self.model.init_op, feed_dict={self.model.x:dataset.images})
+      self.model.load_full_model(sess, self.analysis_params.analysis_params.cp_loc)
+      feed_dict = self.model.get_feed_dict(dataset.images)
       feed_dict[self.model.full_cov] = act_cov
       run_list = [self.model.eigen_vals, self.model.eigen_vecs, self.model.pooling_filters,
-        self.model.b, self.model.pooled_activity]
-      a_eigvals, a_eigvecs, pooling_filters, b, pooled_act = sess.run(run_list, feed_dict)
-    return {"act_cov": act_cov, "a_eigvals": a_eigvals, "a_eigvecs":a_eigvecs,
-      "pooling_filters": pooling_filters, "b":b, "pooled_act":pooled_act}
+        self.model.a2, self.model.pooled_activity]
+      a_eigvals, a_eigvecs, pooling_filters, a2, pooled_act = sess.run(run_list, feed_dict)
+    np.savez(self.analysis_out_dir+"savefiles/pca_"+save_info+".npz",
+      data={"act_cov":act_cov, "a_eigvals":a_eigvals, "a_eigvecs":a_eigvecs,
+      "pooling_filters":pooling_filters, "a2":a2, "pooled_act":pooled_act})
+    self.analysis_logger.log_info("PCA analysis is complete.")
+    return (act_cov, a_eigvals, a_eigvecs, pooling_filters, a2, pooled_act)

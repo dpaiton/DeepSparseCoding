@@ -1,23 +1,22 @@
 import numpy as np
-import utils.data_processing as dp
+
+from DeepSparseCoding.utils import data_processing as dp
 
 class Dataset(object):
-  def __init__(self, imgs, lbls, ignore_lbls=None, vectorize=True,
-    rand_state=np.random.RandomState()):
-    self.vectorize = vectorize
-    if imgs.ndim == 3:
-      (self.num_examples, self.num_rows, self.num_cols) = imgs.shape
-      self.num_channels = 1
-    elif imgs.ndim == 4:
-      (self.num_examples, self.num_rows,
-        self.num_cols, self.num_channels) = imgs.shape
-    else:
-      assert False, ("ndim must be 3 (batch, rows, cols) or 4 (batch, rows, cols, chans)")
-    if self.vectorize:
-      self.images = imgs.reshape(self.num_examples, self.num_rows*self.num_cols*self.num_channels)
-    else:
-      self.images = imgs
-    self.num_pixels = self.num_rows*self.num_cols*self.num_channels
+  def __init__(self, imgs, lbls, ignore_lbls=None, rand_state=np.random.RandomState()):
+    """
+    Inputs:
+      imgs [np.ndarray] of ndim 4 (examples, rows, cols, channels)
+      lbls [np.ndarray] of ndim 2 (examples, labels)
+      ignore_lbls [np.ndarray] of same shape as lbls
+      rand_state [np.random.RandomState]
+    """
+    assert imgs.ndim == 4, ("data ndim must be 4 (batch, rows, cols, chans)")
+    (self.num_examples, self.num_rows, self.num_cols, self.num_channels) = imgs.shape
+    self.images = imgs
+    self.ndim = imgs.ndim
+    self.shape = imgs.shape
+    self.num_pixels = np.prod(self.shape[1:])
     self.labels = lbls
     self.ignore_labels = ignore_lbls
     self.rand_state = rand_state
@@ -25,56 +24,28 @@ class Dataset(object):
 
   def reset_counters(self):
     """
-      Reset all counters for batches & epochs completed
+    Reset all counters for batches & epochs completed
     """
     self.epochs_completed = 0
     self.batches_completed = 0
     self.curr_epoch_idx = 0
     self.epoch_order = self.rand_state.permutation(self.num_examples)
 
-  def preprocess(self, params):
+  def downsample(self, scale_factor, order=3):
     """
-    Perform preprocessing on the self.images object
-    Possible kwargs are:
-      whiten_data: default method is using the Fourier amplitude spectrium ("FT")
-        change default method with params["whiten_method"]
-      standardize_data: subtract mean and divide by the standard deviation
-      contrast_normalize: divide by gaussian blurred surround pixels
-      patches: break up data into patches
-        see utils/data_processing/exract_patches() for docs
+    Downsample data with scipy.ndimage.interpolation.zoom
+    Inputs:
+      data: np.ndarray
+      scale_factor [list of floats] indicating the downsampling factor for each dimension
+        Values in the list should be between 0.0 and 1.0
+        scale_factor needs an element for each dimension in the data
+      order: [int 0-5] the order for the spline interpolation
     """
-    if "whiten_data" in params.keys():
-      if params["whiten_data"]:
-        if "whiten_method" in params.keys():
-          self.images = dp.whiten_data(self.images, method=params["whiten_method"])
-        else:
-          self.images = dp.whiten_data(self.images)
-    if "standardize_data" in params.keys():
-      if params["standardize_data"]:
-        self.images = dp.standardize_data(self.images)
-    if "contrast_normalize" in params.keys():
-      if params["contrast_normalize"]:
-        if "gauss_patch_size" in params.keys():
-          self.images = dp.contrast_normalize(self.images, params["gauss_patch_size"])
-        else:
-          self.images = dp.contrast_normalize(self.images)
-    if "extract_patches" in params.keys():
-      if params["extract_patches"]:
-        assert all(key in params.keys()
-          for key in ["num_patches", "patch_edge_size", "overlapping_patches",
-          "randomize_patches"]), ("Insufficient params for patches.")
-        out_shape = (params["num_patches"], int(params["patch_edge_size"]**2))
-        self.num_examples = np.int32(params["num_patches"])
-        self.num_rows = params["patch_edge_size"]
-        self.num_cols = params["patch_edge_size"]
-        self.num_pixels = np.int32(self.num_rows*self.num_cols*self.num_channels)
-        self.reset_counters()
-        if "patch_variance_threshold" in params.keys():
-          self.images = dp.extract_patches(self.images, out_shape, params["overlapping_patches"],
-            params["randomize_patches"], params["patch_variance_threshold"], self.rand_state)
-        else:
-          self.images = dp.extract_patches(self.images, out_shape, params["overlapping_patche"],
-            params["randomize_patches"], var_thresh=0, rand_state=self.rand_state)
+    assert len(scale_factor) == self.images.ndim, ("len(scale_factor) must == data.ndim")
+    self.images = dp.downsample_data(self.images, scale_factor=scale_factor, order=order)
+    self.shape = self.images.shape
+    (self.num_rows, self.num_cols, self.num_channels) = self.shape[1:]
+    self.num_pixels = np.prod(self.shape[1:])
 
   def new_epoch(self, num_to_advance=1):
     """
@@ -98,7 +69,8 @@ class Dataset(object):
         batch_size is a scalar increment of num_examples.
     """
     assert batch_size <= self.num_examples, (
-        "Input batch_size was greater than the number of available examples.")
+        "Input batch_size (%g) was greater than the number of available examples (%g)."%(
+        batch_size, self.num_examples))
     if self.curr_epoch_idx + batch_size > self.num_examples:
       start = 0
       self.new_epoch(1)
@@ -108,6 +80,8 @@ class Dataset(object):
     self.batches_completed += 1
     self.curr_epoch_idx += batch_size
     set_indices = self.epoch_order[start:self.curr_epoch_idx]
+    # The following code modifies what is returned to support None type passthrough
+    # and also index the relevant numpy arrays
     if self.labels is not None:
       if self.ignore_labels is not None:
         return (self.images[set_indices, ...],
@@ -130,15 +104,3 @@ class Dataset(object):
       self.new_epoch(int((num_batches * batch_size) / float(self.num_examples)))
     self.batches_completed += num_batches
     self.curr_epoch_idx = (num_batches * batch_size) % self.num_examples
-
-  def vectorize_data(self):
-    """Reshape images to be a vector per data point"""
-    #assert self.images.ndim == 4, ("Image must be a 4D tensor")
-    self.images = self.images.reshape(self.num_examples,
-      self.num_rows * self.num_cols * self.num_channels)
-
-  def devectorize_data(self):
-    """Reshape images to be a vector per data point"""
-    #assert self.images.ndim == 2, ("Image must be a 2D tensor")
-    self.images = self.images.reshape(self.num_examples,
-      self.num_rows, self.num_cols, self.num_channels)

@@ -1,44 +1,117 @@
-import params.mlp_params as mlp_params
-import params.ica_params as ica_params
-import params.ica_pca_params as ica_pca_params
-import params.lca_params as lca_params
-import params.lca_pca_params as lca_pca_params
-import params.lca_pca_fb_params as lca_pca_fb_params
-import params.conv_lca_params as conv_lca_params
-import params.dsc_params as dsc_params
-import params.density_learner_params as density_params
+from DeepSparseCoding.params import base_params as base
+from DeepSparseCoding.params import lambda_params as lamb
+from DeepSparseCoding.params import mlp_params as mlp
+from DeepSparseCoding.params import mlp_lca_subspace_params as mlp_lca_subspace
+from DeepSparseCoding.params import mlp_lca_params as mlp_lca
+from DeepSparseCoding.params import mlp_ae_params as mlp_ae
+from DeepSparseCoding.params import mlp_vae_params as mlp_vae
+from DeepSparseCoding.params import mlp_sae_params as mlp_sae
+from DeepSparseCoding.params import mlp_lista_params as mlp_lista
+from DeepSparseCoding.params import ica_params as ica
+from DeepSparseCoding.params import ica_pca_params as ica_pca
+from DeepSparseCoding.params import ica_subspace_params as ica_subspace
+from DeepSparseCoding.params import rica_params as rica
+from DeepSparseCoding.params import lca_params as lca
+from DeepSparseCoding.params import lca_pca_params as lca_pca
+from DeepSparseCoding.params import lca_pca_fb_params as lca_pca_fb
+from DeepSparseCoding.params import lca_subspace_params as lca_subspace
+from DeepSparseCoding.params import lca_conv_params as lca_conv
+from DeepSparseCoding.params import lista_params as lista
+from DeepSparseCoding.params import ae_params as ae
+from DeepSparseCoding.params import dae_params as dae
+from DeepSparseCoding.params import dae_mem_params as dae_mem
+from DeepSparseCoding.params import sae_params as sae
+from DeepSparseCoding.params import vae_params as vae
 
 """
 Get function that returns the corresponding parameter and schedule files
 Inputs:
-  model_type: [str] containing the type of model to load. 
-    Current allowed values are: mlp, lca, ica, dsc
+  model_type: [str] containing the type of model to load.
 Outputs:
   params: [dict] containing params defined in the corresponding file
   schedule: [list] of [dict] containing the learning schedule from the same file
 """
 def get_params(model_type):
+  if model_type.lower() == "lambda":
+    return lamb.params()
   if model_type.lower() == "mlp":
-    return mlp_params.params, mlp_params.schedule
+    return mlp.params()
+  if model_type.lower() == "mlp_lca_subspace":
+    return mlp_lca_subspace.params()
+  if model_type.lower() == "mlp_lca":
+    return mlp_lca.params()
+  if model_type.lower() == "mlp_ae":
+    return mlp_ae.params()
+  if model_type.lower() == "mlp_vae":
+    return mlp_vae.params()
+  if model_type.lower() == "mlp_sae":
+    return mlp_sae.params()
+  if model_type.lower() == 'mlp_lista':
+    return mlp_lista.params()
   if model_type.lower() == "ica":
-    ica_params.params["num_pixels"] = int(ica_params.params["patch_edge_size"]**2)
-    ica_params.params["num_neurons"] = ica_params.params["num_pixels"]
-    return ica_params.params, ica_params.schedule
+    return ica.params()
   if model_type.lower() == "ica_pca":
-    ica_pca_params.params["num_pixels"] = int(ica_pca_params.params["patch_edge_size"]**2)
-    ica_pca_params.params["num_neurons"] = ica_pca_params.params["num_pixels"]
-    return ica_pca_params.params, ica_pca_params.schedule
+    return ica_pca.params()
+  if model_type.lower() == "ica_subspace":
+    return ica_subspace.params()
+  if model_type.lower() == "rica":
+    return rica.params()
   if model_type.lower() == "lca":
-    lca_params.params["num_pixels"] = int(lca_params.params["patch_edge_size"]**2)
-    return lca_params.params, lca_params.schedule
+    return lca.params()
   if model_type.lower() == "lca_pca":
-    return lca_pca_params.params, lca_pca_params.schedule
+    return lca_pca.params()
   if model_type.lower() == "lca_pca_fb":
-    return lca_pca_fb_params.params, lca_pca_fb_params.schedule
-  if model_type.lower() == "conv_lca":
-    return conv_lca_params.params, conv_lca_params.schedule
-  if model_type.lower() == "dsc":
-    return dsc_params.params, dsc_params.schedule
-  if model_type.lower() == "density_learner":
-    return density_params.params, density_params.schedule
-  return False
+    return lca_pca_fb.params()
+  if model_type.lower() == "lca_subspace":
+    return lca_subspace.params()
+  if model_type.lower() == "lca_conv":
+    return lca_conv.params()
+  if model_type.lower() == "lista":
+    return lista.params()
+  if model_type.lower() == "ae":
+    return ae.params()
+  if model_type.lower() == "dae":
+    return dae.params()
+  if model_type.lower() == "dae_mem":
+    return dae_mem.params()
+  if model_type.lower() == "sae":
+    return sae.params()
+  if model_type.lower() == "vae":
+    return vae.params()
+  assert False, (model_type+" is not a supported model_type")
+
+def list_all_params():
+  all_params = [
+    base,
+    lamb,
+    mlp,
+    mlp_lca_subspace,
+    mlp_lca,
+    mlp_ae,
+    mlp_vae,
+    mlp_sae,
+    mlp_lista,
+    ica,
+    ica_pca,
+    ica_subspace,
+    rica,
+    lca,
+    lca_pca,
+    lca_pca_fb,
+    lca_subspace,
+    lca_conv,
+    lista,
+    ae,
+    dae,
+    dae_mem,
+    sae,
+    vae]
+  param_names = []
+  for params_obj in all_params:
+    params_dict = params_obj.params().__dict__
+    for param_name in list(params_dict.keys()):
+      param_names.append(param_name)
+  return sorted(set(param_names))
+
+if __name__ == "__main__":
+  print("\n".join(list_all_params()))
