@@ -1,10 +1,10 @@
 import numpy as np
 import tensorflow as tf
-import utils.data_processing as dp
-import params.param_picker as pp
-import models.model_picker as mp
-import data.data_selector as ds
-import pdb
+
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.params.param_picker as pp
+import DeepSparseCoding.tf1x.models.model_picker as mp
+import DeepSparseCoding.tf1x.data.data_selector as ds
 
 """
 Test for checkpointing

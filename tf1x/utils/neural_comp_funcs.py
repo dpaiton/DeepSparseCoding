@@ -10,11 +10,11 @@ from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 import matplotlib.font_manager
 
-from DeepSparseCoding.data.dataset import Dataset
-import DeepSparseCoding.data.data_selector as ds
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.analysis.analysis_picker as ap
+from DeepSparseCoding.tf1x.data.dataset import Dataset
+import DeepSparseCoding.tf1x.data.data_selector as ds
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.analysis.analysis_picker as ap
 
 class Arrow3D(FancyArrowPatch):
     def __init__(self, xs, ys, zs, *args, **kwargs):

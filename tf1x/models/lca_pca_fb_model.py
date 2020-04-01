@@ -1,9 +1,9 @@
 import numpy as np
 import tensorflow as tf
 
-import DeepSparseCoding.params.param_picker as pp
-import DeepSparseCoding.utils.plot_functions as pf
-from DeepSparseCoding.models.lca_pca_model import LcaPcaModel
+import DeepSparseCoding.tf1x.params.param_picker as pp
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+from DeepSparseCoding.tf1x.models.lca_pca_model import LcaPcaModel
 
 class LcaPcaFbModel(LcaPcaModel):
   def load_params(self, params):

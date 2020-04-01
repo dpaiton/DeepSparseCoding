@@ -1,18 +1,24 @@
 import matplotlib
 matplotlib.use('Agg')
 import os
+import sys
+import pdb
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import ticker
-from skimage.measure import compare_psnr
-from data.dataset import Dataset
-import data.data_selector as ds
-import utils.data_processing as dp
-import utils.plot_functions as pf
-import analysis.analysis_picker as ap
 import matplotlib.gridspec as gridspec
-import pdb
+from skimage.measure import compare_psnr
+
+root_path = os.path.dirname(os.path.dirname(os.getcwd()))
+if root_path not in sys.path: sys.path.append(root_path)
+
+from DeepSparseCoding.tf1x.data.dataset import Dataset
+import DeepSparseCoding.tf1x.data.data_selector as ds
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.analysis.analysis_picker as ap
 
 #List of models for analysis
 analysis_list = [

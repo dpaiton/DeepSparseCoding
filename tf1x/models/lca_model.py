@@ -1,11 +1,11 @@
 import numpy as np
 import tensorflow as tf
 
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.models.base_model import Model
-from DeepSparseCoding.modules.lca_module import LcaModule
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.models.base_model import Model
+from DeepSparseCoding.tf1x.modules.lca_module import LcaModule
 
 class LcaModel(Model):
   def __init__(self):

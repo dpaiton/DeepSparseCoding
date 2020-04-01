@@ -1,8 +1,8 @@
 import numpy as np
 import pickle
 
-from DeepSparseCoding.data.dataset import Dataset
-import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.tf1x.data.dataset import Dataset
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 class CIFAR(object):
   def __init__(self, data_dir, num_val=0, num_labeled=50000, rand_state=np.random.RandomState()):

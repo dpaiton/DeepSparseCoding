@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-from DeepSparseCoding.analysis.base_analyzer import Analyzer
-import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.tf1x.analysis.base_analyzer import Analyzer
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 class GaAnalyzer(Analyzer):
   def __init__(self):

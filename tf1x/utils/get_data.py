@@ -3,10 +3,11 @@ Write functions to import memristor data.
 Written by Ryan Zarcone, 2017
 """
 import os
+
 import numpy as np
 import pandas as pd
 
-import DeepSparseCoding.utils.blahut as blahut
+import DeepSparseCoding.tf1x.utils.blahut as blahut
 
 def get_raw_data(path):
     """

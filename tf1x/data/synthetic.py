@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.stats import norm
 
-from DeepSparseCoding.data.dataset import Dataset
-import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.tf1x.data.dataset import Dataset
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 class synthetic(object):
   def __init__(self, dist_type, epoch_size, num_edge_pixels, rand_state=np.random.RandomState()):

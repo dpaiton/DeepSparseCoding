@@ -1,14 +1,14 @@
 import numpy as np
 import tensorflow as tf
 
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.utils.entropy_functions as ef
-import DeepSparseCoding.ops.init_ops as init_ops
-from DeepSparseCoding.models.mlp_model import MlpModel
-from DeepSparseCoding.modules.mlp_module import MlpModule
-from DeepSparseCoding.modules.activations import lca_threshold
-from DeepSparseCoding.modules.activations import activation_picker
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+import DeepSparseCoding.tf1x.ops.init_ops as init_ops
+from DeepSparseCoding.tf1x.models.mlp_model import MlpModel
+from DeepSparseCoding.tf1x.modules.mlp_module import MlpModule
+from DeepSparseCoding.tf1x.modules.activations import lca_threshold
+from DeepSparseCoding.tf1x.modules.activations import activation_picker
 
 class MlpListaModel(MlpModel):
   def load_params(self, params):

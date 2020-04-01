@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
-from DeepSparseCoding.modules.activations import lca_threshold
+from DeepSparseCoding.tf1x.utils.trainable_variable_dict import TrainableVariableDict
+from DeepSparseCoding.tf1x.modules.activations import lca_threshold
 
 class LcaModule(object):
   def __init__(self, data_tensor, num_neurons, sparse_mult, step_size, thresh_type,

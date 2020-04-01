@@ -1,10 +1,10 @@
 import numpy as np
 import tensorflow as tf
 
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.utils.data_processing as dp
-from DeepSparseCoding.models.lca_model import LcaModel
-from DeepSparseCoding.modules.lca_subspace_module import LcaSubspaceModule
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+from DeepSparseCoding.tf1x.models.lca_model import LcaModel
+from DeepSparseCoding.tf1x.modules.lca_subspace_module import LcaSubspaceModule
 
 class LcaSubspaceModel(LcaModel):
   """

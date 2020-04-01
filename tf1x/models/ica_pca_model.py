@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-import DeepSparseCoding.params.param_picker as pp
-from DeepSparseCoding.models.ica_model import IcaModel
+import DeepSparseCoding.tf1x.params.param_picker as pp
+from DeepSparseCoding.tf1x.models.ica_model import IcaModel
 
 class IcaPcaModel(IcaModel):
   def build_graph_from_input(self, input_node):

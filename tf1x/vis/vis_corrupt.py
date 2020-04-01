@@ -1,20 +1,25 @@
 import matplotlib
 matplotlib.use('Agg')
 import os
+import sys
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import ticker
-import skimage
-import data.data_selector as ds
-import utils.data_processing as dp
-import utils.plot_functions as pf
-import analysis.analysis_picker as ap
 import matplotlib.gridspec as gridspec
-import pdb
+import skimage
 import seaborn as sn
 import pandas as pd
 import pickle
+
+root_path = os.path.dirname(os.path.dirname(os.getcwd()))
+if root_path not in sys.path: sys.path.append(root_path)
+
+import DeepSparseCoding.tf1x.data.data_selector as ds
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.analysis.analysis_picker as ap
 
 data_dir = "/home/slundquist/Work/Datasets/"
 

@@ -1,13 +1,13 @@
 import numpy as np
 import tensorflow as tf
 
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.models.mlp_model import MlpModel
-from DeepSparseCoding.modules.lca_module import LcaModule
-from DeepSparseCoding.modules.lca_conv_module import LcaConvModule
-from DeepSparseCoding.modules.activations import activation_picker
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.models.mlp_model import MlpModel
+from DeepSparseCoding.tf1x.modules.lca_module import LcaModule
+from DeepSparseCoding.tf1x.modules.lca_conv_module import LcaConvModule
+from DeepSparseCoding.tf1x.modules.activations import activation_picker
 
 class MlpLcaModel(MlpModel):
   def load_params(self, params):

@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_compression as tfc
 
-import DeepSparseCoding.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 class ReconAdversarialModule(object):
   def __init__(self, data_tensor, use_adv_input, num_steps, step_size, max_adv_change=None,

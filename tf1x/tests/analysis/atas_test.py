@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
-from analysis.base_analyzer import Analyzer
+
+from DeepSparseCoding.tf1x.analysis.base_analyzer import Analyzer
 
 """
 Test for activity triggered analysis

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from DeepSparseCoding.modules.activations import activation_picker
-from DeepSparseCoding.params.base_params import BaseParams
+from DeepSparseCoding.tf1x.modules.activations import activation_picker
+from DeepSparseCoding.tf1x.params.base_params import BaseParams
 
 class params(BaseParams):
   def __init__(self):

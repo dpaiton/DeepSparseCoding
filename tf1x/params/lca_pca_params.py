@@ -1,4 +1,4 @@
-from DeepSparseCoding.params.lca_params import params as lca_params
+from DeepSparseCoding.tf1x.params.lca_params import params as lca_params
 
 class params(lca_params):
   def __init__(self):

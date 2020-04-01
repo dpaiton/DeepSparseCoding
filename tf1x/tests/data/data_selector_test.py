@@ -1,7 +1,9 @@
 import os
+
 import numpy as np
 import tensorflow as tf
-import data.data_selector as ds
+
+import DeepSparseCoding.tf1x.data.data_selector as ds
 
 class params(object):
   def __init__(self):

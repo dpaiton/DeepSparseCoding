@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
+from DeepSparseCoding.tf1x.utils.trainable_variable_dict import TrainableVariableDict
 
 class BatchNormalizationModule(object):
   """

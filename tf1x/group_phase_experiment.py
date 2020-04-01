@@ -1,12 +1,18 @@
 import os
+import sys
+
 import numpy as np
 import tensorflow as tf
-from utils.logger import Logger
-import utils.data_processing as dp
-import models.model_picker as mp
-import analysis.analysis_picker as ap
-import data.data_selector as ds
-from data.dataset import Dataset
+
+root_path = os.path.dirname(os.path.dirname(os.getcwd()))
+if root_path not in sys.path: sys.path.append(root_path)
+
+from DeepSparseCoding.tf1x.utils.logger import Logger
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.models.model_picker as mp
+import DeepSparseCoding.tf1x.analysis.analysis_picker as ap
+import DeepSparseCoding.tf1x.data.data_selector as ds
+from DeepSparseCoding.tf1x.data.dataset import Dataset
 
 class params(object):
   def __init__(self):

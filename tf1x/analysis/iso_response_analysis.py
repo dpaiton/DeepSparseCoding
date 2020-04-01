@@ -4,9 +4,9 @@ import re
 import numpy as np
 import tensorflow as tf
 
-from DeepSparseCoding.data.dataset import Dataset
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.analysis.analysis_picker as ap
+from DeepSparseCoding.tf1x.data.dataset import Dataset
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.analysis.analysis_picker as ap
 
 def compute_iso_vectors(analyzer, min_angle, max_angle, num_neurons, use_bf_stats):
   """

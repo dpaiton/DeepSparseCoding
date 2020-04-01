@@ -1,9 +1,9 @@
 import tensorflow as tf
 
-from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.modules.ae_module import AeModule
-from DeepSparseCoding.modules.activations import sigmoid
+from DeepSparseCoding.tf1x.utils.trainable_variable_dict import TrainableVariableDict
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.modules.ae_module import AeModule
+from DeepSparseCoding.tf1x.modules.activations import sigmoid
 
 class SaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,

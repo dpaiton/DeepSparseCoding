@@ -1,4 +1,4 @@
-from DeepSparseCoding.analysis.base_analyzer import Analyzer
+from DeepSparseCoding.tf1x.analysis.base_analyzer import Analyzer
 
 class LambdaAnalyzer(Analyzer):
   def __init__(self):

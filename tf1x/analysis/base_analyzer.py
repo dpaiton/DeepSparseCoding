@@ -4,14 +4,14 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_compression as tfc
 
-from DeepSparseCoding.utils.logger import Logger
-from DeepSparseCoding.utils import plot_functions as pf
-from DeepSparseCoding.models import model_picker as mp
-from DeepSparseCoding.utils import data_processing as dp
-from DeepSparseCoding.data.dataset import Dataset
-from DeepSparseCoding.modules.class_adversarial_module import ClassAdversarialModule
-from DeepSparseCoding.modules.recon_adversarial_module import ReconAdversarialModule
-from DeepSparseCoding.modules.neuron_visualization_module import NeuronVisualizationModule
+from DeepSparseCoding.tf1x.utils.logger import Logger
+from DeepSparseCoding.tf1x.utils import plot_functions as pf
+from DeepSparseCoding.tf1x.models import model_picker as mp
+from DeepSparseCoding.tf1x.utils import data_processing as dp
+from DeepSparseCoding.tf1x.data.dataset import Dataset
+from DeepSparseCoding.tf1x.modules.class_adversarial_module import ClassAdversarialModule
+from DeepSparseCoding.tf1x.modules.recon_adversarial_module import ReconAdversarialModule
+from DeepSparseCoding.tf1x.modules.neuron_visualization_module import NeuronVisualizationModule
 
 class Analyzer(object):
   def setup(self, input_params):

@@ -3,10 +3,10 @@ import os
 import numpy as np
 import tensorflow as tf
 
-from DeepSparseCoding.analysis.base_analyzer import Analyzer
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.analysis.base_analyzer import Analyzer
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
 
 class LcaAnalyzer(Analyzer):
   def __init__(self):

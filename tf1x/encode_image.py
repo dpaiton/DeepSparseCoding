@@ -1,12 +1,18 @@
+import os
+import sys
 import matplotlib
 matplotlib.use("Agg")
 
 import numpy as np
 import tensorflow as tf
-import params.param_picker as pp
-import models.model_picker as mp
-from utils.logger import Logger
-from data.nat_dataset import Dataset
+
+root_path = os.path.dirname(os.path.dirname(os.getcwd()))
+if root_path not in sys.path: sys.path.append(root_path)
+
+import DeepSparseCoding.tf1x.params.param_picker as pp
+import DeepSparseCoding.tf1x.models.model_picker as mp
+from DeepSparseCoding.tf1x.utils.logger import Logger
+from DeepSparseCoding.tf1x.data.nat_dataset import Dataset
 
 ## Specify model type and data type
 model_type = "conv_gdn_autoencoder"

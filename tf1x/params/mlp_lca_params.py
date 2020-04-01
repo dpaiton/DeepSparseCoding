@@ -1,4 +1,4 @@
-from DeepSparseCoding.params.base_params import BaseParams
+from DeepSparseCoding.tf1x.params.base_params import BaseParams
 
 TRAIN_ON_RECON = True
 

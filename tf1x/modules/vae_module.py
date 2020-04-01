@@ -2,10 +2,10 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from DeepSparseCoding.ops.init_ops import L2NormalizedTruncatedNormalInitializer
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
-from DeepSparseCoding.modules.ae_module import AeModule
+from DeepSparseCoding.tf1x.ops.init_ops import L2NormalizedTruncatedNormalInitializer
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.utils.trainable_variable_dict import TrainableVariableDict
+from DeepSparseCoding.tf1x.modules.ae_module import AeModule
 
 class VaeModule(AeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,

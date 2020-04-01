@@ -1,8 +1,8 @@
 import h5py
 import numpy as np
 
-from DeepSparseCoding.data.dataset import Dataset
-import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.tf1x.data.dataset import Dataset
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 class vanHateren(object):
   def __init__(self, image_dir, num_images=50, rand_state=np.random.RandomState()):

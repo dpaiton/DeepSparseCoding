@@ -1,11 +1,11 @@
 import tensorflow as tf
 
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.models.mlp_lca_model import MlpLcaModel
-from DeepSparseCoding.modules.lca_subspace_module import LcaSubspaceModule
-from DeepSparseCoding.modules.activations import activation_picker
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.models.mlp_lca_model import MlpLcaModel
+from DeepSparseCoding.tf1x.modules.lca_subspace_module import LcaSubspaceModule
+from DeepSparseCoding.tf1x.modules.activations import activation_picker
 
 
 class MlpLcaSubspaceModel(MlpLcaModel):

@@ -1,12 +1,12 @@
 import numpy as np
 import tensorflow as tf
 
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.modules.dae_module import DaeModule
-from DeepSparseCoding.ops.init_ops import GDNGammaInitializer
-from DeepSparseCoding.modules.activations import activation_picker
-from DeepSparseCoding.utils import get_data
-from DeepSparseCoding.utils import mem_utils
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.modules.dae_module import DaeModule
+from DeepSparseCoding.tf1x.ops.init_ops import GDNGammaInitializer
+from DeepSparseCoding.tf1x.modules.activations import activation_picker
+from DeepSparseCoding.tf1x.utils import get_data
+from DeepSparseCoding.tf1x.utils import mem_utils
 
 class DaeMemModule(DaeModule):
   def __init__(self, data_tensor, layer_types, enc_channels, dec_channels, patch_size,

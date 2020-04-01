@@ -1,11 +1,13 @@
 import copy
+import sys
+
 import numpy as np
 import tensorflow as tf
-import params.param_picker as pp
-import models.model_picker as mp
-import data.data_selector as ds
-import utils.data_processing as dp
-import sys
+
+import DeepSparseCoding.tf1x.params.param_picker as pp
+import DeepSparseCoding.tf1x.models.model_picker as mp
+import DeepSparseCoding.tf1x.data.data_selector as ds
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 """
 Test for building models

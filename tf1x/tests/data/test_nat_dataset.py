@@ -1,6 +1,8 @@
 import numpy as np
+
 import tensorflow as tf
-from data.nat_dataset import Dataset
+
+from DeepSparseCoding.tf1x.data.nat_dataset import Dataset
 
 class params(object):
   data_shape = [128, 128, 1]

@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
-import utils.data_processing as dp
+
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 """
 Test for the data_processing.reshape_data function.

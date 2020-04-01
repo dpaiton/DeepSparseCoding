@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-from DeepSparseCoding.utils.trainable_variable_dict import TrainableVariableDict
-from DeepSparseCoding.modules.batch_normalization_module import BatchNormalizationModule
+from DeepSparseCoding.tf1x.utils.trainable_variable_dict import TrainableVariableDict
+from DeepSparseCoding.tf1x.modules.batch_normalization_module import BatchNormalizationModule
 
 class MlpModule(object):
   def __init__(self, data_tensor, label_tensor, layer_types, output_channels, batch_norm,

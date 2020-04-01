@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.analysis.lca_analyzer import LcaAnalyzer
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.analysis.lca_analyzer import LcaAnalyzer
 
 class LcaConvAnalyzer(LcaAnalyzer):
   def __init__(self):

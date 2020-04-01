@@ -3,8 +3,8 @@ import os
 
 import tensorflow as tf
 
-parent_path = os.path.dirname(os.getcwd())
-if parent_path not in sys.path: sys.path.append(parent_path)
+root_path = os.path.dirname(os.path.dirname(os.getcwd()))
+if root_path not in sys.path: sys.path.append(root_path)
 
 #Default test runs if no args specified
 run_comb = False
@@ -81,27 +81,27 @@ for idx in del_idx:
 #build_test and run_test all have multiple dymaically created classes, so import *
 if run_comb:
   #RunAll_[model_type]_[data_type]
-  from DeepSparseCoding.tests.models.comb_test import *
+  from DeepSparseCoding.tf1x.tests.models.comb_test import *
 
 if run_build:
   #BuildTest_[model_type]
-  from DeepSparseCoding.tests.models.build_test import *
+  from DeepSparseCoding.tf1x.tests.models.build_test import *
 
 if run_run:
   #RunTest_[model_type]
-  from DeepSparseCoding.tests.models.run_test import *
+  from DeepSparseCoding.tf1x.tests.models.run_test import *
 
 if run_utils:
-  from DeepSparseCoding.tests.utils.contrast_normalize_test import ContrastNormalizeDataTest
-  from DeepSparseCoding.tests.utils.patches_test import PatchesTest
-  from DeepSparseCoding.tests.utils.reshape_data_test import ReshapeDataTest
-  from DeepSparseCoding.tests.utils.standardize_data_test import StandardizeDataTest
-  from DeepSparseCoding.tests.utils.checkpoint_test import CheckpointTest
+  from DeepSparseCoding.tf1x.tests.utils.contrast_normalize_test import ContrastNormalizeDataTest
+  from DeepSparseCoding.tf1x.tests.utils.patches_test import PatchesTest
+  from DeepSparseCoding.tf1x.tests.utils.reshape_data_test import ReshapeDataTest
+  from DeepSparseCoding.tf1x.tests.utils.standardize_data_test import StandardizeDataTest
+  from DeepSparseCoding.tf1x.tests.utils.checkpoint_test import CheckpointTest
 
 if run_analysis:
-  from DeepSparseCoding.tests.analysis.atas_test import ActivityTriggeredAverageTest
+  from DeepSparseCoding.tf1x.tests.analysis.atas_test import ActivityTriggeredAverageTest
 
 if run_data:
-  from DeepSparseCoding.tests.data.data_selector_test import DataSelectorTest
+  from DeepSparseCoding.tf1x.tests.data.data_selector_test import DataSelectorTest
 
 tf.test.main()

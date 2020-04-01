@@ -2,12 +2,12 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.models.ae_model import AeModel
-from DeepSparseCoding.modules.vae_module import VaeModule
-from DeepSparseCoding.modules.activations import activation_picker
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.models.ae_model import AeModel
+from DeepSparseCoding.tf1x.modules.vae_module import VaeModule
+from DeepSparseCoding.tf1x.modules.activations import activation_picker
 
 class VaeModel(AeModel):
   def __init__(self):

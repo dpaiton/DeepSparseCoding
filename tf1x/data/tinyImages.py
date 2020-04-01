@@ -1,7 +1,7 @@
 import numpy as np
 
-from DeepSparseCoding.data.dataset import Dataset
-import DeepSparseCoding.utils.plot_functions as pf
+from DeepSparseCoding.tf1x.data.dataset import Dataset
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
 
 class tinyImages(object):
   def __init__(self, image_dir, num_epochs=1, epoch_size=1000, rand_state=np.random.RandomState()):

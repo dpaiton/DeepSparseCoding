@@ -14,6 +14,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+
+import numpy as np
+import matplotlib.pyplot as plt
+import argparse
+import os
+import sys
+
 from tensorflow.keras.layers import Lambda, Input, Dense
 from tensorflow.keras.models import Model
 from tensorflow.keras.datasets import mnist
@@ -22,14 +29,12 @@ from tensorflow.keras.utils import plot_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import backend as K
 
-import numpy as np
-import matplotlib.pyplot as plt
-import argparse
-import os
-
 import tensorflow as tf
 
-import utils.plot_functions as pf
+root_path = os.path.dirname(os.path.dirname(os.getcwd()))
+if root_path not in sys.path: sys.path.append(root_path)
+
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
 
 # reparameterization trick
 # instead of sampling from Q(z|X), sample eps = N(0,I)

@@ -1,5 +1,5 @@
-from DeepSparseCoding.analysis.base_analyzer import Analyzer
-import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.tf1x.analysis.base_analyzer import Analyzer
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 class VaeAnalyzer(Analyzer):
   def __init__(self):

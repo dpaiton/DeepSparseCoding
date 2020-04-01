@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-from DeepSparseCoding.params.base_params import BaseParams
+from DeepSparseCoding.tf1x.params.base_params import BaseParams
 
 class params(BaseParams):
   def __init__(self):

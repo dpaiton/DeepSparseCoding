@@ -1,10 +1,10 @@
 import tensorflow as tf
 
-import DeepSparseCoding.utils.plot_functions as pf
-import DeepSparseCoding.utils.data_processing as dp
-import DeepSparseCoding.utils.entropy_functions as ef
-from DeepSparseCoding.models.ae_model import AeModel
-from DeepSparseCoding.modules.dae_module import DaeModule
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.entropy_functions as ef
+from DeepSparseCoding.tf1x.models.ae_model import AeModel
+from DeepSparseCoding.tf1x.modules.dae_module import DaeModule
 
 class DaeModel(AeModel):
   def __init__(self):

@@ -1,12 +1,18 @@
 import os
+import sys
+
 import numpy as np
 import pickle
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
 from scipy.misc import imsave
-import data.data_selector as ds
-import analysis.analysis_picker as ap
-import utils.data_processing as dp
+
+root_path = os.path.dirname(os.path.dirname(os.getcwd()))
+if root_path not in sys.path: sys.path.append(root_path)
+
+import DeepSparseCoding.tf1x.data.data_selector as ds
+import DeepSparseCoding.tf1x.analysis.analysis_picker as ap
+import DeepSparseCoding.tf1x.utils.data_processing as dp
 
 class tsne_params(object):
   model_type = "subspace_lca"
