@@ -86,10 +86,10 @@ class MlpModel(Model):
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
         with tf.compat.v1.variable_scope("performance_metrics") as scope:
           with tf.compat.v1.variable_scope("prediction_bools"):
-            self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
-              tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
+            self.correct_prediction = tf.equal(tf.argmax(input=self.label_est, axis=1),
+              tf.argmax(input=self.label_placeholder, axis=1), name="individual_accuracy")
           with tf.compat.v1.variable_scope("accuracy"):
-            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
+            self.accuracy = tf.reduce_mean(input_tensor=tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
   def get_input_shape(self):

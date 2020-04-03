@@ -31,7 +31,7 @@ class BatchNormalizationModule(object):
       layer_vars = tf.Variable(0.01*tf.ones([num_layer_features]),
         dtype=tf.float32, trainable=False)
 
-      input_mean, input_var = tf.nn.moments(a_in, axes=reduc_axes)
+      input_mean, input_var = tf.nn.moments(x=a_in, axes=reduc_axes)
       layer_means = ((1 - norm_decay_mult) * layer_means + norm_decay_mult * input_mean)
       layer_vars = ((1 - norm_decay_mult) * layer_vars + norm_decay_mult * input_var)
       adj_a_in = tf.math.divide(tf.subtract(a_in, layer_means), tf.sqrt(tf.add(layer_vars, eps)))

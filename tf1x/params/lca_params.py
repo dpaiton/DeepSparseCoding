@@ -111,6 +111,7 @@ class params(BaseParams):
       self.rescale_data = False
       self.whiten_data = True
       self.extract_patches = True
+      self.patch_edge_size = 16
       self.num_neurons = 768
       self.thresh_type = "soft"
       for sched_idx in range(len(self.schedule)):

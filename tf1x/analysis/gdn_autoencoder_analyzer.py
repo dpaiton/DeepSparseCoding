@@ -33,9 +33,9 @@ class GaAnalyzer(Analyzer):
         save_info)
 
   def compute_activations(self, images):
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    with tf.Session(config=config, graph=self.model.graph) as sess:
+    with tf.compat.v1.Session(config=config, graph=self.model.graph) as sess:
       feed_dict = self.model.get_feed_dict(images)
       sess.run(self.model.init_op, feed_dict)
       self.model.load_full_model(sess, self.analysis_params.cp_loc)

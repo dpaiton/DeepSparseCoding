@@ -80,6 +80,38 @@ class params(BaseParams):
         "decay_rate": 0.5,
         "staircase": True,}]
 
+    elif data_type.lower() == "field":
+      self.model_name += "_field"
+      self.num_edge_pixels = 16
+      self.num_data_channels = 1
+      self.extract_patches = True
+      self.patch_edge_size = 16
+      self.num_patches = 1e4
+      self.overlapping_patches = True
+      self.randomize_patches = True
+      self.vectorize_data = True
+      self.standardize_data = True
+      self.rescale_data = False
+      self.ae_layer_types = ["fc", "fc"]
+      self.ae_enc_channels = [256, 16]
+      self.tie_dec_weights = True
+      self.mirror_dec_architecture = True
+      self.optimizer = "adam"
+      self.batch_size = 100
+      self.ae_activation_functions = ["lrelu", "sigmoid"]
+      self.ae_dropout = [1.0] * len(self.ae_activation_functions)
+      self.cp_int = int(1e3)
+      self.gen_plot_int = int(1e3)
+      self.schedule = [
+        {"num_batches": int(1e6),
+        "weights": None,
+        "w_decay_mult": 0.001,
+        "w_norm_mult": 0.00,
+        "weight_lr": 0.001,
+        "decay_steps": int(800000),
+        "decay_rate": 0.8,
+        "staircase": True,}]
+
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
       self.num_edge_pixels = 32

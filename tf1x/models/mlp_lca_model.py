@@ -56,7 +56,7 @@ class MlpLcaModel(MlpModel):
         self.trainable_variables.update(self.lca_module.trainable_variables)
         if self.params.train_on_recon:
           if self.params.mlp_layer_types[0] == "conv":
-            data_shape = [tf.shape(input_node)[0]]+self.params.full_data_shape
+            data_shape = [tf.shape(input=input_node)[0]]+self.params.full_data_shape
             mlp_input = tf.reshape(self.lca_module.reconstruction, shape=data_shape)
           elif self.params.mlp_layer_types[0] == "fc":
             mlp_input = self.lca_module.reconstruction
@@ -79,16 +79,16 @@ class MlpLcaModel(MlpModel):
         self.label_est = tf.identity(self.mlp_module.label_est, name="label_est")
         with tf.compat.v1.variable_scope("performance_metrics") as scope:
           #LCA metrics
-          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
+          MSE = tf.reduce_mean(input_tensor=tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
-          pixel_var = tf.nn.moments(input_node, axes=[1])[1]
+          pixel_var = tf.nn.moments(x=input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.math.divide(tf.square(pixel_var), MSE)),
             name="recon_quality")
           with tf.compat.v1.variable_scope("prediction_bools"):
-            self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
-              tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
+            self.correct_prediction = tf.equal(tf.argmax(input=self.label_est, axis=1),
+              tf.argmax(input=self.label_placeholder, axis=1), name="individual_accuracy")
           with tf.compat.v1.variable_scope("accuracy"):
-            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
+            self.accuracy = tf.reduce_mean(input_tensor=tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
   def get_total_loss(self):

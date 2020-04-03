@@ -50,7 +50,7 @@ class LcaSubspaceModel(LcaModel):
 
   def compute_recon_from_group(self, sigma_in, z_in):
     a_in = tf.multiply(tf.expand_dims(sigma_in, axis=-1), z_in)
-    a_in = tf.reshape(a_in, [tf.shape(sigma_in)[0], self.params.num_neurons])
+    a_in = tf.reshape(a_in, [tf.shape(input=sigma_in)[0], self.params.num_neurons])
     return self.module.build_decoder(a_in, name="reconstruction")
 
   def generate_update_dict(self, input_data, input_labels=None, batch_step=0):

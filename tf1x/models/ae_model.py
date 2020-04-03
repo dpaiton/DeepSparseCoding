@@ -89,15 +89,15 @@ class AeModel(Model):
             data_shape = input_node.get_shape()
             if(recon_shape.ndims != data_shape.ndims):
               if(np.prod(recon_shape.as_list()[1:]) == np.prod(data_shape.as_list()[1:])):
-                self.MSE = tf.reduce_mean(tf.square(tf.subtract(input_node,
-                  tf.reshape(self.module.reconstruction, tf.shape(input_node)))),
+                self.MSE = tf.reduce_mean(input_tensor=tf.square(tf.subtract(input_node,
+                  tf.reshape(self.module.reconstruction, tf.shape(input=input_node)))),
                   axis=[1, 0], name="mean_sauared_error")
               else:
                 assert False, ("Reconstructiion and input must have the same size")
             else:
-              self.MSE = tf.reduce_mean(tf.square(tf.subtract(input_node,
+              self.MSE = tf.reduce_mean(input_tensor=tf.square(tf.subtract(input_node,
                 self.module.reconstruction)), axis=[1, 0], name="mean_squared_error")
-            pixel_var = tf.nn.moments(input_node, axes=[1])[1]
+            pixel_var = tf.nn.moments(x=input_node, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.math.divide(tf.square(pixel_var),
               self.MSE)), name="recon_quality")
 

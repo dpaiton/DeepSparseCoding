@@ -93,21 +93,21 @@ class DaeMemModule(DaeModule):
     r = mem_utils.memristor_output(v_clip, memristor_std_eps, vs_data, mus_data, sigs_data,
       interp_width=np.array(vs_data[1, 0] - vs_data[0, 0]).astype('float32'),
       error_rate = self.mem_error_rate)
-    u_out = tf.reshape(r, shape=tf.shape(u_in), name="mem_r")
+    u_out = tf.reshape(r, shape=tf.shape(input=u_in), name="mem_r")
     return u_out
 
   def build_graph(self):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       with tf.compat.v1.variable_scope("weight_inits") as scope:
-        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev = 1e-2)
-        self.b_init = tf.initializers.zeros()
+        self.w_init = tf.compat.v1.initializers.truncated_normal(mean=0.0, stddev = 1e-2)
+        self.b_init = tf.compat.v1.initializers.zeros()
 
       with tf.compat.v1.variable_scope("gdn_weight_inits") as scope:
         self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
           off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
         self.w_igdn_init = self.w_gdn_init
         b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
-        self.b_gdn_init = tf.initializers.constant(b_init_const)
+        self.b_gdn_init = tf.compat.v1.initializers.constant(b_init_const)
         self.b_igdn_init = self.b_gdn_init
 
       self.u_list = [self.data_tensor]
@@ -134,7 +134,7 @@ class DaeMemModule(DaeModule):
       with tf.compat.v1.variable_scope("probability_estimate") as scope:
         self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_latent, self.num_triangles)
 
-        ll = ef.log_likelihood(tf.nn.sigmoid(tf.reshape(self.a, [tf.shape(self.a)[0], -1])),
+        ll = ef.log_likelihood(tf.nn.sigmoid(tf.reshape(self.a, [tf.shape(input=self.a)[0], -1])),
           self.mle_thetas, self.triangle_centers)
         self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
           for _ in range(self.num_mle_steps)]

@@ -55,9 +55,9 @@ class LcaModel(Model):
             name="reconstruction")
 
         with tf.compat.v1.variable_scope("performance_metrics") as scope:
-          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.module.reconstruction)),
+          MSE = tf.reduce_mean(input_tensor=tf.square(tf.subtract(input_node, self.module.reconstruction)),
             name="mean_squared_error")
-          pixel_var = tf.nn.moments(input_node, axes=[1])[1]
+          pixel_var = tf.nn.moments(x=input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.math.divide(tf.square(pixel_var),
             MSE)), name="recon_quality")
 

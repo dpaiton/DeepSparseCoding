@@ -29,7 +29,7 @@ class DaeModel(AeModel):
     """Build the TensorFlow graph object"""
     with tf.device(self.params.device):
       with self.graph.as_default():
-        with tf.name_scope("auto_placeholders") as scope:
+        with tf.compat.v1.name_scope("auto_placeholders") as scope:
           self.ent_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="entropy_mult")
           self.noise_var_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="noise_variance_mult")
 

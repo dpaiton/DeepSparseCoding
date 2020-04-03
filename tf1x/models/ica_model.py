@@ -84,9 +84,9 @@ class IcaModel(Model):
     # VS 265 solution
     # Note this is performed on w_synthesis (A in Bell & Sejnowski 1997), while the B&S paper gives
     # an update rule for W.
-    z_a_avg = tf.math.divide(tf.matmul(tf.transpose(self.z), self.a),
-      tf.cast(tf.shape(self.input_placeholder)[0], tf.float32), name="avg_samples")
-    gradient = -tf.subtract(tf.matmul(tf.transpose(z_a_avg), weight_op[0]), weight_op[0],
+    z_a_avg = tf.math.divide(tf.matmul(tf.transpose(a=self.z), self.a),
+      tf.cast(tf.shape(input=self.input_placeholder)[0], tf.float32), name="avg_samples")
+    gradient = -tf.subtract(tf.matmul(tf.transpose(a=z_a_avg), weight_op[0]), weight_op[0],
       name=weight_name+"_gradient") # weight_op[0] is expected to be w_synth
 
     # Bell & Sejnowsky 1997

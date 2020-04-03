@@ -77,12 +77,12 @@ class DaeModule(AeModule):
       a_flat = self.flatten_feature_map(a_in)
       a_flat_sig = activation_picker("sigmoid")(a_flat)
       a_entropies = self.compute_entropies(a_flat_sig)
-      entropy_loss = tf.multiply(self.ent_mult, tf.reduce_sum(a_entropies), name="entropy_loss")
+      entropy_loss = tf.multiply(self.ent_mult, tf.reduce_sum(input_tensor=a_entropies), name="entropy_loss")
     return entropy_loss
 
   def compute_ramp_loss(self, a_in):
     reduc_dim = list(range(1,len(a_in.shape))) # Want to avg over batch
-    ramp_loss = tf.reduce_mean(tf.reduce_sum(self.bounds_slope
+    ramp_loss = tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=self.bounds_slope
       * (tf.nn.relu(a_in - self.latent_max)
       + tf.nn.relu(self.latent_min - a_in)), axis=reduc_dim))
     return ramp_loss
@@ -265,14 +265,14 @@ class DaeModule(AeModule):
   def build_graph(self):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       with tf.compat.v1.variable_scope("weight_inits") as scope:
-        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev = 1e-2)
-        self.b_init = tf.initializers.zeros()
+        self.w_init = tf.compat.v1.initializers.truncated_normal(mean=0.0, stddev = 1e-2)
+        self.b_init = tf.compat.v1.initializers.zeros()
       with tf.compat.v1.variable_scope("gdn_weight_inits") as scope:
         self.w_gdn_init = GDNGammaInitializer(diagonal_gain=self.gdn_w_init_const,
           off_diagonal_gain=self.gdn_eps, dtype=tf.float32)
         self.w_igdn_init = self.w_gdn_init
         b_init_const = np.sqrt(self.gdn_b_init_const + self.gdn_eps**2)
-        self.b_gdn_init = tf.initializers.constant(b_init_const)
+        self.b_gdn_init = tf.compat.v1.initializers.constant(b_init_const)
         self.b_igdn_init = self.b_gdn_init
       self.u_list = [self.data_tensor]
       self.w_list = []
@@ -294,12 +294,12 @@ class DaeModule(AeModule):
         self.a = tf.identity(enc_u_list[-1], name="activity")
       with tf.compat.v1.variable_scope("probability_estimate") as scope:
         self.mle_thetas, self.theta_init = ef.construct_thetas(self.num_latent, self.num_triangles)
-        ll = ef.log_likelihood(tf.nn.sigmoid(tf.reshape(self.a, [tf.shape(self.a)[0], -1])),
+        ll = ef.log_likelihood(tf.nn.sigmoid(tf.reshape(self.a, [tf.shape(input=self.a)[0], -1])),
           self.mle_thetas, self.triangle_centers)
         self.mle_update = [ef.mle(ll, self.mle_thetas, self.mle_step_size)
           for _ in range(self.num_mle_steps)]
       noise_var = self.noise_var_mult*(self.latent_max-self.latent_min)/(2*self.num_quant_bins)
-      noise = tf.random.uniform(shape=tf.stack(tf.shape(self.u_list[-1])), minval=-noise_var,
+      noise = tf.random.uniform(shape=tf.stack(tf.shape(input=self.u_list[-1])), minval=-noise_var,
         maxval=noise_var)
       a_noise = tf.add(noise, self.a)
       dec_u_list, dec_w_list, dec_b_list, dec_w_gdn_list, dec_b_gdn_list  = \

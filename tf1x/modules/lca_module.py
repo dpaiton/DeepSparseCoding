@@ -49,7 +49,7 @@ class LcaModule(object):
     return tf.matmul(self.data_tensor, self.w, name="driving_input")
 
   def compute_inhibitory_connectivity(self):
-   return (tf.matmul(tf.transpose(self.w), self.w, name="gram_matrix")
+   return (tf.matmul(tf.transpose(a=self.w), self.w, name="gram_matrix")
      - tf.constant(np.identity(self.w_shape[1], dtype=np.float32), name="identity_matrix"))
 
   def threshold_units(self, u_in, name=None):
@@ -74,27 +74,27 @@ class LcaModule(object):
    return (u_list, a_list)
 
   def build_decoder(self, input_tensor, name=None):
-    return tf.matmul(input_tensor, tf.transpose(self.w), name=name)
+    return tf.matmul(input_tensor, tf.transpose(a=self.w), name=name)
 
   def compute_recon_loss(self, recon):
     with tf.compat.v1.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(recon.shape))) # Want to avg over batch, sum over the rest
-      recon_loss = tf.reduce_mean(0.5 *
-        tf.reduce_sum(tf.square(tf.subtract(self.data_tensor, recon)),
+      recon_loss = tf.reduce_mean(input_tensor=0.5 *
+        tf.reduce_sum(input_tensor=tf.square(tf.subtract(self.data_tensor, recon)),
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
     with tf.compat.v1.variable_scope("unsupervised"):
       reduc_dim = list(range(1, len(a_in.shape))) # Want to avg over batch, sum over the rest
-      sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(tf.abs(a_in),
+      sparse_loss = self.sparse_mult * tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=tf.abs(a_in),
         axis=reduc_dim), name="sparse_loss")
     return sparse_loss
 
   def build_graph(self):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       with tf.compat.v1.variable_scope("constants") as scope:
-        u_full_shape = tf.stack([tf.shape(self.data_tensor)[0]]+self.u_shape)
+        u_full_shape = tf.stack([tf.shape(input=self.data_tensor)[0]]+self.u_shape)
         self.u_zeros = tf.zeros(shape=u_full_shape, dtype=tf.float32, name="u_zeros")
         #self.u_noise = tf.random.truncated_normal(shape=u_full_shape, mean=0.0, stddev=0.1,
         #  dtype=tf.float32, name="u_noise")

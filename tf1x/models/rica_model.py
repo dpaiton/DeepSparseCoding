@@ -25,19 +25,19 @@ class RicaModel(Model):
     self.w_shape = [self.params.num_pixels, self.params.num_neurons]
 
   def compute_recon_from_encoding(self, a_in):
-    return tf.matmul(a_in, tf.transpose(self.w), name="reconstruction")
+    return tf.matmul(a_in, tf.transpose(a=self.w), name="reconstruction")
 
   def compute_recon_loss(self, a_in):
     with tf.compat.v1.variable_scope("unsupervised"):
       recon_loss = tf.multiply(self.recon_mult,
-        tf.reduce_mean(tf.reduce_sum(tf.square(tf.subtract(self.compute_recon_from_encoding(a_in),
+        tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=tf.square(tf.subtract(self.compute_recon_from_encoding(a_in),
         self.input_placeholder)), axis=[1])), name="recon_loss")
     return recon_loss
 
   def compute_sparse_loss(self, a_in):
     with tf.compat.v1.variable_scope("unsupervised"):
       sparse_loss = tf.multiply(self.sparse_mult,
-        tf.reduce_mean(tf.reduce_sum(tf.math.log(tf.cosh(a_in)), axis=[1])), name="sparse_loss")
+        tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=tf.math.log(tf.cosh(a_in)), axis=[1])), name="sparse_loss")
     return sparse_loss
 
   def compute_total_loss(self, a_in, loss_funcs):
@@ -68,7 +68,7 @@ class RicaModel(Model):
           w_unnormalized = tf.compat.v1.get_variable(name="w", dtype=tf.float32, initializer=w_init,
             trainable=True)
           self.trainable_variables[w_unnormalized.name] = w_unnormalized
-          w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(tf.square(w_unnormalized), axis=[0],
+          w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(input_tensor=tf.square(w_unnormalized), axis=[0],
             keepdims=True), self.params.eps))
           self.w = tf.math.divide(w_unnormalized, w_norm, name="w_norm")
 
@@ -86,9 +86,9 @@ class RicaModel(Model):
 
         with tf.compat.v1.variable_scope("performance_metrics") as scope:
           with tf.compat.v1.variable_scope("reconstruction_quality"):
-            MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.reconstruction)), axis=[1, 0],
+            MSE = tf.reduce_mean(input_tensor=tf.square(tf.subtract(input_node, self.reconstruction)), axis=[1, 0],
               name="mean_squared_error")
-            pixel_var = tf.nn.moments(input_node, axes=[1])[1]
+            pixel_var = tf.nn.moments(x=input_node, axes=[1])[1]
             self.pSNRdB = tf.multiply(10.0, tf.math.log(tf.math.divide(tf.square(pixel_var), MSE)),
               name="recon_quality")
     self.graph_built = True

@@ -52,10 +52,10 @@ class IcaSubspaceModel(Model):
               dtype=tf.float32,
               initializer=Q.astype(np.float32),
               trainable=True)
-            self.w_synth = tf.transpose(self.w_analy, name="w_synth")
+            self.w_synth = tf.transpose(a=self.w_analy, name="w_synth")
             self.trainable_variables[self.w_analy.name] = self.w_analy
           with tf.compat.v1.variable_scope("inference") as scope:
-              self.s = tf.matmul(input_node, tf.transpose(self.w_analy), name="latent_vars")
+              self.s = tf.matmul(input_node, tf.transpose(a=self.w_analy), name="latent_vars")
           with tf.compat.v1.variable_scope("output") as scope:
               self.recon = tf.matmul(self.s, self.w_analy, name="recon")
           with tf.compat.v1.variable_scope("orthonormalize") as scope:
@@ -75,10 +75,10 @@ class IcaSubspaceModel(Model):
       Outputs:
         group_act shape is [num_batch, num_groups]
       """
-      new_shape = tf.stack([tf.shape(self.data_tensor)[0]]+[self.num_groups,
+      new_shape = tf.stack([tf.shape(input=self.data_tensor)[0]]+[self.num_groups,
         self.num_neurons_per_group])
       act_resh = tf.reshape(act, shape=new_shape)
-      group_act = tf.sqrt(tf.reduce_sum(tf.square(act_resh), axis=2, keepdims=False), name=name)
+      group_act = tf.sqrt(tf.reduce_sum(input_tensor=tf.square(act_resh), axis=2, keepdims=False), name=name)
       return group_act
 
     def orthonorm_weights(self, w):
@@ -93,23 +93,23 @@ class IcaSubspaceModel(Model):
       grads = []
       for img_i in range(self.params.batch_size):
         I = tf.slice(self.input_placeholder, [img_i, 0], [1, self.params.num_pixels])
-        I = tf.transpose(I)
+        I = tf.transpose(a=I)
         one_w_grad = self.compute_weight_gradient_per_input(I)
         self.one_grad = one_w_grad
         grads.append(one_w_grad)
       gradient = tf.stack(grads)
-      avg_grad = tf.math.reduce_mean(gradient, axis=0)
+      avg_grad = tf.math.reduce_mean(input_tensor=gradient, axis=0)
       self.w_grad = avg_grad # for monitoring
       return [(-avg_grad, weight_op)]
 
     def compute_weight_gradient_per_input(self, I):
-      Wt_I = tf.matmul(tf.transpose(self.w_analy), I)
+      Wt_I = tf.matmul(tf.transpose(a=self.w_analy), I)
       Wt_I_sq = tf.math.pow(Wt_I, 2)
-      pre_nonlinear_term = tf.matmul(tf.transpose(Wt_I_sq), self.R)
+      pre_nonlinear_term = tf.matmul(tf.transpose(a=Wt_I_sq), self.R)
       post_nonlinear_term = -0.5 * tf.math.pow(pre_nonlinear_term, -0.5)
-      nonlinear_term = tf.matmul(post_nonlinear_term, tf.transpose(self.R))
+      nonlinear_term = tf.matmul(post_nonlinear_term, tf.transpose(a=self.R))
       repeat_I = tf.tile(I, [1, self.params.num_neurons])
-      return  repeat_I * tf.transpose(Wt_I) * nonlinear_term
+      return  repeat_I * tf.transpose(a=Wt_I) * nonlinear_term
 
     def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
       update_dict = super(IcaSubspaceModel, self).generate_update_dict(input_data, input_labels, batch_step)

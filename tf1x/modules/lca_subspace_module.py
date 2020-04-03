@@ -48,10 +48,10 @@ class LcaSubspaceModule(LcaModule):
     Outputs:
       sigmas shape is [num_batch, num_groups]
     """
-    new_shape = tf.stack([tf.shape(self.data_tensor)[0]]+[self.num_groups,
+    new_shape = tf.stack([tf.shape(input=self.data_tensor)[0]]+[self.num_groups,
       self.num_neurons_per_group])
     a_resh = tf.reshape(a_in, shape=new_shape)
-    sigmas = tf.sqrt(tf.reduce_sum(tf.square(a_resh), axis=2, keepdims=False), name=name)
+    sigmas = tf.sqrt(tf.reduce_sum(input_tensor=tf.square(a_resh), axis=2, keepdims=False), name=name)
     return sigmas
 
   def group_directions(self, a_in, sigmas, name=None):
@@ -62,7 +62,7 @@ class LcaSubspaceModule(LcaModule):
     sigms shape [num_batch, num_neurons]
     directions shape [num_batch, num_neurons]
     """
-    directions = tf.where(tf.greater(sigmas, 0.0), tf.math.divide(a_in, sigmas, name=name),
+    directions = tf.compat.v1.where(tf.greater(sigmas, 0.0), tf.math.divide(a_in, sigmas, name=name),
       tf.zeros_like(sigmas))
     return directions
 
@@ -72,7 +72,7 @@ class LcaSubspaceModule(LcaModule):
     """
     u_amplitudes = self.reshape_groups_per_neuron(self.group_amplitudes(u_in)) # [num_batch, num_neurons]
     u_directions = self.group_directions(u_in, u_amplitudes) # [num_batch, num_neurons]
-    a_out = tf.where(tf.greater(u_amplitudes, self.sparse_mult),
+    a_out = tf.compat.v1.where(tf.greater(u_amplitudes, self.sparse_mult),
       tf.multiply(tf.subtract(u_amplitudes, self.sparse_mult), u_directions),
       self.u_zeros)
     return a_out
@@ -80,7 +80,7 @@ class LcaSubspaceModule(LcaModule):
   def compute_sparse_loss(self, a_in):
     with tf.compat.v1.variable_scope("unsupervised"):
       sigmas = self.group_amplitudes(a_in) # [num_batch, num_groups]
-      sparse_loss = self.sparse_mult * tf.reduce_mean(tf.reduce_sum(sigmas, axis=1),
+      sparse_loss = self.sparse_mult * tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=sigmas, axis=1),
         name="group_sparse_loss")
     return sparse_loss
 
@@ -93,7 +93,7 @@ class LcaSubspaceModule(LcaModule):
       group_weights = tf.reshape(self.w,
         shape=[self.num_pixels, self.num_groups, self.num_neurons_per_group], name="group_weights")
       w_orth_list = [
-        tf.reduce_sum(tf.abs(tf.matmul(tf.transpose(group_weights[:, group_idx, :]),
+        tf.reduce_sum(input_tensor=tf.abs(tf.matmul(tf.transpose(a=group_weights[:, group_idx, :]),
         group_weights[:, group_idx, :]) - tf.eye(num_rows=self.num_neurons_per_group)))
         for group_idx in range(self.num_groups)]
       group_orthogonalization_loss = tf.multiply(self.group_orth_mult, tf.add_n(w_orth_list),

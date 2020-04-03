@@ -43,9 +43,9 @@ class LcaConvAnalyzer(LcaAnalyzer):
           self.loss_dict["recon_loss"].append(current_loss_list[0])
           self.loss_dict["sparse_loss"].append(current_loss_list[1])
           self.loss_dict["total_loss"].append(tf.add_n(current_loss_list, name="total_loss"))
-          MSE = tf.reduce_mean(tf.square(tf.subtract(self.model.input_placeholder, current_recon)))
+          MSE = tf.reduce_mean(input_tensor=tf.square(tf.subtract(self.model.input_placeholder, current_recon)))
           reduc_dim = list(range(1, len(self.model.input_placeholder.shape)))
-          pixel_var = tf.nn.moments(self.model.input_placeholder, axes=reduc_dim)[1]
+          pixel_var = tf.nn.moments(x=self.model.input_placeholder, axes=reduc_dim)[1]
           pSNRdB = tf.multiply(10.0, ef.safe_log(tf.math.divide(tf.square(pixel_var), MSE)))
           self.psnr_list.append(pSNRdB)
 

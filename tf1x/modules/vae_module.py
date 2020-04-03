@@ -56,8 +56,8 @@ class VaeModule(AeModule):
     self.noise_level = noise_level
     with tf.compat.v1.variable_scope(variable_scope) as scope:
       if self.noise_level > 0.0:
-          self.corrupt_data = tf.add(tf.random.normal(shape=tf.shape(data_tensor),
-            mean=tf.reduce_mean(data_tensor), stddev=noise_level, dtype=tf.float32),
+          self.corrupt_data = tf.add(tf.random.normal(shape=tf.shape(input=data_tensor),
+            mean=tf.reduce_mean(input_tensor=data_tensor), stddev=noise_level, dtype=tf.float32),
             data_tensor, name="noisy_data")
       else:
         self.corrupt_data = tf.identity(data_tensor, name="clean_data")
@@ -113,8 +113,8 @@ class VaeModule(AeModule):
       if self.posterior_prior.lower() == "gauss_gauss":
         mean = dist_param1
         logvar = dist_param2
-        latent_loss = self.kld_mult * tf.reduce_mean(-0.5 * tf.reduce_sum(1.0 + logvar
-          - tf.exp(logvar) - tf.square(mean), reduc_dim))
+        latent_loss = self.kld_mult * tf.reduce_mean(input_tensor=-0.5 * tf.reduce_sum(input_tensor=1.0 + logvar
+          - tf.exp(logvar) - tf.square(mean), axis=reduc_dim))
       elif self.posterior_prior.lower() == "gauss_laplacian":
         assert False, ("Not implemented.")
       elif self.posterior_prior.lower() == "cauchy_cauchy":
@@ -124,9 +124,9 @@ class VaeModule(AeModule):
           post_scale = dist_param2
           prior_loc = self.prior_params["cauchy_location"]
           prior_scale = self.prior_params["cauchy_scale"]
-          latent_loss = self.kld_mult * tf.reduce_mean(tf.reduce_sum(tf.math.log(
+          latent_loss = self.kld_mult * tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=tf.math.log(
             tf.divide(tf.square(post_scale + prior_scale) + tf.square(post_loc - prior_loc),
-            4.0 * post_scale * prior_loc)), reduc_dim))
+            4.0 * post_scale * prior_loc)), axis=reduc_dim))
       else:
         assert False, (
           "posterior_prior parameter must be 'cauchy_cauchy', 'gauss_gauss', or 'gauss_laplacian', not %s"%(
@@ -198,14 +198,14 @@ class VaeModule(AeModule):
   def build_graph(self):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       with tf.compat.v1.variable_scope("weight_inits") as scope:
-        self.w_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.01)
-        self.w_normal_init = tf.contrib.layers.variance_scaling_initializer()
-        self.w_xavier_init = tf.contrib.layers.xavier_initializer(uniform=False)
+        self.w_init = tf.compat.v1.initializers.truncated_normal(mean=0.0, stddev=0.01)
+        self.w_normal_init = tf.compat.v1.keras.initializers.VarianceScaling(scale=2.0)
+        self.w_xavier_init = tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution=("uniform" if False else "truncated_normal"))
         self.w_normed_enc_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
           axis=0, epsilon=1e-12, dtype=tf.float32) #TODO: Fix axis to be general to conv layers
         self.w_normed_dec_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
           axis=-1, epsilon=1e-12, dtype=tf.float32)
-        self.b_init = tf.initializers.constant(1e-5)
+        self.b_init = tf.compat.v1.initializers.constant(1e-5)
 
       self.u_list = [self.corrupt_data]
       self.w_list = []
@@ -240,7 +240,7 @@ class VaeModule(AeModule):
         noise_type = "standard_normal"
       elif "cauchy_" in self.posterior_prior:
         noise_type = "standard_cauchy"
-      noise = self.gen_noise(noise_type, shape=tf.shape(self.latent_logvar))
+      noise = self.gen_noise(noise_type, shape=tf.shape(input=self.latent_logvar))
       self.act = tf.identity(self.reparameterize(self.latent_mean,
         self.latent_logvar, noise), name="activity")
       self.u_list.append(self.act)

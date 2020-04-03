@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import tensorflow as tf
+import tensorflow_probability as tfp
 
 from DeepSparseCoding.tf1x.utils.logger import Logger
 import DeepSparseCoding.tf1x.utils.data_processing as dp
@@ -173,8 +174,12 @@ class Model(object):
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
           if self.params.optimizer == "lbfgsb":
-            self.minimizer = tf.contrib.opt.ScipyOptimizerInterface(self.total_loss,
-              options={"maxiter":self.params.maxiter}) # Default method is L-BFGSB
+            self.minimizer = tf.optimizer.lbfgs_minimize(
+              value_and_gradients_function=self.total_loss,
+              initial_position=self.trainable_variables,
+              max_iterations=self.params.maxiter)
+            #self.minimizer = tf.contrib.opt.ScipyOptimizerInterface(self.total_loss,
+            #  options={"maxiter":self.params.maxiter}) # Default method is L-BFGSB
           for schedule_idx, sch in enumerate(self.params.schedule):
             sch_grads_and_vars = list() # [weight_idx]
             sch_apply_grads = list() # [weight_idx]
@@ -425,10 +430,10 @@ class Model(object):
     Outputs:
       sliced_input [Tensor] where the last index is sliced using indices
     """
-    t_input = tf.transpose(input)
+    t_input = tf.transpose(a=input)
     gather_idxs = np.array([[i] for i in indices]).astype(np.int32)
     t_actual = tf.gather_nd(t_input, gather_idxs)
-    actual = tf.transpose(t_actual)
+    actual = tf.transpose(a=t_actual)
     return actual
 
   def reshape_dataset(self, dataset, params):

@@ -72,32 +72,32 @@ class NeuronVisualizationModule(object):
       layer_activity: tf variable for neuron layer activations
     """
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
-      self.layer_activity = layer_activity + tf.random.normal(tf.shape(layer_activity), mean=0.001,
+      self.layer_activity = layer_activity + tf.random.normal(tf.shape(input=layer_activity), mean=0.001,
         stddev=0.001)
       with tf.compat.v1.variable_scope("loss") as scope:
         if(self.method == "erhan"):
           self.selected_activities = tf.matmul(self.layer_activity, self.selection_vector,
             name="selected_activities")
-          self.vis_loss = -tf.reduce_sum(self.selected_activities)
+          self.vis_loss = -tf.reduce_sum(input_tensor=self.selected_activities)
         if(self.l2_regularize_coeff is not None):
           self.vis_loss = self.vis_loss + self.l2_regularize_coeff * tf.nn.l2_loss(self.vis_pert)
           #self.vis_loss += self.l2_regularize_coeff * tf.reduce_sum(tf.norm(self.vis_pert,
           #  ord="euclidean", axis=1, keepdims=False))
         if(self.variation_coeff is not None):
           if len(self.input_shape) == 2: # vectorize input - fully connected model
-            vis_img_shape = (tf.shape(self.vis_pert)[0], int(np.sqrt(self.input_shape[1])),
+            vis_img_shape = (tf.shape(input=self.vis_pert)[0], int(np.sqrt(self.input_shape[1])),
               int(np.sqrt(self.input_shape[1])), 1)
             self.vis_loss = (self.vis_loss + self.variation_coeff
-              * tf.reduce_sum(tf.image.total_variation(tf.reshape(self.vis_pert, vis_img_shape))))
+              * tf.reduce_sum(input_tensor=tf.image.total_variation(tf.reshape(self.vis_pert, vis_img_shape))))
           else: # unvectorized input - conv model
             self.vis_loss = (self.vis_loss + self.variation_coeff
-              * tf.reduce_sum(tf.image.total_variation(self.vis_pert)))
+              * tf.reduce_sum(input_tensor=tf.image.total_variation(self.vis_pert)))
         else:
           assert False, ("method " + self.method +" not recognized.\n"+
             "Options are 'erhan'.")
       with tf.compat.v1.variable_scope("optimizer") as scope:
         if(self.optimizer == "adam"):
-          self.vis_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
+          self.vis_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=self.step_size)
           # code below ensures that adam variables are also reset when the reset op is run
           initializer_ops = [v.initializer for v in self.vis_opt.variables()]
           self.reset = tf.group(initializer_ops + [self.reset])

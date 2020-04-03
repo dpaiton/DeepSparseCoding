@@ -9,17 +9,17 @@ class IcaPcaModel(IcaModel):
     super(IcaPcaModel, self).build_graph_from_input(input_node)
     with self.graph.as_default():
       with tf.compat.v1.variable_scope("covariance") as scope:
-        self.act_corr = tf.math.divide(tf.matmul(tf.transpose(tf.nn.relu(self.a)),
-          tf.nn.relu(self.a)), tf.to_float(tf.shape(input_node)[0]), name="a_corr_matrix")
-        act_centered = tf.nn.relu(self.a) - tf.reduce_mean(tf.nn.relu(self.a), axis=[1],
-          keep_dims=True)
-        self.act_cov = tf.math.divide(tf.matmul(tf.transpose(act_centered), act_centered),
-          tf.to_float(tf.shape(input_node)[0]), name="a_cov_matrix")
+        self.act_corr = tf.math.divide(tf.matmul(tf.transpose(a=tf.nn.relu(self.a)),
+          tf.nn.relu(self.a)), tf.cast(tf.shape(input=input_node)[0], dtype=tf.float32), name="a_corr_matrix")
+        act_centered = tf.nn.relu(self.a) - tf.reduce_mean(input_tensor=tf.nn.relu(self.a), axis=[1],
+          keepdims=True)
+        self.act_cov = tf.math.divide(tf.matmul(tf.transpose(a=act_centered), act_centered),
+          tf.cast(tf.shape(input=input_node)[0], dtype=tf.float32), name="a_cov_matrix")
 
       with tf.compat.v1.variable_scope("pooling_filters") as scope:
         self.full_cov = tf.compat.v1.placeholder(tf.float32, shape=(self.num_neurons, self.num_neurons),
           name="full_covariance_matrix")
-        s, u, v = tf.svd(self.full_cov, full_matrices=True, name="a_svd")
+        s, u, v = tf.linalg.svd(self.full_cov, full_matrices=True, name="a_svd")
         top_vecs = u[:, :self.params.num_pooling_units]
-        self.pooling_filters = tf.transpose(tf.matmul(top_vecs, tf.transpose(top_vecs)),
+        self.pooling_filters = tf.transpose(a=tf.matmul(top_vecs, tf.transpose(a=top_vecs)),
           name="pooling_filters")

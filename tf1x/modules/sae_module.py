@@ -42,12 +42,12 @@ class SaeModule(AeModule):
   def compute_sparse_loss(self, a_in):
     with tf.compat.v1.variable_scope("unsupervised"):
       reduc_dims = tuple(range(len(a_in.get_shape().as_list()) - 1))
-      avg_act = tf.reduce_mean(a_in, axis=reduc_dims, name="batch_avg_activity")
+      avg_act = tf.reduce_mean(input_tensor=a_in, axis=reduc_dims, name="batch_avg_activity")
       p_dist = self.target_act * tf.subtract(ef.safe_log(self.target_act),
         ef.safe_log(avg_act), name="kl_p")
       q_dist = (1-self.target_act) * tf.subtract(ef.safe_log(1-self.target_act),
         ef.safe_log(1-avg_act), name="kl_q")
-      kl_divergence = tf.reduce_sum(tf.add(p_dist, q_dist), name="kld")
+      kl_divergence = tf.reduce_sum(input_tensor=tf.add(p_dist, q_dist), name="kld")
       sparse_loss = tf.multiply(self.sparse_mult, kl_divergence, name="sparse_loss")
     return sparse_loss
 

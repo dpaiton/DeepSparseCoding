@@ -37,7 +37,7 @@ def compute_gdn_mult(u_in, w_gdn, b_gdn, w_min, b_min, conv, eps=1e-6):
   w_threshold = tf.subtract(tf.square(tfc.lower_bound(w_gdn, w_bound)), tf.square(eps))
   b_threshold = tf.subtract(tf.square(tfc.lower_bound(b_gdn, b_bound)), tf.square(eps))
   if conv:
-    u_in_shape = tf.shape(u_in)
+    u_in_shape = tf.shape(input=u_in)
     collapsed_u_sq = tf.reshape(tf.square(u_in),
       shape=tf.stack([u_in_shape[0]*u_in_shape[1]*u_in_shape[2], u_in_shape[3]]))
     weighted_norm = tf.reshape(tf.matmul(collapsed_u_sq, w_threshold), shape=u_in_shape)
@@ -59,18 +59,18 @@ def gdn(u_in, w, b, w_thresh_min, b_thresh_min, eps, inverse, conv, name=None):
 def lca_threshold(u_in, thresh_type, rectify, sparse_threshold, name=None):
   if thresh_type == "soft":
     if rectify:
-      a_out = tf.where(tf.greater(u_in, sparse_threshold), u_in - sparse_threshold,
+      a_out = tf.compat.v1.where(tf.greater(u_in, sparse_threshold), u_in - sparse_threshold,
         tf.zeros_like(u_in), name=name)
     else:
-      a_out = tf.where(tf.greater_equal(u_in, sparse_threshold), u_in - sparse_threshold,
-        tf.where(tf.less_equal(u_in, -sparse_threshold), u_in + sparse_threshold,
+      a_out = tf.compat.v1.where(tf.greater_equal(u_in, sparse_threshold), u_in - sparse_threshold,
+        tf.compat.v1.where(tf.less_equal(u_in, -sparse_threshold), u_in + sparse_threshold,
         tf.zeros_like(u_in)), name=name)
   elif thresh_type == "hard":
     if rectify:
-      a_out = tf.where(tf.greater(u_in, sparse_threshold), u_in, self.u_zeros, name=name)
+      a_out = tf.compat.v1.where(tf.greater(u_in, sparse_threshold), u_in, self.u_zeros, name=name)
     else:
-      a_out = tf.where(tf.greater(u_in, sparse_threshold), u_in,
-        tf.where(tf.less(u_in, -sparse_threshold), u_in, self.u_zeros), name=name)
+      a_out = tf.compat.v1.where(tf.greater(u_in, sparse_threshold), u_in,
+        tf.compat.v1.where(tf.less(u_in, -sparse_threshold), u_in, self.u_zeros), name=name)
   else:
     assert False, ("Parameter thresh_type must be 'soft' or 'hard', not "+thresh_type)
   return a_out

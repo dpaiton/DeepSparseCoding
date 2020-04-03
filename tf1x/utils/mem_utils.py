@@ -52,8 +52,8 @@ def normalizer_t(x,new_min,new_max):
     return (((x-x_min)/(x_max-x_min))*(new_max-new_min)+new_min)
 
 def tensor_scaler(x,new_min,new_max):
-    x_max = tf.reduce_max(x)
-    x_min = tf.reduce_min(x)
+    x_max = tf.reduce_max(input_tensor=x)
+    x_min = tf.reduce_min(input_tensor=x)
     return (((x-x_min)/(x_max-x_min))*(new_max-new_min)+new_min)
 
 def gauss_interp(samp, xs, ys, interp_width, ratio=0.75):
@@ -75,7 +75,7 @@ def gauss_interp(samp, xs, ys, interp_width, ratio=0.75):
     -------
     interp_func : tf.tensor (batch_size, n_m)
     """
-    samp_shape = tf.shape(samp)
+    samp_shape = tf.shape(input=samp)
     if samp.get_shape().ndims == 4:
       collapsed_samp = tf.reshape(samp,
         shape=tf.stack([samp_shape[0], 1, samp_shape[1]*samp_shape[2]*samp_shape[3]]))
@@ -88,7 +88,7 @@ def gauss_interp(samp, xs, ys, interp_width, ratio=0.75):
     norm_factor = np.array(norm_factor, dtype=np.float32)
     gauss_mean = tf.subtract(collapsed_samp, xs)
     gauss = tf.exp(tf.multiply(-0.5, tf.math.divide(tf.square(gauss_mean), tf.square(sig))))
-    output = tf.reduce_sum(tf.multiply(tf.math.divide(ys, norm_factor), gauss), axis=[1])
+    output = tf.reduce_sum(input_tensor=tf.multiply(tf.math.divide(ys, norm_factor), gauss), axis=[1])
     return output
 
 def memristor_output(v, eps, vs, mus, sigs, interp_width, error_rate=0.0):
@@ -109,10 +109,9 @@ def memristor_output(v, eps, vs, mus, sigs, interp_width, error_rate=0.0):
         #indices = np.random.permutation(mean.size)[:num_corrupt]
         #mean[np.unravel_index(indeces,mean.shape)] = 1.1*np.amin(mean)
     mean_drop = tf.nn.dropout(mean, rate=error_rate)
-    #mean_drop = tf.nn.dropout(mean, keep_prob=1-error_rate)
-    drop_val = tf.multiply(1.1, tf.reduce_min(mean))
+    drop_val = tf.multiply(1.1, tf.reduce_min(input_tensor=mean))
     drop_val_tensor = tf.multiply(drop_val, tf.ones_like(mean))
-    mean = tf.where(tf.equal(mean_drop, tf.constant(0.0)), drop_val_tensor, mean)
+    mean = tf.compat.v1.where(tf.equal(mean_drop, tf.constant(0.0)), drop_val_tensor, mean)
     return mean + eps * sdev
 
 # Data Iteration Utils

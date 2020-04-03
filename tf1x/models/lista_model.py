@@ -46,7 +46,7 @@ class ListaModel(Model):
         self.lca_module = self.build_lca_module(input_node)
 
         with tf.compat.v1.variable_scope("weight_inits") as scope:
-          self.w_init = tf.truncated_normal_initializer(stddev=0.01)
+          self.w_init = tf.compat.v1.truncated_normal_initializer(stddev=0.01)
           self.s_init = init_ops.GDNGammaInitializer(diagonal_gain=0.0, off_diagonal_gain=0.001)
 
         with tf.compat.v1.variable_scope("weights") as scope:
@@ -67,7 +67,7 @@ class ListaModel(Model):
         with tf.compat.v1.variable_scope("loss") as scope:
           reduc_dim = list(range(1, len(self.lca_module.a.shape)))
           labels = tf.stop_gradient(self.lca_module.a)
-          self.lista_loss = tf.reduce_mean(tf.reduce_sum(tf.square(labels - self.a),
+          self.lista_loss = tf.reduce_mean(input_tensor=tf.reduce_sum(input_tensor=tf.square(labels - self.a),
             axis=reduc_dim))
           #Loss switches based on train_lca flag
           self.total_loss = self.train_lca * self.lca_module.total_loss + \
@@ -80,9 +80,9 @@ class ListaModel(Model):
 
         with tf.compat.v1.variable_scope("performance_metrics") as scope:
           #LCA metrics
-          MSE = tf.reduce_mean(tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
+          MSE = tf.reduce_mean(input_tensor=tf.square(tf.subtract(input_node, self.lca_module.reconstruction)),
             axis=[1, 0], name="mean_squared_error")
-          pixel_var = tf.nn.moments(input_node, axes=[1])[1]
+          pixel_var = tf.nn.moments(x=input_node, axes=[1])[1]
           self.pSNRdB = tf.multiply(10.0, ef.safe_log(tf.math.divide(tf.square(pixel_var),
             MSE)), name="recon_quality")
 

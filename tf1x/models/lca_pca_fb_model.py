@@ -45,8 +45,8 @@ class LcaPcaFbModel(LcaPcaModel):
     #fb_loss = tf.multiply(self.fb_mult,
     #  tf.reduce_sum(tf.square(tf.math.divide(current_b, self.eigen_vals)), axis=1), name="feedback")
 
-    fb_loss = tf.multiply(self.fb_mult, tf.reduce_sum(tf.square(tf.matmul(tf.matmul(current_b,
-      tf.transpose(self.eigen_vecs)), self.inv_sigma)), axis=1), name="feedback")
+    fb_loss = tf.multiply(self.fb_mult, tf.reduce_sum(input_tensor=tf.square(tf.matmul(tf.matmul(current_b,
+      tf.transpose(a=self.eigen_vecs)), self.inv_sigma)), axis=1), name="feedback")
 
     return fb_loss
 
@@ -55,7 +55,7 @@ class LcaPcaFbModel(LcaPcaModel):
     # TODO: Figure out why it would be zero at all?
     #  None probably comes from compute_feedback_loss. Should be asserting that none are None
     #lca_fb = lca_fb_grad if lca_fb_grad is not None else tf.zeros_like(a_in)
-    lca_fb = tf.gradients(self.compute_feedback_loss(a_in), a_in)[0]
+    lca_fb = tf.gradients(ys=self.compute_feedback_loss(a_in), xs=a_in)[0]
     return lca_fb
 
   def step_inference(self, u_in, a_in, b, g, step):
@@ -79,7 +79,7 @@ class LcaPcaFbModel(LcaPcaModel):
 
   def compute_mean_feedback_loss(self, a_in):
     with tf.compat.v1.variable_scope("unsupervised"):
-      feedback_loss = tf.reduce_mean(self.compute_feedback_loss(a_in), axis=0,
+      feedback_loss = tf.reduce_mean(input_tensor=self.compute_feedback_loss(a_in), axis=0,
         name="feedback_loss")
     return feedback_loss
 

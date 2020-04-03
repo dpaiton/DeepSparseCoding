@@ -83,8 +83,8 @@ input_data = dp.reshape_data(data_batch, flatten=True)[0]
 #latent_representation = analyzer.evaluate_model(input_data, var_names=[tsne_params.eval_key])
 latent_representation = analyzer.compute_pooled_activations(input_data)
 
-tf.reset_default_graph()
-sess = tf.InteractiveSession()
+tf.compat.v1.reset_default_graph()
+sess = tf.compat.v1.InteractiveSession()
 embedding_var = tf.Variable(latent_representation, name="image_embedding") # Model embedding
 #embedding_var = tf.Variable(latent_representation[tsne_params.eval_key], name="image_embedding") # Model embedding
 #embedding_var = tf.Variable(input_data, name="image_embedding") # Identity embedding

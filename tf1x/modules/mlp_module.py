@@ -142,7 +142,7 @@ class MlpModule(object):
         initializer=self.b_init, trainable=True)
       self.trainable_variables[b.name] = b
 
-      conv_out = act_func(tf.add(tf.nn.conv2d(a_in, w, strides, padding="SAME"),
+      conv_out = act_func(tf.add(tf.nn.conv2d(input=a_in, filters=w, strides=strides, padding="SAME"),
         b, name="conv_out"+str(layer_id)))
       if self.batch_norm[layer_id] is not None:
         bn = BatchNormalizationModule(conv_out, self.batch_norm[layer_id], self.eps,
@@ -150,7 +150,6 @@ class MlpModule(object):
         conv_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
       conv_out = tf.nn.dropout(conv_out, rate=1-self.dropout[layer_id])
-      #conv_out = tf.nn.dropout(conv_out, keep_prob=self.dropout[layer_id])
 
       if self.lrn[layer_id] is not None:
         if self.lrn[layer_id] == "pre":
@@ -188,7 +187,6 @@ class MlpModule(object):
         fc_out = bn.get_output()
         self.trainable_variables.update(bn.trainable_variables)
       fc_out = tf.nn.dropout(fc_out, rate=1-self.dropout[layer_id])
-      #fc_out = tf.nn.dropout(fc_out, keep_prob=self.dropout[layer_id])
       if self.max_pool[layer_id]:
         fc_out = tf.compat.v1.nn.max_pool2d(fc_out, ksize=self.max_pool_ksize[layer_id],
           strides=self.max_pool_strides[layer_id], padding="SAME")
@@ -213,7 +211,7 @@ class MlpModule(object):
       #DEPRECATE a_resh = tf.compat.v1.layers.flatten(act_list[layer_id])
       #DEPRECATE w_shape = [a_resh.get_shape()[1].value, self.fc_output_channels[fc_layer_id]]
       layer_shape = act_list[layer_id].get_shape().as_list()[1:]
-      a_resh = tf.reshape(act_list[layer_id], [tf.shape(act_list[layer_id])[0], -1]) # flatten
+      a_resh = tf.reshape(act_list[layer_id], [tf.shape(input=act_list[layer_id])[0], -1]) # flatten
       w_shape = [np.prod(layer_shape), self.fc_output_channels[fc_layer_id]]
       a_out, w, b = self.fc_layer_maker(layer_id, a_resh, w_shape, self.output_channels[layer_id],
         self.act_funcs[layer_id])
@@ -224,7 +222,7 @@ class MlpModule(object):
 
   def compute_weight_decay_loss(self):
     with tf.compat.v1.variable_scope("w_decay"):
-      w_decay_list = [tf.reduce_sum(tf.square(w)) for w in self.weight_list]
+      w_decay_list = [tf.reduce_sum(input_tensor=tf.square(w)) for w in self.weight_list]
       decay_loss = tf.multiply(0.5*self.decay_mult, tf.add_n(w_decay_list))
     return decay_loss
 
@@ -233,7 +231,7 @@ class MlpModule(object):
       w_norm_list = []
       for w in self.weight_list:
         reduc_axis = np.arange(1, len(w.get_shape().as_list()))
-        w_norm = tf.reduce_sum(tf.square(1 - tf.reduce_sum(tf.square(w), axis=reduc_axis)))
+        w_norm = tf.reduce_sum(input_tensor=tf.square(1 - tf.reduce_sum(input_tensor=tf.square(w), axis=reduc_axis)))
         w_norm_list.append(w_norm)
       norm_loss = tf.multiply(0.5*self.norm_mult, tf.add_n(w_norm_list))
     return norm_loss
@@ -244,8 +242,8 @@ class MlpModule(object):
     """
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       with tf.compat.v1.variable_scope("weight_inits") as scope:
-        self.w_init = tf.truncated_normal_initializer(stddev=0.01)
-        self.b_init = tf.initializers.constant(0.1)
+        self.w_init = tf.compat.v1.truncated_normal_initializer(stddev=0.01)
+        self.b_init = tf.compat.v1.initializers.constant(0.1)
 
       self.layer_list, self.weight_list, self.bias_list = self.make_layers()
 
@@ -258,8 +256,8 @@ class MlpModule(object):
           with tf.compat.v1.variable_scope(self.loss_type):
             if(self.loss_type == "softmax_cross_entropy"):
               ## For semi-supervised learning, loss is 0 if there is no label
-              self.label_mult = tf.reduce_sum(self.label_tensor, axis=[1]) # vector with len [batch]
-              label_classes = tf.argmax(self.label_tensor, axis=-1)
+              self.label_mult = tf.reduce_sum(input_tensor=self.label_tensor, axis=[1]) # vector with len [batch]
+              label_classes = tf.argmax(input=self.label_tensor, axis=-1)
 
               self.cross_entropy_loss = (self.label_mult
                 * tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label_classes,
@@ -270,9 +268,9 @@ class MlpModule(object):
               #  self.label_est, self.eps, 1.0))), axis=[1])) # vector with len [batch]
               self.sum_loss = self.cross_entropy_loss
               #Doing this to avoid divide by zero
-              label_count = tf.reduce_sum(self.label_mult) # number of non-ignore labels in batch
+              label_count = tf.reduce_sum(input_tensor=self.label_mult) # number of non-ignore labels in batch
               f1 = lambda: tf.zeros_like(self.cross_entropy_loss)
-              f2 = lambda: tf.reduce_sum(self.cross_entropy_loss) / label_count
+              f2 = lambda: tf.reduce_sum(input_tensor=self.cross_entropy_loss) / label_count
               pred_fn_pairs = {
                 tf.equal(label_count, tf.constant(0.0)): f1, # all labels are 'ignore'
                 tf.greater(label_count, tf.constant(0.0)): f2} # mean over non-ignore labels
@@ -284,9 +282,9 @@ class MlpModule(object):
               reduc_dim = list(range(1, len(self.label_tensor.shape)))
               # Label_tensor sometimes can depend on trainable variables
               labels = tf.stop_gradient(self.label_tensor)
-              self.l2_loss = tf.reduce_sum(tf.square(labels - self.layer_list[-1]), axis=reduc_dim)
-              self.sum_loss = tf.reduce_sum(self.l2_loss)
-              self.mean_loss = tf.reduce_mean(self.l2_loss)
+              self.l2_loss = tf.reduce_sum(input_tensor=tf.square(labels - self.layer_list[-1]), axis=reduc_dim)
+              self.sum_loss = tf.reduce_sum(input_tensor=self.l2_loss)
+              self.mean_loss = tf.reduce_mean(input_tensor=self.l2_loss)
           self.supervised_loss = self.mean_loss
         self.total_loss = self.supervised_loss + self.compute_weight_decay_loss() + \
           self.compute_weight_norm_loss()

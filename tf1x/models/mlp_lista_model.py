@@ -54,7 +54,7 @@ class MlpListaModel(MlpModel):
 
         # LISTA module
         with tf.compat.v1.variable_scope("weight_inits") as scope:
-          self.w_init = tf.truncated_normal_initializer(mean=0, stddev=0.05)
+          self.w_init = tf.compat.v1.truncated_normal_initializer(mean=0, stddev=0.05)
           self.s_init = init_ops.GDNGammaInitializer(diagonal_gain=0.0, off_diagonal_gain=0.001,
             dtype=tf.float32)
 
@@ -88,10 +88,10 @@ class MlpListaModel(MlpModel):
         with tf.compat.v1.variable_scope("performance_metrics") as scope:
           #LISTA metrics
           with tf.compat.v1.variable_scope("prediction_bools"):
-            self.correct_prediction = tf.equal(tf.argmax(self.label_est, axis=1),
-              tf.argmax(self.label_placeholder, axis=1), name="individual_accuracy")
+            self.correct_prediction = tf.equal(tf.argmax(input=self.label_est, axis=1),
+              tf.argmax(input=self.label_placeholder, axis=1), name="individual_accuracy")
           with tf.compat.v1.variable_scope("accuracy"):
-            self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction,
+            self.accuracy = tf.reduce_mean(input_tensor=tf.cast(self.correct_prediction,
               tf.float32), name="avg_accuracy")
 
   def get_total_loss(self):

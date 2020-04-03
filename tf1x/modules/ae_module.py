@@ -109,14 +109,14 @@ class AeModule(object):
       w_norm_list = []
       for w in self.w_list:
         reduc_axis = np.arange(1, len(w.get_shape().as_list()))
-        w_norm = tf.reduce_sum(tf.square(1 - tf.reduce_sum(tf.square(w), axis=reduc_axis)))
+        w_norm = tf.reduce_sum(input_tensor=tf.square(1 - tf.reduce_sum(input_tensor=tf.square(w), axis=reduc_axis)))
         w_norm_list.append(w_norm)
       norm_loss = tf.multiply(0.5 * self.w_norm_mult, tf.add_n(w_norm_list))
     return norm_loss
 
   def compute_weight_decay_loss(self):
     with tf.compat.v1.variable_scope("unsupervised"):
-      w_decay_list = [tf.reduce_sum(tf.square(w)) for w in self.w_list]
+      w_decay_list = [tf.reduce_sum(input_tensor=tf.square(w)) for w in self.w_list]
       decay_loss = tf.multiply(0.5*self.w_decay_mult, tf.add_n(w_decay_list))
     return decay_loss
 
@@ -127,12 +127,12 @@ class AeModule(object):
       data_shape = self.data_tensor.get_shape()
       if(recon_shape.ndims != data_shape.ndims):
         if(np.prod(recon_shape.as_list()[1:]) == np.prod(data_shape.as_list()[1:])):
-          reconstruction = tf.reshape(reconstruction, tf.shape(self.data_tensor))
+          reconstruction = tf.reshape(reconstruction, tf.shape(input=self.data_tensor))
         else:
           assert False, ("Reconstructiion and input must have the same size")
       reduc_dim = list(range(1, len(reconstruction.shape)))# We want to avg over batch
       recon_loss = 0.5 * tf.reduce_mean(
-        tf.reduce_sum(tf.square(tf.subtract(reconstruction, self.data_tensor)),
+        input_tensor=tf.reduce_sum(input_tensor=tf.square(tf.subtract(reconstruction, self.data_tensor)),
         axis=reduc_dim), name="recon_loss")
     return recon_loss
 
@@ -187,18 +187,18 @@ class AeModule(object):
     if conv:
       strides = self.all_strides[layer_id]
       if decode:
-        height_const = tf.shape(input_tensor)[1] % strides[1]
-        out_height = (tf.shape(input_tensor)[1] * strides[1]) - height_const
-        width_const = tf.shape(input_tensor)[2] % strides[2]
-        out_width = (tf.shape(input_tensor)[2] * strides[2]) - width_const
-        out_shape = tf.stack([tf.shape(input_tensor)[0], # Batch
+        height_const = tf.shape(input=input_tensor)[1] % strides[1]
+        out_height = (tf.shape(input=input_tensor)[1] * strides[1]) - height_const
+        width_const = tf.shape(input=input_tensor)[2] % strides[2]
+        out_width = (tf.shape(input=input_tensor)[2] * strides[2]) - width_const
+        out_shape = tf.stack([tf.shape(input=input_tensor)[0], # Batch
           out_height, # Height
           out_width, # Width
-          tf.shape(w)[2]]) # Channels
+          tf.shape(input=w)[2]]) # Channels
         pre_act = tf.add(tf.nn.conv2d_transpose(input_tensor, w, out_shape, strides,
           padding="SAME"), b)
       else:
-        pre_act = tf.add(tf.nn.conv2d(input_tensor, w, strides, padding="SAME"), b)
+        pre_act = tf.add(tf.nn.conv2d(input=input_tensor, filters=w, strides=strides, padding="SAME"), b)
     else:
       pre_act = tf.add(tf.matmul(input_tensor, w), b)
     return pre_act
@@ -247,7 +247,6 @@ class AeModule(object):
       pre_act = self.compute_pre_activation(layer_id, input_tensor, w, b, conv, decode)
       output_tensor = activation_function(pre_act)
       output_tensor = tf.nn.dropout(output_tensor, rate=1-keep_prob)
-      #output_tensor = tf.nn.dropout(output_tensor, keep_prob=keep_prob)
     return output_tensor, w, b
 
   def build_encoder(self, input_tensor, activation_functions):
@@ -345,13 +344,13 @@ class AeModule(object):
   def build_graph(self):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       with tf.compat.v1.variable_scope("weight_inits") as scope:
-        self.w_normal_init = tf.initializers.truncated_normal(mean=0.0, stddev=0.001)
-        self.w_xavier_init = tf.contrib.layers.xavier_initializer(uniform=False)
+        self.w_normal_init = tf.compat.v1.initializers.truncated_normal(mean=0.0, stddev=0.001)
+        self.w_xavier_init = tf.compat.v1.keras.initializers.VarianceScaling(scale=1.0, mode="fan_avg", distribution=("uniform" if False else "truncated_normal"))
         self.w_normed_enc_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
           axis=0, epsilon=1e-12, dtype=tf.float32) #TODO: Fix axis to be general to conv layers
         self.w_normed_dec_init = L2NormalizedTruncatedNormalInitializer(mean=0.0, stddev=0.001,
           axis=-1, epsilon=1e-12, dtype=tf.float32)
-        self.b_init = tf.initializers.constant(1e-4)
+        self.b_init = tf.compat.v1.initializers.constant(1e-4)
       self.u_list = [self.data_tensor]
       self.w_list = []
       self.b_list = []

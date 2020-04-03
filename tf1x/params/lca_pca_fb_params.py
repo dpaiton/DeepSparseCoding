@@ -58,9 +58,46 @@ class params(lca_pca_params):
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["num_batches"] = int(5e5)
         self.schedule[sched_idx]["sparse_mult"] = 0.3#0.15
+        self.schedule[sched_idx]["fb_mult"] = 1e-3
         self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["decay_steps"] = int(0.7*self.schedule[sched_idx]["num_batches"])
         self.schedule[sched_idx]["decay_rate"] = 0.5
+
+    elif data_type.lower() == "vanhateren":
+      self.model_name += "_vh"
+      self.vectorize_data = True
+      self.rescale_data = False
+      self.whiten_data = True
+      self.whiten_method = "FT"
+      self.whiten_batch_size = 10
+      self.extract_patches = True
+      self.num_neurons = 768
+      self.num_steps = 50
+      self.thresh_type = "soft"
+      self.cp_int = int(1e5)
+      self.log_int = int(1e2)
+      self.gen_plot_int = int(2e4)
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.3
+        self.schedule[sched_idx]["fb_mult"] = 1e-3
+        self.schedule[sched_idx]["weight_lr"] = 0.01
+        self.schedule[sched_idx]["num_batches"] = int(1e5)
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
+
+    elif data_type.lower() == "field":
+      self.model_name += "_field"
+      self.vectorize_data = True
+      self.rescale_data = False
+      self.whiten_data = True
+      self.extract_patches = True
+      self.num_neurons = 768
+      self.thresh_type = "soft"
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["sparse_mult"] = 0.3
+        self.schedule[sched_idx]["fb_mult"] = 1e-3
+        self.schedule[sched_idx]["weight_lr"] = 0.01
+        self.schedule[sched_idx]["num_batches"] = int(2e5)
+        self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
 
     elif data_type.lower() == "synthetic":
       self.model_name += "_synthetic"
@@ -74,6 +111,7 @@ class params(lca_pca_params):
       self.num_neurons = 768
       for sched_idx in range(len(self.schedule)):
         self.schedule[sched_idx]["sparse_mult"] = 0.21
+        self.schedule[sched_idx]["fb_mult"] = 1e-3
         self.schedule[sched_idx]["weight_lr"] = 0.1
         self.schedule[sched_idx]["num_batches"] = int(1e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])

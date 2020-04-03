@@ -74,6 +74,26 @@ class params(BaseParams):
         self.schedule[sched_idx]["num_batches"] = 1
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
 
+    elif data_type.lower() == "field":
+      self.model_name += "_field"
+      self.batch_size = int(1e5)
+      self.vectorize_data = True
+      self.center_data = True
+      self.rescale_data = False
+      self.whiten_data = True
+      self.whiten_method = "ZCA"
+      self.lpf_data = True
+      self.lpf_cutoff = 0.7
+      self.extract_patches = True
+      self.num_neurons = 768
+      for sched_idx in range(len(self.schedule)):
+        self.schedule[sched_idx]["recon_mult"] = 0.8
+        self.schedule[sched_idx]["sparse_mult"] = 1.0
+        self.schedule[sched_idx]["weight_lr"] = 0.3
+        self.schedule[sched_idx]["num_batches"] = 1
+        self.schedule[sched_idx]["decay_steps"] = int(0.9*self.schedule[sched_idx]["num_batches"])
+        self.schedule[sched_idx]["decay_rate"] = 0.5
+
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"
       self.batch_size = int(1e5)

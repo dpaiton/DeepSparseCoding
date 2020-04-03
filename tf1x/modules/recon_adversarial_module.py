@@ -86,8 +86,8 @@ class ReconAdversarialModule(object):
           self.adv_images = tfc.upper_bound(tfc.lower_bound(
             self.adv_images, self.clip_range[0]), self.clip_range[1])
       with tf.compat.v1.variable_scope("input_switch"): # Switch based on input to use adv images or not
-        self.adv_switch_input = tf.cond(self.use_adv_input,
-          true_fn=lambda:self.adv_images, false_fn=lambda:self.data_tensor, strict=True)
+        self.adv_switch_input = tf.cond(pred=self.use_adv_input,
+          true_fn=lambda:self.adv_images, false_fn=lambda:self.data_tensor)
 
   def get_adv_input(self):
     return self.adv_switch_input
@@ -103,13 +103,13 @@ class ReconAdversarialModule(object):
       self.recons = recons
       self.latent_activities = latent_activities
       with tf.compat.v1.variable_scope("loss") as scope:
-        adv_recon_loss = 0.5 * tf.reduce_sum(tf.square(self.adv_target - self.recons))
+        adv_recon_loss = 0.5 * tf.reduce_sum(input_tensor=tf.square(self.adv_target - self.recons))
 
         if(self.attack_method == "kurakin_targeted"):
           self.adv_loss = adv_recon_loss
 
         elif(self.attack_method == "carlini_targeted"):
-          input_pert_loss = 0.5 * tf.reduce_sum(tf.square(self.clipped_pert))
+          input_pert_loss = 0.5 * tf.reduce_sum(input_tensor=tf.square(self.clipped_pert))
 
           #TODO: add recon_sweep bool param that uses Sheng's alternate loss
           #self.adv_loss = (1-self.recon_mult) * input_pert_loss + self.recon_mult * adv_recon_loss
@@ -118,7 +118,7 @@ class ReconAdversarialModule(object):
         elif(self.attack_method == "marzi_untargeted"):
           # optimizer uses grad descent, so we need negative loss to maximize
           # add eps to avoid 0 initial solution, which will cause the optimizer to do nothing
-          self.adv_loss = -tf.reduce_sum(tf.sqrt(tf.square(self.recons - self.orig_recons + 1e-12)))
+          self.adv_loss = -tf.reduce_sum(input_tensor=tf.sqrt(tf.square(self.recons - self.orig_recons + 1e-12)))
 
         elif(self.attack_method == "marzi_latent"):
           assert latent_activities is not None, ("latent_activities input must be provided")
@@ -137,7 +137,7 @@ class ReconAdversarialModule(object):
             self.selection_vector, name="selected_adv_activities")
 
           self.adv_loss = -tf.reduce_sum(
-            self.selected_adv_activities - self.selected_orig_activities + 1e-12)
+            input_tensor=self.selected_adv_activities - self.selected_orig_activities + 1e-12)
           #self.adv_loss = -tf.reduce_sum(self.selected_adv_activities + 1e-12)
 
         else:
@@ -147,7 +147,7 @@ class ReconAdversarialModule(object):
 
       with tf.compat.v1.variable_scope("optimizer") as scope:
         if(self.adv_optimizer == "adam"):
-          self.adv_opt = tf.train.AdamOptimizer(learning_rate=self.step_size)
+          self.adv_opt = tf.compat.v1.train.AdamOptimizer(learning_rate=self.step_size)
           # code below ensures that adam variables are also reset when the reset op is run
           initializer_ops = [v.initializer for v in self.adv_opt.variables()]
           self.reset = tf.group(initializer_ops + [self.reset])

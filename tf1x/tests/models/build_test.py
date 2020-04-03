@@ -26,7 +26,7 @@ def testBasic(self):
   if not hasattr(params, "test_param_variants"):
     params.test_param_variants = list(dict())
   for variant_number, variant in enumerate(params.test_param_variants):
-    print("Test variant number "+str(variant_number))
+    print("Test variant "+str(variant_number))
     for key in variant.keys():
       if key == "posterior_prior": # VAE
         prior_params = {
