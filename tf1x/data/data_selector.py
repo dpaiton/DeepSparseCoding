@@ -46,7 +46,7 @@ def get_data(params):
     dataset = load_synthetic(params)
   elif params.data_type.lower() == "field":
     dataset = load_field(params)
-  elif params.data_type.lower() == "tinyimages":
+  elif params.data_type.lower() == "tinyimages": # Note that this is not officially supported
     if "TinyImages" not in params.data_dir:
       params.data_dir += "/TinyImages/"
     dataset = load_tinyImages(params)
@@ -64,5 +64,5 @@ def get_data_from_string(dataset_string, directory_string):
   return get_data(params())
 
 def get_dataset_list():
-  data_list = ["vanHateren", "field", "MNIST", "CIFAR10", "tinyImages", "synthetic"]
+  data_list = ["vanHateren", "field", "MNIST", "CIFAR10", "synthetic"]
   return data_list
