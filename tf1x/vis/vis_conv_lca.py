@@ -1,12 +1,6 @@
 # In[1]:
 
-
 import os
-
-
-# In[2]:
-
-
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -15,11 +9,15 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits import axes_grid1
 from scipy.ndimage import imread as imread
 import tensorflow as tf
-import data.data_selector as ds
-import utils.data_processing as dp
-import utils.plot_functions as pf
-import analysis.analysis_picker as ap
 import pdb
+
+root_path = os.path.dirname(os.path.dirname(os.getcwd()))
+if root_path not in sys.path: sys.path.append(root_path)
+    
+import DeepSparseCoding.tf1x.data.data_selector as ds
+import DeepSparseCoding.tf1x.utils.data_processing as dp
+import DeepSparseCoding.tf1x.utils.plot_functions as pf
+import DeepSparseCoding.tf1x.analysis.analysis_picker as ap
 
 
 # In[3]:
