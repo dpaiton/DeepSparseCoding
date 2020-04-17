@@ -1,16 +1,33 @@
 import numpy as np
-import proplot as pro
+import proplot as plot
+
+
+def clear_axes(axs, spines="none"):
+    """
+    Calls clear_axis iteratively for each axis in axs
+    """
+    for ax in axs:
+        clear_axis(ax, spines)
+    return axs
 
 
 def clear_axis(ax, spines="none"):
-  for ax_loc in ["top", "bottom", "left", "right"]:
-    ax.spines[ax_loc].set_color(spines)
-  ax.set_yticklabels([])
-  ax.set_xticklabels([])
-  ax.get_xaxis().set_visible(False)
-  ax.get_yaxis().set_visible(False)
-  ax.tick_params(axis="both", bottom=False, top=False, left=False, right=False)
-  return ax
+    """
+    Clear spines & tick labels from proplot axis object
+    Args:
+        ax [proplot ax object, or matplotlib axis object]
+        spines [str] any matplotlib color
+    Returns:
+        ax
+    """
+    for ax_loc in ["top", "bottom", "left", "right"]:
+        ax.spines[ax_loc].set_color(spines)
+    ax.set_yticklabels([])
+    ax.set_xticklabels([])
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    ax.tick_params(axis="both", bottom=False, top=False, left=False, right=False)
+    return ax
 
 
 def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_index=0, save_filename=None):
@@ -49,7 +66,7 @@ def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_inde
     num_y_keys = len(y_keys)
     num_plots_y = int(np.ceil(np.sqrt(num_y_keys)))
     num_plots_x = int(np.ceil(np.sqrt(num_y_keys)))
-    fig, axes = pro.subplots(nrows=num_plots_y, ncols=num_plots_x, sharex=False, sharey=False)
+    fig, axes = plot.subplots(nrows=num_plots_y, ncols=num_plots_x, sharex=False, sharey=False)
     key_idx = 0
     for plot_id in np.ndindex((num_plots_y, num_plots_x)):
         if key_idx < num_y_keys:
@@ -73,7 +90,7 @@ def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_inde
         suptitle = "Stats per Batch")
     if save_filename is not None:
         fig.savefig(save_filename, transparent=True)
-        pro.close(fig)
+        plot.close(fig)
         return None
-    pro.show()
+    plot.show()
     return fig
