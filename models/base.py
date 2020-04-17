@@ -6,6 +6,7 @@ import torch.nn.functional as F
 
 from DeepSparseCoding.utils.file_utils import Logger
 
+
 class BaseModel(nn.Module):
     def __init__(self):
         super(BaseModel, self).__init__()
