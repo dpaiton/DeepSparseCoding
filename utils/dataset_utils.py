@@ -15,12 +15,12 @@ def load_dataset(params):
                 transforms.Lambda(lambda x: dp.standardize(x, eps=params.eps)[0]))
         # Load dataset
         train_loader = torch.utils.data.DataLoader(
-            datasets.MNIST(root='../Datasets/', train=True, download=True,
+            datasets.MNIST(root=params.data_dir, train=True, download=True,
             transform=transforms.Compose(preprocessing_pipeline)),
             batch_size=params.batch_size, shuffle=True, num_workers=0, pin_memory=False)
         val_loader = None
         test_loader = torch.utils.data.DataLoader(
-            datasets.MNIST(root='../Datasets/', train=False, download=True,
+            datasets.MNIST(root=params.data_dir, train=False, download=True,
             transform=transforms.Compose(preprocessing_pipeline)),
             batch_size=params.batch_size, shuffle=True, num_workers=0, pin_memory=False)
     else:

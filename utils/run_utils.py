@@ -45,7 +45,7 @@ def test_single_model(model, data, target, epoch):
     return (test_loss, correct)
 
 
-def test_epoch(epoch, model, loader):
+def test_epoch(epoch, model, loader, log_to_file=True):
     with torch.no_grad():
         model.eval()
         test_loss = 0
@@ -70,10 +70,13 @@ def test_epoch(epoch, model, loader):
         test_loss /= len(loader.dataset)
         test_accuracy = 100. * correct / len(loader.dataset)
         stat_dict = {
-            "epoch":epoch,
+            "test_epoch":epoch,
             "test_loss":test_loss,
             "test_correct":correct,
             "test_total":len(loader.dataset),
             "test_accuracy":test_accuracy}
-        js_str = model.js_dumpstring(stat_dict)
-        model.log_info("<stats>"+js_str+"</stats>")
+        if log_to_file:
+            js_str = model.js_dumpstring(stat_dict)
+            model.log_info("<stats>"+js_str+"</stats>")
+        else:
+            return stat_dict

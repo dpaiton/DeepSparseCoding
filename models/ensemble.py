@@ -15,14 +15,14 @@ class Ensemble(BaseModel):
             params.num_val_images = self.params.num_val_images
             params.num_test_images = self.params.num_test_images
             params.data_shape = self.params.data_shape
-            model = ml.load_model(params.model_type)
+            model = ml.load_model(params.model_type, self.params.lib_root_dir)
             model.setup(params, self.logger)
             model.to(params.device)
             #model.print_update = self.print_update
             self.models.append(model)
 
     def forward(self, x):
-        for model in models:
+        for model in self.models:
             x = model.get_encodings(x) # pre-classifier or pre-generator latent encodings
         return x
 
@@ -55,7 +55,8 @@ class Ensemble(BaseModel):
         for model in self.models:
             model_update_dict = model.generate_update_dict(x, input_labels, batch_step)
             for key, value in model_update_dict.items():
-                key = model.params.model_type+"_"+key
+                if key not in ["epoch", "batch_step"]:
+                    key = model.params.model_type+"_"+key
                 update_dict[key] = value
             x = model.get_encodings(x)
         return update_dict

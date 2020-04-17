@@ -13,7 +13,7 @@ def clear_axis(ax, spines="none"):
   return ax
 
 
-def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_index=0, figsize=None, save_filename=None):
+def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_index=0, save_filename=None):
     """
     Generate time-series plots of stats specified by keys
     Args:
@@ -30,19 +30,19 @@ def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_inde
     Returns:
         fig: matplotlib figure handle
     """
-    all_keys = list(data.keys())
-    if x_key in all_keys:
-        all_keys.remove("epoch")
-    else:
-        assert False, ("x_key=%s must be in data.keys()"%x_key)
+    assert x_key in list(data.keys()), ("x_key=%s must be in data.keys()"%x_key)
     if x_label is None:
         x_label = x_key
     if y_keys is None:
-        y_keys = all_keys
+        y_keys = list(data.keys())
+        if "epoch" in y_keys:
+            y_keys.remove("epoch")
+        if "batch_step" in y_keys:
+            y_keys.remove("batch_step")
     else:
-        assert all([y_key in all_keys for y_key in y_keys])
+        assert all([y_key in list(data.keys()) for y_key in y_keys])
     if y_labels is None:
-        y_labels = " ".join(y_keys.split("_"))
+        y_labels = [" ".join(y_key.split("_")) for y_key in y_keys]
     else:
         assert len(y_labels) == len(y_keys), (
             "The number of y_labels must match the number of y_keys")
@@ -55,12 +55,17 @@ def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_inde
         if key_idx < num_y_keys:
             x_dat = data[x_key][start_index:]
             y_dat = data[y_keys[key_idx]][start_index:]
-            ax = axes[plot_id]
-            ax.plot(x_dat, y_dat)
-            ax.format(
-                yticks = [np.minimum(0.0, np.min(y_dat)), np.maximum(0.0, np.max(y_dat))],
-                ylabel = y_labels[key_idx])
-            key_idx += 1
+            if len(x_dat) == len(y_dat):
+                ax = axes[plot_id]
+                ax.plot(x_dat, y_dat)
+                ax.format(
+                    yticks = [np.minimum(0.0, np.min(y_dat)), np.maximum(0.0, np.max(y_dat))],
+                    ylabel = y_labels[key_idx])
+                key_idx += 1
+            else:
+                ax = clear_axis(axes[plot_id])
+                print("utils/plot_functions.py: WARNING: x and y for key %s must have same first dimensions but are %g and %g"%(
+                    y_keys[key_idx], len(x_dat), len(y_dat)))
         else:
             ax = clear_axis(axes[plot_id])
     axes.format(

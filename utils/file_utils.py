@@ -96,9 +96,9 @@ class Logger(object):
         assert len(tokens) == 2, ("Input variable tokens must be a list of length 2")
         matches = re.findall(re.escape(tokens[0])+"([\s\S]*?)"+re.escape(tokens[1]), text)
         if len(matches) > 1:
-              js_matches = [js.loads(match) for match in matches]
+            js_matches = [js.loads(match) for match in matches]
         else:
-              js_matches = [js.loads(matches[0])]
+            js_matches = [js.loads(matches[0])]
         return js_matches
 
     def read_params(self, text):
@@ -114,13 +114,35 @@ class Logger(object):
         param_list = []
         for param_dict in params:
             param_obj = type("param_obj", (), {})()
+            if param_dict["model_type"] == "ensemble":
+                param_obj.ensemble_params = []
+                ensemble_nums = set()
             for key, value in param_dict.items():
-                  setattr(param_obj, key, value)
-            if hasattr(param_obj, "optimizer"): # convert optimizer dict to class
-                optimizer_dict = deepcopy(param_obj.optimizer)
-                param_obj.optimizer = types.SimpleNamespace()
-                for key, value in optimizer_dict.items():
-                    setattr(param_obj.optimizer, key, value)
+                if param_dict["model_type"] == "ensemble":
+                    key_split = key.split("_")
+                    if key_split[0].isdigit(): # ensemble params are prefaced with ensemble index
+                        ens_num = int(key_split[0])
+                        if ens_num not in ensemble_nums:
+                            ensemble_nums.add(ens_num)
+                            param_obj.ensemble_params.append(types.SimpleNamespace())
+                        setattr(param_obj.ensemble_params[ens_num], "_".join(key_split[1:]), value)
+                    else: # if it is not a digit then it is a general param
+                        setattr(param_obj, key, value)
+                else:
+                    setattr(param_obj, key, value)
+
+            def optimizer_dict_to_obj(param_obj):
+                if hasattr(param_obj, "optimizer"): # convert optimizer dict to class
+                    optimizer_dict = deepcopy(param_obj.optimizer)
+                    param_obj.optimizer = types.SimpleNamespace()
+                    for key, value in optimizer_dict.items():
+                        setattr(param_obj.optimizer, key, value)
+
+            if param_obj.model_type == "ensemble": # each model in ensembles could have optimizers
+                for model_param_obj in param_obj.ensemble_params:
+                    optimizer_dict_to_obj(model_param_obj)
+            else:
+                optimizer_dict_to_obj(param_obj)
             param_list.append(param_obj)
         return param_list
 

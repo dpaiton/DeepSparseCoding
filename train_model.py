@@ -3,8 +3,8 @@ import sys
 import argparse
 import time as ti
 
-parent_path = os.path.dirname(os.getcwd())
-if parent_path not in sys.path: sys.path.append(parent_path)
+root_dir = os.path.dirname(os.getcwd())
+if root_dir not in sys.path: sys.path.append(root_dir)
 
 import torch
 
@@ -28,7 +28,7 @@ params = pl.load_param_file(param_file)
 train_loader, val_loader, test_loader, params = dataset_utils.load_dataset(params)
 
 # Load model
-model = ml.load_model(params.model_type)
+model = ml.load_model(params.model_type, root_dir=params.lib_root_dir)
 model.setup(params)
 model.to(params.device)
 
