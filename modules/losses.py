@@ -1,6 +1,6 @@
 import torch
 
-import PyTorchDisentanglement.utils.data_processing as dp
+import DeepSparseCoding.utils.data_processing as dp
 
 
 def half_squared_l2(x1, x2):

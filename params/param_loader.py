@@ -1,5 +1,5 @@
-import utils.file_utils as file_utils
-#import data.get_data_shape
+import DeepSparseCoding.utils.file_utils as file_utils
+#import DeepSparseCoding.data.get_data_shape
 
 def load_param_file(file_name):
     params_module = file_utils.module_from_file("params", file_name)

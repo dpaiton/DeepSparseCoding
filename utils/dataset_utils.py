@@ -1,7 +1,7 @@
 import torch
 from torchvision import datasets, transforms
 
-import PyTorchDisentanglement.utils.data_processing as dp
+import DeepSparseCoding.utils.data_processing as dp
 
 
 def load_dataset(params):

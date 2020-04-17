@@ -1,4 +1,4 @@
-import PyTorchDisentanglement.utils.file_utils as file_utils
+import DeepSparseCoding.utils.file_utils as file_utils
 
 def load_model(model_type):
     if(model_type.lower() == "mlp"):

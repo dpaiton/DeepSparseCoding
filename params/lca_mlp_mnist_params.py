@@ -3,9 +3,9 @@ import types
 import numpy as np
 import torch
 
-from PyTorchDisentanglement.params.base_params import BaseParams
-from PyTorchDisentanglement.params.lca_mnist_params import params as LcaParams
-from PyTorchDisentanglement.params.mlp_mnist_params import params as MlpParams
+from DeepSparseCoding.params.base_params import BaseParams
+from DeepSparseCoding.params.lca_mnist_params import params as LcaParams
+from DeepSparseCoding.params.mlp_mnist_params import params as MlpParams
 
 
 class shared_params(object):

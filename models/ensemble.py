@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from PyTorchDisentanglement.models.base import BaseModel
-import PyTorchDisentanglement.models.model_loader as ml
+from DeepSparseCoding.models.base import BaseModel
+import DeepSparseCoding.models.model_loader as ml
 
 class Ensemble(BaseModel):
     def setup_model(self):

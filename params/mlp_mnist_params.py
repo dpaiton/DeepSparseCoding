@@ -4,7 +4,7 @@ import types
 import numpy as np
 import torch
 
-from params.base_params import BaseParams
+from DeepSparseCoding.params.base_params import BaseParams
 
 
 class params(BaseParams):

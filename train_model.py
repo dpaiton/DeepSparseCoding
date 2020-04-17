@@ -8,10 +8,10 @@ if parent_path not in sys.path: sys.path.append(parent_path)
 
 import torch
 
-import PyTorchDisentanglement.params.param_loader as pl
-import PyTorchDisentanglement.models.model_loader as ml
-import PyTorchDisentanglement.utils.run_utils as run_utils
-import PyTorchDisentanglement.utils.dataset_utils as dataset_utils
+import DeepSparseCoding.params.param_loader as pl
+import DeepSparseCoding.models.model_loader as ml
+import DeepSparseCoding.utils.run_utils as run_utils
+import DeepSparseCoding.utils.dataset_utils as dataset_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument("param_file", help="Path to the parameter file")
