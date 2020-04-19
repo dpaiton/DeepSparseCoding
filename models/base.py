@@ -35,11 +35,11 @@ class BaseModel(nn.Module):
         """
         params.cp_latest_filename = "latest_checkpoint_v"+params.version
         if not hasattr(params, "model_out_dir"):
-            params.model_out_dir = params.out_dir + params.model_name
-        params.cp_save_dir = params.model_out_dir + "/checkpoints/"
-        params.log_dir = params.model_out_dir + "/logfiles/"
-        params.save_dir = params.model_out_dir + "/savefiles/"
-        params.disp_dir = params.model_out_dir + "/vis/"
+            params.model_out_dir = os.path.join(params.out_dir, params.model_name)
+        params.cp_save_dir = os.path.join(params.model_out_dir, "checkpoints")
+        params.log_dir = os.path.join(params.model_out_dir, "logfiles")
+        params.save_dir = os.path.join(params.model_out_dir, "savefiles")
+        params.disp_dir = os.path.join(params.model_out_dir, "vis")
         params.batches_per_epoch = params.epoch_size / params.batch_size
         params.num_batches = params.num_epochs * params.batches_per_epoch
         self.params = params
@@ -78,7 +78,8 @@ class BaseModel(nn.Module):
     def init_logging(self, log_filename=None):
         if self.params.log_to_file:
             if log_filename is None:
-                log_filename = self.params.log_dir+self.params.model_name+"_v"+self.params.version+".log"
+                log_filename = os.path.join(self.params.log_dir,
+                    self.params.model_name+"_v"+self.params.version+".log")
                 self.logger = Logger(filename=log_filename, overwrite=True)
         else:
             self.logger = Logger(filename=None)
@@ -101,7 +102,8 @@ class BaseModel(nn.Module):
 
     def write_checkpoint(self, session):
         """Write checkpoints"""
-        base_save_path = self.params.cp_save_dir+self.params.model_name+"_v"+self.params.version
+        base_save_path = os.path.join(self.params.cp_save_dir,
+            self.params.model_name+"_v"+self.params.version)
         full_save_path = base_save_path+self.params.cp_latest_filename
         torch.save(self.state_dict(), full_save_path)
         self.logger.log_info("Full model saved in file %s"%full_save_path)
@@ -114,7 +116,7 @@ class BaseModel(nn.Module):
           model_dir: String specifying the path to the checkpoint
         """
         assert self.params.cp_load == True, ("cp_load must be set to true to load a checkpoint")
-        cp_file = model_dir+self.params.cp_latest_filename
+        cp_file = os.path.join(model_dir, self.params.cp_latest_filename)
         return torch.load(cp_file)
 
     def setup_model(self):

@@ -22,7 +22,7 @@ class BaseParams(object):
         self.workspace_dir = os.path.join(os.path.expanduser("~"), "Work")
         self.lib_root_dir = os.path.join(self.workspace_dir, "DeepSparseCoding")
         self.data_dir = os.path.join(self.workspace_dir, "Datasets")
-        self.out_dir = os.path.join(self.workspace_dir, "Projects")
+        self.out_dir = os.path.join(self.workspace_dir, "Torch_projects")
 
     def compute_helper_params(self):
         pass
