@@ -11,13 +11,13 @@ class params(BaseParams):
     def set_params(self):
         super(params, self).set_params()
         self.model_type = "lca"
-        self.model_name = "lca_mnist"
+        self.model_name = "lca_768_mnist"
         self.version = "0"
         self.dataset = "mnist"
         self.standardize_data = False
         self.num_pixels = 784
         self.batch_size = 100
-        self.num_epochs = 50
+        self.num_epochs = 1000
         self.weight_decay = 0.
         self.weight_lr = 0.1
         self.train_logs_per_epoch = 6
