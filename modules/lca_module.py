@@ -1,18 +1,16 @@
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-import DeepSparseCoding.modules.losses as losses
-from DeepSparseCoding.models.base import BaseModel
 from DeepSparseCoding.modules.activations import lca_threshold
 
 
-class Lca(BaseModel):
-    def setup_model(self):
+class LcaModule(nn.Module):
+    def setup_module(self, params):
+        self.params = params
         self.w = nn.Parameter(
             F.normalize(
-            torch.randn(self.params.num_pixels, self.params.num_latent, device=self.params.device),
+            torch.randn(self.params.num_pixels, self.params.num_latent),
             p=2, dim=0),
             requires_grad=True)
 
@@ -31,7 +29,7 @@ class Lca(BaseModel):
 
     def threshold_units(self, u_in):
         a_out = lca_threshold(u_in, self.params.thresh_type, self.params.rectify_a,
-            self.params.sparse_mult, device=self.params.device)
+            self.params.sparse_mult)
         return a_out
 
     def step_inference(self, u_in, a_in, b, g, step):
@@ -64,36 +62,3 @@ class Lca(BaseModel):
         latents = self.get_encodings(input_tensor)
         reconstruction = self.get_recon_from_latents(latents)
         return reconstruction
-
-    def get_total_loss(self, input_tuple):
-        input_tensor, input_labels = input_tuple
-        latents = self.get_encodings(input_tensor)
-        recon = self.get_recon_from_latents(latents)
-        recon_loss = losses.half_squared_l2(input_tensor, recon)
-        sparse_loss = self.params.sparse_mult * losses.l1_norm(latents)
-        total_loss = recon_loss + sparse_loss
-        return total_loss
-
-    def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
-        update_dict = super(Lca, self).generate_update_dict(input_data, input_labels, batch_step)
-        epoch = batch_step / self.params.batches_per_epoch
-        stat_dict = {
-            "epoch":int(epoch),
-            "batch_step":batch_step,
-            "train_progress":np.round(batch_step/self.params.num_batches, 3),
-            "weight_lr":self.scheduler.get_lr()[0]}
-        latents = self.get_encodings(input_data)
-        recon = self.get_recon_from_latents(latents)
-        recon_loss = losses.half_squared_l2(input_data, recon).item()
-        sparse_loss = self.params.sparse_mult * losses.l1_norm(latents).item()
-        stat_dict["loss_recon"] = recon_loss
-        stat_dict["loss_sparse"] = sparse_loss
-        stat_dict["loss_total"] = recon_loss + sparse_loss
-        stat_dict["input_max_mean_min"] = [
-                input_data.max().item(), input_data.mean().item(), input_data.min().item()]
-        stat_dict["recon_max_mean_min"] = [
-                recon.max().item(), recon.mean().item(), recon.min().item()]
-        latent_nnz = torch.sum(latents != 0).item() # TODO: github issue 23907 requests torch.count_nonzero
-        stat_dict["latents_fraction_active"] = latent_nnz / latents.numel()
-        update_dict.update(stat_dict)
-        return update_dict

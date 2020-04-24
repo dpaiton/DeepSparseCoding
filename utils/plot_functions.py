@@ -2,7 +2,7 @@ import numpy as np
 import proplot as plot
 
 
-def clear_axes(axs, spines="none"):
+def clear_axes(axs, spines='none'):
     """
     Calls clear_axis iteratively for each axis in axs
     """
@@ -11,7 +11,7 @@ def clear_axes(axs, spines="none"):
     return axs
 
 
-def clear_axis(ax, spines="none"):
+def clear_axis(ax, spines='none'):
     """
     Clear spines & tick labels from proplot axis object
     Args:
@@ -20,13 +20,13 @@ def clear_axis(ax, spines="none"):
     Returns:
         ax
     """
-    for ax_loc in ["top", "bottom", "left", "right"]:
+    for ax_loc in ['top', 'bottom', 'left', 'right']:
         ax.spines[ax_loc].set_color(spines)
     ax.set_yticklabels([])
     ax.set_xticklabels([])
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
-    ax.tick_params(axis="both", bottom=False, top=False, left=False, right=False)
+    ax.tick_params(axis='both', bottom=False, top=False, left=False, right=False)
     return ax
 
 
@@ -47,22 +47,22 @@ def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_inde
     Returns:
         fig: matplotlib figure handle
     """
-    assert x_key in list(data.keys()), ("x_key=%s must be in data.keys()"%x_key)
+    assert x_key in list(data.keys()), ('x_key=%s must be in data.keys()'%x_key)
     if x_label is None:
         x_label = x_key
     if y_keys is None:
         y_keys = list(data.keys())
-        if "epoch" in y_keys:
-            y_keys.remove("epoch")
-        if "batch_step" in y_keys:
-            y_keys.remove("batch_step")
+        if 'epoch' in y_keys:
+            y_keys.remove('epoch')
+        if 'batch_step' in y_keys:
+            y_keys.remove('batch_step')
     else:
         assert all([y_key in list(data.keys()) for y_key in y_keys])
     if y_labels is None:
-        y_labels = [" ".join(y_key.split("_")) for y_key in y_keys]
+        y_labels = [' '.join(y_key.split('_')) for y_key in y_keys]
     else:
         assert len(y_labels) == len(y_keys), (
-            "The number of y_labels must match the number of y_keys")
+            'The number of y_labels must match the number of y_keys')
     num_y_keys = len(y_keys)
     num_plots_y = int(np.ceil(np.sqrt(num_y_keys)))
     num_plots_x = int(np.ceil(np.sqrt(num_y_keys)))
@@ -81,13 +81,13 @@ def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_inde
                 key_idx += 1
             else:
                 ax = clear_axis(axes[plot_id])
-                print("utils/plot_functions.py: WARNING: x and y for key %s must have same first dimensions but are %g and %g"%(
+                print('utils/plot_functions.py: WARNING: x and y for key %s must have same first dimensions but are %g and %g'%(
                     y_keys[key_idx], len(x_dat), len(y_dat)))
         else:
             ax = clear_axis(axes[plot_id])
     axes.format(
         xlabel = x_label,
-        suptitle = "Stats per Batch")
+        suptitle = 'Stats per Batch')
     if save_filename is not None:
         fig.savefig(save_filename, transparent=True)
         plot.close(fig)

@@ -10,10 +10,10 @@ from DeepSparseCoding.params.base_params import BaseParams
 class params(BaseParams):
     def set_params(self):
         super(params, self).set_params()
-        self.model_type = "lca"
-        self.model_name = "lca_768_mnist"
-        self.version = "0"
-        self.dataset = "mnist"
+        self.model_type = 'lca'
+        self.model_name = 'lca_768_mnist'
+        self.version = '0'
+        self.dataset = 'mnist'
         self.standardize_data = False
         self.num_pixels = 784
         self.batch_size = 100
@@ -22,7 +22,7 @@ class params(BaseParams):
         self.weight_lr = 0.1
         self.train_logs_per_epoch = 6
         self.optimizer = types.SimpleNamespace()
-        self.optimizer.name = "sgd"
+        self.optimizer.name = 'sgd'
         self.optimizer.lr_annealing_milestone_frac = [0.7] # fraction of num_epochs
         self.optimizer.lr_decay_rate = 0.5
         self.renormalize_weights = True
@@ -30,7 +30,7 @@ class params(BaseParams):
         self.tau = 0.03
         self.num_steps = 75
         self.rectify_a = True
-        self.thresh_type = "soft"
+        self.thresh_type = 'soft'
         self.sparse_mult = 0.25
         self.num_latent = 768#self.num_pixels*4
         self.compute_helper_params()

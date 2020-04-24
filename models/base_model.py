@@ -1,17 +1,12 @@
 import os
+
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 from DeepSparseCoding.utils.file_utils import Logger
 
 
-class BaseModel(nn.Module):
-    def __init__(self):
-        super(BaseModel, self).__init__()
-        self.params_loaded = False
-
+class BaseModel(object):
     def setup(self, params, logger=None):
         """
         Setup required model components
@@ -25,7 +20,7 @@ class BaseModel(nn.Module):
             self.log_params()
         else:
             self.logger = logger
-        self.setup_model()
+        self.setup_module(params)
         self.setup_optimizer()
 
     def load_params(self, params):
@@ -33,23 +28,26 @@ class BaseModel(nn.Module):
         Calculates a few extra parameters
         Sets parameters as member variable
         """
-        params.cp_latest_filename = "latest_checkpoint_v"+params.version
-        if not hasattr(params, "model_out_dir"):
+        if not hasattr(params, 'model_out_dir'):
             params.model_out_dir = os.path.join(params.out_dir, params.model_name)
-        params.cp_save_dir = os.path.join(params.model_out_dir, "checkpoints")
-        params.log_dir = os.path.join(params.model_out_dir, "logfiles")
-        params.save_dir = os.path.join(params.model_out_dir, "savefiles")
-        params.disp_dir = os.path.join(params.model_out_dir, "vis")
+        params.cp_save_dir = os.path.join(params.model_out_dir, 'checkpoints')
+        params.log_dir = os.path.join(params.model_out_dir, 'logfiles')
+        params.save_dir = os.path.join(params.model_out_dir, 'savefiles')
+        params.disp_dir = os.path.join(params.model_out_dir, 'vis')
         params.batches_per_epoch = params.epoch_size / params.batch_size
         params.num_batches = params.num_epochs * params.batches_per_epoch
+        if not  hasattr(params, "cp_latest_filename"):
+            params.cp_latest_filename = os.path.join(params.cp_save_dir,
+                f'{params.model_name}_latest_checkpoint_v{params.version}.pt')
         self.params = params
-        self.params_loaded = True
 
     def check_params(self):
         """
         Check parameters with assertions
         """
         assert self.params.num_pixels == int(np.prod(self.params.data_shape))
+        if self.params.device is torch.device('cpu'):
+            print('WARNING: Model is running on the CPU')
 
     def get_param(self, param_name):
         """
@@ -79,7 +77,7 @@ class BaseModel(nn.Module):
         if self.params.log_to_file:
             if log_filename is None:
                 log_filename = os.path.join(self.params.log_dir,
-                    self.params.model_name+"_v"+self.params.version+".log")
+                    self.params.model_name+'_v'+self.params.version+'.log')
                 self.logger = Logger(filename=log_filename, overwrite=True)
         else:
             self.logger = Logger(filename=None)
@@ -100,42 +98,35 @@ class BaseModel(nn.Module):
         """Log input string"""
         self.logger.log_info(string)
 
-    def write_checkpoint(self, session):
+    def write_checkpoint(self):
         """Write checkpoints"""
-        base_save_path = os.path.join(self.params.cp_save_dir,
-            self.params.model_name+"_v"+self.params.version)
-        full_save_path = base_save_path+self.params.cp_latest_filename
-        torch.save(self.state_dict(), full_save_path)
-        self.logger.log_info("Full model saved in file %s"%full_save_path)
-        return base_save_path
+        torch.save(self.state_dict(), self.params.cp_latest_filename)
+        self.log_info('Full model saved in file %s'%self.params.cp_latest_filename)
 
-    def load_checkpoint(self, model_dir):
+    def load_checkpoint(self, cp_file=None):
         """
-        Load checkpoint model into session.
+        Load checkpoint
         Inputs:
           model_dir: String specifying the path to the checkpoint
         """
-        assert self.params.cp_load == True, ("cp_load must be set to true to load a checkpoint")
-        cp_file = os.path.join(model_dir, self.params.cp_latest_filename)
-        return torch.load(cp_file)
-
-    def setup_model(self):
-        raise NotImplementedError
+        if cp_file is None:
+            cp_file = self.params.cp_latest_filename
+        return self.load_state_dict(torch.load(cp_file))
 
     def get_optimizer(self, optimizer_params, trainable_variables):
         optimizer_name = optimizer_params.optimizer.name
-        if(optimizer_name == "sgd"):
+        if(optimizer_name == 'sgd'):
             optimizer = torch.optim.SGD(
                 trainable_variables,
                 lr=optimizer_params.weight_lr,
                 weight_decay=optimizer_params.weight_decay)
-        elif optimizer_name == "adam":
+        elif optimizer_name == 'adam':
             optimizer = torch.optim.Adam(
                 trainable_variables,
                 lr=optimizer_params.weight_lr,
                 weight_decay=optimizer_params.weight_decay)
         else:
-            assert False, ("optimizer name must be 'sgd' or 'adam', not %s"%(optimizer_name))
+            assert False, ('optimizer name must be "sgd" or "adam", not %s'%(optimizer_name))
         return optimizer
 
     def setup_optimizer(self):
@@ -147,9 +138,6 @@ class BaseModel(nn.Module):
             milestones=self.params.optimizer.milestones,
             gamma=self.params.optimizer.lr_decay_rate)
 
-    def get_encodings(self):
-        raise NotImplementedError
-
     def print_update(self, input_data, input_labels=None, batch_step=0):
         """
         Log train progress information
@@ -160,20 +148,21 @@ class BaseModel(nn.Module):
         NOTE: For the analysis code to parse update statistics, the self.js_dumpstring() call
           must receive a dict object. Additionally, the self.js_dumpstring() output must be
           logged with <stats> </stats> tags.
-          For example: logging.info("<stats>"+self.js_dumpstring(output_dictionary)+"</stats>")
+          For example: logging.info('<stats>'+self.js_dumpstring(output_dictionary)+'</stats>')
         """
         update_dict = self.generate_update_dict(input_data, input_labels, batch_step)
         js_str = self.js_dumpstring(update_dict)
-        self.log_info("<stats>"+js_str+"</stats>")
+        self.log_info('<stats>'+js_str+'</stats>')
 
-    def generate_update_dict(self, input_data, input_labels=None, batch_step=0):
+    def generate_update_dict(self, input_data, input_labels=None, batch_step=0, update_dict=None):
         """
         Generates a dictionary to be logged in the print_update function
         """
-        update_dict = dict()
+        if update_dict is None:
+            update_dict = dict()
         for param_name, param_var in self.named_parameters():
             grad = param_var.grad
-            update_dict[param_name+"_grad_max_mean_min"] = [
+            update_dict[param_name+'_grad_max_mean_min'] = [
                 grad.max().item(), grad.mean().item(), grad.min().item()]
         return update_dict
 

@@ -50,9 +50,9 @@ def reshape_data(data, flatten=None, out_shape=None):
             else: # flatten == False
                 sqrt_num_elements = torch.sqrt(num_elements)
                 assert torch.floor(sqrt_num_elements) == torch.ceil(sqrt_num_elements), (
-                    "Data length must have an even square root. Note that num_channels is assumed to be 1."
-                    +" data length = "+str(num_elements)
-                    +" and data_shape="+str(orig_shape))
+                    'Data length must have an even square root. Note that num_channels is assumed to be 1.'
+                    +' data length = '+str(num_elements)
+                    +' and data_shape='+str(orig_shape))
                 num_rows = int(sqrt_num_elements)
                 num_cols = num_rows
                 data = torch.reshape(data, (num_examples, num_rows, num_cols, num_channels))
@@ -65,13 +65,13 @@ def reshape_data(data, flatten=None, out_shape=None):
             elif flatten == False:
                 sqrt_num_elements = torch.sqrt(num_elements)
                 assert torch.floor(sqrt_num_elements) == torch.ceil(sqrt_num_elements), (
-                    "Data length must have an even square root when not specifying out_shape.")
+                    'Data length must have an even square root when not specifying out_shape.')
                 num_rows = int(sqrt_num_elements)
                 num_cols = num_rows
                 num_channels = 1
                 data = torch.reshape(data, (num_examples, num_rows, num_cols, num_channels))
             else:
-                assert False, ("flatten argument must be True, False, or None")
+                assert False, ('flatten argument must be True, False, or None')
         elif orig_ndim == 3: # single data point
             num_examples = 1
             num_rows, num_cols, num_channels = data.shape
@@ -80,13 +80,13 @@ def reshape_data(data, flatten=None, out_shape=None):
             elif flatten is None or flatten == False: # already not flat
                 data = data[None, ...]
             else:
-                assert False, ("flatten argument must be True, False, or None")
+                assert False, ('flatten argument must be True, False, or None')
         elif orig_ndim == 4: # not flat
             num_examples, num_rows, num_cols, num_channels = data.shape
             if flatten == True:
                 data = torch.reshape(data, (num_examples, num_rows*num_cols*num_channels))
         else:
-            assert False, ("Data must have 1, 2, 3, or 4 dimensions.")
+            assert False, ('Data must have 1, 2, 3, or 4 dimensions.')
     else:
         num_examples = None; num_rows=None; num_cols=None; num_channels=None
         data = torch.reshape(data, out_shape)
@@ -105,7 +105,7 @@ def check_all_same_shape(tensor_list):
     for index, tensor in enumerate(tensor_list):
         if tensor.shape != first_shape:
             raise ValueError(
-                "Tensor entry %g in input list has shape %g, but should have shape %g"%(
+                'Tensor entry %g in input list has shape %g, but should have shape %g'%(
                 index, tensor.shape, first_shape))
 
 
@@ -125,7 +125,7 @@ def flatten_feature_map(feature_map):
     elif(map_shape.ndims == 2):
         resh_map = feature_map
     else:
-      raise ValueError("Input feature_map has incorrect ndims")
+      raise ValueError('Input feature_map has incorrect ndims')
     return resh_map
 
 

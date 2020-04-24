@@ -18,9 +18,9 @@ class Logger(object):
         else:
             self.log_to_file = True
             if overwrite:
-                self.file_obj = open(filename, "w", buffering=1)
+                self.file_obj = open(filename, 'w', buffering=1)
             else:
-                self.file_obj = open(filename, "r+", buffering=1)
+                self.file_obj = open(filename, 'r+', buffering=1)
             self.file_obj.seek(0)
 
     def js_dumpstring(self, obj):
@@ -34,7 +34,7 @@ class Logger(object):
             name_list: list containing variable names
         """
         js_str = self.js_dumpstring(name_list)
-        self.log_info("<train_vars>"+js_str+"</train_vars>")
+        self.log_info('<train_vars>'+js_str+'</train_vars>')
 
     def log_params(self, params):
         """
@@ -43,23 +43,23 @@ class Logger(object):
             params: [dict] containing parameters values
         """
         out_params = deepcopy(params)
-        if "ensemble_params" in out_params.keys():
-            for sub_idx, sub_params in enumerate(out_params["ensemble_params"]):
+        if 'ensemble_params' in out_params.keys():
+            for sub_idx, sub_params in enumerate(out_params['ensemble_params']):
                 sub_params.set_params()
                 for key, value in sub_params.__dict__.items():
-                    if key != "rand_state":
-                        out_params[str(sub_idx)+"_"+key] = value
-            del out_params["ensemble_params"]
-        if "rand_state" in out_params.keys():
-            del out_params["rand_state"]
+                    if key != 'rand_state':
+                        out_params[f'{sub_idx}_{key}'] = value
+            del out_params['ensemble_params']
+        if 'rand_state' in out_params.keys():
+            del out_params['rand_state']
         js_str = self.js_dumpstring(out_params)
-        self.log_info("<params>"+js_str+"</params>")
+        self.log_info('<params>'+js_str+'</params>')
 
     def log_info(self, string):
         """Log input string"""
         now = time.localtime(time.time())
-        time_str = time.strftime("%m/%d/%y %H:%M:%S", now)
-        out_str = "\n" + time_str + " -- " + str(string)
+        time_str = time.strftime('%m/%d/%y %H:%M:%S', now)
+        out_str = '\n' + time_str + ' -- ' + str(string)
         if self.log_to_file:
             self.file_obj.write(out_str)
         else:
@@ -74,7 +74,7 @@ class Logger(object):
         if filename is None:
             self.file_obj.seek(0)
         else:
-            self.file_obj = open(filename, "r", buffering=1)
+            self.file_obj = open(filename, 'r', buffering=1)
         text = self.file_obj.read()
         return text
 
@@ -92,9 +92,9 @@ class Logger(object):
             is called the output is a list no matter how many params specifications there are
             in the logfile.
         """
-        assert type(tokens) == list, ("Input variable tokens must be a list")
-        assert len(tokens) == 2, ("Input variable tokens must be a list of length 2")
-        matches = re.findall(re.escape(tokens[0])+"([\s\S]*?)"+re.escape(tokens[1]), text)
+        assert type(tokens) == list, ('Input variable tokens must be a list')
+        assert len(tokens) == 2, ('Input variable tokens must be a list of length 2')
+        matches = re.findall(re.escape(tokens[0])+'([\s\S]*?)'+re.escape(tokens[1]), text)
         if len(matches) > 1:
             js_matches = [js.loads(match) for match in matches]
         else:
@@ -109,36 +109,36 @@ class Logger(object):
         Inputs:
             text: [str] containing text to parse, can be obtained by calling load_file()
         """
-        tokens = ["<params>", "</params>"]
+        tokens = ['<params>', '</params>']
         params = self.read_js(tokens, text)
         param_list = []
         for param_dict in params:
-            param_obj = type("param_obj", (), {})()
-            if param_dict["model_type"] == "ensemble":
+            param_obj = type('param_obj', (), {})()
+            if param_dict['model_type'] == 'ensemble':
                 param_obj.ensemble_params = []
                 ensemble_nums = set()
             for key, value in param_dict.items():
-                if param_dict["model_type"] == "ensemble":
-                    key_split = key.split("_")
+                if param_dict['model_type'] == 'ensemble':
+                    key_split = key.split('_')
                     if key_split[0].isdigit(): # ensemble params are prefaced with ensemble index
                         ens_num = int(key_split[0])
                         if ens_num not in ensemble_nums:
                             ensemble_nums.add(ens_num)
                             param_obj.ensemble_params.append(types.SimpleNamespace())
-                        setattr(param_obj.ensemble_params[ens_num], "_".join(key_split[1:]), value)
+                        setattr(param_obj.ensemble_params[ens_num], '_'.join(key_split[1:]), value)
                     else: # if it is not a digit then it is a general param
                         setattr(param_obj, key, value)
                 else:
                     setattr(param_obj, key, value)
 
             def optimizer_dict_to_obj(param_obj):
-                if hasattr(param_obj, "optimizer"): # convert optimizer dict to class
+                if hasattr(param_obj, 'optimizer'): # convert optimizer dict to class
                     optimizer_dict = deepcopy(param_obj.optimizer)
                     param_obj.optimizer = types.SimpleNamespace()
                     for key, value in optimizer_dict.items():
                         setattr(param_obj.optimizer, key, value)
 
-            if param_obj.model_type == "ensemble": # each model in ensembles could have optimizers
+            if param_obj.model_type == 'ensemble': # each model in ensembles could have optimizers
                 for model_param_obj in param_obj.ensemble_params:
                     optimizer_dict_to_obj(model_param_obj)
             else:
@@ -154,7 +154,7 @@ class Logger(object):
         Inputs:
             text: [str] containing text to parse, can be obtained by calling load_file()
         """
-        tokens = ["<stats>", "</stats>"]
+        tokens = ['<stats>', '</stats>']
         js_matches = self.read_js(tokens, text)
         stats = {}
         for js_match in js_matches:
@@ -168,7 +168,7 @@ class Logger(object):
         return stats
 
     def __del__(self):
-        if self.log_to_file and hasattr(self, "file_obj"):
+        if self.log_to_file and hasattr(self, 'file_obj'):
             self.file_obj.close()
 
 
@@ -192,8 +192,8 @@ class CustomEncoder(js.JSONEncoder):
             return super(CustomEncoder, self).default(obj)
 
 
-def module_from_file(module_name, file_name):
-    spec = importlib.util.spec_from_file_location(module_name, file_name)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def python_module_from_file(py_module_name, file_name):
+    spec = importlib.util.spec_from_file_location(py_module_name, file_name)
+    py_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(py_module)
+    return py_module
