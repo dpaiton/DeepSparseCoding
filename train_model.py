@@ -12,6 +12,8 @@ import DeepSparseCoding.utils.dataset_utils as dataset_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('param_file', help='Path to the parameter file')
+parser.add_argument('--sparse-mult', type=float, default=0.25)
+parser.add_argument('--num-epochs', type=int, default=1000)
 
 args = parser.parse_args()
 param_file = args.param_file
@@ -20,6 +22,9 @@ t0 = ti.time()
 
 # Load params
 params = loaders.load_params(param_file)
+params.sparse_mult = args.sparse_mult
+params.num_epochs = args.num_epochs
+params.model_name += '_{}_{}'.format(args.sparse_mult, args.num_epochs)
 
 # Load data
 train_loader, val_loader, test_loader, params = dataset_utils.load_dataset(params)

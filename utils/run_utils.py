@@ -41,15 +41,18 @@ def train_epoch(epoch, model, loader):
         model.scheduler.step(epoch)
 
 
-def test_single_model(model, data, target, epoch):
+def test_single_model(model, data, target, epoch, return_pics):
     output = model(data)
-    test_loss = torch.nn.functional.nll_loss(output, target, reduction='sum').item()
-    pred = output.max(1, keepdim=True)[1]
-    correct = pred.eq(target.view_as(pred)).sum().item()
-    return (test_loss, correct)
+    if return_pics:
+        return output
+    else:
+        test_loss = torch.nn.functional.nll_loss(output, target, reduction='sum').item()
+        pred = output.max(1, keepdim=True)[1]
+        correct = pred.eq(target.view_as(pred)).sum().item()
+        return (test_loss, correct)
 
 
-def test_epoch(epoch, model, loader, log_to_file=True):
+def test_epoch(epoch, model, loader, log_to_file=True, return_pics=False):
     with torch.no_grad():
         model.eval()
         test_loss = 0
@@ -67,8 +70,11 @@ def test_epoch(epoch, model, loader, log_to_file=True):
                     inputs.append(submodule.get_encodings(inputs[-1]))
             else:
                 inputs = [model.preprocess_data(data)]
-                batch_test_loss, batch_correct = test_single_model(
-                    model, inputs[0], target, epoch)
+                if return_pics:
+                    return (data, test_single_model(model, inputs[0], target, epoch, return_pics))
+                else:
+                    batch_test_loss, batch_correct = test_single_model(
+                        model, inputs[0], target, epoch, return_pics)
                 test_loss += batch_test_loss
                 correct += batch_correct
         test_loss /= len(loader.dataset)
