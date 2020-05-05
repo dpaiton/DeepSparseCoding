@@ -19,3 +19,6 @@ class EnsembleModule(nn.Sequential):
         for module in self:
             self.layer_list.append(module.get_encodings(self.layer_list[-1])) # latent encodings
         return self.layer_list[-1]
+
+    def get_encodings(self, x):
+        return self.forward(x)
