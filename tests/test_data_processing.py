@@ -146,7 +146,7 @@ class TestUtils(unittest.TestCase):
             self.assertEqual(list(flat_map.shape), flat_shape)
 
     def test_standardize(self):
-        num_tolerance_decimals = 6
+        num_tolerance_decimals = 5
         unflat_shape = [8, 4, 4, 3]
         flat_shape = [8, 4*4*3]
         shape_options = [unflat_shape, flat_shape]
@@ -186,7 +186,7 @@ class TestUtils(unittest.TestCase):
                             msg=err_msg)
 
     def rescale_data_to_one(self):
-        num_tolerance_decimals = 6
+        num_tolerance_decimals = 7
         unflat_shape = [8, 4, 4, 3]
         flat_shape = [8, 4*4*3]
         shape_options = [unflat_shape, flat_shape]
@@ -225,3 +225,15 @@ class TestUtils(unittest.TestCase):
                             1.0,
                             places=num_tolerance_decimals,
                             msg=err_msg)
+
+    def test_label_conversion(self):
+        num_labels = 15
+        num_classes = 10
+        dense_labels = np.random.randint(0, num_classes, num_labels)
+        one_hot_labels = np.zeros((num_labels, num_classes))
+        for label_index in range(num_labels):
+            one_hot_labels[label_index, dense_labels[label_index]] = 1
+        func_dense = dp.one_hot_to_dense(torch.tensor(one_hot_labels)).numpy()
+        np.testing.assert_equal(func_dense, dense_labels)
+        func_one_hot = dp.dense_to_one_hot(torch.tensor(dense_labels), num_classes).numpy()
+        np.testing.assert_equal(func_one_hot, one_hot_labels)
