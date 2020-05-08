@@ -21,11 +21,15 @@ import foolbox.attacks as fa
 
 
 workspace_dir = os.path.expanduser('~')+'/Work/'
-log_files = [os.path.join(workspace_dir,'/Torch_projects/mlp_768_mnist/logfiles/mlp_768_mnist_v0.log'),
-    os.path.join(workspace_dir, '/Torch_projects/lca_768_mlp_mnist/logfiles/lca_768_mlp_mnist_v0.log')]
+log_files = [
+    os.path.join(*[workspace_dir, 'Torch_projects', 'mlp_768_mnist', 'logfiles', 'mlp_768_mnist_v0.log']),
+    os.path.join(*[workspace_dir, 'Torch_projects', 'lca_768_mlp_mnist', 'logfiles', 'lca_768_mlp_mnist_v0.log'])
+    ]
 
-cp_latest_filenames = [os.path.join(workspace_dir,'Torch_projects/mlp_768_mnist/checkpoints/mlp_768_mnist_latest_checkpoint_v0.pt'),
-    os.path.join(workspace_dir, 'Torch_projects/lca_768_mlp_mnist/checkpoints/lca_768_mlp_mnist_latest_checkpoint_v0.pt']
+cp_latest_filenames = [
+    os.path.join(*[workspace_dir,'Torch_projects', 'mlp_768_mnist', 'checkpoints', 'mlp_768_mnist_latest_checkpoint_v0.pt']),
+    os.path.join(*[workspace_dir, 'Torch_projects', 'lca_768_mlp_mnist', 'checkpoints', 'lca_768_mlp_mnist_latest_checkpoint_v0.pt'])
+    ]
 
 attack_params = {
     'linfPGD':
