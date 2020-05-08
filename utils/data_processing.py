@@ -183,3 +183,30 @@ def rescale_data_to_one(data, eps=None, samplewise=True):
     data_range = torch.where(true_range >= eps, true_range, eps*torch.ones_like(true_range))
     data = (data - data_min) / data_range
     return data, data_min, data_max
+
+def one_hot_to_dense(one_hot_labels):
+    """
+    converts a matrix of one-hot labels to a list of dense labels
+    Inputs:
+        one_hot_labels: one-hot torch tensor of shape [num_labels, num_classes]
+    Outputs:
+        dense_labels: 1D torch tensor array of labels
+            The integer value indicates the class and 0 is assumed to be a class.
+            The integer class also indicates the index for the corresponding one-hot representation
+    """
+    num_labels, num_classes = one_hot_labels.shape
+    dense_labels = torch.zeros(num_labels)
+    for label_id in range(num_labels):
+        dense_labels[label_id] = torch.nonzero(one_hot_labels[label_id, :] == 1)
+    return dense_labels
+
+def dense_to_one_hot(labels_dense, num_classes):
+    """
+    converts a (np.ndarray) vector of dense labels to a (np.ndarray) matrix of one-hot labels
+    e.g. [0, 1, 1, 3] -> [00, 01, 01, 11]
+    """
+    num_labels = labels_dense.shape[0]
+    index_offset = torch.arange(end=num_labels, dtype=torch.int32) * num_classes
+    labels_one_hot = torch.zeros((num_labels, num_classes))
+    labels_one_hot.view(-1)[index_offset + labels_dense.view(-1)] = 1
+    return labels_one_hot
