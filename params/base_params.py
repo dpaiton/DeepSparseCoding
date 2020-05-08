@@ -28,3 +28,6 @@ class BaseParams(object):
 
     def compute_helper_params(self):
         pass
+
+class params(BaseParams):
+    pass
