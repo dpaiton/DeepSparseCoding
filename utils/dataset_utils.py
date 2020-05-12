@@ -45,6 +45,7 @@ def load_dataset(params):
             num_workers=0, pin_memory=False)
         val_loader = None
         test_loader = None
+        params.num_pixels = params.data_edge_size**2
     else:
         assert False, (f'Supported datasets are ["mnist"], not {dataset_name}')
     params.epoch_size = len(train_loader.dataset)

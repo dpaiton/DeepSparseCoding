@@ -7,6 +7,11 @@ import DeepSparseCoding.modules.losses as losses
 
 
 class LcaModel(BaseModel, LcaModule):
+    def setup(self, params, logger=None):
+        super(LcaModel, self).setup(params, logger)
+        self.setup_module(params)
+        self.setup_optimizer()
+
     def get_total_loss(self, input_tuple):
         input_tensor, input_labels = input_tuple
         latents = self.get_encodings(input_tensor)

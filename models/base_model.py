@@ -20,8 +20,6 @@ class BaseModel(object):
             self.log_params()
         else:
             self.logger = logger
-        self.setup_module(params)
-        self.setup_optimizer()
 
     def load_params(self, params):
         """
