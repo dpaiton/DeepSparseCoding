@@ -78,9 +78,9 @@ def load_module(module_type):
     return py_module_class()
 
 
-def load_params(file_name):
-    params_module = file_utils.python_module_from_file('params', file_name)
-    params = params_module.params()
+def load_params(file_name, key='params'):
+    params_module = file_utils.python_module_from_file(key, file_name)
+    params = getattr(params_module, key)()
     return params
 
 

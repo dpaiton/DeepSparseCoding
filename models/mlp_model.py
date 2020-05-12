@@ -5,6 +5,11 @@ from DeepSparseCoding.models.base_model import BaseModel
 from DeepSparseCoding.modules.mlp_module import MlpModule
 
 class MlpModel(BaseModel, MlpModule):
+    def setup(self, params, logger=None):
+        super(MlpModel, self).setup(params, logger)
+        self.setup_module(params)
+        self.setup_optimizer()
+
     def get_total_loss(self, input_tuple):
         input_tensor, input_label = input_tuple
         pred = self.forward(input_tensor)

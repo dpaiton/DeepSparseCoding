@@ -15,25 +15,25 @@ class TestDatasets(unittest.TestCase):
     def setUp(self):
         self.data_dir = os.path.join(ROOT_DIR, 'Datasets')
 
-    def test_mnist(self):
-        try: # only run the test if the dataset is already downloaded
-            mnist = datasets.MNIST(root=self.data_dir, train=True, download=False)
-        except:
-            return 0
-        standardize_data_list = [True, False]
-        for standardize_data in standardize_data_list:
-            params = types.SimpleNamespace()
-            params.standardize_data = standardize_data
-            if(params.standardize_data):
-                params.eps = 1e-8
-            params.data_dir = self.data_dir
-            params.dataset = 'mnist'
-            params.shuffle_data = True
-            params.batch_size = 10000
-            train_loader, val_loader, test_loader, params = dataset_utils.load_dataset(params)
-            assert len(train_loader.dataset) == params.epoch_size
-            (data, target) = next(iter(train_loader))
-            assert data.numpy().shape == (params.batch_size, 28, 28, 1) 
+    #def test_mnist(self):
+    #    try: # only run the test if the dataset is already downloaded
+    #        mnist = datasets.MNIST(root=self.data_dir, train=True, download=False)
+    #    except:
+    #        return 0
+    #    standardize_data_list = [True, False]
+    #    for standardize_data in standardize_data_list:
+    #        params = types.SimpleNamespace()
+    #        params.standardize_data = standardize_data
+    #        if(params.standardize_data):
+    #            params.eps = 1e-8
+    #        params.data_dir = self.data_dir
+    #        params.dataset = 'mnist'
+    #        params.shuffle_data = True
+    #        params.batch_size = 10000
+    #        train_loader, val_loader, test_loader, params = dataset_utils.load_dataset(params)
+    #        assert len(train_loader.dataset) == params.epoch_size
+    #        (data, target) = next(iter(train_loader))
+    #        assert data.numpy().shape == (params.batch_size, 28, 28, 1) 
 
     def test_synthetic(self):
         epoch_size_list = [20, 50]

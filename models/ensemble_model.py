@@ -6,6 +6,14 @@ from DeepSparseCoding.modules.ensemble_module import EnsembleModule
 
 
 class EnsembleModel(BaseModel, EnsembleModule):
+    def setup(self, params, logger=None):
+        """
+        Setup required model components
+        """
+        super(EnsembleModel, self).setup(params, logger)
+        self.setup_module(params)
+        self.setup_optimizer()
+
     def setup_module(self, params):
         for subparams in params.ensemble_params:
             subparams.epoch_size = params.epoch_size
@@ -17,9 +25,7 @@ class EnsembleModel(BaseModel, EnsembleModule):
         super(EnsembleModel, self).setup_ensemble_module(params)
         self.submodel_classes = []
         for submodel_params in self.params.ensemble_params:
-            self.submodel_classes.append(loaders.load_model_class(
-            submodel_params.model_type,
-            self.params.lib_root_dir))
+            self.submodel_classes.append(loaders.load_model_class(submodel_params.model_type))
 
     def setup_optimizer(self):
         for module in self:
