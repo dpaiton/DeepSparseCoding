@@ -15,25 +15,27 @@ class TestDatasets(unittest.TestCase):
     def setUp(self):
         self.data_dir = os.path.join(ROOT_DIR, 'Datasets')
 
-    #def test_mnist(self):
-    #    try: # only run the test if the dataset is already downloaded
-    #        mnist = datasets.MNIST(root=self.data_dir, train=True, download=False)
-    #    except:
-    #        return 0
-    #    standardize_data_list = [True, False]
-    #    for standardize_data in standardize_data_list:
-    #        params = types.SimpleNamespace()
-    #        params.standardize_data = standardize_data
-    #        if(params.standardize_data):
-    #            params.eps = 1e-8
-    #        params.data_dir = self.data_dir
-    #        params.dataset = 'mnist'
-    #        params.shuffle_data = True
-    #        params.batch_size = 10000
-    #        train_loader, val_loader, test_loader, params = dataset_utils.load_dataset(params)
-    #        assert len(train_loader.dataset) == params.epoch_size
-    #        (data, target) = next(iter(train_loader))
-    #        assert data.numpy().shape == (params.batch_size, 28, 28, 1) 
+    def test_mnist(self):
+        try: # only run the test if the dataset is already downloaded
+            mnist = datasets.MNIST(root=self.data_dir, train=True, download=False)
+        except:
+            return 0
+        standardize_data_list = [True, False]
+        for standardize_data in standardize_data_list:
+            params = types.SimpleNamespace()
+            params.standardize_data = standardize_data
+            if(params.standardize_data):
+                params.eps = 1e-8
+            params.data_dir = self.data_dir
+            params.dataset = 'mnist'
+            params.shuffle_data = True
+            params.batch_size = 10000
+            train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
+            for key, value in data_params.items():
+                setattr(params, key, value)
+            assert len(train_loader.dataset) == params.epoch_size
+            (data, target) = next(iter(train_loader))
+            assert data.numpy().shape == (params.batch_size, 28, 28, 1) 
 
     def test_synthetic(self):
         epoch_size_list = [20, 50]
@@ -55,7 +57,9 @@ class TestDatasets(unittest.TestCase):
                             params.dist_type = dist_type
                             params.num_classes = num_classes
                             params.rand_state = rand_state
-                            train_loader, val_loader, test_loader, params = dataset_utils.load_dataset(params)
+                            train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
+                            for key, value in data_params.items():
+                                setattr(params, key, value)
                             assert len(train_loader.dataset) == epoch_size
                             for batch_idx, (data, target) in enumerate(train_loader):
                                assert data.numpy().shape == (params.batch_size, params.data_edge_size, params.data_edge_size, 1) 

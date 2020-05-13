@@ -19,8 +19,8 @@ class EnsembleModel(BaseModel, EnsembleModule):
             subparams.epoch_size = params.epoch_size
             subparams.batches_per_epoch = params.batches_per_epoch
             subparams.num_batches = params.num_batches
-            subparams.num_val_images = params.num_val_images
-            subparams.num_test_images = params.num_test_images
+            #subparams.num_val_images = params.num_val_images
+            #subparams.num_test_images = params.num_test_images
             subparams.data_shape = params.data_shape
         super(EnsembleModel, self).setup_ensemble_module(params)
         self.submodel_classes = []

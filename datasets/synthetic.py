@@ -96,30 +96,11 @@ class SyntheticImages(torchvision.datasets.vision.VisionDataset):
             data = rand_state.normal(loc=0.0, scale=1.0, size=data_shape)
         elif dist_type == 'laplacian':
             data = rand_state.laplace(loc=0.0, scale=1.0, size=data_shape)
-        elif dist_type == 'hierarchical_sparse': # courtisy of Sophia Sanborn github.com/sophiaas
-            # Number of second-level basis functions
-            num_l2_functions = 10
-            # First-level identity basis
-            l1_basis = np.identity(data_edge_size**2)
-            # Second-level Gaussian basis
-            sig = data_edge_size // 2
-            # l2_basis will have shape = [num_edge_pixels, num_l2_functions]
-            l2_basis = np.asarray([
-                norm.pdf(np.arange(0, data_edge_size), rand_state.randint(0, data_edge_size), sig)
-                for i in range(num_l2_functions)], dtype=np.float32).T
-            l2_basis /= (np.max(l2_basis, axis=0)[None, :])
-            # Laplacian prior over l2_basis
-            v = rand_state.laplace(0, 1, (num_l2_functions, epoch_size))
-            lam = np.exp(np.dot(l2_basis, v)) # shape = [num_edge_pixels, epoch_size]
-            u = np.sqrt(lam) * rand_state.normal(0, 1, (data_edge_size**2, epoch_size))
-            # Generate data
-            data = np.reshape(np.dot(l1_basis, u), data_shape)
         else:
-            data = np.zeros(data_shape)
+            assert False, (f'Data dist_type must be "gaussian" or "laplace", not {dist_type}')
         return data
 
     def generate_labels(self, epoch_size, num_classes, rand_state):
-        #Generate classes from 2 avaliable classes
         labels = torch.tensor(rand_state.randint(num_classes, size=epoch_size))
-        labels = dp.dense_to_one_hot(labels, num_classes)
+        #labels = dp.dense_to_one_hot(labels, num_classes)
         return labels

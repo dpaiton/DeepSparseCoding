@@ -13,7 +13,7 @@ def train_single_model(model, loss):
 def train_epoch(epoch, model, loader):
     model.train()
     epoch_size = len(loader.dataset)
-    num_batches = epoch_size / model.params.batch_size
+    num_batches = epoch_size // model.params.batch_size
     correct = 0
     for batch_idx, (data, target) in enumerate(loader):
         data, target = data.to(model.params.device), target.to(model.params.device)
