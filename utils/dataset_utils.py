@@ -14,6 +14,7 @@ import DeepSparseCoding.datasets.synthetic as synthetic
 
 
 def load_dataset(params):
+    new_params = {}
     if(params.dataset.lower() == 'mnist'):
         preprocessing_pipeline = [
             transforms.ToTensor(),
@@ -33,6 +34,7 @@ def load_dataset(params):
             transform=transforms.Compose(preprocessing_pipeline)),
             batch_size=params.batch_size, shuffle=params.shuffle_data,
             num_workers=0, pin_memory=False)
+        new_params["epoch_size"] = len(train_loader.dataset)
     elif(params.dataset.lower() == 'synthetic'):
         preprocessing_pipeline = [transforms.ToTensor(),
             transforms.Lambda(lambda x: x.permute(1, 2, 0)) # channels last
@@ -45,13 +47,8 @@ def load_dataset(params):
             num_workers=0, pin_memory=False)
         val_loader = None
         test_loader = None
-        params.num_pixels = params.data_edge_size**2
+        new_params["num_pixels"] = params.data_edge_size**2
     else:
         assert False, (f'Supported datasets are ["mnist"], not {dataset_name}')
-    params.epoch_size = len(train_loader.dataset)
-    #if(not hasattr(params, 'num_val_images')):
-    #    params.num_val_images = len(test_loader.dataset)
-    #if(not hasattr(params, 'num_test_images')):
-    #    params.num_test_images = len(test_loader.dataset)
-    params.data_shape = list(next(iter(train_loader))[0].shape)[1:]
-    return (train_loader, val_loader, test_loader, params)
+    new_params["data_shape"] = list(next(iter(train_loader))[0].shape)[1:]
+    return (train_loader, val_loader, test_loader, new_params)

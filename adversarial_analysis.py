@@ -65,7 +65,9 @@ for model_index in range(num_models):
     log_text = logger.load_file()
     params = logger.read_params(log_text)[-1]
     params.cp_latest_filename = cp_latest_filenames[model_index]
-    train_loader, val_loader, test_loader, params = dataset_utils.load_dataset(params)
+    train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
+    for key, value in data_params.items():
+        setattr(params, key, value)
     model = loaders.load_model(params.model_type, params.lib_root_dir)
     model.setup(params, logger)
     model.params.analysis_out_dir = os.path.join(
