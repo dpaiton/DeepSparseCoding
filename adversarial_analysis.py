@@ -83,7 +83,6 @@ for model_index in range(num_models):
     attack_success = np.zeros(
             (len(attacks), len(epsilons), num_batches, model.params.batch_size), dtype=np.bool)
     for batch_index, (data, target) in enumerate(test_loader):
-        #if batch_index < 10:
         data = model.preprocess_data(data.to(model.params.device))
         target = target.to(model.params.device)
         images, labels = ep.astensors(*(data, target))
