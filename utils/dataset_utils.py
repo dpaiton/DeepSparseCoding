@@ -5,7 +5,9 @@ import numpy as np
 import torch
 from torchvision import datasets, transforms
 
-ROOT_DIR = os.path.dirname(os.getcwd())
+ROOT_DIR = os.getcwd()
+while 'DeepSparseCoding' in ROOT_DIR:
+    ROOT_DIR = os.path.dirname(ROOT_DIR)
 if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.data_processing as dp
@@ -23,6 +25,9 @@ def load_dataset(params):
         if params.standardize_data:
             preprocessing_pipeline.append(
                 transforms.Lambda(lambda x: dp.standardize(x, eps=params.eps)[0]))
+        if params.rescale_data_to_one:
+            preprocessing_pipeline.append(
+                transforms.Lambda(lambda x: dp.rescale_data_to_one(x, eps=params.eps, samplewise=True)[0]))
         train_loader = torch.utils.data.DataLoader(
             datasets.MNIST(root=params.data_dir, train=True, download=True,
             transform=transforms.Compose(preprocessing_pipeline)),
