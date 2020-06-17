@@ -1,8 +1,10 @@
 import os
 import sys
 
-parent_path = os.path.dirname(os.getcwd())
-if parent_path not in sys.path: sys.path.append(parent_path)
+ROOT_DIR = os.getcwd()
+while 'DeepSparseCoding' in ROOT_DIR:
+    ROOT_DIR = os.path.dirname(ROOT_DIR)
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import numpy as np
 import proplot as plot
@@ -20,24 +22,25 @@ from foolbox import PyTorchModel, accuracy, samples
 import foolbox.attacks as fa
 
 
-workspace_dir = os.path.expanduser('~')+'/Work/'
 log_files = [
-    os.path.join(*[workspace_dir, 'Torch_projects', 'mlp_768_mnist', 'logfiles', 'mlp_768_mnist_v0.log']),
-    os.path.join(*[workspace_dir, 'Torch_projects', 'lca_768_mlp_mnist', 'logfiles', 'lca_768_mlp_mnist_v0.log'])
+    os.path.join(*[ROOT_DIR, 'Torch_projects', 'mlp_768_mnist', 'logfiles', 'mlp_768_mnist_v0.log']),
+    os.path.join(*[ROOT_DIR, 'Torch_projects', 'lca_768_mlp_mnist', 'logfiles', 'lca_768_mlp_mnist_v0.log'])
     ]
 
 cp_latest_filenames = [
-    os.path.join(*[workspace_dir,'Torch_projects', 'mlp_768_mnist', 'checkpoints', 'mlp_768_mnist_latest_checkpoint_v0.pt']),
-    os.path.join(*[workspace_dir, 'Torch_projects', 'lca_768_mlp_mnist', 'checkpoints', 'lca_768_mlp_mnist_latest_checkpoint_v0.pt'])
+    os.path.join(*[ROOT_DIR,'Torch_projects', 'mlp_768_mnist', 'checkpoints', 'mlp_768_mnist_latest_checkpoint_v0.pt']),
+    os.path.join(*[ROOT_DIR, 'Torch_projects', 'lca_768_mlp_mnist', 'checkpoints', 'lca_768_mlp_mnist_latest_checkpoint_v0.pt'])
     ]
 
 attack_params = {
-    'linfPGD':
-        {'rel_stepsize':1e-3,
-        'steps':int(1/(2*1e-3))}} # max perturbation it can reach is 0.5
+    'linfPGD': {
+        'abs_stepsize':0.01,
+        'steps':5000
+    }
+}
 
 attacks = [
-    fa.FGSM(),
+    #fa.FGSM(),
     fa.LinfPGD(**attack_params['linfPGD']),
     #fa.LinfBasicIterativeAttack(),
     #fa.LinfAdditiveUniformNoiseAttack(),
@@ -53,10 +56,10 @@ epsilons = [ # allowed perturbation size
     0.25,
     0.3,
     0.35,
-    0.4,
+    #0.4,
     0.5,
     #0.8,
-    #1.0
+    1.0
 ]
 
 num_models = len(log_files)
@@ -68,7 +71,7 @@ for model_index in range(num_models):
     train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
     for key, value in data_params.items():
         setattr(params, key, value)
-    model = loaders.load_model(params.model_type, params.lib_root_dir)
+    model = loaders.load_model(params.model_type)
     model.setup(params, logger)
     model.params.analysis_out_dir = os.path.join(
         *[model.params.model_out_dir, 'analysis', model.params.version])
@@ -91,13 +94,17 @@ for model_index in range(num_models):
         print(f'Batch {batch_index+1} out of {num_batches}')
         print(f'accuracy {accuracy(fmodel, images, labels)}')
         for attack_index, attack in enumerate(attacks):
-            _, _, success = attack(fmodel, images, labels, epsilons=epsilons)
+            advs, inputs, success = attack(fmodel, images, labels, epsilons=epsilons)
             assert success.shape == (len(epsilons), len(images))
             success_ = success.numpy()
             assert success_.dtype == np.bool
             attack_success[attack_index, :, batch_index, :] = success_
             print('\n', attack)
             print('  ', 1.0 - success_.mean(axis=-1).round(2))
+            np.savez('tmp_perturbations.npz', data=advs[0].numpy())
+            np.savez('tmp_images.npz', data=images.numpy())
+            np.savez('tmp_inputs.npz', data=inputs[0].numpy())
+            import IPython; IPython.embed(); raise SystemExit
         robust_accuracy = 1.0 - attack_success[:, :, batch_index, :].max(axis=0).mean(axis=-1)
         print('\n', '-' * 79, '\n')
         print('worst case (best attack per-sample)')
