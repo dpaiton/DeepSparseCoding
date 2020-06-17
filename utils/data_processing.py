@@ -174,8 +174,10 @@ def rescale_data_to_one(data, eps=None, samplewise=True):
     if(eps is None):
         eps = 1.0 / np.sqrt(data[0,...].numel())
     if(samplewise):
-        data_min = data.view(-1, np.prod(list(range(data.ndim)[1:]))).min(axis=1, keepdims=True)
-        data_max = data.view(-1, np.prod(list(range(data.ndim)[1:]))).max(axis=1, keepdims=True)
+        data_min = torch.min(data.view(-1, np.prod(data.shape[1:])),
+                             axis=1, keepdims=False)[0].view(-1, *[1]*(data.ndim-1))
+        data_max = torch.max(data.view(-1, np.prod(data.shape[1:])),
+                             axis=1, keepdims=False)[0].view(-1, *[1]*(data.ndim-1))
     else:
         data_min = torch.min(data)
         data_max = torch.max(data)

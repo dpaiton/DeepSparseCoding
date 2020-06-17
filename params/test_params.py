@@ -34,6 +34,7 @@ class shared_params(object):
         self.num_val_images = 0
         self.num_test_images = 0
         self.standardize_data = False
+        self.rescale_data_to_one = False
         self.num_epochs = 3
         self.train_logs_per_epoch = 1
 

@@ -197,7 +197,7 @@ class TestUtils(unittest.TestCase):
                 for samplewise in samplewise_options:
                     err_msg = (f'\ninput_shape={shape}\neps={eps_val}\nsamplewise={samplewise}')
                     random_tensor = torch.rand(shape)
-                    func_output = dp.standardize(random_tensor, eps=eps_val, samplewise=samplewise)
+                    func_output = dp.rescale_data_to_one(random_tensor, eps=eps_val, samplewise=samplewise)
                     norm_tensor = func_output[0].numpy()
                     orig_min = func_output[1]
                     orig_max = func_output[2]

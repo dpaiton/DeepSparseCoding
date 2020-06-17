@@ -12,6 +12,7 @@ class BaseParams(object):
 
     def set_params(self):
         self.standardize_data = False
+        self.rescale_data_to_one = False
         self.model_type = None
         self.log_to_file = True
         self.train_logs_per_epoch = None
