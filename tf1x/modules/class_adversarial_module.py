@@ -58,18 +58,20 @@ class ClassAdversarialModule(object):
         #a semi-dymaic shape (i.e., only batch dimension unknown)
         self.adv_var.set_shape([None,] + self.input_shape[1:])
 
-        #Clip pertubations by maximum amount of change allowed
+        # Project pertubations to clip by maximum amount of change allowed
         if(self.max_step is not None):
-          max_pert = tfc.upper_bound(tfc.lower_bound(
-            self.adv_var, -self.max_step), self.max_step)
+          max_pert = tf.clip_by_value(self.adv_var, -self.max_step, self.max_step)
+          #max_pert = tfc.upper_bound(tfc.lower_bound(
+          #  self.adv_var, -self.max_step), self.max_step)
         else:
           max_pert = self.adv_var
 
         self.adv_image = self.data_tensor + max_pert
 
         if(self.clip_adv):
-          self.adv_image = tfc.upper_bound(tfc.lower_bound(
-            self.adv_image, self.clip_range[0]), self.clip_range[1])
+          self.adv_image = tf.clip_by_value(self.adv_image, self.clip_range[0], self.clip_range[1])
+          #self.adv_image = tfc.upper_bound(tfc.lower_bound(
+          #  self.adv_image, self.clip_range[0]), self.clip_range[1])
 
       with tf.compat.v1.variable_scope("input_switch"):
         self.adv_switch_input = tf.cond(pred=self.use_adv_input,
@@ -82,14 +84,19 @@ class ClassAdversarialModule(object):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       self.label_est = label_est
       self.model_logits = model_logits
-      self.label_gt = label_gt
+      self.label_gt = label_gt # one-hot [batch_size, num_classes] representation
 
       with tf.compat.v1.variable_scope("loss") as scope:
         if(self.attack_method == "kurakin_untargeted"):
-          #self.adv_loss = tf.reduce_sum(-loss, name="sum_loss")
-          label_classes = tf.argmax(input=self.label_gt, axis=-1)
-          self.adv_loss = -tf.reduce_sum(input_tensor=tf.nn.sparse_softmax_cross_entropy_with_logits(
-            labels=label_classes, logits=self.model_logits))
+          label_classes = tf.argmax(self.label_gt, axis=-1) # dense representation [batch_size]
+
+          #self.adv_loss = -tf.reduce_sum(input_tensor=tf.nn.sparse_softmax_cross_entropy_with_logits(
+          #  labels=label_classes, logits=self.model_logits))
+          softmax_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+            labels=label_classes,
+            logits=self.model_logits
+          )
+          self.adv_loss = tf.reduce_mean(input_tensor=softmax_loss)
         elif(self.attack_method == "kurakin_targeted"):
           #self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
           #  tf.math.log(self.label_est+1e-6)))
@@ -131,7 +138,8 @@ class ClassAdversarialModule(object):
 
       with tf.compat.v1.variable_scope("optimizer") as scope:
         if(self.attack_method == "kurakin_untargeted" or self.attack_method == "kurakin_targeted"):
-          self.adv_grad = -tf.sign(tf.gradients(ys=self.adv_loss, xs=self.adv_var)[0])
+          #self.adv_grad = -tf.sign(tf.gradients(ys=self.adv_loss, xs=self.adv_var)[0])
+          self.adv_grad = tf.sign(tf.gradients(ys=self.adv_loss, xs=self.adv_var)[0])
           self.adv_update_op = self.adv_var.assign_add(self.step_size * self.adv_grad)
         elif(self.attack_method == "carlini_targeted"):
           self.adv_opt = tf.compat.v1.train.AdamOptimizer(
@@ -144,6 +152,9 @@ class ClassAdversarialModule(object):
           self.reset = tf.group(initializer_ops + [self.reset])
           #Add adam vars to list of ignore vars
           self.ignore_load_var_list.extend(self.adv_opt.variables())
+        else:
+          assert False, ("attack_method " + self.attack_method +" not recognized. "+
+            "Options are \"kurakin_untargeted\", \"kurakin_targeted\", or \"carlini_targeted\"")
 
   def generate_random_target_labels(self, input_labels, rand_state=None):
     input_classes = np.argmax(input_labels, axis=-1)
@@ -203,21 +214,18 @@ class ClassAdversarialModule(object):
     out_dict["adv_outputs"] = [output]
     out_dict["adv_losses"] = [loss]
 
-    reduc_dim = tuple(range(1, len(orig_img.shape)))
+    reduc_dim = tuple(range(1, len(orig_img.shape))) # Everything but batch dim
     out_dict["input_adv_mses"]= [np.mean((orig_img-orig_img)**2, axis=reduc_dim)]
 
     #calculate adversarial examples
     for step in range(self.num_steps):
       sess.run(self.adv_update_op, feed_dict)
-      if((step+1) % save_int == 0):
+      if((step+1) % save_int == 0): # +1 since this is post update
         [adv_img, output, loss] = sess.run([self.adv_image, self.label_est, self.adv_loss], feed_dict)
-        #+1 since this is post update
-        #We do this here since we want to store the last step
         out_dict["step"].append(step+1)
         out_dict["adv_images"].append(adv_img)
         out_dict["adv_outputs"].append(output)
         out_dict["adv_losses"].append(loss)
-        #Everything but batch dim
-        out_dict["input_adv_mses"].append(np.mean((orig_img-adv_img)**2, axis=reduc_dim))
+        out_dict["input_adv_mses"].append(np.mean((orig_img - adv_img)**2, axis=reduc_dim))
 
     return out_dict

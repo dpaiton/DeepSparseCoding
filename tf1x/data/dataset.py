@@ -57,7 +57,7 @@ class Dataset(object):
     for _ in range(int(num_to_advance)):
       self.epoch_order = self.rand_state.permutation(self.num_examples)
 
-  def next_batch(self, batch_size):
+  def next_batch(self, batch_size, shuffle_data=True):
     """
     Return a batch of images
     Outputs:
@@ -79,7 +79,10 @@ class Dataset(object):
       start = self.curr_epoch_idx
     self.batches_completed += 1
     self.curr_epoch_idx += batch_size
-    set_indices = self.epoch_order[start:self.curr_epoch_idx]
+    if shuffle_data:
+        set_indices = self.epoch_order[start:self.curr_epoch_idx]
+    else:
+        set_indices = np.arange(self.num_examples)[start:self.curr_epoch_idx]
     # The following code modifies what is returned to support None type passthrough
     # and also index the relevant numpy arrays
     if self.labels is not None:

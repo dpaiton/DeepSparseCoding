@@ -1,6 +1,6 @@
 from DeepSparseCoding.tf1x.params.base_params import BaseParams
 
-TRAIN_ADV = True
+TRAIN_ADV = False
 
 class params(BaseParams):
   def __init__(self):
@@ -82,32 +82,37 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.vectorize_data = True
-      self.rescale_data = False
-      self.standardize_data = True
+      self.rescale_data = True
+      self.standardize_data = False
       self.center_data = False
       self.whiten_data = False
       self.extract_patches = False
-      self.log_int = 100
+      self.val_on_cp = False
+      self.log_int = 200
       self.cp_int = 1e4
       self.gen_plot_int = 2e4
       self.num_classes = 10
+      self.batch_size = 50
+      self.num_val = 0
+      self.mlp_decay_mult = 2e-6
+      self.mlp_norm_mult = 0.0
       self.optimizer = "adam"
-      self.mlp_layer_types = ["fc", "fc", "fc"]
-      self.mlp_activation_functions = ["lrelu", "lrelu", "identity"]
-      self.mlp_output_channels = [768, 512, self.num_classes]
+      self.mlp_layer_types = ["fc", "fc"]
+      self.mlp_activation_functions = ["lrelu", "identity"]
+      self.mlp_output_channels = [768, self.num_classes]
       self.mlp_patch_size = []
       self.mlp_conv_strides = []
-      self.batch_norm = [None, None, None]
-      self.mlp_dropout = [0.2, 0.4, 1.0] # TODO: Set dropout defaults somewhere
-      self.lrn = [None, None, None]
-      self.max_pool = [False, False, False]
-      self.max_pool_ksize = [None, None, None]
-      self.max_pool_strides = [None, None, None]
+      self.batch_norm = [None]*len(self.mlp_layer_types)
+      self.mlp_dropout = [0.5, 1.0] # TODO: Set dropout defaults somewhere
+      self.lrn = [None]*len(self.mlp_layer_types)
+      self.max_pool = [False]*len(self.mlp_layer_types)
+      self.max_pool_ksize = [None]*len(self.mlp_layer_types)
+      self.max_pool_strides = [None]*len(self.mlp_layer_types)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["num_batches"] = int(5e5)
-        self.schedule[sched_idx]["weight_lr"] = 1e-4
+        self.schedule[sched_idx]["num_batches"] = int(4e5) # 300 epochs
+        self.schedule[sched_idx]["weight_lr"] = 5e-4
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
-        self.schedule[sched_idx]["decay_rate"] = 0.90
+        self.schedule[sched_idx]["decay_rate"] = 0.10
       if(TRAIN_ADV):
         self.schedule[0]["num_batches"] = int(1e4)
 

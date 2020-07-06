@@ -157,8 +157,11 @@ class Analyzer(object):
             # This is a switch used internally to use clean or adv examples
             self.use_adv_input = tf.compat.v1.placeholder(tf.bool, shape=(), name="use_adv_input")
           # Building adv module here with adv_params
-          self.class_adv_module = ClassAdversarialModule(self.input_node, self.use_adv_input,
-            self.model_params.num_classes, self.analysis_params.adversarial_num_steps,
+          self.class_adv_module = ClassAdversarialModule(
+            self.input_node,
+            self.use_adv_input,
+            self.model_params.num_classes,
+            self.analysis_params.adversarial_num_steps,
             self.analysis_params.adversarial_step_size,
             max_step=self.analysis_params.adversarial_max_change,
             clip_adv=self.analysis_params.adversarial_clip,
@@ -169,9 +172,10 @@ class Analyzer(object):
       self.model.build_graph_from_input(self.input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
-          self.class_adv_module.build_adversarial_ops(self.model.label_est,
-            model_logits=self.model.get_encodings(),
-            label_gt = self.model.label_placeholder)
+          self.class_adv_module.build_adversarial_ops(
+            self.model.get_label_est(),
+            model_logits=self.model.get_logits(),
+            label_gt=self.model.label_placeholder)
       #Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
     elif(self.analysis_params.do_recon_adversaries):
@@ -554,14 +558,17 @@ class Analyzer(object):
         batch_image_shape = [batch_size] + images_shape[1:]
         sess.run(self.model.init_op, {self.model.input_placeholder:np.zeros(batch_image_shape)})
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
-        activations = np.zeros([num_images, self.model.get_num_latent()])
+        activations = []
         for batch_idx in range(num_batches):
           im_batch_start_idx = int(batch_idx * batch_size)
           im_batch_end_idx = int(np.min([im_batch_start_idx + batch_size, num_images]))
           batch_images = images[im_batch_start_idx:im_batch_end_idx, ...]
           feed_dict = self.model.get_feed_dict(batch_images, is_test=True)
           outputs = sess.run(activation_operation(), feed_dict)
-          activations[im_batch_start_idx:im_batch_end_idx, ...] = outputs.copy()
+          activations.append(outputs.copy())
+        activations = np.stack(activations, axis=0)
+        num_batches, batch_size, num_outputs = activations.shape
+        activations = activations.reshape((num_batches*batch_size, num_outputs))
       else:
         feed_dict = self.model.get_feed_dict(images, is_test=True)
         sess.run(self.model.init_op, feed_dict)
@@ -1214,8 +1221,11 @@ class Analyzer(object):
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       for r_mult in self.analysis_params.carlini_recon_mult:
         out_dict = self.class_adv_module.construct_adversarial_examples(
-          feed_dict, labels=input_labels, recon_mult=r_mult,
-          rand_state=self.rand_state, target_generation_method="specified",
+          feed_dict,
+          labels=input_labels,
+          recon_mult=r_mult,
+          rand_state=self.rand_state,
+          target_generation_method="specified",
           target_labels=target_labels,
           save_int=self.analysis_params.adversarial_save_int)
         steps = out_dict["step"]
@@ -1244,7 +1254,7 @@ class Analyzer(object):
       batch_size = self.num_data
 
     input_images = images[input_id, ...].astype(np.float32)
-    input_labels = labels[input_id, ...].astype(np.float32)
+    input_labels = labels[input_id, ...].astype(np.float32) # [num_inputs, num_classes] one-hot representation
     num_classes = input_labels.shape[-1]
 
     #Define target label based on target method

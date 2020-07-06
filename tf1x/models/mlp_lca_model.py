@@ -100,6 +100,16 @@ class MlpLcaModel(MlpModel):
   def get_encodings(self):
     return self.lca_module.a
 
+  def get_logits(self):
+    return self.mlp_module.layer_list[-1]
+
+  def get_label_est(self):
+    temperature = 0.7
+    label_est = tf.nn.softmax(self.get_logits() / temperature)
+    return label_est
+  #def get_label_est(self):
+    #return self.label_est
+
   def get_num_latent(self):
     # returns the size of the LCA outputs
     return self.params.num_neurons
