@@ -42,6 +42,30 @@ class params(BaseParams):
       self.standardize_data = True
       self.num_val = 10000
 
+    elif data_type.lower() == "vanhateren":
+      self.model_name += "_vh"
+      self.vectorize_data = True
+      self.rescale_data = False
+      self.standardize_data = False
+      self.center_data = False
+      self.whiten_data = True
+      self.extract_patches = True
+      self.whiten_data = True
+      self.whiten_method = "FT"
+      self.whiten_batch_size = 2
+      self.extract_patches = True
+      self.num_patches = 1e4
+      self.patch_edge_size = 16
+      self.overlapping_patches = True
+      self.randomize_patches = True
+      self.patch_variance_threshold = 0.0
+      self.lpf_data = False # whitening automatically includes lpf
+      self.lpf_cutoff = 0.7
+      self.log_int = 100
+      self.cp_int = 500
+      self.gen_plot_int = 1e3
+      self.num_neurons = 768
+
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
       self.vectorize_data = True

@@ -174,7 +174,7 @@ class Model(object):
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
           if self.params.optimizer == "lbfgsb":
-            self.minimizer = tf.optimizer.lbfgs_minimize(
+            self.minimizer = tfp.optimizer.bfgs_minimize(
               value_and_gradients_function=self.total_loss,
               initial_position=self.trainable_variables,
               max_iterations=self.params.maxiter)

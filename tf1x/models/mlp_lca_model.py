@@ -104,7 +104,7 @@ class MlpLcaModel(MlpModel):
     return self.mlp_module.layer_list[-1]
 
   def get_label_est(self):
-    temperature = 0.7
+    temperature = 1.0
     label_est = tf.nn.softmax(self.get_logits() / temperature)
     return label_est
   #def get_label_est(self):

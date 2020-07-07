@@ -179,7 +179,7 @@ class params(BaseParams):
         self.mlp_output_channels = [self.num_classes]
         self.mlp_layer_types = ["fc"]
         self.mlp_activation_functions = ["identity"]
-        #self.optimizer = "adam"
+        self.optimizer = "adam"
         self.mlp_decay_mult = 0.0
         self.mlp_norm_mult = 0.0
         self.mlp_patch_size = []
@@ -190,16 +190,14 @@ class params(BaseParams):
         self.max_pool_ksize = [None]*len(self.mlp_output_channels)
         self.max_pool_strides = [None]*len(self.mlp_output_channels)
         self.lrn = [None]*len(self.mlp_output_channels)
-
-        self.schedule[0]["num_batches"] = int(1.2e6)
+        self.schedule[0]["num_batches"] = int(1.0e6)
         self.schedule[0]["weights"] = ["lca/weights/w:0"]
         self.schedule[0]["train_lca"] = True
         self.schedule[0]["sparse_mult"] = 0.25
         self.schedule[0]["weight_lr"] = 0.1
         self.schedule[0]["decay_steps"] = int(0.7*self.schedule[0]["num_batches"])
         self.schedule[0]["decay_rate"] = 0.5
-
-        self.schedule[1]["num_batches"] = int(5e5)
+        self.schedule[1]["num_batches"] = int(8e5)
         self.schedule[1]["weights"] = [
           "mlp/layer0/fc_w_0:0",
           "mlp/layer0/fc_b_0:0"]
