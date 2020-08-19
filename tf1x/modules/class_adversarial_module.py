@@ -80,6 +80,13 @@ class ClassAdversarialModule(object):
   def get_adv_input(self):
     return self.adv_switch_input
 
+  def kurakin_loss(self, label_classes):
+    softmax_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+      labels=label_classes, # dense labels
+      logits=self.model_logits
+    )
+    return tf.reduce_mean(input_tensor=softmax_loss)
+
   def build_adversarial_ops(self, label_est, model_logits=None, label_gt=None):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
       self.label_est = label_est
@@ -88,21 +95,9 @@ class ClassAdversarialModule(object):
 
       with tf.compat.v1.variable_scope("loss") as scope:
         if(self.attack_method == "kurakin_untargeted"):
-          label_classes = tf.argmax(self.label_gt, axis=-1) # dense representation [batch_size]
-
-          #self.adv_loss = -tf.reduce_sum(input_tensor=tf.nn.sparse_softmax_cross_entropy_with_logits(
-          #  labels=label_classes, logits=self.model_logits))
-          softmax_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-            labels=label_classes,
-            logits=self.model_logits
-          )
-          self.adv_loss = tf.reduce_mean(input_tensor=softmax_loss)
+          self.adv_loss = self.kurakin_loss(tf.argmax(self.label_gt, axis=-1))
         elif(self.attack_method == "kurakin_targeted"):
-          #self.adv_loss = -tf.reduce_sum(tf.multiply(self.adv_target,
-          #  tf.math.log(self.label_est+1e-6)))
-          label_classes = tf.argmax(input=self.adv_target, axis=-1)
-          self.adv_loss = tf.reduce_sum(input_tensor=tf.nn.sparse_softmax_cross_entropy_with_logits(
-            labels=label_classes, logits=self.model_logits))
+          self.adv_loss = - self.kurakin_loss(tf.argmax(self.adv_target, axis=-1))
         elif(self.attack_method == "carlini_targeted"):
           self.input_pert_loss = 0.5 * tf.reduce_sum(
             input_tensor=tf.square(self.adv_var), name="input_perturbed_loss")
@@ -184,10 +179,7 @@ class ClassAdversarialModule(object):
     if(self.attack_method == "kurakin_untargeted"):
       pass
     elif(self.attack_method == "kurakin_targeted"):
-      if(target_generation_method == "random"):
-        feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)
-      else:
-        feed_dict[self.adv_target] = target_labels
+      feed_dict[self.adv_target] = target_labels
     elif(self.attack_method == "carlini_targeted"):
       if(target_generation_method == "random"):
         feed_dict[self.adv_target] = self.generate_random_target_labels(labels, rand_state)

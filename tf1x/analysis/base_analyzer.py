@@ -174,7 +174,7 @@ class Analyzer(object):
         with self.model.graph.as_default():
           self.class_adv_module.build_adversarial_ops(
             label_est=self.model.get_label_est(),
-            model_logits=self.model.get_logits(),
+            model_logits=self.model.get_logits_with_temp(),
             label_gt=self.model.label_placeholder)
       #Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
