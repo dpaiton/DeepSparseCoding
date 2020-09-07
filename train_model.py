@@ -3,8 +3,8 @@ import sys
 import argparse
 import time as ti
 
-root_dir = os.path.dirname(os.getcwd())
-if root_dir not in sys.path: sys.path.append(root_dir)
+ROOT_DIR = os.path.dirname(os.getcwd())
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.loaders as loaders
 import DeepSparseCoding.utils.run_utils as run_utils
@@ -12,8 +12,6 @@ import DeepSparseCoding.utils.dataset_utils as dataset_utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('param_file', help='Path to the parameter file')
-parser.add_argument('--sparse-mult', type=float, default=0.25)
-parser.add_argument('--num-epochs', type=int, default=1000)
 
 args = parser.parse_args()
 param_file = args.param_file
@@ -22,15 +20,14 @@ t0 = ti.time()
 
 # Load params
 params = loaders.load_params(param_file)
-params.sparse_mult = args.sparse_mult
-params.num_epochs = args.num_epochs
-params.model_name += '_{}_{}'.format(args.sparse_mult, args.num_epochs)
 
 # Load data
-train_loader, val_loader, test_loader, params = dataset_utils.load_dataset(params)
+train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
+for key, value in data_params.items():
+    setattr(params, key, value)
 
 # Load model
-model = loaders.load_model(params.model_type, root_dir=params.lib_root_dir)
+model = loaders.load_model(params.model_type)
 model.setup(params)
 model.to(params.device)
 
