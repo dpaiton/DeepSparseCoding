@@ -1312,7 +1312,7 @@ class Analyzer(object):
       ("Save interval must be <= adversarial_num_steps")
 
     #+1 since we always save the initial step
-    num_stored_steps = ((self.analysis_params.adversarial_num_steps)//self.analysis_params.adversarial_save_int) + 1
+    num_stored_steps = (self.analysis_params.adversarial_num_steps//self.analysis_params.adversarial_save_int) + 1
 
     #TODO abstract this out into a "evaluate with batches" function
     #since vis_class_adv needs this as well

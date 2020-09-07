@@ -1041,7 +1041,6 @@ def one_hot_to_dense(one_hot_labels):
   """
   one_hot_labels = np.asarray(one_hot_labels)
   num_labels, num_classes = one_hot_labels.shape
-  dense_labels = np.zeros(num_labels)
   dense_labels = np.squeeze(np.asarray([np.argwhere(one_hot_labels[label_id,:]==1).item()
     for label_id in range(num_labels)]))
   return dense_labels
