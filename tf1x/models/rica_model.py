@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+#import tensorflow_probability as tfp
 
 import DeepSparseCoding.tf1x.utils.plot_functions as pf
 import DeepSparseCoding.tf1x.utils.data_processing as dp
@@ -14,9 +15,11 @@ class RicaModel(Model):
   ## TODO:
   * rica model has different interface for applying gradients when the L-BFGS minimizer is used,
     which is inconsistent and should be changed so that it acts like all models
+    -- UPDATE: tf 1.15.x does not support bfgs at all, so RICA can no longer train
   """
   def __init__(self):
     super(RicaModel, self).__init__()
+    print('rica_model.py: WARNING: the RICA model is depricated and will not train properly due to removed support for bfgs from TensorFlow.')
     self.vector_inputs = True
 
   def load_params(self, params):
@@ -63,10 +66,10 @@ class RicaModel(Model):
           self.sparse_mult = tf.compat.v1.placeholder(tf.float32, shape=(), name="sparse_mult")
 
         with tf.compat.v1.variable_scope("weights") as scope:
-          w_init = tf.nn.l2_normalize(tf.random.truncated_normal(self.w_shape, mean=0.0, stddev=1.0),
+          self.w_init = tf.nn.l2_normalize(tf.random.truncated_normal(self.w_shape, mean=0.0, stddev=1.0),
             axis=[0], name="w_init")
-          w_unnormalized = tf.compat.v1.get_variable(name="w", dtype=tf.float32, initializer=w_init,
-            trainable=True)
+          w_unnormalized = tf.compat.v1.get_variable(name="w", dtype=tf.float32,
+            initializer=self.w_init, trainable=True)
           self.trainable_variables[w_unnormalized.name] = w_unnormalized
           w_norm = tf.sqrt(tf.maximum(tf.reduce_sum(input_tensor=tf.square(w_unnormalized), axis=[0],
             keepdims=True), self.params.eps))
@@ -101,6 +104,22 @@ class RicaModel(Model):
 
   def get_encodings(self):
     return self.a
+
+  #def loss_value_and_grad(self, x):
+  #  #weight_op = [self.trainable_variables[weight]
+  #  #  for weight in self.params.schedule[self.sched_idx]["weights"]]
+  #  #eval_list = [
+  #  #  self.get_total_loss(),
+  #  #  tf.compat.v1.gradients(self.get_total_loss(), weight_op)
+  #  #]
+  #  #feed_dict = self.get_feed_dict(input_data, None)
+  #  #config = tf.compat.v1.ConfigProto()
+  #  #config.gpu_options.allow_growth = True
+  #  #with tf.compat.v1.Session(config=config, graph=self.graph) as sess:
+  #  #  evals = sess.run(eval_list, feed_dict)
+  #  lamb = lambda x: self.get_total_loss()
+  #  val_and_grad = tfp.math.value_and_gradient(lamb, x)
+  #  return val_and_grad
 
   def get_total_loss(self):
     return self.total_loss

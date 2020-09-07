@@ -174,10 +174,11 @@ class Model(object):
           self.apply_grads = list() # [sch_idx][weight_idx]
           self.learning_rates = list() # [sch_idx][weight_idx]
           if self.params.optimizer == "lbfgsb":
-            self.minimizer = tfp.optimizer.bfgs_minimize(
-              value_and_gradients_function=self.total_loss,
-              initial_position=self.trainable_variables,
-              max_iterations=self.params.maxiter)
+            self.minimizer = None
+            #self.minimizer = tfp.optimizer.lbfgs_minimize(
+            #  value_and_gradients_function=self.loss_value_and_grad,#self.total_loss,
+            #  initial_position=self.w_init,#self.trainable_variables,
+            #  max_iterations=self.params.maxiter)
             #self.minimizer = tf.contrib.opt.ScipyOptimizerInterface(self.total_loss,
             #  options={"maxiter":self.params.maxiter}) # Default method is L-BFGSB
           for schedule_idx, sch in enumerate(self.params.schedule):
