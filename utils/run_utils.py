@@ -13,7 +13,7 @@ def train_single_model(model, loss):
 def train_epoch(epoch, model, loader):
     model.train()
     epoch_size = len(loader.dataset)
-    num_batches = epoch_size / model.params.batch_size
+    num_batches = epoch_size // model.params.batch_size
     correct = 0
     for batch_idx, (data, target) in enumerate(loader):
         data, target = data.to(model.params.device), target.to(model.params.device)
@@ -41,18 +41,16 @@ def train_epoch(epoch, model, loader):
         model.scheduler.step(epoch)
 
 
-def test_single_model(model, data, target, epoch, return_pics):
+def test_single_model(model, data, target, epoch):
     output = model(data)
-    if return_pics:
-        return output
-    else:
-        test_loss = torch.nn.functional.nll_loss(output, target, reduction='sum').item()
-        pred = output.max(1, keepdim=True)[1]
-        correct = pred.eq(target.view_as(pred)).sum().item()
-        return (test_loss, correct)
+    #test_loss = torch.nn.functional.nll_loss(output, target, reduction='sum').item()
+    test_loss = torch.nn.CorssEntropyLoss()(output, target)
+    pred = output.max(1, keepdim=True)[1]
+    correct = pred.eq(target.view_as(pred)).sum().item()
+    return (test_loss, correct)
 
 
-def test_epoch(epoch, model, loader, log_to_file=True, return_pics=False):
+def test_epoch(epoch, model, loader, log_to_file=True):
     with torch.no_grad():
         model.eval()
         test_loss = 0
@@ -70,11 +68,8 @@ def test_epoch(epoch, model, loader, log_to_file=True, return_pics=False):
                     inputs.append(submodule.get_encodings(inputs[-1]))
             else:
                 inputs = [model.preprocess_data(data)]
-                if return_pics:
-                    return (data, test_single_model(model, inputs[0], target, epoch, return_pics))
-                else:
-                    batch_test_loss, batch_correct = test_single_model(
-                        model, inputs[0], target, epoch, return_pics)
+                batch_test_loss, batch_correct = test_single_model(
+                    model, inputs[0], target, epoch)
                 test_loss += batch_test_loss
                 correct += batch_correct
         test_loss /= len(loader.dataset)
