@@ -1,4 +1,5 @@
 *.npz
+*.pkl
 
 # Memristor data
 memristor_data/
