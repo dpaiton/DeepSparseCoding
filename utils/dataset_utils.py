@@ -63,10 +63,14 @@ def load_dataset(params):
     data_stats = {}
     data_stats['epoch_size'] = len(train_loader.dataset)
     if(not hasattr(params, 'num_val_images')):
-        if test_loader is not None:
+        if test_loader is None:
+            data_stats['num_val_images'] = 0
+        else:
             data_stats['num_val_images'] = len(test_loader.dataset)
     if(not hasattr(params, 'num_test_images')):
-        if test_loader is not None:
+        if test_loader is None:
+            data_stats['num_test_images'] = 0
+        else:
             data_stats['num_test_images'] = len(test_loader.dataset)
     data_stats['data_shape'] = list(next(iter(train_loader))[0].shape)[1:]
     return (train_loader, val_loader, test_loader, data_stats)
