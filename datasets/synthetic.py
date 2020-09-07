@@ -86,7 +86,7 @@ class SyntheticImages(torchvision.datasets.vision.VisionDataset):
         """
         Function for generating synthetic data of shape [epoch_size, num_edge, num_edge]
         Inputs:
-            dist_type [str] one of {'gaussian', 'laplacian', 'hierarchical_sparse'},
+            dist_type [str] one of {'gaussian', 'laplacian'},
                 otherwise returns zeros
             epoch_size [int] number of datapoints in an epoch
             data_edge_size [int] size of the edge of the square synthetic image
