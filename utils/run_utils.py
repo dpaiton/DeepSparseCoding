@@ -85,3 +85,21 @@ def test_epoch(epoch, model, loader, log_to_file=True):
             model.log_info('<stats>'+js_str+'</stats>')
         else:
             return stat_dict
+
+def get_inputs_and_outputs(epoch, model, loader, num_batches=1):
+    with torch.no_grad():
+        model.eval()
+        outputs = []
+        targets = []
+        inputs = []
+        batch = 0
+        for data, target in loader:
+            if batch >= num_batches:
+                pass
+            batch += 1
+            data, target = data.to(model.params.device), target.to(model.params.device)
+            output = model(data)
+            inputs.append(data)
+            targets.append(target)
+            outputs.append(output)
+        return (inputs, targets, outputs)

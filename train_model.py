@@ -3,8 +3,8 @@ import sys
 import argparse
 import time as ti
 
-ROOT_DIR = os.path.dirname(os.getcwd())
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
+root_dir = os.path.dirname(os.getcwd())
+if root_dir not in sys.path: sys.path.append(root_dir)
 
 import DeepSparseCoding.utils.loaders as loaders
 import DeepSparseCoding.utils.run_utils as run_utils
@@ -22,12 +22,12 @@ t0 = ti.time()
 params = loaders.load_params(param_file)
 
 # Load data
-train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
-for key, value in data_params.items():
+train_loader, val_loader, test_loader, data_stats = dataset_utils.load_dataset(params)
+for key, value in data_stats.items():
     setattr(params, key, value)
 
 # Load model
-model = loaders.load_model(params.model_type)
+model = loaders.load_model(params.model_type, root_dir=params.lib_root_dir)
 model.setup(params)
 model.to(params.device)
 

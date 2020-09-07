@@ -39,17 +39,14 @@ def load_dataset(params):
             batch_size=params.batch_size, shuffle=params.shuffle_data,
             num_workers=0, pin_memory=False)
     elif(params.dataset.lower() == 'dsprites'):
-        root = os.path.join(
-            *[params.data_dir,
-            'dsprites-dataset',
-            'dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz']
-        )
-        if not os.path.exists(root):
+        root = os.path.join(*[params.data_dir])
+        dsprites_file = os.path.join(*[root, 'dsprites/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz'])
+        if not os.path.exists(dsprites_file):
             import subprocess
-            print(f'Now downloading the dsprites-dataset to {root}')
-            subprocess.call(['./download_dsprites.sh'])
+            print(f'Now downloading the dsprites-dataset to {root}/dsprites')
+            subprocess.call(['./scripts/download_dsprites.sh', f'{root}'])
             print('Finished')
-        data = np.load(root, encoding='bytes')
+        data = np.load(dsprites_file, encoding='bytes')
         data = torch.from_numpy(data['imgs']).unsqueeze(1).float()
         train_kwargs = {'data_tensor':data}
         dset = CustomTensorDataset
@@ -63,12 +60,13 @@ def load_dataset(params):
         test_loader = None
     else:
         assert False, (f'Supported datasets are ["mnist"], not {dataset_name}')
-    params.epoch_size = len(train_loader.dataset)
+    data_stats = {}
+    data_stats['epoch_size'] = len(train_loader.dataset)
     if(not hasattr(params, 'num_val_images')):
         if test_loader is not None:
-            params.num_val_images = len(test_loader.dataset)
+            data_stats['num_val_images'] = len(test_loader.dataset)
     if(not hasattr(params, 'num_test_images')):
         if test_loader is not None:
-            params.num_test_images = len(test_loader.dataset)
-    params.data_shape = list(next(iter(train_loader))[0].shape)[1:]
-    return (train_loader, val_loader, test_loader, params)
+            data_stats['num_test_images'] = len(test_loader.dataset)
+    data_stats['data_shape'] = list(next(iter(train_loader))[0].shape)[1:]
+    return (train_loader, val_loader, test_loader, data_stats)
