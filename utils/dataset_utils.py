@@ -1,7 +1,8 @@
+import os
+
+import numpy as np
 import torch
 from torchvision import datasets, transforms
-import os
-import numpy as np
 
 import DeepSparseCoding.utils.data_processing as dp
 
@@ -38,10 +39,14 @@ def load_dataset(params):
             batch_size=params.batch_size, shuffle=params.shuffle_data,
             num_workers=0, pin_memory=False)
     elif(params.dataset.lower() == 'dsprites'):
-        root = 'data/dsprites-dataset/dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz'
+        root = os.path.join(
+            *[params.data_dir,
+            'dsprites-dataset',
+            'dsprites_ndarray_co1sh3sc6or40x32y32_64x64.npz']
+        )
         if not os.path.exists(root):
             import subprocess
-            print('Now download dsprites-dataset')
+            print(f'Now downloading the dsprites-dataset to {root}')
             subprocess.call(['./download_dsprites.sh'])
             print('Finished')
         data = np.load(root, encoding='bytes')
@@ -50,10 +55,10 @@ def load_dataset(params):
         dset = CustomTensorDataset
         train_data = dset(**train_kwargs)
         train_loader = torch.utils.data.DataLoader(train_data,
-                                                   batch_size=params.batch_size,
-                                                   shuffle=params.shuffle_data,
-                                                   num_workers=0,
-                                                   pin_memory=False)
+            batch_size=params.batch_size,
+            shuffle=params.shuffle_data,
+            num_workers=0,
+            pin_memory=False)
         val_loader = None
         test_loader = None
     else:
