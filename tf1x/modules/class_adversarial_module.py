@@ -85,7 +85,7 @@ class ClassAdversarialModule(object):
       labels=label_classes, # dense labels
       logits=self.model_logits
     )
-    return tf.reduce_mean(input_tensor=softmax_loss)
+    return tf.reduce_sum(input_tensor=softmax_loss)
 
   def build_adversarial_ops(self, label_est, model_logits=None, label_gt=None):
     with tf.compat.v1.variable_scope(self.variable_scope) as scope:
@@ -122,8 +122,9 @@ class ClassAdversarialModule(object):
 
           max_logits_not_target_val = tf.reduce_max(input_tensor=logits_not_target_val, axis=-1)
 
-          self.target_class_loss = tf.reduce_sum(input_tensor=tf.nn.relu(
-            max_logits_not_target_val - logits_target_val))
+          target_conf = 0.0 #TODO: Get this from params
+          self.target_class_loss = tf.reduce_sum(input_tensor=tf.maximum(
+            max_logits_not_target_val - logits_target_val, -target_conf))
 
           self.adv_loss = self.input_pert_loss + \
             self.recon_mult * self.target_class_loss
