@@ -20,7 +20,7 @@ class params(BaseParams):
     if(TRAIN_ON_RECON):
       self.model_name = "mlp_lca_conv_recon"
     else:
-      self.model_name = "slp_lca_768_latent"
+      self.model_name = "slp_lca_1568_latent"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -83,8 +83,8 @@ class params(BaseParams):
     self.val_on_cp = True
     self.eval_batch_size = 100
     self.max_cp_to_keep = 1
-    self.cp_load = False
-    self.cp_load_name = "lca_768_mnist"
+    self.cp_load = True
+    self.cp_load_name = "lca_1568_mnist"#"lca_768_75_steps_mnist"
     self.cp_load_step = None # latest checkpoint
     self.cp_load_ver = "0.0"
     self.cp_load_var = ["lca/weights/w:0"]
@@ -94,14 +94,15 @@ class params(BaseParams):
     self.save_plots = True
     self.schedule = [
       #Training LCA
-      {"weights": None,
-      "train_lca": True,
-      "num_batches": int(1.2e6),
-      "sparse_mult": 0.1,
-      "weight_lr": 0.01,#[0.01],
-      "decay_steps": int(1e4*0.5),#[int(1e4*0.5)],
-      "decay_rate": 0.8,#[0.8],
-      "staircase": True},
+      #{"weights": None,
+      #"train_lca": True,
+      #"num_batches": int(1.2e6),
+      #"sparse_mult": 0.1,
+      #"weight_lr": 0.01,#[0.01],
+      #"decay_steps": int(1e4*0.5),#[int(1e4*0.5)],
+      #"decay_rate": 0.8,#[0.8],
+      #"staircase": True},
+      #Training MLP
       {"weights": None,
       "train_lca": False,
       "train_on_adversarial": False,
@@ -134,7 +135,7 @@ class params(BaseParams):
       self.num_val = 0
       # LCA params
       self.lca_conv = False
-      self.num_neurons = 768
+      self.num_neurons = 1568#768
       self.num_steps = 75
       self.dt = 0.001
       self.tau = 0.03
@@ -171,7 +172,7 @@ class params(BaseParams):
             "mlp/layer3/fc_w_3:0",
             "mlp/layer3/fc_b_3:0"]
           self.schedule[sched_idx]["train_on_adversarial"] = False
-          self.schedule[sched_idx]["sparse_mult"] = 0.19
+          self.schedule[sched_idx]["sparse_mult"] = 0.25#0.19
           self.schedule[sched_idx]["weight_lr"] = 1e-4
           self.schedule[sched_idx]["decay_steps"] = int(0.5*self.schedule[sched_idx]["num_batches"])
           self.schedule[sched_idx]["decay_rate"] = 0.9
@@ -190,22 +191,22 @@ class params(BaseParams):
         self.max_pool_ksize = [None]*len(self.mlp_output_channels)
         self.max_pool_strides = [None]*len(self.mlp_output_channels)
         self.lrn = [None]*len(self.mlp_output_channels)
-        self.schedule[0]["num_batches"] = int(1.0e6)
-        self.schedule[0]["weights"] = ["lca/weights/w:0"]
-        self.schedule[0]["train_lca"] = True
-        self.schedule[0]["sparse_mult"] = 0.25
-        self.schedule[0]["weight_lr"] = 0.1
-        self.schedule[0]["decay_steps"] = int(0.7*self.schedule[0]["num_batches"])
-        self.schedule[0]["decay_rate"] = 0.5
-        self.schedule[1]["num_batches"] = int(8e5)
-        self.schedule[1]["weights"] = [
+        #self.schedule[0]["num_batches"] = int(1.0e6)
+        #self.schedule[0]["weights"] = ["lca/weights/w:0"]
+        #self.schedule[0]["train_lca"] = True
+        #self.schedule[0]["sparse_mult"] = 0.25
+        #self.schedule[0]["weight_lr"] = 0.1
+        #self.schedule[0]["decay_steps"] = int(0.7*self.schedule[0]["num_batches"])
+        #self.schedule[0]["decay_rate"] = 0.5
+        self.schedule[0]["num_batches"] = int(8e5)
+        self.schedule[0]["weights"] = [
           "mlp/layer0/fc_w_0:0",
           "mlp/layer0/fc_b_0:0"]
-        self.schedule[1]["train_on_adversarial"] = False
-        self.schedule[1]["sparse_mult"] = 0.25
-        self.schedule[1]["weight_lr"] = 1e-4
-        self.schedule[1]["decay_steps"] = int(0.8*self.schedule[1]["num_batches"])
-        self.schedule[1]["decay_rate"] = 0.9
+        self.schedule[0]["train_on_adversarial"] = False
+        self.schedule[0]["sparse_mult"] = 0.3
+        self.schedule[0]["weight_lr"] = 1e-4
+        self.schedule[0]["decay_steps"] = int(0.8*self.schedule[0]["num_batches"])
+        self.schedule[0]["decay_rate"] = 0.9
 
     elif data_type.lower() == "cifar10":
       self.model_name += "_cifar10"
