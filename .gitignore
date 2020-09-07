@@ -1,3 +1,5 @@
+*.npz
+
 # Memristor data
 memristor_data/
 
