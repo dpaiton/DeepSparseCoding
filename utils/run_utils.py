@@ -1,5 +1,7 @@
 import torch
 
+import DeepSparseCoding.utils.data_processing as dp
+
 
 def train_single_model(model, loss):
     model.optimizer.zero_grad() # clear gradietns of all optimized variables
@@ -7,7 +9,7 @@ def train_single_model(model, loss):
     model.optimizer.step()
     if(hasattr(model.params, 'renormalize_weights') and model.params.renormalize_weights):
         with torch.no_grad(): # tell autograd to not record this operation
-            model.w.div_(torch.norm(model.w, dim=0, keepdim=True))
+            model.w.div_(dp.get_weights_l2_norm(model.w))
 
 
 def train_epoch(epoch, model, loader):
@@ -36,9 +38,9 @@ def train_epoch(epoch, model, loader):
                     input_data=inputs[0], input_labels=target, batch_step=batch_step)
     if(model.params.model_type.lower() == 'ensemble'):
         for submodule in model:
-            submodule.scheduler.step(epoch)
+            submodule.scheduler.step()
     else:
-        model.scheduler.step(epoch)
+        model.scheduler.step()
 
 
 def test_single_model(model, data, target, epoch):
