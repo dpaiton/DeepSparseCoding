@@ -70,6 +70,18 @@ class lca_params(BaseParams):
             for frac in self.optimizer.lr_annealing_milestone_frac]
         self.step_size = self.dt / self.tau
 
+class conv_lca_params(lca_params):
+    def set_params(self):
+        super(conv_lca_params, self).set_params()
+        self.kernel_size = 8
+        self.stride = 2
+        self.padding = 0
+        self.optimizer.milestones = [frac * self.num_epochs
+            for frac in self.optimizer.lr_annealing_milestone_frac]
+        self.step_size = self.dt / self.tau
+        self.out_channels = self.num_latent
+        self.in_channels = 1
+
 
 class mlp_params(BaseParams):
     def set_params(self):

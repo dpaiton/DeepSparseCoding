@@ -20,7 +20,7 @@ class TestModels(unittest.TestCase):
 
     def test_model_loading(self):
         for model_type in self.model_list:
-            model_type = ''.join(model_type.split('_')[:-1]) # remove '_model' at the end
+            model_type = '_'.join(model_type.split('_')[:-1]) # remove '_model' at the end
             model = loaders.load_model(model_type)
             params = loaders.load_params(self.test_params_file, key=model_type+'_params')
             train_loader, val_loader, test_loader, data_params = datasets.load_dataset(params)

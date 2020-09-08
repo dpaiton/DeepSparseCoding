@@ -42,6 +42,9 @@ def load_model_class(model_type):
     elif(model_type.lower() == 'lca'):
         py_module_name = 'LcaModel'
         file_name = os.path.join(*[dsc_dir, 'models', 'lca_model.py'])
+    elif(model_type.lower() == 'conv_lca'):
+        py_module_name = 'ConvLcaModel'
+        file_name = os.path.join(*[dsc_dir, 'models', 'conv_lca_model.py'])
     elif(model_type.lower() == 'ensemble'):
         py_module_name = 'EnsembleModel'
         file_name = os.path.join(*[dsc_dir, 'models', 'ensemble_model.py'])
@@ -66,6 +69,9 @@ def load_module(module_type):
     elif(module_type.lower() == 'lca'):
         py_module_name = 'LcaModule'
         file_name = os.path.join(*[dsc_dir, 'modules', 'lca_module.py'])
+    elif(module_type.lower() == 'conv_lca'):
+        py_module_name = 'ConvLcaModule'
+        file_name = os.path.join(*[dsc_dir, 'modules', 'conv_lca_module.py'])
     elif(module_type.lower() == 'ensemble'):
         py_module_name = 'EnsembleModule'
         file_name = os.path.join(*[dsc_dir, 'modules', 'ensemble_module.py'])
