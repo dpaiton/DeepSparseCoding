@@ -1,8 +1,4 @@
-import os
 import types
-
-import numpy as np
-import torch
 
 from DeepSparseCoding.params.base_params import BaseParams
 
