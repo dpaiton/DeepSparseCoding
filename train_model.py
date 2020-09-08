@@ -22,8 +22,8 @@ t0 = ti.time()
 params = loaders.load_params(param_file)
 
 # Load data
-train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
-for key, value in data_params.items():
+train_loader, val_loader, test_loader, data_stats = dataset_utils.load_dataset(params)
+for key, value in data_stats.items():
     setattr(params, key, value)
 
 # Load model
