@@ -1,8 +1,8 @@
 import os
 import sys
 
-root_path = os.path.dirname(os.path.dirname(os.getcwd()))
-if root_path not in sys.path: sys.path.append(root_path)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import numpy as np
 import tensorflow as tf

@@ -185,7 +185,7 @@ class TestUtils(unittest.TestCase):
                             places=num_tolerance_decimals,
                             msg=err_msg)
 
-    def rescale_data_to_one(self):
+    def test_rescale_data_to_one(self):
         num_tolerance_decimals = 7
         unflat_shape = [8, 4, 4, 3]
         flat_shape = [8, 4*4*3]

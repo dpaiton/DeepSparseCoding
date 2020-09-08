@@ -47,8 +47,6 @@ class BaseParams(object):
     randomize_patches [bool] if set, the patches are drawn randomly from the image
       must be True if overlapping_patches is True
     rescale_data [bool] if set, rescale input data to be between 0 and 1, per example
-    version [str] model version for output
-              default is an empty string ""
     save_plots [bool] if set, save plots to file
     schedule [list of dicts] specifying values for auto_placeholders
       train_model.py will loop over each schedule dictionary in the list, which allows you to modify training parameters after some number of batches
@@ -58,7 +56,8 @@ class BaseParams(object):
       only compatible when vectorize_data is False because it must be done on 3d image
     vectorize_data [bool] if set, reshape input data to be [batch, data_dimensionality] (i.e. a batch of vectors)
       must be True for fully connected networks and False for convolutional networks
-    version [str] version string to be appended to all outputs for training and analysis; can be any string, or empty
+    version [str] model version for output
+              default is an empty string ""
     whiten_data [bool] if set, perform whitening on input data. Whitening details are specified in models/base_model.preprocess_dataset()
     whiten_method [str] specify method for whitening; can be "FT", "ZCA", or "PCA"
     whiten_batch_size [int] batch size for whitening operation; use if dataset is too large to whiten all of it at once

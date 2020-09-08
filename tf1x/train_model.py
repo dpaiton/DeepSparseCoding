@@ -8,8 +8,8 @@ matplotlib.use("Agg")
 import numpy as np
 import tensorflow as tf
 
-root_path = os.path.dirname(os.path.dirname(os.getcwd()))
-if root_path not in sys.path: sys.path.append(root_path)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.tf1x.params.param_picker as pp
 import DeepSparseCoding.tf1x.models.model_picker as mp

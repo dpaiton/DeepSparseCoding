@@ -11,7 +11,7 @@ def activation_picker(activation_function):
       return F.leaky_relu
     if activation_function == 'lca_threshold':
       return lca_threshold
-    assert False, ('Activation function ' + activation_function + ' is not supported.')
+    assert False, (f'Activation function {activation_function} is not supported.')
 
 def lca_threshold(u_in, thresh_type, rectify, sparse_threshold):
     u_zeros = torch.zeros_like(u_in)
@@ -38,5 +38,5 @@ def lca_threshold(u_in, thresh_type, rectify, sparse_threshold):
                     u_in,
                     u_zeros))
     else:
-        assert False, ('Parameter thresh_type must be "soft" or "hard", not '+thresh_type)
+        assert False, (f'Parameter thresh_type must be "soft" or "hard", not {thresh_type}')
     return a_out

@@ -1,7 +1,6 @@
 import numpy as np
 
 import torch
-#import torch.nn.functional as F
 
 from DeepSparseCoding.models.base_model import BaseModel
 from DeepSparseCoding.modules.mlp_module import MlpModule
@@ -15,7 +14,6 @@ class MlpModel(BaseModel, MlpModule):
     def get_total_loss(self, input_tuple):
         input_tensor, input_label = input_tuple
         pred = self.forward(input_tensor)
-        #return F.nll_loss(pred, input_label)
         self.loss_fn = torch.nn.CrossEntropyLoss()
         return self.loss_fn(pred, input_label)
 

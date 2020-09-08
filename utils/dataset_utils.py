@@ -5,9 +5,7 @@ import numpy as np
 import torch
 from torchvision import datasets, transforms
 
-ROOT_DIR = os.getcwd()
-while 'DeepSparseCoding' in ROOT_DIR:
-    ROOT_DIR = os.path.dirname(ROOT_DIR)
+ROOT_DIR = os.path.dirname(os.getcwd())
 if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.data_processing as dp

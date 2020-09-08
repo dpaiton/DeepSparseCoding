@@ -5,8 +5,8 @@ import argparse
 import numpy as np
 import tensorflow as tf
 
-root_path = os.path.dirname(os.path.dirname(os.getcwd()))
-if root_path not in sys.path: sys.path.append(root_path)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 from DeepSparseCoding.tf1x.utils.logger import Logger
 import DeepSparseCoding.tf1x.utils.data_processing as dp

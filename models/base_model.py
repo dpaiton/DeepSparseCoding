@@ -124,7 +124,7 @@ class BaseModel(object):
                 lr=optimizer_params.weight_lr,
                 weight_decay=optimizer_params.weight_decay)
         else:
-            assert False, ('optimizer name must be "sgd" or "adam", not %s'%(optimizer_name))
+            assert False, (f'optimizer name must be "sgd" or "adam", not {optimizer_name}')
         return optimizer
 
     def setup_optimizer(self):

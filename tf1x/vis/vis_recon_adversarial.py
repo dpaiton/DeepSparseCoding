@@ -11,8 +11,8 @@ from matplotlib import ticker
 import matplotlib.gridspec as gridspec
 from skimage.measure import compare_psnr
 
-root_path = os.path.dirname(os.path.dirname(os.getcwd()))
-if root_path not in sys.path: sys.path.append(root_path)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 from DeepSparseCoding.tf1x.data.dataset import Dataset
 import DeepSparseCoding.tf1x.data.data_selector as ds

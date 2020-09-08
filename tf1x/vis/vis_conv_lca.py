@@ -11,8 +11,8 @@ from scipy.ndimage import imread as imread
 import tensorflow as tf
 import pdb
 
-root_path = os.path.dirname(os.path.dirname(os.getcwd()))
-if root_path not in sys.path: sys.path.append(root_path)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
     
 import DeepSparseCoding.tf1x.data.data_selector as ds
 import DeepSparseCoding.tf1x.utils.data_processing as dp

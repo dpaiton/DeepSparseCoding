@@ -61,8 +61,6 @@ class ClassAdversarialModule(object):
         # Project pertubations to clip by maximum amount of change allowed
         if(self.max_step is not None):
           max_pert = tf.clip_by_value(self.adv_var, -self.max_step, self.max_step)
-          #max_pert = tfc.upper_bound(tfc.lower_bound(
-          #  self.adv_var, -self.max_step), self.max_step)
         else:
           max_pert = self.adv_var
 
@@ -70,8 +68,6 @@ class ClassAdversarialModule(object):
 
         if(self.clip_adv):
           self.adv_image = tf.clip_by_value(self.adv_image, self.clip_range[0], self.clip_range[1])
-          #self.adv_image = tfc.upper_bound(tfc.lower_bound(
-          #  self.adv_image, self.clip_range[0]), self.clip_range[1])
 
       with tf.compat.v1.variable_scope("input_switch"):
         self.adv_switch_input = tf.cond(pred=self.use_adv_input,
