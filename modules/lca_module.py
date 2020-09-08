@@ -3,16 +3,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from DeepSparseCoding.modules.activations import lca_threshold
+import DeepSparseCoding.utils.data_processing as dp
 
 
 class LcaModule(nn.Module):
     def setup_module(self, params):
         self.params = params
-        self.w = nn.Parameter(
-            F.normalize(
-            torch.randn(self.params.num_pixels, self.params.num_latent),
-            p=2, dim=0),
-            requires_grad=True)
+        w_init = torch.randn([self.params.num_pixels, self.params.num_latent])
+        w_init_normed = dp.l2_normalize_weights(w_init, eps=self.params.eps)
+        self.w = nn.Parameter(w_init_normed, requires_grad=True)
 
     def preprocess_data(self, input_tensor):
         input_tensor = input_tensor.view(-1, self.params.num_pixels)
@@ -44,7 +43,6 @@ class LcaModule(nn.Module):
         u_list = [torch.zeros([input_tensor.shape[0], self.params.num_latent],
             device=self.params.device)]
         a_list = [self.threshold_units(u_list[0])]
-        # TODO: look into redoing this with a register_buffer that gets updated? look up simple RNN code...
         for step in range(self.params.num_steps-1):
             u = self.step_inference(u_list[step], a_list[step], lca_b, lca_g, step)[0]
             u_list.append(u)
