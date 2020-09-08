@@ -237,3 +237,21 @@ class TestUtils(unittest.TestCase):
         np.testing.assert_equal(func_dense, dense_labels)
         func_one_hot = dp.dense_to_one_hot(torch.tensor(dense_labels), num_classes).numpy()
         np.testing.assert_equal(func_one_hot, one_hot_labels)
+
+    def test_atleastkd(self):
+        x = np.random.standard_normal([2, 3, 4])
+        ks = [0, 3, 8, 10]
+        for k in ks:
+            new_x = dp.atleast_kd(torch.tensor(x), k).numpy()
+            test_nd = np.maximum(k, x.ndim)
+            np.testing.assert_equal(new_x.ndim, test_nd)
+
+    def test_l2_weight_norm(self):
+        w_fc = np.random.standard_normal([24, 38])
+        w_conv = np.random.standard_normal([38, 24, 8, 8])
+        for w in [w_fc, w_conv, 0*w_fc, 0*w_conv]:
+            w_norm = dp.get_weights_l2_norm(torch.tensor(w), eps=1e-12).numpy()
+            normed_w = dp.l2_normalize_weights(torch.tensor(w), eps=1e-12).numpy()
+            normed_w_norm = dp.get_weights_l2_norm(torch.tensor(normed_w), eps=1e-12).numpy()
+            np.testing.assert_allclose(normed_w_norm, 1.0, rtol=1e-10)
+            np.testing.assert_allclose(w / w_norm, normed_w, rtol=1e-10)

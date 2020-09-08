@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import warn
 
 
 def reshape_data(data, flatten=None, out_shape=None):
@@ -212,3 +213,50 @@ def dense_to_one_hot(labels_dense, num_classes):
     labels_one_hot = torch.zeros((num_labels, num_classes))
     labels_one_hot.view(-1)[index_offset + labels_dense.view(-1)] = 1
     return labels_one_hot
+
+def atleast_kd(x, k):
+    """
+    return x reshaped to append singleton dimensions such that x.ndim is at least k
+    Inputs:
+        x [Tensor or numpy ndarray]
+        k [int] minimum number of dimensions
+    Outputs:
+        x [same as input x] reshaped input to have at least k dimensions
+    """
+    shape = x.shape + (1,) * (k - x.ndim)
+    return x.reshape(shape)
+
+def get_weights_l2_norm(w, eps=1e-12):
+    """
+    get l2 norm of weight matrix
+    Inputs:
+        w [Tensor] assumed to have shape [inC, outC] or [outC, inC, kernH, kernW]
+            norm is calculated over vectorized version of inC in the first case or inC*kernH*kernW in the second
+        eps [float] minimum value to prevent division by zero
+    Outputs:
+        norm [Tensor] norm of each of the outC weight vectors
+    """
+    if w.ndim == 2: # fully-connected, [inputs, outputs]
+        norms = torch.norm(w, dim=0, keepdim=True)
+    elif w.ndim == 4: # convolutional, [out_channels, in_channels, kernel_height, kernel_width]
+        norms = torch.norm(w.flatten(start_dim=1), dim=-1, keepdim=True)
+    else:
+        assert False, (f'input w must have ndim = 2 or 4, not {w.ndim}')
+    if(torch.max(norms) <= eps): #TODO: Warnings
+        print(f'Warning: input gradient is less than or equal to {eps}')
+    norms = torch.max(norms, eps*torch.ones_like(norms)) # prevent div by 0 # TODO: Change to torch.maximum when it is stable
+    norms = atleast_kd(norms, w.ndim)
+    return norms
+
+def l2_normalize_weights(w, eps=1e-12):
+    """
+    l2 normalize weight matrix
+    Inputs:
+        w [Tensor] assumed to have shape [inC, outC] or [outC, inC, kernH, kernW]
+            norm is calculated over vectorized version of inC in the first case or inC*kernH*kernW in the second
+        eps [float] minimum value to prevent division by zero
+    Outputs:
+        w [Tensor] same type and shape as input w, but with unitary l2 norm when computed over all input dimensions
+    """
+    norms = get_weights_l2_norm(w, eps)
+    return w / norms
