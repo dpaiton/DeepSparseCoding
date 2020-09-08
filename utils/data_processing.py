@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 
@@ -33,7 +34,7 @@ def reshape_data(data, flatten=None, out_shape=None):
         num_channels: [int32] number of data channels or None if out_shape is specified
     """
     orig_shape = data.shape
-    orig_ndim = data.dim()
+    orig_ndim = data.ndim
     if out_shape is None:
         if orig_ndim == 1: # single datapoint
             num_examples = 1
@@ -41,15 +42,16 @@ def reshape_data(data, flatten=None, out_shape=None):
             num_elements = orig_shape[0]
             if flatten is None:
                 num_rows = num_elements
-                num_cols = 1
+                num_cols = None
+                num_channels = None
                 data = torch.reshape(data, [num_examples]+list(orig_shape)) # add num_examples=1 dimension
             elif flatten == True:
                 num_rows = num_elements
                 num_cols = 1
                 data = torch.reshape(data, (num_examples, num_rows*num_cols*num_channels))
             else: # flatten == False
-                sqrt_num_elements = torch.sqrt(num_elements)
-                assert torch.floor(sqrt_num_elements) == torch.ceil(sqrt_num_elements), (
+                sqrt_num_elements = np.sqrt(num_elements)
+                assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
                     'Data length must have an even square root. Note that num_channels is assumed to be 1.'
                     +' data length = '+str(num_elements)
                     +' and data_shape='+str(orig_shape))
@@ -63,8 +65,8 @@ def reshape_data(data, flatten=None, out_shape=None):
                 num_cols = 1
                 num_channels = 1
             elif flatten == False:
-                sqrt_num_elements = torch.sqrt(num_elements)
-                assert torch.floor(sqrt_num_elements) == torch.ceil(sqrt_num_elements), (
+                sqrt_num_elements = np.sqrt(num_elements)
+                assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
                     'Data length must have an even square root when not specifying out_shape.')
                 num_rows = int(sqrt_num_elements)
                 num_cols = num_rows
@@ -117,54 +119,96 @@ def flatten_feature_map(feature_map):
     Returns:
         reshaped_map: tensor with  shape [batch, y*x*f]
     """
-    map_shape = feature_map.get_shape()
-    if(map_shape.ndims == 4):
+    map_shape = feature_map.shape
+    if(len(map_shape) == 4):
         (batch, y, x, f) = map_shape
         prev_input_features = int(y * x * f)
         resh_map  = torch.reshape(feature_map, [-1, prev_input_features])
-    elif(map_shape.ndims == 2):
+    elif(len(map_shape) == 2):
         resh_map = feature_map
     else:
-      raise ValueError('Input feature_map has incorrect ndims')
+        raise ValueError('Input feature_map has incorrect ndims')
     return resh_map
 
 
-def standardize(data, eps=None):
-  """
-  Standardize each image data to have zero mean and unit standard-deviation (z-score)
-  Inputs:
-      data: [tensor] unnormalized data
-  Outputs:
-      data: [tensor] normalized data
-  """
-  if eps is None:
-      eps = 1.0 / torch.sqrt(data[0,...].numel())
-  data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
-  num_examples = data.shape[0]
-  data_axis = tuple(range(data.dim())[1:]) # standardize each example individually
-  data_mean = torch.mean(data, dim=data_axis, keepdim=True)
-  data_true_std = torch.std(data, dim=data_axis, keepdim=True)
-  data_std = torch.where(data_true_std >= eps, data_true_std, eps*torch.ones_like(data_true_std))
-  for idx in range(data.shape[0]): # TODO: Broadcasting should work here
-      data[idx, ...] = (data[idx, ...] - data_mean[idx]) /  data_std[idx]
-  if data.shape != orig_shape:
-      data = reshape_data(data, out_shape=orig_shape)[0]
-  return data, data_mean, data_std
+def standardize(data, eps=None, samplewise=True):
+    """
+    Standardize each image data to have zero mean and unit standard-deviation (z-score)
+    Uses population standard deviation data.sum() / N, where N = data.shape[0].
+    Inputs:
+        data: [tensor] unnormalized data
+        eps: [float] if the std(data) is less than eps, then divide by eps instead of std(data)
+        samplewise: [bool] if True, standardize each sample individually; akin to contrast-normalization
+            if False, compute mean and std over entire batch
+    Outputs:
+        data: [tensor] normalized data
+    """
+    if(eps is None):
+        eps = 1.0 / np.sqrt(data[0,...].numel())
+    data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
+    num_examples = data.shape[0]
+    if(samplewise): # standardize the entire population
+        data_axis = tuple(range(data.ndim)[1:]) # standardize each example individually
+        data_mean = torch.mean(data, dim=data_axis, keepdim=True)
+        data_true_std = torch.std(data, unbiased=False, dim=data_axis, keepdim=True)
+    else: # standardize each input sample individually
+        data_mean = torch.mean(data)
+        data_true_std = torch.std(data, unbiased=False)
+    data_std = torch.where(data_true_std >= eps, data_true_std, eps*torch.ones_like(data_true_std))
+    data = (data - data_mean) /  data_std
+    if(data.shape != orig_shape):
+        data = reshape_data(data, out_shape=orig_shape)[0]
+    return data, data_mean, data_std
 
 
-def rescale_data_to_one(data):
-  """
-  Rescale input data to be between 0 and 1, per example
-  Inputs:
-    data: [tensor] unnormalized data
-  Outputs:
-    data: [tensor] centered data of shape (n, i, j, k) or (n, l)
-  """
-  data, orig_shape = reshape_data(data, flatten=None)[:2]
-  data_axis = tuple(range(data.ndim)[1:])
-  data_min = torch.min(data, axis=data_axis, keepdims=True)
-  data_max = torch.max(data, axis=data_axis, keepdims=True)
-  data = (data - data_min) / (data_max - data_min + 1e-8)
-  if data.shape != orig_shape:
-    data = reshape_data(data, out_shape=orig_shape)[0]
-  return data, data_min, data_max
+def rescale_data_to_one(data, eps=None, samplewise=True):
+    """
+    Rescale input data to be between 0 and 1
+    Inputs:
+        data: [tensor] unnormalized data
+        eps: [float] if the std(data) is less than eps, then divide by eps instead of std(data)
+        samplewise: [bool] if True, compute it per-sample, otherwise normalize entire batch
+    Outputs:
+        data: [tensor] centered data of shape (n, i, j, k) or (n, l)
+    """
+    if(eps is None):
+        eps = 1.0 / np.sqrt(data[0,...].numel())
+    if(samplewise):
+        data_min = torch.min(data.view(-1, np.prod(data.shape[1:])),
+                             axis=1, keepdims=False)[0].view(-1, *[1]*(data.ndim-1))
+        data_max = torch.max(data.view(-1, np.prod(data.shape[1:])),
+                             axis=1, keepdims=False)[0].view(-1, *[1]*(data.ndim-1))
+    else:
+        data_min = torch.min(data)
+        data_max = torch.max(data)
+    true_range = data_max - data_min
+    data_range = torch.where(true_range >= eps, true_range, eps*torch.ones_like(true_range))
+    data = (data - data_min) / data_range
+    return data, data_min, data_max
+
+def one_hot_to_dense(one_hot_labels):
+    """
+    converts a matrix of one-hot labels to a list of dense labels
+    Inputs:
+        one_hot_labels: one-hot torch tensor of shape [num_labels, num_classes]
+    Outputs:
+        dense_labels: 1D torch tensor array of labels
+            The integer value indicates the class and 0 is assumed to be a class.
+            The integer class also indicates the index for the corresponding one-hot representation
+    """
+    num_labels, num_classes = one_hot_labels.shape
+    dense_labels = torch.zeros(num_labels)
+    for label_id in range(num_labels):
+        dense_labels[label_id] = torch.nonzero(one_hot_labels[label_id, :] == 1)
+    return dense_labels
+
+def dense_to_one_hot(labels_dense, num_classes):
+    """
+    converts a (np.ndarray) vector of dense labels to a (np.ndarray) matrix of one-hot labels
+    e.g. [0, 1, 1, 3] -> [00, 01, 01, 11]
+    """
+    num_labels = labels_dense.shape[0]
+    index_offset = torch.arange(end=num_labels, dtype=torch.int32) * num_classes
+    labels_one_hot = torch.zeros((num_labels, num_classes))
+    labels_one_hot.view(-1)[index_offset + labels_dense.view(-1)] = 1
+    return labels_one_hot

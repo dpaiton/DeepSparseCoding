@@ -16,19 +16,19 @@ import DeepSparseCoding.tf1x.analysis.analysis_picker as ap
 
 class params(object):
   def __init__(self):
-    self.device = "/gpu:0"
+    self.device = '/gpu:0'
     #Which dataset to run analysis on, options are "train", "val", or "test"
-    self.analysis_dataset = "train"
+    self.analysis_dataset = 'test'
     #Output directory file
-    self.save_info = "analysis_" + self.analysis_dataset
+    self.save_info = 'analysis_' + self.analysis_dataset
     # If false, append to log file
     self.overwrite_analysis_log = True
     # Load in training run stats from log file
     self.do_run_analysis = False
     # Evaluate model variables (specified in analysis class) on images
-    self.do_evals = True
+    self.do_evals = False
     # Dictionary fitting
-    self.do_basis_analysis = True
+    self.do_basis_analysis = False
     # LCA Inference analysis
     self.do_inference = False #TODO: Does not work for lca_subspace
     # Activity triggered averages
@@ -40,7 +40,7 @@ class params(object):
     # Find optimal stimulus using gradient methods
     self.do_neuron_visualization = False # adversaries must be False
     # Patchwise image recon
-    self.do_full_recon = True
+    self.do_full_recon = False
     # Orientation and Cross-Orientation analysis
     self.do_orientation_analysis = False # TODO: broken for ae_deep
     # Reconstructions from individual groups for subspace Sparse Coding
@@ -49,7 +49,7 @@ class params(object):
     self.num_analysis_images = 150#1000
     self.whiten_batch_size = 10 # for VH dataset
     # How many input patches to create - only used if model calls for patching
-    self.num_patches = 1e4
+    self.num_patches = 10#e4
     # How many images to use in the ATA analysis
     # NOTE: No warning is given if this is greater than the number of available images
     self.num_ata_images = 5e2
@@ -68,20 +68,23 @@ class params(object):
     # Which dataset images to use for inference (None uses random)
     self.inference_img_indices = None
     #Adversarial params
-    self.adversarial_num_steps = 5000 # Step size for adversarial attacks
-    self.adversarial_attack_method = "kurakin_targeted"#"carlini_targeted"
-    self.save_info += "_"+self.adversarial_attack_method # To avoid overwriting
-    self.adversarial_step_size = 0.001 # learning rate for optimizer
-    self.adversarial_max_change = 0.5 # maximum size of adversarial perturation
-    self.carlini_change_variable = False
-    self.adv_optimizer = "sgd"
-    self.adversarial_target_method = "random" # Not used if attack_method is untargeted#TODO support specified
+    self.adversarial_num_steps = 500 # Step size for adversarial attacks
+    self.adversarial_attack_method = 'carlini_targeted'#'kurakin_targeted'#"carlini_targeted"
+    if self.do_class_adversaries or self.do_recon_adversaries:
+        self.save_info += '_'+self.adversarial_attack_method # To avoid overwriting
+    self.adversarial_step_size = 0.005 # learning rate for optimizer
+    self.adversarial_max_change = None # maximum size of adversarial perturation
+    self.carlini_change_variable = True
+    self.adv_optimizer = 'sgd'
+    self.adversarial_target_method = 'random' # Not used if attack_method is untargeted#TODO support specified
     self.adversarial_clip = True
-    self.adversarial_clip_range = [-0.8, 7.0] # Maximum range of image values
-    self.carlini_recon_mult = 0.1#list(np.arange(.5, 1, .1))
-    self.adversarial_save_int = 1000 # Interval at which to save adv examples to the npz file
-    self.eval_batch_size = 100 # batch size for computing adv examples
-    self.adversarial_input_id = list(range(100)) # Which adv images to use; None to use all
+    self.adversarial_clip_range = [0.0, 1.0] # Maximum range of image values
+    self.carlini_recon_mult = [0.5]#list(np.arange(.5, 1, .1))
+    self.adversarial_save_int = 1 # Interval at which to save adv examples to the npz file
+    self.eval_batch_size = 50 # batch size for computing adv examples
+    self.adversarial_input_id = None#list(range(100)) # Which adv images to use; None to use all
+    self.confidence_threshold = 0.9
+    self.temperature =1.0# 0.65#1.0
     #TODO
     #Parameter for "specified" target_method
     #Only for class attack
@@ -92,7 +95,7 @@ class params(object):
     # Which neurons to run tuning experiments on (None to do all)
     self.neuron_indices = None
     # Contrasts for orientation experiments
-    self.contrasts = [0.1, 0.2, 0.3, 0.4, 0.5]
+    self.contrasts = [0.5]
     # Phases for orientation experiments
     self.phases = np.linspace(-np.pi, np.pi, 8)
     # Orientations for orientation experiments
@@ -103,7 +106,7 @@ class params(object):
     self.neuron_vis_save_int = 1000
     self.neuron_vis_stim_save_int = int(1e5)
     self.neuron_vis_clip = False
-    self.neuron_vis_clip_range = [0.0, 1.0]
+    self.neuron_vis_clip_range = [1.0]
     self.neuron_vis_method = "erhan"
     self.neuron_vis_norm_magnitude = None
     self.neuron_vis_l2_regularize_coeff = 0.001
@@ -116,6 +119,7 @@ class params(object):
     self.neuron_vis_target_neuron_idx = self.neuron_vis_targets[0] # TODO: Clean this up...
     self.neuron_vis_selection_vector = np.zeros(10) # TODO: avoid hard-coding num neurons
     self.neuron_vis_selection_vector[self.neuron_vis_target_neuron_idx] = 1
+    self.rand_seed = 123
 
 parser = argparse.ArgumentParser()
 
@@ -135,11 +139,24 @@ analysis_params.model_name = args.model_name
 analysis_params.version = args.model_version
 analysis_params.model_dir = analysis_params.projects_dir+analysis_params.model_name
 
+model_temperatures = {}
+model_temperatures['mlp_768_mnist'] = 1.0
+model_temperatures['slp_lca_768_latent_mnist'] = 0.65
+model_temperatures['mlp_1568_mnist'] = 0.5
+model_temperatures['slp_lca_1568_mnist'] = 0.68
+model_temperatures['mlp_3layer_cosyne_mnist'] = 1.0
+model_temperatures['mlp_lca_768_latent_75_steps_mnist'] = 0.75
+model_temperatures['mlp_1568_3layer_mnist'] = 1.0
+model_temperatures['mlp_lca_1568_latent_75_steps_mnist'] = 1.0
+if analysis_params.model_name in model_temperatures.keys():
+  analysis_params.temperature = model_temperatures[analysis_params.model_name]
+
 model_log_file = (analysis_params.model_dir+"/logfiles/"+analysis_params.model_name
   +"_v"+analysis_params.version+".log")
 model_logger = Logger(model_log_file, overwrite=False)
 model_log_text = model_logger.load_file()
 model_params = model_logger.read_params(model_log_text)[-1]
+model_params.temperature = analysis_params.temperature
 analysis_params.model_type = model_params.model_type
 
 # Initialize & setup analyzer

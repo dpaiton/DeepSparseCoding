@@ -15,7 +15,11 @@ class params(BaseParams):
     """
     super(params, self).__init__()
     self.model_type = "lca"
-    self.model_name = "lca_1280"
+    self.model_name = "lca_512"
+    #self.model_name = "lca_768"
+    #self.model_name = "lca_1568"
+    #self.model_name = "lca_1024"
+    #self.model_name = "lca_2560"
     self.version = "0.0"
     self.vectorize_data = True
     self.norm_data = False
@@ -33,7 +37,7 @@ class params(BaseParams):
     self.patch_edge_size = 16
     self.overlapping_patches = True
     self.randomize_patches = True
-    self.patch_variance_threshold = 0.0
+    self.patch_variance_threshold = 1e-8
     self.batch_size = 100
     self.num_neurons = 768
     self.num_steps = 50
@@ -68,12 +72,12 @@ class params(BaseParams):
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
       self.vectorize_data = True
-      self.rescale_data = False
-      self.standardize_data = True
+      self.rescale_data = True
+      self.standardize_data = False
       self.whiten_data = False
       self.extract_patches = False
       self.rectify_a = True
-      self.num_neurons = 1536
+      self.num_neurons = 1568
       self.thresh_type = "soft"
       self.cp_int = int(1e5)
       self.gen_plot_int = int(1e5)
@@ -93,16 +97,20 @@ class params(BaseParams):
       self.whiten_method = "FT"
       self.whiten_batch_size = 10
       self.extract_patches = True
-      self.num_neurons = 1280
-      self.num_steps = 60
+      self.num_neurons = 512
+      #self.num_neurons = 768
+      #self.num_neurons = 1024
+      #self.num_neurons = 2560
+      self.num_steps = 120
       self.thresh_type = "soft"
+      self.rectify_a = True
       self.cp_int = int(1e5)
       self.log_int = int(1e2)
       self.gen_plot_int = int(2e4)
       for sched_idx in range(len(self.schedule)):
-        self.schedule[sched_idx]["sparse_mult"] = 0.55
+        self.schedule[sched_idx]["sparse_mult"] = 0.47
         self.schedule[sched_idx]["weight_lr"] = 0.01
-        self.schedule[sched_idx]["num_batches"] = 100#int(2e5)
+        self.schedule[sched_idx]["num_batches"] = int(5e5)
         self.schedule[sched_idx]["decay_steps"] = int(0.8*self.schedule[sched_idx]["num_batches"])
 
     elif data_type.lower() == "field":

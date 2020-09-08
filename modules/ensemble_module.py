@@ -10,7 +10,7 @@ class EnsembleModule(nn.Sequential):
     def setup_ensemble_module(self, params):
         self.params = params
         for subparams in params.ensemble_params:
-            submodule = loaders.load_module(subparams.model_type, params.lib_root_dir)
+            submodule = loaders.load_module(subparams.model_type)
             submodule.setup_module(subparams)
             self.add_module(subparams.model_type, submodule)
 

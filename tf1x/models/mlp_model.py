@@ -103,6 +103,24 @@ class MlpModel(Model):
     # returns the logit (pre softmax) layer
     return self.mlp_module.layer_list[-1]
 
+  def get_logits(self):
+    return self.get_encodings()
+
+  def get_temp(self):
+    if hasattr(self.params, 'temperature'):
+      temp = self.params.temperature
+    else:
+      temp = 1.0
+    return temp
+
+  def get_logits_with_temp(self):
+    temp = self.get_temp()
+    return self.get_logits() / temp
+
+  def get_label_est(self):
+    label_est = tf.nn.softmax(self.get_logits_with_temp())
+    return label_est
+
   def get_total_loss(self):
     return self.mlp_module.total_loss
 

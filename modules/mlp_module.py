@@ -31,7 +31,7 @@ class MlpModule(nn.Module):
     def forward(self, x):
         for dropout, act_func, layer in zip(self.dropout, self.act_funcs, self.layers):
             x = dropout(act_func(layer(x)))
-        x = F.log_softmax(x, dim=1)
+        #x = F.log_softmax(x, dim=1)
         return x
 
     def get_encodings(self, input_tensor):

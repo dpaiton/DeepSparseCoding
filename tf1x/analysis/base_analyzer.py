@@ -157,8 +157,11 @@ class Analyzer(object):
             # This is a switch used internally to use clean or adv examples
             self.use_adv_input = tf.compat.v1.placeholder(tf.bool, shape=(), name="use_adv_input")
           # Building adv module here with adv_params
-          self.class_adv_module = ClassAdversarialModule(self.input_node, self.use_adv_input,
-            self.model_params.num_classes, self.analysis_params.adversarial_num_steps,
+          self.class_adv_module = ClassAdversarialModule(
+            self.input_node,
+            self.use_adv_input,
+            self.model_params.num_classes,
+            self.analysis_params.adversarial_num_steps,
             self.analysis_params.adversarial_step_size,
             max_step=self.analysis_params.adversarial_max_change,
             clip_adv=self.analysis_params.adversarial_clip,
@@ -169,9 +172,10 @@ class Analyzer(object):
       self.model.build_graph_from_input(self.input_node)
       with tf.device(self.model.params.device):
         with self.model.graph.as_default():
-          self.class_adv_module.build_adversarial_ops(self.model.label_est,
-            model_logits=self.model.get_encodings(),
-            label_gt = self.model.label_placeholder)
+          self.class_adv_module.build_adversarial_ops(
+            label_est=self.model.get_label_est(),
+            model_logits=self.model.get_logits_with_temp(),
+            label_gt=self.model.label_placeholder)
       #Add adv module ignore list to model ignore list
       self.model.full_model_load_ignore.extend(self.class_adv_module.ignore_load_var_list)
     elif(self.analysis_params.do_recon_adversaries):
@@ -554,14 +558,17 @@ class Analyzer(object):
         batch_image_shape = [batch_size] + images_shape[1:]
         sess.run(self.model.init_op, {self.model.input_placeholder:np.zeros(batch_image_shape)})
         self.model.load_full_model(sess, self.analysis_params.cp_loc)
-        activations = np.zeros([num_images, self.model.get_num_latent()])
+        activations = []
         for batch_idx in range(num_batches):
           im_batch_start_idx = int(batch_idx * batch_size)
           im_batch_end_idx = int(np.min([im_batch_start_idx + batch_size, num_images]))
           batch_images = images[im_batch_start_idx:im_batch_end_idx, ...]
           feed_dict = self.model.get_feed_dict(batch_images, is_test=True)
           outputs = sess.run(activation_operation(), feed_dict)
-          activations[im_batch_start_idx:im_batch_end_idx, ...] = outputs.copy()
+          activations.append(outputs.copy())
+        activations = np.stack(activations, axis=0)
+        num_batches, batch_size, num_outputs = activations.shape
+        activations = activations.reshape((num_batches*batch_size, num_outputs))
       else:
         feed_dict = self.model.get_feed_dict(images, is_test=True)
         sess.run(self.model.init_op, feed_dict)
@@ -698,10 +705,11 @@ class Analyzer(object):
     phase_stims["test"].images *= scale
 
     # compute_activations will give orientation tuning for whatever outputs are returned model.a
-    activations = self.compute_activations(phase_stims["test"].images).reshape(num_neurons,
-      num_contrasts, num_orientations, num_phases, tot_num_bfs)
+    activations = self.compute_activations(phase_stims["test"].images, batch_size=1024)
+    activations = activations.reshape((
+      num_neurons, num_contrasts, num_orientations, num_phases, tot_num_bfs))
     # If you're running a deep network and want orientation tuning for the first layer:
-    # TODO: Make layer number a parameter & default to 'compute_activations'
+    # TODO: Make layer number a parameter & default in 'compute_activations'
     #var_name = self.model.module.u_list[1].name
     #activations = self.evaluate_model(phase_stims["test"].images,
     #  [var_name])[var_name].reshape(num_neurons, num_contrasts, num_orientations, num_phases,
@@ -1186,6 +1194,7 @@ class Analyzer(object):
       data=out_dicts[1])
     self.analysis_logger.log_info("Adversary analysis is complete.")
 
+
   def construct_class_adversarial_stimulus(self, input_images, input_labels,
     target_labels):
     if(self.analysis_params.adversarial_attack_method == "kurakin_untargeted"):
@@ -1214,8 +1223,11 @@ class Analyzer(object):
       self.model.load_full_model(sess, self.analysis_params.cp_loc)
       for r_mult in self.analysis_params.carlini_recon_mult:
         out_dict = self.class_adv_module.construct_adversarial_examples(
-          feed_dict, labels=input_labels, recon_mult=r_mult,
-          rand_state=self.rand_state, target_generation_method="specified",
+          feed_dict,
+          labels=input_labels,
+          recon_mult=r_mult,
+          rand_state=self.rand_state,
+          target_generation_method="specified",
           target_labels=target_labels,
           save_int=self.analysis_params.adversarial_save_int)
         steps = out_dict["step"]
@@ -1224,6 +1236,17 @@ class Analyzer(object):
         mses["input_adv_mses"].append(out_dict["input_adv_mses"])
         mses["target_output_losses"].append(out_dict["adv_losses"])
     return steps, all_adv_images, all_adv_outputs, mses
+
+  def get_adv_indices(self, softmax_conf, all_kept_indices, confidence_threshold, num_images, labels):
+    softmax_conf[np.arange(num_images, dtype=np.int32), labels] = 0 # zero confidence at true label
+    confidence_indices = np.max(softmax_conf, axis=-1) # highest non-true label confidence
+    adversarial_labels = np.argmax(softmax_conf, axis=-1) # index of highest non-true label
+    all_above_thresh = np.nonzero(np.squeeze(confidence_indices>confidence_threshold))[0]
+    keep_indices = np.array([], dtype=np.int32)
+    for adv_index in all_above_thresh:
+      if adv_index not in set(all_kept_indices):
+        keep_indices = np.append(keep_indices, adv_index)
+    return keep_indices, confidence_indices, adversarial_labels
 
   def class_adversary_analysis(self, images, labels, batch_size=1, input_id=None,
       target_method="random", target_labels=None, save_info=""):
@@ -1244,7 +1267,7 @@ class Analyzer(object):
       batch_size = self.num_data
 
     input_images = images[input_id, ...].astype(np.float32)
-    input_labels = labels[input_id, ...].astype(np.float32)
+    input_labels = labels[input_id, ...].astype(np.float32) # [num_inputs, num_classes] one-hot representation
     num_classes = input_labels.shape[-1]
 
     #Define target label based on target method
@@ -1289,7 +1312,7 @@ class Analyzer(object):
       ("Save interval must be <= adversarial_num_steps")
 
     #+1 since we always save the initial step
-    num_stored_steps = ((self.analysis_params.adversarial_num_steps)//self.analysis_params.adversarial_save_int) + 1
+    num_stored_steps = (self.analysis_params.adversarial_num_steps//self.analysis_params.adversarial_save_int) + 1
 
     #TODO abstract this out into a "evaluate with batches" function
     #since vis_class_adv needs this as well
@@ -1346,25 +1369,81 @@ class Analyzer(object):
       #TODO should this take into account clean accuracy?
       self.adversarial_success_rate = 1.0 - self.adversarial_adv_accuracy
 
-    #Store everything in out dictionaries
     out_dicts = [{}, {}]
-    out_dicts[0]["steps_idx"] = self.steps_idx
-    out_dicts[0]["input_images"] = input_images
-    out_dicts[0]["input_labels"] = input_labels
-    out_dicts[0]["target_labels"] = target_labels
-    out_dicts[0]["adversarial_outputs"] = self.adversarial_outputs
-    out_dicts[0]["num_data"] = self.num_data
-    out_dicts[0]["step_size"] = self.analysis_params.adversarial_step_size
-    out_dicts[0]["num_steps"] = self.analysis_params.adversarial_num_steps
-    out_dicts[0]["input_id"] = input_id
-    out_dicts[0]["input_adv_mses"] = self.adversarial_input_adv_mses
-    out_dicts[0]["target_output_losses"] = self.adversarial_target_output_losses
-    out_dicts[0]["clean_accuracy"] = self.adversarial_clean_accuracy
-    out_dicts[0]["adv_accuracy"] = self.adversarial_adv_accuracy
-    out_dicts[0]["attack_success_rate"] = self.adversarial_success_rate
-    np.savez(self.analysis_out_dir+"savefiles/class_adversary_"+save_info+".npz",
+    #conf_based results
+    if self.analysis_params.confidence_threshold > 0.0:
+        store_data = np.zeros_like(images)
+        store_time_step = -1*np.ones(images.shape[0], dtype=np.int32)
+        store_labels = np.zeros(images.shape[0], dtype=np.int32)
+        store_confidence = np.zeros(images.shape[0], dtype=np.float32)
+        store_mses = np.zeros(images.shape[0], dtype=np.float32)
+        all_kept_indices = []
+        for adv_step in range(1, self.analysis_params.adversarial_num_steps+1): # first one is original
+            keep_indices, confidence_indices, adversarial_labels = self.get_adv_indices(
+                self.adversarial_outputs[0, adv_step, ...],
+                all_kept_indices,
+                self.analysis_params.confidence_threshold,
+                images.shape[0],
+                dp.one_hot_to_dense(labels.astype(np.int32)))
+            if keep_indices.size > 0:
+                all_kept_indices.extend(keep_indices)
+                store_data[keep_indices, ...] = self.adversarial_images[0, adv_step, keep_indices, ...]
+                store_time_step[keep_indices] = adv_step
+                store_confidence[keep_indices] = confidence_indices[keep_indices]
+                store_mses[keep_indices] = self.adversarial_input_adv_mses[0, adv_step, keep_indices]
+                store_labels[keep_indices] = adversarial_labels[keep_indices]
+        batch_indices = np.arange(images.shape[0], dtype=np.int32)[:,None]
+        failed_indices = np.array([val for val in batch_indices if val not in all_kept_indices])
+        if len(failed_indices) > 0:
+            store_confidence[failed_indices] = confidence_indices[failed_indices]
+            store_labels[failed_indices] = adversarial_labels[failed_indices]
+            store_data[failed_indices, ...] = images[failed_indices, ...]
+            store_mses[failed_indices] = self.adversarial_input_adv_mses[0, -1, failed_indices]
+        self.conf_adversarial_images = [store_data]
+        self.adversarial_time_step = [store_time_step]
+        self.adversarial_confidence = [store_confidence]
+        self.failed_indices = [failed_indices]
+        self.success_indices = [list(set(all_kept_indices))]
+        self.conf_adversarial_labels = [store_labels]
+        self.mean_squared_distances = [store_mses]
+        self.num_failed = [images.shape[0] - len(set(all_kept_indices))]
+        out_dicts[0]['conf_adversarial_images'] = self.conf_adversarial_images
+        out_dicts[0]['conf_adversarial_time_step'] = self.adversarial_time_step
+        out_dicts[0]['conf_adversarial_confidence'] = self.adversarial_confidence
+        out_dicts[0]['conf_failed_indices'] = self.failed_indices
+        out_dicts[0]['conf_success_indices'] = self.success_indices
+        out_dicts[0]['conf_adversarial_labels'] = self.conf_adversarial_labels
+        out_dicts[0]['conf_mean_squared_distances'] = self.mean_squared_distances
+        out_dicts[0]['conf_num_failed'] = self.num_failed
+
+    #Store everything in out dictionaries
+    out_dicts[0]['steps_idx'] = self.steps_idx
+    out_dicts[0]['input_images'] = input_images
+    out_dicts[0]['input_labels'] = input_labels
+    out_dicts[0]['target_labels'] = target_labels
+    out_dicts[0]['adversarial_outputs'] = self.adversarial_outputs
+    out_dicts[0]['num_data'] = self.num_data
+    out_dicts[0]['step_size'] = self.analysis_params.adversarial_step_size
+    out_dicts[0]['num_steps'] = self.analysis_params.adversarial_num_steps
+    out_dicts[0]['confidence_threshold'] = self.analysis_params.confidence_threshold
+    out_dicts[0]['input_id'] = input_id
+    out_dicts[0]['input_adv_mses'] = self.adversarial_input_adv_mses
+    out_dicts[0]['target_output_losses'] = self.adversarial_target_output_losses
+    out_dicts[0]['clean_accuracy'] = self.adversarial_clean_accuracy
+    out_dicts[0]['adv_accuracy'] = self.adversarial_adv_accuracy
+    out_dicts[0]['attack_success_rate'] = self.adversarial_success_rate
+    np.savez(self.analysis_out_dir+'savefiles/class_adversary_'+save_info+'.npz',
       data=out_dicts[0])
-    out_dicts[1]["adversarial_images"] = self.adversarial_images
-    np.savez(self.analysis_out_dir+"savefiles/class_adversary_images_"+save_info+".npz",
-      data=out_dicts[1])
-    self.analysis_logger.log_info("Adversary analysis is complete.")
+    max_save = 50
+    num_saved =  self.adversarial_images.shape[1]
+    if num_saved > max_save:
+      save_indices = np.arange(0, num_saved, num_saved//max_save)
+      out_dicts[1]['adversarial_images'] = self.adversarial_images[:, save_indices, ...]
+    else:
+      out_dicts[1]['adversarial_images'] = self.adversarial_images
+    try:
+      np.savez(self.analysis_out_dir+'savefiles/class_adversary_images_'+save_info+'.npz',
+        data=out_dicts[1])
+      self.analysis_logger.log_info('Adversary analysis is complete.')
+    except:
+      import IPython; IPython.embed(); raise SystemExit
