@@ -24,6 +24,8 @@ class ConvLcaModule(LcaModule):
         self.params = params
         self.params.data_shape = [self.params.data_shape[2], self.params.data_shape[0], self.params.data_shape[1]]
         self.input_shape = [self.params.batch_size] + self.params.data_shape
+        assert (self.input_shape[-1] % self.params.stride == 0), (
+          f'Stride = {self.params.stride} must divide evenly into input edge size = {self.input_shape[-1]}')
         self.w_shape = [
             self.params.out_channels,
             self.params.in_channels,

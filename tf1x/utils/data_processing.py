@@ -88,7 +88,7 @@ def reshape_data(data, flatten=None, out_shape=None):
       if flatten == True:
         data = np.reshape(data, (num_examples, num_rows*num_cols*num_channels))
     else:
-      assert False, ("Data must have 1, 2, 3, or 4 dimensions.")
+      assert False, (f'Data must have 1, 2, 3, or 4 dimensions, not {orig_ndim}')
   else:
     num_examples = None; num_rows=None; num_cols=None; num_channels=None
     data = np.reshape(data, out_shape)

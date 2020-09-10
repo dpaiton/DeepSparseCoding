@@ -33,7 +33,7 @@ def train_epoch(epoch, model, loader):
             train_single_model(model, loss)
         if model.params.train_logs_per_epoch is not None:
             if(batch_idx % int(num_batches/model.params.train_logs_per_epoch) == 0.):
-                batch_step = epoch * model.params.batches_per_epoch + batch_idx
+                batch_step = int((epoch - 1) * model.params.batches_per_epoch + batch_idx)
                 model.print_update(
                     input_data=inputs[0], input_labels=target, batch_step=batch_step)
     if(model.params.model_type.lower() == 'ensemble'):
@@ -46,7 +46,7 @@ def train_epoch(epoch, model, loader):
 def test_single_model(model, data, target, epoch):
     output = model(data)
     #test_loss = torch.nn.functional.nll_loss(output, target, reduction='sum').item()
-    test_loss = torch.nn.CorssEntropyLoss()(output, target)
+    test_loss = torch.nn.CrossEntropyLoss()(output, target)
     pred = output.max(1, keepdim=True)[1]
     correct = pred.eq(target.view_as(pred)).sum().item()
     return (test_loss, correct)

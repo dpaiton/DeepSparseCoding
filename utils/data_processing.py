@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import warn
 
 
 def reshape_data(data, flatten=None, out_shape=None):

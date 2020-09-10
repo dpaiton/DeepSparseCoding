@@ -14,6 +14,7 @@ class shared_params(object):
         self.model_name = 'lca_768_mlp_mnist'
         self.version = '0'
         self.dataset = 'mnist'
+        self.fast_mnist = True
         self.standardize_data = False
         self.num_pixels = 28*28*1
         self.batch_size = 100

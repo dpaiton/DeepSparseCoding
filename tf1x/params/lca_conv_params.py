@@ -57,19 +57,24 @@ class params(BaseParams):
     self.data_type = data_type
     if data_type.lower() == "mnist":
       self.model_name += "_mnist"
+      self.log_int = 200
       self.rescale_data = True
       self.center_data = False
       self.whiten_data = False
       self.lpf_data = False # only for ZCA
+      self.num_val = 0
+      self.batch_size = 50
       self.lpf_cutoff = 0.7
-      self.num_neurons = 768
+      self.num_neurons = 128
+      self.num_steps = 75
       self.stride_y = 2
       self.stride_x = 2
       self.patch_size_y = 8 # weight receptive field
       self.patch_size_x = 8
       for schedule_idx in range(len(self.schedule)):
-        self.schedule[schedule_idx]["sparse_mult"] = 0.21
-        self.schedule[schedule_idx]["weight_lr"] = [0.1]
+        self.schedule[schedule_idx]["num_batches"] = int(6e5)
+        self.schedule[schedule_idx]["sparse_mult"] = 0.25
+        self.schedule[schedule_idx]["weight_lr"] = [0.001]
 
     elif data_type.lower() == "vanhateren":
       self.model_name += "_vh"

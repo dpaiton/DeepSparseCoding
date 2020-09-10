@@ -13,6 +13,8 @@ class BaseParams(object):
         device [str] which device to run on
         dtype [torch dtype] dtype for network variables
         eps [float] small value to avoid division by zero
+        fast_mnist [bool] if True, use the fastMNIST dataset,
+            which loads faster but does not allow for torchvision transforms like flip and rotate
         lib_root_dir [str] system location of this library directory
         log_to_file [bool] if set, log to file, else log to stderr
         model_name [str] name for model (can be anything)
