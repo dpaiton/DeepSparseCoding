@@ -284,7 +284,7 @@ def generate_grating(patch_edge_size, location, diameter, orientation, frequency
   """
   vals = np.linspace(-np.pi, np.pi, patch_edge_size)
   X, Y = np.meshgrid(vals, vals)
-  Xr = np.cos(orientation)*X + -np.sin(orientation)*Y  # countercloclwise
+  Xr = np.cos(orientation)*X + -np.sin(orientation)*Y  # counterclockwise
   Yr = np.sin(orientation)*X + np.cos(orientation)*Y
   stim = contrast*np.sin(Yr*frequency+phase)
   if diameter > 0: # Generate mask
@@ -958,13 +958,13 @@ def pca_reduction(data, num_pcs=-1):
   data_mean = data.mean(axis=(1))[:,None]
   data -= data_mean
   Cov = np.cov(data.T) # Covariace matrix
-  U, S, V = np.linalg.svd(Cov) # SVD decomposition
+  U, S, VT = np.linalg.svd(Cov) # SVD decomposition
   diagS = np.diag(S)
   if num_pcs <= 0:
     n = num_rows
   else:
     n = num_pcs
-  data_reduc = np.dot(data, np.dot(np.dot(U[:, :n], diagS[:n, :n]), V[:n, :]))
+  data_reduc = np.dot(data, np.dot(np.dot(U[:, :n], diagS[:n, :n]), VT[:n, :]))
   return data_reduc
 
 def compute_power_spectrum(data):

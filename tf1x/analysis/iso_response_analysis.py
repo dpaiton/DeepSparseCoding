@@ -219,29 +219,32 @@ if __name__ == "__main__":
     cont_analysis['min_angle'] = 15
     cont_analysis['batch_size'] = 100
     cont_analysis['vh_image_scale'] = 31.773287 # Mean of the l2 norm of the training set
-    cont_analysis['comparison_method'] = 'closest' # rand or closest
-
+    cont_analysis['comparison_method'] = 'rand' # rand or closest
+    cont_analysis['measure_upper_right'] = False
+    cont_analysis['bounds'] = ((-1, 1), (-1, 1))
+    cont_analysis['target_act'] = 0.5
     cont_analysis['num_neurons'] = 100 # How many neurons to plot
     cont_analysis['num_comparisons'] = 300 # How many planes to construct (None is all of them)
     cont_analysis['x_range'] = [-2.0, 2.0]
     cont_analysis['y_range'] = [-2.0, 2.0]
     cont_analysis['num_images'] = int(30**2)
 
-    cont_analysis['params_list'] = [lca_512_vh_params()]
+    cont_analysis['params_list'] = [lca_1024_vh_params(), lca_2560_vh_params()]
     #cont_analysis['params_list'] = [lca_768_vh_params()]
     #cont_analysis['params_list'] = [lca_1024_vh_params()]
     #cont_analysis['params_list'] = [lca_2560_vh_params()]
 
     #cont_analysis['iso_save_name'] = "iso_curvature_xrange1.3_yrange-2.2_"
     #cont_analysis['iso_save_name'] = "iso_curvature_ryan_"
-    cont_analysis['iso_save_name'] = "rescaled_closecomp_"
+    cont_analysis['iso_save_name'] = "newfits_rescaled_randomcomp_"
     #cont_analysis['iso_save_name'] = ''
 
-    np.savez(save_root+'iso_params_'+cont_analysis['iso_save_name']+params.save_info+".npz",
-        data=cont_analysis)
 
     analyzer_list = [load_analyzer(params) for params in cont_analysis['params_list']]
     for analyzer, params in zip(analyzer_list, cont_analysis['params_list']):
+      save_root=analyzer.analysis_out_dir+'savefiles/'
+      np.savez(save_root+'iso_params_'+cont_analysis['iso_save_name']+params.save_info+".npz",
+          data=cont_analysis)
       print(analyzer.analysis_params.display_name)
       print("Computing the iso-response vectors...")
       cont_analysis['target_neuron_ids'] = iso_data.get_rand_target_neuron_ids(
@@ -297,7 +300,6 @@ if __name__ == "__main__":
               datapoints,
               get_dsc_activations_cell,
               activation_function_kwargs)
-          save_root=analyzer.analysis_out_dir+'savefiles/'
           if use_rand_orth_vects:
               np.savez(save_root+'iso_rand_activations_'+cont_analysis['iso_save_name']+params.save_info+'.npz',
                   data=activations)
@@ -310,10 +312,11 @@ if __name__ == "__main__":
                   data=contour_dataset)
               cont_analysis['comparison_neuron_ids'] = analyzer.comparison_neuron_ids
               cont_analysis['contour_dataset'] = contour_dataset
+              cont_analysis['activations'] = activations
               curvatures, fits = hist_funcs.iso_response_curvature_poly_fits(
                 cont_analysis['activations'],
                 target_act=cont_analysis['target_act'],
-                measure_upper_right=False
+                bounds=cont_analysis['bounds']
               )
               cont_analysis['curvatures'] = np.stack(np.stack(curvatures, axis=0), axis=0)
               np.savez(save_root+'group_iso_vectors_'+cont_analysis['iso_save_name']+params.save_info+'.npz',
