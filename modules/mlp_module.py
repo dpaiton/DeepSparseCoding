@@ -17,11 +17,24 @@ class MlpModule(nn.Module):
                     in_features = self.params.layer_channels[layer_index],
                     out_features = self.params.layer_channels[layer_index+1],
                     bias = True)
-                self.register_parameter('fc'+str(layer_index)+'_w', layer.weight)
-                self.register_parameter('fc'+str(layer_index)+'_b', layer.bias)
-                self.layers.append(layer)
+            elif layer_type == 'conv':
+                w_shape = [
+                    self.params.out_channels[layer_index],
+                    self.params.in_channels[layer_index],
+                    self.params.kernel_size[layer_index],
+                    self.params.kernel_size[layer_index]]
+                layer = nn.Conv2d(
+                    in_channels = self.params.in_channels[layer_index],
+                    out_channels = self.params.out_channels[layer_index],
+                    kernel_size = w_shape,
+                    stride = self.parmas.stride[layer_index],
+                    padding = self.params.padding[layer_index],
+                    bias=True)
             else:
                 assert False, ('layer_type parameter must be "fc", not %g'%(layer_type))
+            self.register_parameter(layer_type+str(layer_index)+'_w', layer.weight)
+            self.register_parameter(layer_type+str(layer_index)+'_b', layer.bias)
+            self.layers.append(layer)
             self.dropout.append(nn.Dropout(p=self.params.dropout_rate[layer_index]))
 
     def preprocess_data(self, input_tensor):

@@ -3,6 +3,14 @@ import torch
 import DeepSparseCoding.utils.data_processing as dp
 
 
+#def l2_flatness(z1, z2, z3, w):
+#    """
+#    Minimized when a straight line can be drawn through [z1, z2, z3].
+#    Extended from equations 8 and 12 in 
+#    Chen, Paiton, Olshausen (2018) - The Sparse Manifold Transform
+#    """
+#    z_mat =  
+
 def half_squared_l2(x1, x2):
     """
     Computes the standard reconstruction loss. It will average over batch dimensions.
