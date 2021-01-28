@@ -1,6 +1,11 @@
 # In[1]:
 
 import os
+from os.path import dirname as up
+
+ROOT_DIR = up(up(up(up(os.path.realpath(__file__)))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
+    
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -11,9 +16,6 @@ from scipy.ndimage import imread as imread
 import tensorflow as tf
 import pdb
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
-    
 import DeepSparseCoding.tf1x.data.data_selector as ds
 import DeepSparseCoding.tf1x.utils.data_processing as dp
 import DeepSparseCoding.tf1x.utils.plot_functions as pf

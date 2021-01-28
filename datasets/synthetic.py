@@ -1,14 +1,15 @@
 import os
 import sys
+from os.path import dirname as up
+
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import numpy as np
 from scipy.stats import norm
 from PIL import Image
 import torch
 import torchvision
-
-ROOT_DIR = os.path.dirname(os.getcwd())
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.data_processing as dp
 

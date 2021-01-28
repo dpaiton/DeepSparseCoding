@@ -1,14 +1,13 @@
 import os
 import sys
 import unittest
+from os.path import dirname as up
 
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import torch
 import numpy as np
-
-
-ROOT_DIR = os.path.dirname(os.getcwd())
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.data_processing as dp
 
@@ -249,7 +248,7 @@ class TestUtils(unittest.TestCase):
     def test_l2_weight_norm(self):
         w_fc = np.random.standard_normal([24, 38])
         w_conv = np.random.standard_normal([38, 24, 8, 8])
-        for w in [w_fc, w_conv, 0*w_fc, 0*w_conv]:
+        for w in [w_fc, w_conv]:
             w_norm = dp.get_weights_l2_norm(torch.tensor(w), eps=1e-12).numpy()
             normed_w = dp.l2_normalize_weights(torch.tensor(w), eps=1e-12).numpy()
             normed_w_norm = dp.get_weights_l2_norm(torch.tensor(normed_w), eps=1e-12).numpy()

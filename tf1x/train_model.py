@@ -2,14 +2,15 @@ import os
 import sys
 import time as ti
 import argparse
+from os.path import dirname as up
+
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import matplotlib
 matplotlib.use("Agg")
 import numpy as np
 import tensorflow as tf
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.tf1x.params.param_picker as pp
 import DeepSparseCoding.tf1x.models.model_picker as mp

@@ -2,8 +2,9 @@ import os
 import sys
 import argparse
 import time as ti
+from os.path import dirname as up
 
-ROOT_DIR = os.path.dirname(os.getcwd())
+ROOT_DIR = up(up(os.path.realpath(__file__)))
 if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.loaders as loaders

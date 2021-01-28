@@ -1,12 +1,13 @@
 import os
 import sys
 import types
+from os.path import dirname as up
+
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import numpy as np
 import torch
-
-ROOT_DIR = os.path.dirname(os.getcwd())
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 from DeepSparseCoding.params.base_params import BaseParams
 from DeepSparseCoding.params.lca_mnist_params import params as LcaParams
