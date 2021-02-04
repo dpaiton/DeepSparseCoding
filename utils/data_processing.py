@@ -4,8 +4,9 @@ import torch
 
 def reshape_data(data, flatten=None, out_shape=None):
     """
-    Helper function to reshape input data for processing and return data shape
-    Inputs:
+    Reshape input data for processing and return data shape
+
+    Keyword arguments:
         data: [tensor] data of shape:
             n is num_examples, i is num_rows, j is num_cols, k is num_channels, l is num_examples = i*j*k
             if out_shape is not specified, it is assumed that i == j
@@ -22,6 +23,7 @@ def reshape_data(data, flatten=None, out_shape=None):
             If data is flat and flatten==True, or !flat and flatten==False, then None condition will apply
         out_shape: [list or tuple] containing the desired output shape
             This will overwrite flatten, and return the input reshaped according to out_shape
+
     Outputs:
         tuple containing:
         data: [tensor] data with new shape
@@ -98,7 +100,8 @@ def reshape_data(data, flatten=None, out_shape=None):
 def check_all_same_shape(tensor_list):
     """
     Verify that all tensors in the tensor list have the same shape
-    Args:
+
+    Keyword arguments:
         tensor_list: list of tensors to be checked
     Returns:
         raises error if the tensors are not the same shape
@@ -114,7 +117,8 @@ def check_all_same_shape(tensor_list):
 def flatten_feature_map(feature_map):
     """
     Flatten input tensor from [batch, y, x, f] to [batch, y*x*f]
-    Args:
+
+    Keyword arguments:
         feature_map: tensor with shape [batch, y, x, f]
     Returns:
         reshaped_map: tensor with  shape [batch, y*x*f]
@@ -134,12 +138,15 @@ def flatten_feature_map(feature_map):
 def standardize(data, eps=None, samplewise=True):
     """
     Standardize each image data to have zero mean and unit standard-deviation (z-score)
-    Uses population standard deviation data.sum() / N, where N = data.shape[0].
-    Inputs:
+    
+    This function uses population standard deviation data.sum() / N, where N = data.shape[0].
+
+    Keyword arguments:
         data: [tensor] unnormalized data
         eps: [float] if the std(data) is less than eps, then divide by eps instead of std(data)
         samplewise: [bool] if True, standardize each sample individually; akin to contrast-normalization
             if False, compute mean and std over entire batch
+
     Outputs:
         data: [tensor] normalized data
     """
@@ -164,10 +171,12 @@ def standardize(data, eps=None, samplewise=True):
 def rescale_data_to_one(data, eps=None, samplewise=True):
     """
     Rescale input data to be between 0 and 1
-    Inputs:
+
+    Keyword arguments:
         data: [tensor] unnormalized data
         eps: [float] if the std(data) is less than eps, then divide by eps instead of std(data)
         samplewise: [bool] if True, compute it per-sample, otherwise normalize entire batch
+
     Outputs:
         data: [tensor] centered data of shape (n, i, j, k) or (n, l)
     """
@@ -186,11 +195,14 @@ def rescale_data_to_one(data, eps=None, samplewise=True):
     data = (data - data_min) / data_range
     return data, data_min, data_max
 
+
 def one_hot_to_dense(one_hot_labels):
     """
-    converts a matrix of one-hot labels to a list of dense labels
-    Inputs:
+    Convert a matrix of one-hot labels to a list of dense labels
+
+    Keyword arguments:
         one_hot_labels: one-hot torch tensor of shape [num_labels, num_classes]
+
     Outputs:
         dense_labels: 1D torch tensor array of labels
             The integer value indicates the class and 0 is assumed to be a class.
@@ -202,10 +214,17 @@ def one_hot_to_dense(one_hot_labels):
         dense_labels[label_id] = torch.nonzero(one_hot_labels[label_id, :] == 1)
     return dense_labels
 
+
 def dense_to_one_hot(labels_dense, num_classes):
     """
-    converts a (np.ndarray) vector of dense labels to a (np.ndarray) matrix of one-hot labels
-    e.g. [0, 1, 1, 3] -> [00, 01, 01, 11]
+    Converts a (np.ndarray) vector of dense labels to a (np.ndarray) matrix of one-hot labels. E.g. [0, 1, 1, 3] -> [00, 01, 01, 11]
+    
+    Keyword arguments:
+        labels_dense: dense torch tensor of shape [num_classes], where each entry is an integer indicating the class label
+        num-classes: The total number of classes in the dataset
+
+    Outputs:
+        one_hot_labels: one-hot torch tensor of shape [num_labels, num_classes]
     """
     num_labels = labels_dense.shape[0]
     index_offset = torch.arange(end=num_labels, dtype=torch.int32) * num_classes
@@ -213,25 +232,31 @@ def dense_to_one_hot(labels_dense, num_classes):
     labels_one_hot.view(-1)[index_offset + labels_dense.view(-1)] = 1
     return labels_one_hot
 
+
 def atleast_kd(x, k):
     """
-    return x reshaped to append singleton dimensions such that x.ndim is at least k
-    Inputs:
+    Return x reshaped to append singleton dimensions such that x.ndim is at least k
+
+    Keyword arguments:
         x [Tensor or numpy ndarray]
         k [int] minimum number of dimensions
+
     Outputs:
         x [same as input x] reshaped input to have at least k dimensions
     """
     shape = x.shape + (1,) * (k - x.ndim)
     return x.reshape(shape)
 
+
 def get_weights_l2_norm(w, eps=1e-12):
     """
-    get l2 norm of weight matrix
-    Inputs:
+    Return l2 norm of weight matrix
+
+    Keyword arguments:
         w [Tensor] assumed to have shape [inC, outC] or [outC, inC, kernH, kernW]
             norm is calculated over vectorized version of inC in the first case or inC*kernH*kernW in the second
         eps [float] minimum value to prevent division by zero
+
     Outputs:
         norm [Tensor] norm of each of the outC weight vectors
     """
@@ -247,15 +272,164 @@ def get_weights_l2_norm(w, eps=1e-12):
     norms = atleast_kd(norms, w.ndim)
     return norms
 
+
 def l2_normalize_weights(w, eps=1e-12):
     """
     l2 normalize weight matrix
-    Inputs:
+
+    Keyword arguments:
         w [Tensor] assumed to have shape [inC, outC] or [outC, inC, kernH, kernW]
             norm is calculated over vectorized version of inC in the first case or inC*kernH*kernW in the second
         eps [float] minimum value to prevent division by zero
+
     Outputs:
         w [Tensor] same type and shape as input w, but with unitary l2 norm when computed over all input dimensions
     """
     norms = get_weights_l2_norm(w, eps)
     return w / norms
+
+
+def single_image_to_patches(image, patch_shape):
+    """
+    Extract patches from a single image
+
+    Keyword arguments:
+        image [torch tensor] of shape [im_height, im_width, im_chan]
+        patch_shape [tuple or list] containing the output shape
+            [patch_height, patch_width, patch_chan]
+            patch_chan must be the same as im_chan
+
+        It is recommended, though not required, that the patch height and width divide evenly into
+        the image height and width, respectively.
+
+    Outputs:
+        patches [torch tensor] of patches of shape [num_patches]+list(patch_shape)
+    """
+    try:
+        im_height, im_width, im_chan = image.shape
+        patch_height, patch_width, patch_chan = patch_shape
+    except Exception as e:
+        raise ValueError(
+            f'This function requires that: '
+            +f'1) The input variable "image" must have shape [im_height, im_width, im_chan], and is  {image.shape}'
+            +f'and 2) the input variable "patch_shape" must have shape [patch_height, patch_width, patch_chan], and is {patch_shape}.'
+        ) from e
+    num_row_patches = np.floor(im_height / patch_height)
+    num_col_patches = np.floor(im_width / patch_width)
+    num_patches = int(num_row_patches * num_col_patches)
+    patches = torch.zeros((num_patches, patch_height, patch_width, patch_chan))
+    row_id = 0
+    col_id = 0
+    for patch_idx in range(num_patches):
+        row_end = row_id + patch_height
+        col_end = col_id + patch_width
+        try:
+            patches[patch_idx, ...] = image[row_id:row_end, col_id:col_end, :]
+        except Exception as e:
+            raise ValueError('This function requires that im_chan equal patch_chan.') from e
+        row_id += patch_height
+        if row_id >= im_height:
+            row_id = 0
+            col_id += patch_width
+        if col_id >= im_width:
+            col_id = 0
+    return patches
+
+
+def patches_to_single_image(patches, image_shape):
+    """
+    Convert patches input into a single ouput
+
+    Keyword arguments:
+          patches [torch tensor] of shape [num_patches, patch_height, patch_width, patch_chan]
+          image_shape [list or tuple] of length 2 containing the image shape [im_height, im_width, im_chan]
+
+        im_chan is assumed to equal patch_chan
+
+    Outputs:
+        image [torch tensor] of shape [im_height, im_width, im_chan]
+    """
+    try:
+        num_patches, patch_height, patch_width, patch_chan = patches.shape
+        im_height, im_width, im_chan = image_shape
+    except Exception as e:
+        raise ValueError(
+            f'This funciton requires that input patches has shape'
+            f' [num_patches, patch_height, patch_width, patch_chan] and is {patches.shape}'
+            f' and input image_shape is a list or tuple of integers of length 3 containing [im_height, im_width, im_chan] and is {image_shape}'
+        ) from e
+    image = torch.zeros((im_height, im_width, im_chan))
+    row_id = 0
+    col_id = 0
+    for patch_idx in range(num_patches):
+        row_end = row_id + patch_height
+        col_end = col_id + patch_width
+        image[row_id:row_end, col_id:col_end, :] = patches[patch_idx, ...]
+        row_id += patch_height
+        if row_id >= im_height:
+            row_id = 0
+            col_id += patch_width
+        if col_id >= im_width:
+            col_id = 0
+    return image
+
+def images_to_patches(images, patch_shape):
+    """
+    Extract evenly distributed non-overlapping patches from an image dataset
+
+    Keyword arguments:
+        images [torch tensor] of shape [num_images, im_height, im_width, im_chan] or [im_height, im_width, im_chan] for a single image
+        patch_shape [tuple or list] containing the output shape
+            [patch_height, patch_width, patch_chan]
+            patch_chan must be the same as im_chan
+
+        It is recommended, though not required, that the patch height and width divide evenly into the image height and width, respectively.
+
+    Outputs:
+        patches [np.ndarray] of patches of shape [num_patches]+list(patch_shape)
+    """
+    if images.ndim == 3: # single image
+        return single_image_to_patches(images, patch_shape)
+    num_im, im_height, im_width, im_chan = images.shape
+    patch_height, patch_width, patch_chan = patch_shape
+    num_row_patches = np.floor(im_height / patch_height)
+    num_col_patches = np.floor(im_width / patch_width)
+    num_patches_per_im = int(num_row_patches * num_col_patches)
+    tot_num_patches =  int(num_patches_per_im * num_im)
+    patches = torch.zeros([tot_num_patches, ]+list(patch_shape))
+    patch_id = 0
+    for im_id in range(num_im):
+        image = images[im_id, ...]
+        image_patches = single_image_to_patches(image, patch_shape)
+        patch_end = patch_id + num_patches_per_im
+        patches[patch_id:patch_end, ...] = image_patches
+        patch_id += num_patches_per_im
+    return patches
+
+def patches_to_images(patches, image_shape):
+    """
+    Recombine patches tensor into a dataset of images
+
+    Keyword arguments:
+        patches [torch tensor] holding square patch data of shape [num_patches, patch_height, patch_width, patch_chan]
+        image_shape [list or tuple] containing the image dataset shape [im_height, im_width, im_chan]
+
+        It is assumed that im_chan equals patch_chan
+
+    Outputs:
+        images [torch tensor] holding the recombined image dataset
+    """
+    tot_num_patches, patch_height, patch_width, patch_chan = patches.shape
+    im_height, im_width, im_chan = image_shape
+    num_row_patches = np.floor(im_height / patch_height)
+    num_col_patches = np.floor(im_width / patch_width)
+    num_patches_per_im = int(num_row_patches * num_col_patches)
+    num_im = tot_num_patches // num_patches_per_im
+    images = torch.zeros([num_im]+image_shape)
+    patch_id = 0
+    for im_id in range(num_im):
+        patch_end = patch_id + num_patches_per_im
+        patch_batch = patches[patch_id:patch_end, ...]
+        images[im_id, ...] = patches_to_single_image(patch_batch, image_shape)
+        patch_id += num_patches_per_im
+    return images

@@ -40,6 +40,7 @@ for epoch in range(1, model.params.num_epochs+1):
     model.log_info(f'Completed epoch {epoch}/{model.params.num_epochs}')
     print(f'Completed epoch {epoch}/{model.params.num_epochs}')
 
+# Final outputs
 t1 = ti.time()
 tot_time=float(t1-t0)
 tot_images = model.params.num_epochs*len(train_loader.dataset)

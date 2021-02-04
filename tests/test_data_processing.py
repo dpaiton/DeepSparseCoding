@@ -254,3 +254,22 @@ class TestUtils(unittest.TestCase):
             normed_w_norm = dp.get_weights_l2_norm(torch.tensor(normed_w), eps=1e-12).numpy()
             np.testing.assert_allclose(normed_w_norm, 1.0, rtol=1e-10)
             np.testing.assert_allclose(w / w_norm, normed_w, rtol=1e-10)
+
+    def test_patches(self):
+      err = 1e-6
+      rand_mean = 0; rand_var = 1
+      num_im = 10; im_edge = 512; im_chan = 1; patch_edge = 16
+      num_patches = np.int(num_im * (im_edge / patch_edge)**2)
+      rand_seed = 1234
+      rand_state = np.random.RandomState(rand_seed)
+      data = np.stack([rand_state.normal(rand_mean, rand_var, size=[im_edge, im_edge, im_chan])
+          for _ in range(num_im)])
+      data_shape = list(data.shape)
+      patch_shape = [patch_edge, patch_edge, im_chan]
+      datapoint = torch.tensor(data[0, ...])
+      datapoint_patches = dp.single_image_to_patches(datapoint, patch_shape)
+      datapoint_recon = dp.patches_to_single_image(datapoint_patches, data_shape[1:])
+      np.testing.assert_allclose(datapoint.numpy(), datapoint_recon.numpy(), rtol=err)
+      patches = dp.images_to_patches(torch.tensor(data), patch_shape)
+      data_recon = dp.patches_to_images(patches, data_shape[1:])
+      np.testing.assert_allclose(data, data_recon.numpy(), rtol=err)
