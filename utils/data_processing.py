@@ -135,7 +135,69 @@ def flatten_feature_map(feature_map):
     return resh_map
 
 
-def standardize(data, eps=None, samplewise=True):
+def get_std_from_dataloader(loader, dataset_mean):
+    """
+    TODO: Calculate the standard deviation from all entries in a pytorch data loader
+
+    Keyword arguments:
+        loader: [pytorch DataLoader] containing the full dataset.
+            This function assumes there is always a target label, i.e. loader.next() returns (data, target)
+        dataset_mean: [torch tensor] of the same shape as a single dataset sample
+
+    Outputs:
+        dataset_std: [torch tensor] of the same shape as a single dataset sample
+    """
+    #dataset_std = torch.zeros(next(iter(loader)).shape[1:])
+    #for data, target in loader:
+    #    std_sum_squares += (data - dataset_mean)**2
+    #dataset_std = torch.sqrt(std_sum_squares / len(loader.dataset))
+    #return dataset_std
+    raise NotImplementedError
+
+
+def get_mean_from_dataloader(loader):
+    """
+    Calculate the mean datapoint from all entries in a pytorch data loader
+
+    Keyword arguments:
+        loader: [pytorch DataLoader] containing the full dataset.
+            This function assumes there is always a target label, i.e. loader.next() returns (data, target)
+
+    Outputs:
+        dataset_mean: [torch tensor] of the same shape as a single dataset sample
+    """
+    dataset_mean = torch.zeros(next(iter(loader))[0].shape[1:]) # don't include batch dimension
+    num_batches = 0
+    for data, target in loader:
+        dataset_mean += data.mean(axis=0, keepdims=False)
+        num_batches += 1
+    return dataset_mean / num_batches
+
+
+def center(data, samplewise=False, batch_size=100):
+    """
+    Center image dataset to have zero mean
+    
+    Keyword arguments:
+        data: [tensor] unnormalized data
+        samplewise: [bool] if True, center each sample individually; if False, compute mean over entire batch
+
+    Outputs:
+        data: [tensor] centered data
+    """
+    data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
+    if(samplewise): # center each input sample individually
+        data_axis = tuple(range(data.ndim)[1:])
+        data_mean = torch.mean(data, dim=data_axis, keepdim=True)
+    else: # center the entire population
+        data_mean = torch.mean(data, dim=0)
+    data = data - data_mean
+    if(data.shape != orig_shape):
+        data = reshape_data(data, out_shape=orig_shape)[0]
+    return data, data_mean
+
+
+def standardize(data, eps=None, samplewise=False, batch_size=100):
     """
     Standardize each image data to have zero mean and unit standard-deviation (z-score)
     
@@ -144,6 +206,7 @@ def standardize(data, eps=None, samplewise=True):
     Keyword arguments:
         data: [tensor] unnormalized data
         eps: [float] if the std(data) is less than eps, then divide by eps instead of std(data)
+            defaults to 1/sqrt(data_dim) where data_dim is the total size of a data vector
         samplewise: [bool] if True, standardize each sample individually; akin to contrast-normalization
             if False, compute mean and std over entire batch
 
@@ -154,12 +217,12 @@ def standardize(data, eps=None, samplewise=True):
         eps = 1.0 / np.sqrt(data[0,...].numel())
     data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
     num_examples = data.shape[0]
-    if(samplewise): # standardize the entire population
-        data_axis = tuple(range(data.ndim)[1:]) # standardize each example individually
+    if(samplewise): # standardize each input sample individually
+        data_axis = tuple(range(data.ndim)[1:])
         data_mean = torch.mean(data, dim=data_axis, keepdim=True)
         data_true_std = torch.std(data, unbiased=False, dim=data_axis, keepdim=True)
-    else: # standardize each input sample individually
-        data_mean = torch.mean(data)
+    else: # standardize the entire population
+        data_mean = torch.mean(data, dim=0)
         data_true_std = torch.std(data, unbiased=False)
     data_std = torch.where(data_true_std >= eps, data_true_std, eps*torch.ones_like(data_true_std))
     data = (data - data_mean) /  data_std
