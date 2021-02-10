@@ -15,7 +15,7 @@ class params(BaseParams):
         self.rescale_data_to_one = False
         self.center_dataset = False
         self.batch_size = 25
-        self.num_epochs = 250
+        self.num_epochs = 500
         self.weight_decay = 0.0
         self.weight_lr = 0.001
         self.train_logs_per_epoch = 6
