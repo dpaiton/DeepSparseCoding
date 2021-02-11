@@ -20,7 +20,7 @@ param_file = args.param_file
 t0 = ti.time()
 
 # Load params
-params = loaders.load_params(param_file)
+params = loaders.load_params_file(param_file)
 
 # Load data
 train_loader, val_loader, test_loader, data_stats = dataset_utils.load_dataset(params)

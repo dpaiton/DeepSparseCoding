@@ -24,11 +24,11 @@ class EnsembleModel(BaseModel, EnsembleModule):
             subparams.data_shape = params.data_shape
         super(EnsembleModel, self).setup_ensemble_module(params)
         self.submodel_classes = []
-        for ensemble_index, submodel_params in enumerate(self.params.ensemble_params):
-            submodule_class = loaders.load_model_class(submodel_params.model_type)
+        for ensemble_index, subparams in enumerate(self.params.ensemble_params):
+            submodule_class = loaders.load_model_class(subparams.model_type)
             self.submodel_classes.append(submodule_class)
-            if submodel_params.checkpoint_boot_log != '':
-                checkpoint = self.get_checkpoint_from_log(submodule_params.checkpoint_boot_log)
+            if subparams.checkpoint_boot_log != '':
+                checkpoint = self.get_checkpoint_from_log(subparams.checkpoint_boot_log)
                 submodule = self.__getitem__(ensemble_index)
                 submodule.load_state_dict(checkpoint['model_state_dict'])
 

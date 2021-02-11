@@ -13,4 +13,4 @@ def test_param_loading():
     for params_name in params_list:
         if 'test_' not in params_name:
             params_file = os.path.join(*[dsc_dir, 'params', params_name+'.py'])
-            params = loaders.load_params(params_file, key='params')
+            params = loaders.load_params_file(params_file, key='params')

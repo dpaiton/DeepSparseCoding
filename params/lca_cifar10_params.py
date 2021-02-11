@@ -6,10 +6,11 @@ from DeepSparseCoding.params.base_params import BaseParams
 class params(BaseParams):
     def set_params(self):
         super(params, self).set_params()
-        self.model_type = 'conv_lca'
+        self.model_type = 'lca'
         self.model_name = 'conv_lca_cifar10'
         self.version = '0'
         self.dataset = 'cifar10'
+        self.layer_type = 'conv'
         self.num_validation = 10000
         self.standardize_data = True
         self.rescale_data_to_one = False

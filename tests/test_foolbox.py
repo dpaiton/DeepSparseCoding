@@ -29,7 +29,7 @@ import DeepSparseCoding.utils.loaders as loaders
 #                'steps':3}} # max perturbation it can reach is 0.5
 #        attack = fa.LinfPGD(**attack_params['linfPGD'])
 #        epsilons = [0.3] # allowed perturbation size
-#        params['ensemble'] = loaders.load_params(self.test_params_file, key='ensemble_params')
+#        params['ensemble'] = loaders.load_params_file(self.test_params_file, key='ensemble_params')
 #        params['ensemble'].train_logs_per_epoch = None
 #        params['ensemble'].shuffle_data = False
 #        train_loader, val_loader, test_loader, data_params = datasets.load_dataset(params['ensemble'])

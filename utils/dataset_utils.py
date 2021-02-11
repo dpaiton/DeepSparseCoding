@@ -5,6 +5,7 @@ from os.path import dirname as up
 ROOT_DIR = up(up(up(os.path.realpath(__file__))))
 if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
+from PIL import Image
 import numpy as np
 import torch
 from torchvision import transforms
@@ -24,6 +25,16 @@ class FastMNIST(torchvision.datasets.MNIST):
         super().__init__(*args, **kwargs)
         # Scale data to [0,1]
         self.data = self.data.unsqueeze(-1).float().div(255)
+        self.data = self.data.permute(0, 3, 1, 2) # channels first
+        if self.transform is not None:
+            # doing this so that it is consistent with all other datasets
+            # to return a PIL Image
+            for data_idx in range(self.data.shape[0]):
+                self.data[data_idx, ...] = self.transform(
+                    Image.fromarray(
+                        self.data[data_idx, ...].numpy().squeeze(), mode='L'))[None, ...]
+        if self.target_transform is not None:
+            self.targets = [self.target_transform(int(target)) for target in self.targets]
         # Put both data and targets on GPU in advance
         self.data, self.targets = self.data.to(device), self.targets.to(device)
 
@@ -66,7 +77,7 @@ def load_dataset(params):
             'download':False,
             'transform':transforms.Compose(preprocessing_pipeline)
         }
-        if hasattr(params, 'fast_mnist') and params.fast_mnist:
+        if(hasattr(params, 'fast_mnist') and params.fast_mnist):
             kwargs['device'] = params.device
             kwargs['train'] = True
             train_loader = torch.utils.data.DataLoader(
@@ -93,7 +104,7 @@ def load_dataset(params):
             transforms.ToTensor(),
         ]
         kwargs = {
-            'root': os.path.join(*[params.data_dir,'cifar10']),
+            'root': os.path.join(*[params.data_dir, 'cifar10']),
             'download': False,
             'train': True,
             'transform': transforms.Compose(preprocessing_pipeline)

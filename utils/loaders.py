@@ -86,7 +86,14 @@ def load_module(module_type):
     return py_module_class()
 
 
-def load_params(file_name, key='params'):
+def load_params_from_log(log_file):
+    logger = file_utils.Logger(log_file, overwrite=False)
+    log_text = logger.load_file()
+    params = logger.read_params(log_text)[-1]
+    return params
+
+
+def load_params_file(file_name, key='params'):
     params_module = file_utils.python_module_from_file(key, file_name)
     params = getattr(params_module, key)()
     return params

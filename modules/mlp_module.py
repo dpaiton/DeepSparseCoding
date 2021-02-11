@@ -3,14 +3,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from DeepSparseCoding.modules.activations import activation_picker
+from DeepSparseCoding.utils.run_utils import compute_conv_output_shape
 import DeepSparseCoding.utils.data_processing as dp
 
 
 class MlpModule(nn.Module):
     def setup_module(self, params):
-        def compute_conv_output_shape(in_length, kernel_size, stride, padding=0, dilation=1):
-            out_shape = ((in_length + 2 * padding - dilation * (kernel_size - 1) - 1) / stride) + 1
-            return np.floor(out_shape).astype(np.int)
         self.params = params
         self.act_funcs = [activation_picker(act_func_str)
             for act_func_str in self.params.activation_functions]

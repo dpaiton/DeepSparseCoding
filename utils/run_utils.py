@@ -1,6 +1,12 @@
+import numpy as np
 import torch
 
 import DeepSparseCoding.utils.data_processing as dp
+
+
+def compute_conv_output_shape(in_length, kernel_size, stride, padding=0, dilation=1):
+    out_shape = ((in_length + 2 * padding - dilation * (kernel_size - 1) - 1) / stride) + 1
+    return np.floor(out_shape).astype(np.int)
 
 
 def get_module_encodings(module, data, allow_grads=False):

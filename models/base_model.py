@@ -132,7 +132,7 @@ class BaseModel(object):
         self.log_info('Full model saved in file %s'%self.params.cp_latest_filename)
 
     def get_checkpoint_from_log(self, logfile):
-        model_params = loaders.load_params(logfile)
+        model_params = loaders.load_params_from_log(logfile)
         checkpoint = torch.load(model_params.cp_latest_filename)
         return checkpoint
 

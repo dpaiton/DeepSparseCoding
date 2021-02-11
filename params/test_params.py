@@ -56,6 +56,7 @@ class lca_params(BaseParams):
         self.model_type = 'lca'
         self.weight_decay = 0.0
         self.weight_lr = 0.1
+        self.layer_type = 'fc'
         self.optimizer = types.SimpleNamespace()
         self.optimizer.name = 'sgd'
         self.optimizer.lr_annealing_milestone_frac = [0.7] # fraction of num_epochs
@@ -72,17 +73,19 @@ class lca_params(BaseParams):
             for frac in self.optimizer.lr_annealing_milestone_frac]
         self.step_size = self.dt / self.tau
 
-class conv_lca_params(lca_params):
-    def set_params(self):
-        super(conv_lca_params, self).set_params()
-        self.kernel_size = 8
-        self.stride = 2
-        self.padding = 0
-        self.optimizer.milestones = [frac * self.num_epochs
-            for frac in self.optimizer.lr_annealing_milestone_frac]
-        self.step_size = self.dt / self.tau
-        self.out_channels = self.num_latent
-        self.in_channels = 1
+# TODO: Add ability to test multiple param values
+#class conv_lca_params(lca_params):
+#    def set_params(self):
+#        super(conv_lca_params, self).set_params()
+#        self.layer_type = 'conv'
+#        self.kernel_size = 8
+#        self.stride = 2
+#        self.padding = 0
+#        self.optimizer.milestones = [frac * self.num_epochs
+#            for frac in self.optimizer.lr_annealing_milestone_frac]
+#        self.step_size = self.dt / self.tau
+#        self.out_channels = self.num_latent
+#        self.in_channels = 1
 
 
 class mlp_params(BaseParams):

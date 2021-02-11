@@ -110,8 +110,7 @@ def check_all_same_shape(tensor_list):
     for index, tensor in enumerate(tensor_list):
         if tensor.shape != first_shape:
             raise ValueError(
-                'Tensor entry %g in input list has shape %g, but should have shape %g'%(
-                index, tensor.shape, first_shape))
+                f'Tensor entry {index} in input list has shape {tensor.shape}, but should have shape {first_shape}')
 
 
 def flatten_feature_map(feature_map):

@@ -3,12 +3,13 @@ import types
 from DeepSparseCoding.params.base_params import BaseParams
 
 
-CONV = False
+CONV = True
 
 
 class params(BaseParams):
     def set_params(self):
         super(params, self).set_params()
+        self.model_type = 'lca'
         self.version = '0'
         self.dataset = 'mnist'
         self.fast_mnist = True
@@ -27,7 +28,7 @@ class params(BaseParams):
         self.weight_decay = 0.0
         self.train_logs_per_epoch = 6
         if CONV:
-            self.model_type = 'conv_lca'
+            self.layer_type = 'conv'
             self.model_name = 'conv_lca_mnist'
             self.rescale_data_to_one = True
             self.batch_size = 50
@@ -39,6 +40,7 @@ class params(BaseParams):
             self.padding = 0
             self.num_latent = 128
         else:
+            self.layer_type = 'fc'
             self.model_type = 'lca'
             self.model_name = 'lca_768_mnist'
             self.rescale_data_to_one = False

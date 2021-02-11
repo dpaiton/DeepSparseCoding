@@ -24,7 +24,7 @@ class TestModels(unittest.TestCase):
         for model_type in self.model_list:
             model_type = '_'.join(model_type.split('_')[:-1]) # remove '_model' at the end
             model = loaders.load_model(model_type)
-            params = loaders.load_params(self.test_params_file, key=model_type+'_params')
+            params = loaders.load_params_file(self.test_params_file, key=model_type+'_params')
             train_loader, val_loader, test_loader, data_params = datasets.load_dataset(params)
             for key, value in data_params.items():
                 setattr(params, key, value)
@@ -55,7 +55,7 @@ class TestModels(unittest.TestCase):
     def test_lca_ensemble_gradients(self):
         params = {}
         models = {}
-        params['lca'] = loaders.load_params(self.test_params_file, key='lca_params')
+        params['lca'] = loaders.load_params_file(self.test_params_file, key='lca_params')
         params['lca'].train_logs_per_epoch = None
         params['lca'].shuffle_data = False
         train_loader, val_loader, test_loader, data_params = datasets.load_dataset(params['lca'])
@@ -64,7 +64,7 @@ class TestModels(unittest.TestCase):
         models['lca'] = loaders.load_model(params['lca'].model_type)
         models['lca'].setup(params['lca'])
         models['lca'].to(params['lca'].device)
-        params['ensemble'] = loaders.load_params(self.test_params_file, key='ensemble_params')
+        params['ensemble'] = loaders.load_params_file(self.test_params_file, key='ensemble_params')
         for key, value in data_params.items():
             setattr(params['ensemble'], key, value)
         err_msg = f'\ndata_shape={params["ensemble"].data_shape}'
