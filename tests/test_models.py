@@ -19,6 +19,7 @@ class TestModels(unittest.TestCase):
         self.model_list = loaders.get_model_list(self.dsc_dir)
         self.test_params_file = os.path.join(*[self.dsc_dir, 'params', 'test_params.py'])
 
+    ### TODO - add ability to test multiple options (e.g. 'conv' and 'fc') from test params
     def test_model_loading(self):
         for model_type in self.model_list:
             model_type = '_'.join(model_type.split('_')[:-1]) # remove '_model' at the end
@@ -29,11 +30,27 @@ class TestModels(unittest.TestCase):
                 setattr(params, key, value)
             model.setup(params)
 
-    ### TODO - more basic test to compute gradients per model###
+
+    ### TODO - more basic test to compute gradients per model
     #def test_gradients(self):
     #    for model_type in self.model_list:
     #        model_type = ''.join(model_type.split('_')[:-1]) # remove '_model' at the end
     #        model = loaders.load_model(model_type)
+
+    ### TODO - test for gradient blocking
+    #def test_get_module_encodings(self):
+    #    """
+    #    Test for gradient blocking in the get_module_encodings function
+
+    #    construct test model1 & model2
+    #    construct test ensemble model = model1 -> model2
+    #    get encoding & grads for allow_grads={True, False}
+    #    False: compare grads for model1 alone vs model1 in ensemble
+    #    True: ensure that grad is different from model1 alone
+    #        * Should also manually compute grads to compare?
+    #    """
+    #    # test should utilize  run_utils.get_module_encodings()
+
 
     def test_lca_ensemble_gradients(self):
         params = {}

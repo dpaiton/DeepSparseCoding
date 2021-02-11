@@ -8,18 +8,18 @@ def reshape_data(data, flatten=None, out_shape=None):
 
     Keyword arguments:
         data: [tensor] data of shape:
-            n is num_examples, i is num_rows, j is num_cols, k is num_channels, l is num_examples = i*j*k
+            n is num_examples, i is num_channels (a.k.a. vector length for fattened inputs), j is num_rows, k is num_cols
             if out_shape is not specified, it is assumed that i == j
-            (l) - single data point of shape l, assumes 1 color channel
-            (n, l) - n data points, each of shape l (flattened)
-            (i, j, k) - single datapoint of of shape (i,j, k)
-            (n, i, j, k) - n data points, each of shape (i,j,k)
+            (i) - single data point of shape i (flattened; assumed j = k = 1)
+            (n, i) - n data points, each of shape i (flattened; assumed j = k = 1)
+            (i, j, k) - single datapoint of of shape (i, j, k)
+            (n, i, j, k) - n data points, each of shape (i, j, k)
         flatten: [bool or None] specify the shape of the output
             If out_shape is not None, this arg has no effect
             If None, do not reshape data, but add num_examples dimension if necessary
-            If True, return ravelled data of shape (num_examples, num_elements)
-            If False, return unravelled data of shape (num_examples, sqrt(l), sqrt(l), 1)
-                where l is the number of elements (dimensionality) of the datapoints
+            If True, return ravelled data of shape (num_examples, num_elements), where num_elements=i*j*k
+            If False, return unravelled data of shape (num_examples, 1, sqrt(i), sqrt(i))
+                where i is the number of elements (size) of the data points and 1 is the assumed number of channels
             If data is flat and flatten==True, or !flat and flatten==False, then None condition will apply
         out_shape: [list or tuple] containing the desired output shape
             This will overwrite flatten, and return the input reshaped according to out_shape
@@ -27,13 +27,13 @@ def reshape_data(data, flatten=None, out_shape=None):
     Outputs:
         tuple containing:
         data: [tensor] data with new shape
-            (num_examples, num_rows, num_cols, num_channels) if flatten==False
-            (num_examples, num_elements) if flatten==True
+            (num_examples, num_channels, num_rows, num_cols) if flatten==False
+            (num_examples, num_elements) if flatten==True, where num_elements = num_channels*num_rows*num_cols
         orig_shape: [tuple of int32] original shape of the input data
         num_examples: [int32] number of data examples or None if out_shape is specified
+        num_channels: [int32] number of data channels or None if out_shape is specified
         num_rows: [int32] number of data rows or None if out_shape is specified
         num_cols: [int32] number of data cols or None if out_shape is specified
-        num_channels: [int32] number of data channels or None if out_shape is specified
     """
     orig_shape = data.shape
     orig_ndim = data.ndim
@@ -50,7 +50,7 @@ def reshape_data(data, flatten=None, out_shape=None):
             elif flatten == True:
                 num_rows = num_elements
                 num_cols = 1
-                data = torch.reshape(data, (num_examples, num_rows*num_cols*num_channels))
+                data = torch.reshape(data, (num_examples, num_channels * num_rows * num_cols))
             else: # flatten == False
                 sqrt_num_elements = np.sqrt(num_elements)
                 assert np.floor(sqrt_num_elements) == np.ceil(sqrt_num_elements), (
@@ -59,7 +59,7 @@ def reshape_data(data, flatten=None, out_shape=None):
                     +' and data_shape='+str(orig_shape))
                 num_rows = int(sqrt_num_elements)
                 num_cols = num_rows
-                data = torch.reshape(data, (num_examples, num_rows, num_cols, num_channels))
+                data = torch.reshape(data, (num_examples, num_channels, num_rows, num_cols))
         elif orig_ndim == 2: # already flattened
             (num_examples, num_elements) = data.shape
             if flatten is None or flatten == True: # don't reshape data
@@ -73,28 +73,28 @@ def reshape_data(data, flatten=None, out_shape=None):
                 num_rows = int(sqrt_num_elements)
                 num_cols = num_rows
                 num_channels = 1
-                data = torch.reshape(data, (num_examples, num_rows, num_cols, num_channels))
+                data = torch.reshape(data, (num_examples, num_channels, num_rows, num_cols))
             else:
                 assert False, ('flatten argument must be True, False, or None')
         elif orig_ndim == 3: # single data point
             num_examples = 1
-            num_rows, num_cols, num_channels = data.shape
+            num_channels, num_rows, num_cols = data.shape
             if flatten == True:
-                data = torch.reshape(data, (num_examples, num_rows * num_cols * num_channels))
+                data = torch.reshape(data, (num_examples, num_channels * num_rows * num_cols))
             elif flatten is None or flatten == False: # already not flat
-                data = data[None, ...]
+                data = data[None, ...] # add singleton num_examples dimension
             else:
                 assert False, ('flatten argument must be True, False, or None')
-        elif orig_ndim == 4: # not flat
-            num_examples, num_rows, num_cols, num_channels = data.shape
+        elif orig_ndim == 4: # multiple data points, not flat
+            num_examples, num_channels, num_rows, num_cols = data.shape
             if flatten == True:
-                data = torch.reshape(data, (num_examples, num_rows*num_cols*num_channels))
+                data = torch.reshape(data, (num_examples, num_channels * num_rows * num_cols))
         else:
             assert False, ('Data must have 1, 2, 3, or 4 dimensions.')
     else:
         num_examples = None; num_rows=None; num_cols=None; num_channels=None
         data = torch.reshape(data, out_shape)
-    return (data, orig_shape, num_examples, num_rows, num_cols, num_channels)
+    return (data, orig_shape, num_examples, num_channels, num_rows, num_cols)
 
 
 def check_all_same_shape(tensor_list):
@@ -116,17 +116,17 @@ def check_all_same_shape(tensor_list):
 
 def flatten_feature_map(feature_map):
     """
-    Flatten input tensor from [batch, y, x, f] to [batch, y*x*f]
+    Flatten input tensor from [batch, c, y, x] to [batch, c * y * x]
 
     Keyword arguments:
-        feature_map: tensor with shape [batch, y, x, f]
+        feature_map: tensor with shape [batch, c, y, x]
     Returns:
-        reshaped_map: tensor with  shape [batch, y*x*f]
+        reshaped_map: tensor with  shape [batch, c * y * x]
     """
     map_shape = feature_map.shape
     if(len(map_shape) == 4):
-        (batch, y, x, f) = map_shape
-        prev_input_features = int(y * x * f)
+        (batch, c, y, x) = map_shape
+        prev_input_features = int(c * y * x)
         resh_map  = torch.reshape(feature_map, [-1, prev_input_features])
     elif(len(map_shape) == 2):
         resh_map = feature_map
@@ -185,7 +185,7 @@ def center(data, samplewise=False, batch_size=100):
     Outputs:
         data: [tensor] centered data
     """
-    data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
+    data, orig_shape = reshape_data(data, flatten=True)[:2]
     if(samplewise): # center each input sample individually
         data_axis = tuple(range(data.ndim)[1:])
         data_mean = torch.mean(data, dim=data_axis, keepdim=True)
@@ -214,16 +214,16 @@ def standardize(data, eps=None, samplewise=False, batch_size=100):
         data: [tensor] normalized data
     """
     if(eps is None):
-        eps = 1.0 / np.sqrt(data[0,...].numel())
-    data, orig_shape = reshape_data(data, flatten=True)[:2] # Adds channel dimension if it's missing
+        eps = 1.0 / data[0,...].numel()
+    data, orig_shape = reshape_data(data, flatten=True)[:2]
     num_examples = data.shape[0]
     if(samplewise): # standardize each input sample individually
         data_axis = tuple(range(data.ndim)[1:])
         data_mean = torch.mean(data, dim=data_axis, keepdim=True)
         data_true_std = torch.std(data, unbiased=False, dim=data_axis, keepdim=True)
     else: # standardize the entire population
-        data_mean = torch.mean(data, dim=0)
-        data_true_std = torch.std(data, unbiased=False)
+        data_mean = torch.mean(data, dim=0, keepdim=True)
+        data_true_std = torch.std(data, dim=0, unbiased=False, keepdim=True)
     data_std = torch.where(data_true_std >= eps, data_true_std, eps*torch.ones_like(data_true_std))
     data = (data - data_mean) /  data_std
     if(data.shape != orig_shape):
@@ -357,9 +357,9 @@ def single_image_to_patches(image, patch_shape):
     Extract patches from a single image
 
     Keyword arguments:
-        image [torch tensor] of shape [im_height, im_width, im_chan]
+        image [torch tensor] of shape [im_chan, im_height, im_width]
         patch_shape [tuple or list] containing the output shape
-            [patch_height, patch_width, patch_chan]
+            [patch_chan, patch_height, patch_width]
             patch_chan must be the same as im_chan
 
         It is recommended, though not required, that the patch height and width divide evenly into
@@ -369,25 +369,25 @@ def single_image_to_patches(image, patch_shape):
         patches [torch tensor] of patches of shape [num_patches]+list(patch_shape)
     """
     try:
-        im_height, im_width, im_chan = image.shape
-        patch_height, patch_width, patch_chan = patch_shape
+        im_chan, im_height, im_width = image.shape
+        patch_chan, patch_height, patch_width = patch_shape
     except Exception as e:
         raise ValueError(
             f'This function requires that: '
-            +f'1) The input variable "image" must have shape [im_height, im_width, im_chan], and is  {image.shape}'
-            +f'and 2) the input variable "patch_shape" must have shape [patch_height, patch_width, patch_chan], and is {patch_shape}.'
+            +f'1) The input variable "image" must have shape [im_chan, im_height, im_width], and is  {image.shape}'
+            +f'and 2) the input variable "patch_shape" must have shape [patch_chan, patch_height, patch_width], and is {patch_shape}.'
         ) from e
     num_row_patches = np.floor(im_height / patch_height)
     num_col_patches = np.floor(im_width / patch_width)
     num_patches = int(num_row_patches * num_col_patches)
-    patches = torch.zeros((num_patches, patch_height, patch_width, patch_chan))
+    patches = torch.zeros((num_patches, patch_chan, patch_height, patch_width))
     row_id = 0
     col_id = 0
     for patch_idx in range(num_patches):
         row_end = row_id + patch_height
         col_end = col_id + patch_width
         try:
-            patches[patch_idx, ...] = image[row_id:row_end, col_id:col_end, :]
+            patches[patch_idx, ...] = image[:, row_id:row_end, col_id:col_end]
         except Exception as e:
             raise ValueError('This function requires that im_chan equal patch_chan.') from e
         row_id += patch_height
@@ -404,30 +404,30 @@ def patches_to_single_image(patches, image_shape):
     Convert patches input into a single ouput
 
     Keyword arguments:
-          patches [torch tensor] of shape [num_patches, patch_height, patch_width, patch_chan]
-          image_shape [list or tuple] of length 2 containing the image shape [im_height, im_width, im_chan]
+          patches [torch tensor] of shape [num_patches, patch_chan, patch_height, patch_width]
+          image_shape [list or tuple] of length 2 containing the image shape [im_chan, im_height, im_width]
 
         im_chan is assumed to equal patch_chan
 
     Outputs:
-        image [torch tensor] of shape [im_height, im_width, im_chan]
+        image [torch tensor] of shape [im_chan, im_height, im_width]
     """
     try:
-        num_patches, patch_height, patch_width, patch_chan = patches.shape
-        im_height, im_width, im_chan = image_shape
+        num_patches, patch_chan, patch_height, patch_width = patches.shape
+        im_chan, im_height, im_width = image_shape
     except Exception as e:
         raise ValueError(
             f'This funciton requires that input patches has shape'
-            f' [num_patches, patch_height, patch_width, patch_chan] and is {patches.shape}'
-            f' and input image_shape is a list or tuple of integers of length 3 containing [im_height, im_width, im_chan] and is {image_shape}'
+            f' [num_patches, patch_chan, patch_height, patch_width] and is {patches.shape}'
+            f' and input image_shape is a list or tuple of integers of length 3 containing [im_chan, im_height, im_width] and is {image_shape}'
         ) from e
-    image = torch.zeros((im_height, im_width, im_chan))
+    image = torch.zeros((im_chan, im_height, im_width))
     row_id = 0
     col_id = 0
     for patch_idx in range(num_patches):
         row_end = row_id + patch_height
         col_end = col_id + patch_width
-        image[row_id:row_end, col_id:col_end, :] = patches[patch_idx, ...]
+        image[:, row_id:row_end, col_id:col_end] = patches[patch_idx, ...]
         row_id += patch_height
         if row_id >= im_height:
             row_id = 0
@@ -441,9 +441,9 @@ def images_to_patches(images, patch_shape):
     Extract evenly distributed non-overlapping patches from an image dataset
 
     Keyword arguments:
-        images [torch tensor] of shape [num_images, im_height, im_width, im_chan] or [im_height, im_width, im_chan] for a single image
+        images [torch tensor] of shape [num_images, im_chan, im_height, im_width] or [im_chan, im_height, im_width] for a single image
         patch_shape [tuple or list] containing the output shape
-            [patch_height, patch_width, patch_chan]
+            [patch_chan, patch_height, patch_width]
             patch_chan must be the same as im_chan
 
         It is recommended, though not required, that the patch height and width divide evenly into the image height and width, respectively.
@@ -453,8 +453,8 @@ def images_to_patches(images, patch_shape):
     """
     if images.ndim == 3: # single image
         return single_image_to_patches(images, patch_shape)
-    num_im, im_height, im_width, im_chan = images.shape
-    patch_height, patch_width, patch_chan = patch_shape
+    num_im, im_chan, im_height, im_width = images.shape
+    patch_chan, patch_height, patch_width = patch_shape
     num_row_patches = np.floor(im_height / patch_height)
     num_col_patches = np.floor(im_width / patch_width)
     num_patches_per_im = int(num_row_patches * num_col_patches)
@@ -474,16 +474,16 @@ def patches_to_images(patches, image_shape):
     Recombine patches tensor into a dataset of images
 
     Keyword arguments:
-        patches [torch tensor] holding square patch data of shape [num_patches, patch_height, patch_width, patch_chan]
-        image_shape [list or tuple] containing the image dataset shape [im_height, im_width, im_chan]
+        patches [torch tensor] holding square patch data of shape [num_patches, patch_chan, patch_height, patch_width]
+        image_shape [list or tuple] containing the image dataset shape [im_chan, im_height, im_width]
 
         It is assumed that im_chan equals patch_chan
 
     Outputs:
         images [torch tensor] holding the recombined image dataset
     """
-    tot_num_patches, patch_height, patch_width, patch_chan = patches.shape
-    im_height, im_width, im_chan = image_shape
+    tot_num_patches, patch_chan, patch_height, patch_width = patches.shape
+    im_chan, im_height, im_width = image_shape
     num_row_patches = np.floor(im_height / patch_height)
     num_col_patches = np.floor(im_width / patch_width)
     num_patches_per_im = int(num_row_patches * num_col_patches)

@@ -11,6 +11,10 @@ class LcaModel(BaseModel, LcaModule):
         super(LcaModel, self).setup(params, logger)
         self.setup_module(params)
         self.setup_optimizer()
+        if params.checkpoint_boot_log != '':
+            checkpoint = self.get_checkpoint_from_log(params.checkpoint_boot_log)
+            self.module.load_state_dict(checkpoint['model_state_dict'])
+            self.module.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     def get_total_loss(self, input_tuple):
         input_tensor, input_labels = input_tuple
@@ -24,16 +28,12 @@ class LcaModel(BaseModel, LcaModule):
     def generate_update_dict(self, input_data, input_labels=None, batch_step=0, update_dict=None):
         if update_dict is None:
             update_dict = super(LcaModel, self).generate_update_dict(input_data, input_labels, batch_step)
-        epoch = batch_step / self.params.batches_per_epoch
-        stat_dict = {
-            'epoch':int(epoch),
-            'batch_step':batch_step,
-            'train_progress':np.round(batch_step/self.params.num_batches, 3),
-            'weight_lr':self.scheduler.get_lr()[0]}
+        stat_dict = dict()
         latents = self.get_encodings(input_data)
         recon = self.get_recon_from_latents(latents)
         recon_loss = losses.half_squared_l2(input_data, recon).item()
         sparse_loss = self.params.sparse_mult * losses.l1_norm(latents).item()
+        stat_dict['weight_lr'] = self.scheduler.get_lr()[0]
         stat_dict['loss_recon'] = recon_loss
         stat_dict['loss_sparse'] = sparse_loss
         stat_dict['loss_total'] = recon_loss + sparse_loss

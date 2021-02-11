@@ -54,8 +54,7 @@ def load_dataset(params):
     if(params.dataset.lower() == 'mnist'):
         preprocessing_pipeline = [
             transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.permute(1, 2, 0)) # channels last
-            ]
+        ]
         if params.standardize_data:
             preprocessing_pipeline.append(
                 transforms.Lambda(lambda x: dp.standardize(x, eps=params.eps)[0]))
@@ -92,7 +91,6 @@ def load_dataset(params):
     elif(params.dataset.lower() == 'cifar10'):
         preprocessing_pipeline = [
             transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.permute(1, 2, 0)), # channels last
         ]
         kwargs = {
             'root': os.path.join(*[params.data_dir,'cifar10']),
@@ -153,9 +151,9 @@ def load_dataset(params):
         test_loader = None
 
     elif(params.dataset.lower() == 'synthetic'):
-        preprocessing_pipeline = [transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.permute(1, 2, 0)) # channels last
-            ]
+        preprocessing_pipeline = [
+            transforms.ToTensor(),
+        ]
         train_loader = torch.utils.data.DataLoader(
             synthetic.SyntheticImages(params.epoch_size, params.data_edge_size, params.dist_type,
             params.rand_state, params.num_classes,
@@ -181,4 +179,5 @@ def load_dataset(params):
         else:
             new_params['num_test_images'] = len(test_loader.dataset)
     new_params['data_shape'] = list(next(iter(train_loader))[0].shape)[1:]
+    new_params['num_pixels'] = np.prod(new_params['data_shape'])
     return (train_loader, val_loader, test_loader, new_params)

@@ -7,6 +7,7 @@ if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.file_utils as file_utils
 
+
 def get_dir_list(target_dir, target_string):
     dir_list = [filename.split('.')[0]
         for filename in os.listdir(target_dir)

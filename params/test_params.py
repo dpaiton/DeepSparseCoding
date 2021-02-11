@@ -36,6 +36,7 @@ class shared_params(object):
         self.num_test_images = 0
         self.standardize_data = False
         self.rescale_data_to_one = False
+        self.allow_parent_grads = False
         self.num_epochs = 3
         self.train_logs_per_epoch = 1
 
@@ -96,6 +97,7 @@ class mlp_params(BaseParams):
         self.layer_channels = [128, 10]
         self.activation_functions = ['identity']
         self.dropout_rate = [0.0] # probability of value being set to zero
+        self.max_pool = [False]
         self.optimizer = types.SimpleNamespace()
         self.optimizer.name = 'adam'
         self.optimizer.lr_annealing_milestone_frac = [0.8] # fraction of num_epochs

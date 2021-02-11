@@ -66,5 +66,10 @@ class TestDatasets(unittest.TestCase):
                                 setattr(params, key, value)
                             assert len(train_loader.dataset) == epoch_size
                             for batch_idx, (data, target) in enumerate(train_loader):
-                               assert data.numpy().shape == (params.batch_size, params.data_edge_size, params.data_edge_size, 1) 
+                                expected_size = (
+                                    params.batch_size,
+                                    1,
+                                    params.data_edge_size,
+                                    params.data_edge_size)
+                                assert data.numpy().shape == expected_size
                             assert batch_idx + 1 == epoch_size // params.batch_size

@@ -10,6 +10,8 @@ class BaseParams(object):
     all models
         batch_size [int] number of images in a training batch
         center_dataset [bool] if True, subtract the mean dataset image from all datapoints
+        checkpoint_boot_log [str] path to a training log file for booting from checkpoint
+            if set, all specified model params must mach those in the log file #TODO: meaningful errors if not
         data_dir [str] location of dataset folders
         device [str] which device to run on
         dtype [torch dtype] dtype for network variables
@@ -39,6 +41,9 @@ class BaseParams(object):
         workspace_dir [str] system directory that is the parent to the primary repository directory
         num_validation [int] number of images to reserve for the validation set (only works with some datasets)
 
+    ensemble
+        allow_parent_grads [bool] if True, allow loss gradients to propagate through all members of the ensemble
+
     mlp
         activation_functions [list of str]  strings correspond to activation functions for layers.
             len must equal the len of layer_types
@@ -48,6 +53,11 @@ class BaseParams(object):
         layer_types [list of str] weight connectivity type, either "conv" or "fc"
             len must be equal to the len of layer_channels - 1
         layer_channels [list of int] number of outputs per layer, including the input layer
+        kernel_sizes [list of ints] number of pixels on the edge of a square kernel, only used if layer_types is "conv"
+        strides [list of ints] number of pixels for the convolutional stride, assumes equal horizontal and vertical strides and is only used if layer_types is "conv"
+        max_pool [list of bools] if True, the network includes a max pooling op after the conv/fc op and before the dropout op
+        pool_ksizes [list of ints] number of pixels on the edge of a square max pooling kernel
+        pool_strides [list of ints] number of pixels in pooling stride, assumes equal and horizontal strides
 
     lca
         dt [float] discrete global time constant for neuron dynamics
@@ -71,6 +81,7 @@ class BaseParams(object):
 
     def set_params(self):
         self.center_dataset = False
+        self.checkpoint_boot_log = ''
         self.rescale_data_to_one = False
         self.standardize_data = False
         self.model_type = None

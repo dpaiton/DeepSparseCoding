@@ -24,14 +24,22 @@ class EnsembleModel(BaseModel, EnsembleModule):
             subparams.data_shape = params.data_shape
         super(EnsembleModel, self).setup_ensemble_module(params)
         self.submodel_classes = []
-        for submodel_params in self.params.ensemble_params:
-            self.submodel_classes.append(loaders.load_model_class(submodel_params.model_type))
+        for ensemble_index, submodel_params in enumerate(self.params.ensemble_params):
+            submodule_class = loaders.load_model_class(submodel_params.model_type)
+            self.submodel_classes.append(submodule_class)
+            if submodel_params.checkpoint_boot_log != '':
+                checkpoint = self.get_checkpoint_from_log(submodule_params.checkpoint_boot_log)
+                submodule = self.__getitem__(ensemble_index)
+                submodule.load_state_dict(checkpoint['model_state_dict'])
 
     def setup_optimizer(self):
         for module in self:
             module.optimizer = self.get_optimizer(
                 optimizer_params=module.params,
                 trainable_variables=module.parameters())
+            if module.params.checkpoint_boot_log != '':
+                checkpoint = self.get_checkpoint_from_log(module.params.checkpoint_boot_log)
+                module.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             module.scheduler = torch.optim.lr_scheduler.MultiStepLR(
                 module.optimizer,
                 milestones=module.params.optimizer.milestones,

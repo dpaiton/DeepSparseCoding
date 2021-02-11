@@ -3,6 +3,13 @@ import torch
 import DeepSparseCoding.utils.data_processing as dp
 
 
+def get_module_encodings(module, data, allow_grads=False):
+    if allow_grads:
+        return module.get_encodings(data)
+    else:
+        return module.get_encodings(data).detach()
+
+
 def train_single_model(model, loss):
     model.optimizer.zero_grad() # clear gradietns of all optimized variables
     loss.backward() # backward pass
@@ -20,13 +27,14 @@ def train_epoch(epoch, model, loader):
     for batch_idx, (data, target) in enumerate(loader):
         data, target = data.to(model.params.device), target.to(model.params.device)
         inputs = []
-        if(model.params.model_type.lower() == 'ensemble'): # TODO: Move this to train_model
+        if(model.params.model_type.lower() == 'ensemble'):
             inputs.append(model[0].preprocess_data(data)) # First model preprocesses the input
             for submodule_idx, submodule in enumerate(model):
                 loss = model.get_total_loss((inputs[-1], target), submodule_idx)
                 train_single_model(submodule, loss)
-                # TODO: include optional parameter to allow gradients to propagate through the entire ensemble.
-                inputs.append(submodule.get_encodings(inputs[-1]).detach()) # must detach to prevent gradient leaking
+                encodings = get_module_encodings(submodule, inputs[-1],
+                    model.params.allow_parent_grads)
+                inputs.append(encodings)
         else:
             inputs.append(model.preprocess_data(data))
             loss = model.get_total_loss((inputs[-1], target))
@@ -78,7 +86,7 @@ def test_epoch(epoch, model, loader, log_to_file=True):
         test_accuracy = 100. * correct / len(loader.dataset)
         stat_dict = {
             'test_epoch':epoch,
-            'test_loss':test_loss,
+            'test_loss':test_loss.item(),
             'test_correct':correct,
             'test_total':len(loader.dataset),
             'test_accuracy':test_accuracy}
