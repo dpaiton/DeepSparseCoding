@@ -6,19 +6,20 @@ import torch
 from DeepSparseCoding.params.base_params import BaseParams
 from DeepSparseCoding.params.lca_mnist_params import params as LcaParams
 from DeepSparseCoding.params.mlp_mnist_params import params as MlpParams
+from DeepSparseCoding.utils.run_utils import compute_conv_output_shape
 
 
 class shared_params(object):
     def __init__(self):
         self.model_type = 'ensemble'
         self.model_name = 'lca_mlp_cifar10'
-        self.version = '0'
+        self.version = '1'
         self.dataset = 'cifar10'
         self.standardize_data = True
         self.batch_size = 25
         self.num_epochs = 500
         self.train_logs_per_epoch = 4
-        self.allow_parent_grads = False
+        self.allow_parent_grads = True
 
 
 class lca_params(LcaParams):
@@ -27,13 +28,16 @@ class lca_params(LcaParams):
         for key, value in shared_params().__dict__.items():
           setattr(self, key, value)
         self.model_type = 'lca'
+        self.layer_types = ['conv']
         self.weight_decay = 0.0
         self.weight_lr = 0.001
+        self.renormalize_weights = True
+        self.stride = 2
+        self.padding = 0
         self.optimizer = types.SimpleNamespace()
         self.optimizer.name = 'sgd'
         self.optimizer.lr_annealing_milestone_frac = [0.8] # fraction of num_epochs
         self.optimizer.lr_decay_rate = 0.8
-        self.renormalize_weights = True
         self.dt = 0.001
         self.tau = 0.2
         self.num_steps = 75
@@ -41,7 +45,7 @@ class lca_params(LcaParams):
         self.thresh_type = 'hard'
         self.sparse_mult = 0.30
         self.num_latent = 512
-        self.checkpoint_boot_log = ''
+        self.checkpoint_boot_log = '/mnt/qb/bethge/dpaiton/Projects/conv_lca_cifar10/logfiles/conv_lca_cifar10_v1.log'
         self.compute_helper_params()
 
 
@@ -54,7 +58,7 @@ class mlp_params(MlpParams):
         self.weight_lr = 2e-3
         self.weight_decay = 1e-6
         self.layer_types = ['fc']
-        self.layer_channels = [512, 10]
+        self.layer_channels = [None, 10]
         self.activation_functions = ['identity']
         self.dropout_rate = [0.0] # probability of value being set to zero
         self.optimizer = types.SimpleNamespace()
@@ -67,6 +71,22 @@ class mlp_params(MlpParams):
 class params(BaseParams):
     def set_params(self):
         super(params, self).set_params()
-        self.ensemble_params = [lca_params(), mlp_params()]
+        lca_params_inst = lca_params()
+        mlp_params_inst = mlp_params()
+        lca_output_height = compute_conv_output_shape(
+            32, # TODO: infer this? currently hardcoded CIFAR10 size
+            lca_params_inst.kernel_size,
+            lca_params_inst.stride,
+            lca_params_inst.padding,
+            dilation=1)
+        lca_output_width = compute_conv_output_shape(
+            32,
+            lca_params_inst.kernel_size,
+            lca_params_inst.stride,
+            lca_params_inst.padding,
+            dilation=1)
+        lca_output_shape = [lca_params_inst.num_latent, lca_output_height, lca_output_width]
+        mlp_params_inst.layer_channels[0] = np.prod(lca_output_shape)
+        self.ensemble_params = [lca_params_inst, mlp_params_inst]
         for key, value in shared_params().__dict__.items():
             setattr(self, key, value)

@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from DeepSparseCoding.modules.activations import activation_picker
 from DeepSparseCoding.utils.run_utils import compute_conv_output_shape
-import DeepSparseCoding.utils.data_processing as dp
+from DeepSparseCoding.utils.data_processing import flatten_feature_map
 
 
 class MlpModule(nn.Module):
@@ -84,16 +84,15 @@ class MlpModule(nn.Module):
 
     def preprocess_data(self, input_tensor):
         if self.params.layer_types[0] == 'fc':
-            input_tensor = input_tensor.view(self.params.batch_size, -1) # flatten input
+            input_tensor = flatten_feature_map(input_tensor)
         return input_tensor
 
     def forward(self, x):
-        layer_zip = zip(self.dropout, self.pooling, self.act_funcs, self.layers)
-        for layer_index, (dropout, pooling, act_func, layer) in enumerate(layer_zip):
-            prev_layer = self.params.layer_types[layer_index - 1]
-            current_layer = self.params.layer_types[layer_index]
-            if(layer_index > 0 and current_layer == 'fc' and prev_layer == 'conv'):
-                x = dp.flatten_feature_map(x)
+        layer_zip = zip(self.dropout, self.pooling, self.act_funcs,
+            self.layers, self.params.layer_types)
+        for dropout, pooling, act_func, layer, layer_type in layer_zip:
+            if layer_type == 'fc':
+                x = flatten_feature_map(x)
             x = dropout(pooling(act_func(layer(x))))
         return x
 

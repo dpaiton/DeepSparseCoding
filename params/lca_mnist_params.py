@@ -28,7 +28,7 @@ class params(BaseParams):
         self.weight_decay = 0.0
         self.train_logs_per_epoch = 6
         if CONV:
-            self.layer_type = 'conv'
+            self.layer_types = ['conv']
             self.model_name = 'conv_lca_mnist'
             self.rescale_data_to_one = True
             self.batch_size = 50
@@ -40,7 +40,7 @@ class params(BaseParams):
             self.padding = 0
             self.num_latent = 128
         else:
-            self.layer_type = 'fc'
+            self.layer_types = ['fc']
             self.model_type = 'lca'
             self.model_name = 'lca_768_mnist'
             self.rescale_data_to_one = False

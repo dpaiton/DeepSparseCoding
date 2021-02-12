@@ -126,7 +126,7 @@ def flatten_feature_map(feature_map):
     if(len(map_shape) == 4):
         (batch, c, y, x) = map_shape
         prev_input_features = int(c * y * x)
-        resh_map  = torch.reshape(feature_map, [-1, prev_input_features])
+        resh_map  = torch.reshape(feature_map, [batch, prev_input_features])
     elif(len(map_shape) == 2):
         resh_map = feature_map
     else:
