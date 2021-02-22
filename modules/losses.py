@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 
 import DeepSparseCoding.utils.data_processing as dp
@@ -64,14 +65,53 @@ def l1_norm(latents):
 
 def trace_covariance(latents):
     """
-    Loss is the trace of the covariance matrix of the latents
+    Returns loss that is the trace of the covariance matrix of the latents
+
     Keyword arguments:
         latents: torch tensor of shape [num_batch, num_latents] or [num_batch, num_channels, latents_h, latents_w]
     Outputs:
+        loss
     """
-    corvariance = dp.covariance(latents) # [num_channels, num_channels]
-    if latenst.ndim == 4:
+    covariance = dp.covariance(latents) # [num_channels, num_channels]
+    if latents.ndim == 4:
         num_batch, num_channels, latents_h, latents_w = latents.shape
         covariance = covariance / (latents_h * latents_w - 1.0)
     trace = torch.trace(covariance)
     return -1 * trace
+
+
+def weight_orthogonality(weights, stride=1, padding=0):
+    """
+    Returns l2 loss that is minimized when the weights are orthogonal
+
+    Keyword arguments:
+        weights [torch tensor] layer weights, either fully connected or 2d convolutional
+        stride [int] layer stride for convolutional layers
+        padding [int] layer padding for convolutional layers
+
+    Outputs:
+        loss
+
+    Note:
+        Convolutional orthogonalization loss is based on
+        Orthogonal Convolutional Neural Networks
+        https://arxiv.org/abs/1911.12207
+        https://github.com/samaonline/Orthogonal-Convolutional-Neural-Networks
+    """
+    w_shape = weights.shape
+    if weights.ndim == 2: # fully-connected, [inputs, outputs]
+        loss = torch.norm(torch.matmul(weights.transpose(), weights) - torch.eye(w_shape[1]))
+    elif weights.ndim == 4: # convolutional, [output_channels, input_channels, height, width]
+        out_channels, in_channels, in_height, in_width = w_shape
+        output = torch.conv2d(weights, weights, stride=stride, padding=padding)
+        out_height = output.shape[-2]
+        out_width = output.shape[-1]
+        target = torch.zeros((out_channels, out_channels, out_height, out_width),
+            device=weights.device)
+        center_h = int(np.floor(out_height / 2))
+        center_w = int(np.floor(out_width / 2))
+        target[:, :, center_h, center_w] = torch.eye(out_channels, device=weights.device)
+        loss = torch.norm(output - target, p='fro')
+    else:
+        assert False, (f'weights ndim must be 2 or 4, not {weights.ndim}')
+    return loss

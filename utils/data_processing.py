@@ -169,7 +169,7 @@ def get_mean_from_dataloader(loader):
     dataset_mean = torch.zeros(next(iter(loader))[0].shape[1:]) # don't include batch dimension
     num_batches = 0
     for data, target in loader:
-        dataset_mean += data.mean(axis=0, keepdims=False)
+        dataset_mean += data.mean(dim=0, keepdim=False)
         num_batches += 1
     return dataset_mean / num_batches
 
@@ -247,9 +247,9 @@ def rescale_data_to_one(data, eps=None, samplewise=True):
         eps = 1.0 / np.sqrt(data[0,...].numel())
     if(samplewise):
         data_min = torch.min(data.view(-1, np.prod(data.shape[1:])),
-                             axis=1, keepdims=False)[0].view(-1, *[1]*(data.ndim-1))
+                             axis=1, keepdim=False)[0].view(-1, *[1]*(data.ndim-1))
         data_max = torch.max(data.view(-1, np.prod(data.shape[1:])),
-                             axis=1, keepdims=False)[0].view(-1, *[1]*(data.ndim-1))
+                             axis=1, keepdim=False)[0].view(-1, *[1]*(data.ndim-1))
     else:
         data_min = torch.min(data)
         data_max = torch.max(data)
@@ -508,15 +508,15 @@ def covariance(tensor):
         if tensor.ndim is 4 then the covariance is computed over spatial dimensions for each channel and each batch instance
 
     Outputs:
-        covariance matrix [torch tensor] either of shape [num_channels, num_channels]
+        covariance matrix [torch tensor] of shape [num_channels, num_channels]
     """
     if tensor.ndim == 2: # [num_batch, num_channels]
-        centered_tensor = tensor - tensor.mean(dim=0, keep_dims=True) # subtract mean vector
+        centered_tensor = tensor - tensor.mean(dim=0, keepdim=True) # subtract mean vector
         corvariance = torch.dot(centered_tensor.T, centered_tensor) # sum over batch
     elif tensor.ndim == 4: # [num_batch, num_channels, elements_h, elements_w]
-        num_batch, num_channels, elements_h, elements_w = centered_tensor.shape
-        flat_map = centered_tensor.view(num_batch, num_channels, elements_h * elements_w)
-        cent_flat_map = flat_map - flat_map.mean(dim=2, keep_dims=True) # subtract mean vector
+        num_batch, num_channels, elements_h, elements_w = tensor.shape
+        flat_map = tensor.view(num_batch, num_channels, elements_h * elements_w)
+        cent_flat_map = flat_map - flat_map.mean(dim=2, keepdim=True) # subtract mean vector
         covariance = torch.bmm(cent_flat_map, torch.transpose(cent_flat_map, 1, 2)) # sum over space
-        covariance = covariance.mean(dim=0, keepdims=False) # avg cov over batch
+        covariance = covariance.mean(dim=0, keepdim=False) # avg cov over batch
     return covariance

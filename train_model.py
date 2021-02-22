@@ -35,8 +35,9 @@ model.to(params.device)
 # Train model
 for epoch in range(1, model.params.num_epochs+1):
     run_utils.train_epoch(epoch, model, train_loader)
-    if(model.params.model_type.lower() in ['mlp', 'ensemble']): # TODO: use to validation set here; test at the end of training
-        run_utils.test_epoch(epoch, model, test_loader)
+    # TODO: Ensemble models might not actually have a classification objective / need validation
+    #if(model.params.model_type.lower() in ['mlp', 'ensemble']): # TODO: use to validation set here; test at the end of training
+    #    run_utils.test_epoch(epoch, model, test_loader)
     model.log_info(f'Completed epoch {epoch}/{model.params.num_epochs}')
     print(f'Completed epoch {epoch}/{model.params.num_epochs}')
 

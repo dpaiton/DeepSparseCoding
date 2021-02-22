@@ -15,10 +15,16 @@ class PoolingModel(BaseModel, PoolingModule):
             self.module.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     def get_total_loss(self, input_tuple):
+        def loss_fn(model_output):
+            output_loss = losses.trace_covariance(model_output)
+            w_stride = self.params.pool_stride
+            w_padding = 0
+            weight_loss = losses.weight_orthogonality(self.w, stride=w_stride, padding=w_padding)
+            return output_loss + weight_loss
         input_tensor, input_label = input_tuple
-        rep = self.forward(input_tensor)
-        self.loss_fn = losses.trace_covariance
-        return self.loss_fn(rep)
+        layer_output = self.forward(input_tensor)
+        self.loss_fn = loss_fn
+        return self.loss_fn(layer_output)
 
     def generate_update_dict(self, input_data, input_labels=None, batch_step=0, update_dict=None):
         if update_dict is None:

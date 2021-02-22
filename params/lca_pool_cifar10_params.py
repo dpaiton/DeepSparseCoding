@@ -53,9 +53,10 @@ class pool_params(BaseParams):
         for key, value in shared_params().__dict__.items():
           setattr(self, key, value)
         self.model_type = 'pool'
+        self.layer_name = 'pool_1'
         self.weight_lr = 1e-3
-        self.layer_type = 'orth_conv'
-        self.layer_channels = [None, 10]
+        self.layer_type = 'conv'
+        self.layer_channels = [512, 10]
         self.pool_ksize = 4
         self.pool_stride = 2
         self.optimizer = types.SimpleNamespace()
@@ -64,26 +65,32 @@ class pool_params(BaseParams):
         self.optimizer.lr_decay_rate = 0.8
         self.compute_helper_params()
 
+    def compute_helper_params(self):
+        super(pool_params, self).compute_helper_params()
+        self.optimizer.milestones = [frac * self.num_epochs
+            for frac in self.optimizer.lr_annealing_milestone_frac]
+
 
 class params(BaseParams):
     def set_params(self):
         super(params, self).set_params()
         lca_params_inst = lca_params()
         pool_params_inst = pool_params()
-        lca_output_height = compute_conv_output_shape(
-            32, # TODO: infer this? currently hardcoded CIFAR10 size
-            lca_params_inst.kernel_size,
-            lca_params_inst.stride,
-            lca_params_inst.padding,
-            dilation=1)
-        lca_output_width = compute_conv_output_shape(
-            32,
-            lca_params_inst.kernel_size,
-            lca_params_inst.stride,
-            lca_params_inst.padding,
-            dilation=1)
-        lca_output_shape = [lca_params_inst.num_latent, lca_output_height, lca_output_width]
-        pool_params_inst.layer_channels[0] = np.prod(lca_output_shape)
+        if(pool_params_inst.layer_type == 'fc' and lca_params_inst.layer_type == 'conv'):
+            lca_output_height = compute_conv_output_shape(
+                32, # TODO: infer this? currently hardcoded CIFAR10 size
+                lca_params_inst.kernel_size,
+                lca_params_inst.stride,
+                lca_params_inst.padding,
+                dilation=1)
+            lca_output_width = compute_conv_output_shape(
+                32,
+                lca_params_inst.kernel_size,
+                lca_params_inst.stride,
+                lca_params_inst.padding,
+                dilation=1)
+            lca_output_shape = [lca_params_inst.num_latent, lca_output_height, lca_output_width]
+            pool_params_inst.layer_channels[0] = np.prod(lca_output_shape)
         self.ensemble_params = [lca_params_inst, pool_params_inst]
         for key, value in shared_params().__dict__.items():
             setattr(self, key, value)
