@@ -6,10 +6,10 @@ import DeepSparseCoding.utils.data_processing as dp
 def half_squared_l2(x1, x2):
     """
     Computes the standard reconstruction loss. It will average over batch dimensions.
-    Args:
+    Keyword arguments:
         x1: Tensor with original input image
         x2: Tensor with reconstructed image for comparison
-    Returns:
+    Outputs:
         recon_loss: Tensor representing the squared l2 distance between the inputs, averaged over batch
     """
     dp.check_all_same_shape([x1, x2])
@@ -22,9 +22,9 @@ def half_squared_l2(x1, x2):
 def half_weight_norm_squared(weight_list):
     """
     Computes a loss that encourages each weight in the list of weights to have unit l2 norm.
-    Args:
+    Keyword arguments:
         weight_list: List of torch variables
-    Returns:
+    Outputs:
         w_norm_loss: 0.5 * sum of (1 - l2_norm(w))^2 for each w in weight_list
     """
     w_norm_list = []
@@ -39,9 +39,9 @@ def half_weight_norm_squared(weight_list):
 def weight_decay(weight_list):
     """
     Computes typical weight decay loss
-    Args:
+    Keyword arguments:
         weight_list: List of torch variables
-    Returns:
+    Outputs:
         decay_loss: 0.5 * sum of w^2 for each w in weight_list
     """
     decay_loss = 0.5 * torch.sum([torch.sum(torch.pow(w, 2.)) for w in weight_list])
@@ -52,11 +52,26 @@ def l1_norm(latents):
     """
     Computes the L1 norm of for a batch of input vector
     This is the sparsity loss for a Laplacian prior
-    Args:
+    Keyword arguments:
         latents: torch tensor of any shape, but where first index is always batch
-    Returns:
+    Outputs:
         sparse_loss: sum of abs of latents, averaged over the batch
     """
     reduc_dim = list(range(1, len(latents.shape)))
     sparse_loss = torch.mean(torch.sum(torch.abs(latents), dim=reduc_dim, keepdim=False))
     return sparse_loss
+
+
+def trace_covariance(latents):
+    """
+    Loss is the trace of the covariance matrix of the latents
+    Keyword arguments:
+        latents: torch tensor of shape [num_batch, num_latents] or [num_batch, num_channels, latents_h, latents_w]
+    Outputs:
+    """
+    corvariance = dp.covariance(latents) # [num_channels, num_channels]
+    if latenst.ndim == 4:
+        num_batch, num_channels, latents_h, latents_w = latents.shape
+        covariance = covariance / (latents_h * latents_w - 1.0)
+    trace = torch.trace(covariance)
+    return -1 * trace
