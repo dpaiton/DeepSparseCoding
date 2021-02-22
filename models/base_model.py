@@ -124,8 +124,14 @@ class BaseModel(object):
         """
         output_dict = {
             'model_state_dict': self.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
         }
+        if(self.params.model_type.lower() == 'ensemble'):
+            for module in self:
+                module_state_dict_name = module.params.submodule_name+'_optimizer_state_dict'
+                output_dict[module_state_dict_name] = module.optimizer.state_dict(),
+        else:
+            module_state_dict_name = 'optimizer_state_dict'
+            output_dict[module_state_dict_name] = self.optimizer.state_dict(),
         training_stats = self.get_train_stats(batch_step)
         output_dict.update(training_stats)
         torch.save(output_dict, self.params.cp_latest_filename)
