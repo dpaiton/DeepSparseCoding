@@ -1,7 +1,10 @@
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
 from DeepSparseCoding.modules.activations import activation_picker
+from DeepSparseCoding.utils.run_utils import compute_conv_output_shape
+from DeepSparseCoding.utils.data_processing import flatten_feature_map
 
 
 class MlpModule(nn.Module):
@@ -9,41 +12,88 @@ class MlpModule(nn.Module):
         self.params = params
         self.act_funcs = [activation_picker(act_func_str)
             for act_func_str in self.params.activation_functions]
+        self.layer_output_shapes = [self.params.data_shape] # [channels, height, width]
         self.layers = []
+        self.pooling = []
         self.dropout = []
         for layer_index, layer_type in enumerate(self.params.layer_types):
             if layer_type == 'fc':
+                if(layer_index > 0 and self.params.layer_types[layer_index-1] == 'conv'):
+                    in_features = np.prod(self.layer_output_shapes[-1]).astype(np.int)
+                else:
+                    in_features = self.params.layer_channels[layer_index]
                 layer = nn.Linear(
-                    in_features = self.params.layer_channels[layer_index],
-                    out_features = self.params.layer_channels[layer_index+1],
-                    bias = True)
-            elif layer_type == 'conv':
-                w_shape = [
-                    self.params.out_channels[layer_index],
-                    self.params.in_channels[layer_index],
-                    self.params.kernel_size[layer_index],
-                    self.params.kernel_size[layer_index]]
-                layer = nn.Conv2d(
-                    in_channels = self.params.in_channels[layer_index],
-                    out_channels = self.params.out_channels[layer_index],
-                    kernel_size = w_shape,
-                    stride = self.parmas.stride[layer_index],
-                    padding = self.params.padding[layer_index],
+                    in_features=in_features,
+                    out_features=self.params.layer_channels[layer_index + 1],
                     bias=True)
+                self.register_parameter('fc'+str(layer_index)+'_w', layer.weight)
+                self.register_parameter('fc'+str(layer_index)+'_b', layer.bias)
+                self.layers.append(layer)
+                self.layer_output_shapes.append(self.params.layer_channels[layer_index + 1])
+            elif layer_type == 'conv':
+                layer = nn.Conv2d(
+                    in_channels=self.params.layer_channels[layer_index],
+                    out_channels=self.params.layer_channels[layer_index + 1],
+                    kernel_size=self.params.kernel_sizes[layer_index],
+                    stride=self.params.strides[layer_index],
+                    padding=0,
+                    dilation=1,
+                    bias=True)
+                self.register_parameter('conv'+str(layer_index)+'_w', layer.weight)
+                self.register_parameter('conv'+str(layer_index)+'_b', layer.bias)
+                self.layers.append(layer)
+                output_channels = self.params.layer_channels[layer_index + 1]
+                output_height = compute_conv_output_shape(
+                    self.layer_output_shapes[-1][1],
+                    self.params.kernel_sizes[layer_index],
+                    self.params.strides[layer_index],
+                    padding=0,
+                    dilation=1)
+                output_width = compute_conv_output_shape(
+                    self.layer_output_shapes[-1][2],
+                    self.params.kernel_sizes[layer_index],
+                    self.params.strides[layer_index],
+                    padding=0,
+                    dilation=1)
+                self.layer_output_shapes.append([output_channels, output_height, output_width])
             else:
-                assert False, ('layer_type parameter must be "fc", not %g'%(layer_type))
-            self.register_parameter(layer_type+str(layer_index)+'_w', layer.weight)
-            self.register_parameter(layer_type+str(layer_index)+'_b', layer.bias)
-            self.layers.append(layer)
+                assert False, ('layer_type parameter must be "fc" or "conv", not %g'%(layer_type))
+            if(self.params.max_pool[layer_index] and layer_type == 'conv'):
+                self.pooling.append(nn.MaxPool2d(
+                    kernel_size=self.params.pool_ksizes[layer_index],
+                    stride=self.params.pool_strides[layer_index],
+                    padding=0,
+                    dilation=1))
+                output_channels = self.params.layer_channels[layer_index + 1]
+                output_height = compute_conv_output_shape(
+                    self.layer_output_shapes[-1][1],
+                    self.params.pool_ksizes[layer_index],
+                    self.params.pool_strides[layer_index],
+                    padding=0,
+                    dilation=1)
+                output_width = compute_conv_output_shape(
+                    self.layer_output_shapes[-1][2],
+                    self.params.pool_ksizes[layer_index],
+                    self.params.pool_strides[layer_index],
+                    padding=0,
+                    dilation=1)
+                self.layer_output_shapes.append([output_channels, output_height, output_width])
+            else:
+                self.pooling.append(nn.Identity()) # do nothing
             self.dropout.append(nn.Dropout(p=self.params.dropout_rate[layer_index]))
 
     def preprocess_data(self, input_tensor):
-        input_tensor = input_tensor.view(-1, self.params.layer_channels[0])
+        if self.params.layer_types[0] == 'fc':
+            input_tensor = flatten_feature_map(input_tensor)
         return input_tensor
 
     def forward(self, x):
-        for dropout, act_func, layer in zip(self.dropout, self.act_funcs, self.layers):
-            x = dropout(act_func(layer(x)))
+        layer_zip = zip(self.dropout, self.pooling, self.act_funcs,
+            self.layers, self.params.layer_types)
+        for dropout, pooling, act_func, layer, layer_type in layer_zip:
+            if layer_type == 'fc':
+                x = flatten_feature_map(x)
+            x = dropout(pooling(act_func(layer(x))))
         return x
 
     def get_encodings(self, input_tensor):

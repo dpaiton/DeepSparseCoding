@@ -11,26 +11,30 @@ class params(BaseParams):
     def set_params(self):
         super(params, self).set_params()
         self.model_type = 'mlp'
-        self.model_name = 'mlp_768_mnist'
+        self.model_name = 'mlp_cifar10'
         self.version = '0'
-        self.dataset = 'mnist'
-        self.fast_mnist = True
-        self.standardize_data = False
+        self.dataset = 'cifar10'
+        self.standardize_data = True
         self.rescale_data_to_one = False
+        self.center_data = False
+        self.num_validation = 1000
         self.batch_size = 50
-        self.num_epochs = 300
-        self.weight_lr = 5e-4
-        self.weight_decay = 2e-6
-        self.layer_types = ['fc', 'fc']
-        self.num_pixels = 28*28*1
-        self.layer_channels = [self.num_pixels, 768, 10]
+        self.num_epochs = 500
+        self.weight_decay = 3e-6
+        self.weight_lr = 2e-3
+        self.layer_types = ['conv', 'fc']
+        self.layer_channels = [3, 512, 10]
+        self.kernel_sizes = [8, None]
+        self.strides = [2, None]
         self.activation_functions = ['lrelu', 'identity']
         self.dropout_rate = [0.5, 0.0] # probability of value being set to zero
-        self.max_pool = [False, False]
+        self.max_pool = [True, False]
+        self.pool_ksizes = [5, None]
+        self.pool_strides = [4, None]
         self.train_logs_per_epoch = 4
         self.optimizer = types.SimpleNamespace()
         self.optimizer.name = 'adam'
-        self.optimizer.lr_annealing_milestone_frac = [0.8] # fraction of num_epochs
+        self.optimizer.lr_annealing_milestone_frac = [0.3] # fraction of num_epochs
         self.optimizer.lr_decay_rate = 0.1
 
     def compute_helper_params(self):

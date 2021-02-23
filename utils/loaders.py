@@ -7,6 +7,7 @@ if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.file_utils as file_utils
 
+
 def get_dir_list(target_dir, target_string):
     dir_list = [filename.split('.')[0]
         for filename in os.listdir(target_dir)
@@ -43,9 +44,12 @@ def load_model_class(model_type):
     elif(model_type.lower() == 'lca'):
         py_module_name = 'LcaModel'
         file_name = os.path.join(*[dsc_dir, 'models', 'lca_model.py'])
-    elif(model_type.lower() == 'conv_lca'):
-        py_module_name = 'ConvLcaModel'
-        file_name = os.path.join(*[dsc_dir, 'models', 'conv_lca_model.py'])
+    #elif(model_type.lower() == 'conv_lca'):
+    #    py_module_name = 'ConvLcaModel'
+    #    file_name = os.path.join(*[dsc_dir, 'models', 'conv_lca_model.py'])
+    elif(model_type.lower() == 'pool'):
+        py_module_name = 'PoolingModel'
+        file_name = os.path.join(*[dsc_dir, 'models', 'pooling_model.py'])
     elif(model_type.lower() == 'ensemble'):
         py_module_name = 'EnsembleModel'
         file_name = os.path.join(*[dsc_dir, 'models', 'ensemble_model.py'])
@@ -70,9 +74,12 @@ def load_module(module_type):
     elif(module_type.lower() == 'lca'):
         py_module_name = 'LcaModule'
         file_name = os.path.join(*[dsc_dir, 'modules', 'lca_module.py'])
-    elif(module_type.lower() == 'conv_lca'):
-        py_module_name = 'ConvLcaModule'
-        file_name = os.path.join(*[dsc_dir, 'modules', 'conv_lca_module.py'])
+    #elif(module_type.lower() == 'conv_lca'):
+    #    py_module_name = 'ConvLcaModule'
+    #    file_name = os.path.join(*[dsc_dir, 'modules', 'conv_lca_module.py'])
+    elif(module_type.lower() == 'pool'):
+        py_module_name = 'PoolingModule'
+        file_name = os.path.join(*[dsc_dir, 'modules', 'pooling_module.py'])
     elif(module_type.lower() == 'ensemble'):
         py_module_name = 'EnsembleModule'
         file_name = os.path.join(*[dsc_dir, 'modules', 'ensemble_module.py'])
@@ -85,7 +92,14 @@ def load_module(module_type):
     return py_module_class()
 
 
-def load_params(file_name, key='params'):
+def load_params_from_log(log_file):
+    logger = file_utils.Logger(log_file, overwrite=False)
+    log_text = logger.load_file()
+    params = logger.read_params(log_text)[-1]
+    return params
+
+
+def load_params_file(file_name, key='params'):
     params_module = file_utils.python_module_from_file(key, file_name)
     params = getattr(params_module, key)()
     return params

@@ -1,8 +1,9 @@
 import copy
 import os
 import sys
+from os.path import dirname as up
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
+ROOT_DIR = up(up(up(up(up(os.path.realpath(__file__))))))
 if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import numpy as np

@@ -1,19 +1,21 @@
 import os
 import sys
+from os.path import dirname as up
 
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
+
+from PIL import Image
 import numpy as np
 import torch
 from torchvision import transforms
-from torchvision.datasets import MNIST
-
-ROOT_DIR = os.path.dirname(os.getcwd())
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
+import torchvision.datasets
 
 import DeepSparseCoding.utils.data_processing as dp
 import DeepSparseCoding.datasets.synthetic as synthetic
 
 
-class FastMNIST(MNIST):
+class FastMNIST(torchvision.datasets.MNIST):
     """
     The torchvision MNIST dataset has additional overhead that slows it down.
     This loads the entire dataset onto the specified device at init, resulting in a considerable speedup
@@ -23,6 +25,16 @@ class FastMNIST(MNIST):
         super().__init__(*args, **kwargs)
         # Scale data to [0,1]
         self.data = self.data.unsqueeze(-1).float().div(255)
+        self.data = self.data.permute(0, 3, 1, 2) # channels first
+        if self.transform is not None:
+            # doing this so that it is consistent with all other datasets
+            # to return a PIL Image
+            for data_idx in range(self.data.shape[0]):
+                self.data[data_idx, ...] = self.transform(
+                    Image.fromarray(
+                        self.data[data_idx, ...].numpy().squeeze(), mode='L'))[None, ...]
+        if self.target_transform is not None:
+            self.targets = [self.target_transform(int(target)) for target in self.targets]
         # Put both data and targets on GPU in advance
         self.data, self.targets = self.data.to(device), self.targets.to(device)
 
@@ -53,8 +65,7 @@ def load_dataset(params):
     if(params.dataset.lower() == 'mnist'):
         preprocessing_pipeline = [
             transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.permute(1, 2, 0)) # channels last
-            ]
+        ]
         if params.standardize_data:
             preprocessing_pipeline.append(
                 transforms.Lambda(lambda x: dp.standardize(x, eps=params.eps)[0]))
@@ -63,10 +74,10 @@ def load_dataset(params):
                 transforms.Lambda(lambda x: dp.rescale_data_to_one(x, eps=params.eps, samplewise=True)[0]))
         kwargs = {
             'root':params.data_dir,
-            'download':True,
+            'download':False,
             'transform':transforms.Compose(preprocessing_pipeline)
         }
-        if hasattr(params, 'fast_mnist') and params.fast_mnist:
+        if(hasattr(params, 'fast_mnist') and params.fast_mnist):
             kwargs['device'] = params.device
             kwargs['train'] = True
             train_loader = torch.utils.data.DataLoader(
@@ -80,13 +91,54 @@ def load_dataset(params):
         else:
             kwargs['train'] = True
             train_loader = torch.utils.data.DataLoader(
-                MNIST(**kwargs), batch_size=params.batch_size,
+                torchvision.datasets.MNIST(**kwargs), batch_size=params.batch_size,
                 shuffle=params.shuffle_data, num_workers=0, pin_memory=True)
             kwargs['train'] = False
             val_loader = None
             test_loader = torch.utils.data.DataLoader(
-                MNIST(**kwargs), batch_size=params.batch_size,
+                torchvision.datasets.MNIST(**kwargs), batch_size=params.batch_size,
                 shuffle=params.shuffle_data, num_workers=0, pin_memory=True)
+
+    elif(params.dataset.lower() == 'cifar10'):
+        preprocessing_pipeline = [
+            transforms.ToTensor(),
+        ]
+        kwargs = {
+            'root': os.path.join(*[params.data_dir, 'cifar10']),
+            'download': False,
+            'train': True,
+            'transform': transforms.Compose(preprocessing_pipeline)
+        }
+        if params.center_dataset:
+            dataset = torchvision.datasets.CIFAR10(**kwargs)
+            data_loader = torch.utils.data.DataLoader(dataset, batch_size=params.batch_size,
+                shuffle=False, num_workers=0, pin_memory=True)
+            dataset_mean_image = dp.get_mean_from_dataloader(data_loader)
+            preprocessing_pipeline.append(
+                transforms.Lambda(lambda x: x - dataset_mean_image))
+        if params.standardize_data:
+            preprocessing_pipeline.append(
+                transforms.Lambda(
+                    lambda x: dp.standardize(x, eps=params.eps, samplewise=True, batch_size=params.batch_size)[0]
+                )
+            )
+        if params.rescale_data_to_one:
+            preprocessing_pipeline.append(
+                transforms.Lambda(lambda x: dp.rescale_data_to_one(x, eps=params.eps, samplewise=True)[0]))
+        kwargs['transform'] = transforms.Compose(preprocessing_pipeline)
+        kwargs['train'] = True
+        dataset = torchvision.datasets.CIFAR10(**kwargs)
+        kwargs['train'] = False
+        testset = torchvision.datasets.CIFAR10(**kwargs)
+        num_train = len(dataset) - params.num_validation
+        trainset, valset = torch.utils.data.random_split(dataset,
+            [num_train, params.num_validation])
+        train_loader = torch.utils.data.DataLoader(trainset, batch_size=params.batch_size,
+            shuffle=params.shuffle_data, num_workers=0, pin_memory=True)
+        val_loader = torch.utils.data.DataLoader(valset, batch_size=params.batch_size,
+            shuffle=False, num_workers=0, pin_memory=True)
+        test_loader = torch.utils.data.DataLoader(testset, batch_size=params.batch_size,
+            shuffle=False, num_workers=0, pin_memory=True)
 
     elif(params.dataset.lower() == 'dsprites'):
         root = os.path.join(*[params.data_dir])
@@ -110,9 +162,9 @@ def load_dataset(params):
         test_loader = None
 
     elif(params.dataset.lower() == 'synthetic'):
-        preprocessing_pipeline = [transforms.ToTensor(),
-            transforms.Lambda(lambda x: x.permute(1, 2, 0)) # channels last
-            ]
+        preprocessing_pipeline = [
+            transforms.ToTensor(),
+        ]
         train_loader = torch.utils.data.DataLoader(
             synthetic.SyntheticImages(params.epoch_size, params.data_edge_size, params.dist_type,
             params.rand_state, params.num_classes,
@@ -138,4 +190,5 @@ def load_dataset(params):
         else:
             new_params['num_test_images'] = len(test_loader.dataset)
     new_params['data_shape'] = list(next(iter(train_loader))[0].shape)[1:]
+    new_params['num_pixels'] = np.prod(new_params['data_shape'])
     return (train_loader, val_loader, test_loader, new_params)

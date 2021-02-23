@@ -20,6 +20,7 @@ class shared_params(object):
         self.batch_size = 100
         self.num_epochs = 1200
         self.train_logs_per_epoch = 4
+        self.allow_parent_grads = False
 
 
 class lca_params(LcaParams):
@@ -41,8 +42,8 @@ class lca_params(LcaParams):
         self.rectify_a = True
         self.thresh_type = 'soft'
         self.sparse_mult = 0.25
-        self.num_latent = 768#self.num_pixels*4
-        #self.allow_parent_grads = False # TODO: enable this param
+        self.num_latent = 768
+        self.checkpoint_boot_log = ''
         self.compute_helper_params()
 
 
@@ -55,7 +56,7 @@ class mlp_params(MlpParams):
         self.weight_lr = 1e-4
         self.weight_decay = 0.0
         self.layer_types = ['fc']
-        self.layer_channels = [768, 10]#[self.num_pixels*4, 10]
+        self.layer_channels = [768, 10]
         self.activation_functions = ['identity']
         self.dropout_rate = [0.0] # probability of value being set to zero
         self.optimizer = types.SimpleNamespace()

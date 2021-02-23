@@ -1,13 +1,12 @@
-import numpy as np
-
 import torch
 
-from DeepSparseCoding.models.base_model import BaseModel
-from DeepSparseCoding.modules.mlp_module import MlpModule
+import DeepSparseCoding.modules.losses as losses
 
-class MlpModel(BaseModel, MlpModule):
+from DeepSparseCoding.models.base_model import BaseModel
+from DeepSparseCoding.modules.pooling_module import PoolingModule
+
+class PoolingModel(BaseModel, PoolingModule):
     def setup(self, params, logger=None):
-        super(MlpModel, self).setup(params, logger)
         self.setup_module(params)
         self.setup_optimizer()
         if params.checkpoint_boot_log != '':
@@ -16,21 +15,24 @@ class MlpModel(BaseModel, MlpModule):
             self.module.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
     def get_total_loss(self, input_tuple):
+        def loss_fn(model_output):
+            output_loss = losses.trace_covariance(model_output)
+            w_stride = self.params.pool_stride
+            w_padding = 0
+            weight_loss = losses.weight_orthogonality(self.w, stride=w_stride, padding=w_padding)
+            return output_loss + weight_loss
         input_tensor, input_label = input_tuple
-        pred = self.forward(input_tensor)
-        self.loss_fn = torch.nn.CrossEntropyLoss()
-        return self.loss_fn(pred, input_label)
+        layer_output = self.forward(input_tensor)
+        self.loss_fn = loss_fn
+        return self.loss_fn(layer_output)
 
     def generate_update_dict(self, input_data, input_labels=None, batch_step=0, update_dict=None):
         if update_dict is None:
-            update_dict = super(MlpModel, self).generate_update_dict(input_data, input_labels, batch_step)
+            update_dict = super(PoolinModel, self).generate_update_dict(input_data, input_labels, batch_step)
         stat_dict = dict()
-        pred = self.forward(input_data)
-        total_loss = self.loss_fn(pred, input_labels)
-        pred = pred.max(1, keepdim=True)[1]
-        correct = pred.eq(input_labels.view_as(pred)).sum().item()
+        rep = self.forward(input_data)
+        total_loss = self.loss_fn(rep)
         stat_dict['weight_lr'] = self.scheduler.get_lr()[0]
         stat_dict['loss'] = total_loss.item()
-        stat_dict['train_accuracy'] = 100. * correct / self.params.batch_size
         update_dict.update(stat_dict)
         return update_dict

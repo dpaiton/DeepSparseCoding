@@ -1,9 +1,11 @@
 import os
+import pprint
 
 import numpy as np
 import torch
 
 from DeepSparseCoding.utils.file_utils import Logger
+import DeepSparseCoding.utils.loaders as loaders
 
 
 class BaseModel(object):
@@ -96,20 +98,67 @@ class BaseModel(object):
         """Log input string"""
         self.logger.log_info(string)
 
-    def write_checkpoint(self):
-        """Write checkpoints"""
-        torch.save(self.state_dict(), self.params.cp_latest_filename)
+    def get_train_stats(self, batch_step=None):
+        """
+        Get default statistics about current training run
+
+        Keyword arguments:
+            batch_step: [int] current batch iteration. The default assumes that training has finished.
+        """
+        if batch_step is None:
+            batch_step = self.params.num_batches
+        epoch = batch_step / self.params.batches_per_epoch
+        stat_dict = {
+            'epoch':int(epoch),
+            'batch_step':batch_step,
+            'train_progress':np.round(batch_step/self.params.num_batches, 3),
+        }
+        return stat_dict
+
+    def write_checkpoint(self, batch_step=None):
+        """
+        Write checkpoints
+
+        Keyword arguments:
+            batch_step: [int] current batch iteration. The default assumes that training has finished.
+        """
+        output_dict = {
+            'model_state_dict': self.state_dict(),
+        }
+        if(self.params.model_type.lower() == 'ensemble'):
+            for module in self:
+                module_state_dict_name = module.params.submodule_name+'_optimizer_state_dict'
+                output_dict[module_state_dict_name] = module.optimizer.state_dict(),
+        else:
+            module_state_dict_name = 'optimizer_state_dict'
+            output_dict[module_state_dict_name] = self.optimizer.state_dict(),
+        training_stats = self.get_train_stats(batch_step)
+        output_dict.update(training_stats)
+        torch.save(output_dict, self.params.cp_latest_filename)
         self.log_info('Full model saved in file %s'%self.params.cp_latest_filename)
 
-    def load_checkpoint(self, cp_file=None):
+    def get_checkpoint_from_log(self, logfile):
+        model_params = loaders.load_params_from_log(logfile)
+        checkpoint = torch.load(model_params.cp_latest_filename)
+        return checkpoint
+
+    def load_checkpoint(self, cp_file=None, load_optimizer=False):
         """
         Load checkpoint
-        Inputs:
-          model_dir: String specifying the path to the checkpoint
+        Keyword arguments:
+          model_dir: [str] specifying the path to the checkpoint
         """
         if cp_file is None:
             cp_file = self.params.cp_latest_filename
-        return self.load_state_dict(torch.load(cp_file))
+        checkpoint = torch.load(cp_file)
+        if load_optimizer:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.load_state_dict(checkpoint['model_state_dict'])
+        _ = checkpoint.pop('optimizer_state_dict', None)
+        _ = checkpoint.pop('model_state_dict', None)
+        training_status = pprint.pformat(checkpoint, compact=True)#, sort_dicts=True #TODO: Python 3.8 adds the sort_dicts parameter
+        out_str = f'Loaded checkpoint from {cp_file} with the following stats:\n{training_status}'
+        return out_str
 
     def get_optimizer(self, optimizer_params, trainable_variables):
         optimizer_name = optimizer_params.optimizer.name
@@ -157,7 +206,7 @@ class BaseModel(object):
         Generates a dictionary to be logged in the print_update function
         """
         if update_dict is None:
-            update_dict = dict()
+            update_dict = self.get_train_stats(batch_step)
         for param_name, param_var in self.named_parameters():
             grad = param_var.grad
             update_dict[param_name+'_grad_max_mean_min'] = [
