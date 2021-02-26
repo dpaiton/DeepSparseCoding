@@ -113,28 +113,6 @@ def check_all_same_shape(tensor_list):
                 f'Tensor entry {index} in input list has shape {tensor.shape}, but should have shape {first_shape}')
 
 
-def flatten_feature_map(feature_map):
-    """
-    Flatten input tensor from [batch, c, y, x] to [batch, c * y * x]
-
-    Keyword arguments:
-        feature_map: tensor with shape [batch, c, y, x]
-
-    Returns:
-        reshaped_map: tensor with  shape [batch, c * y * x]
-    """
-    map_shape = feature_map.shape
-    if(len(map_shape) == 4):
-        (batch, c, y, x) = map_shape
-        prev_input_features = int(c * y * x)
-        resh_map  = torch.reshape(feature_map, [batch, prev_input_features])
-    elif(len(map_shape) == 2):
-        resh_map = feature_map
-    else:
-        raise ValueError('Input feature_map has incorrect ndims')
-    return resh_map
-
-
 def get_std_from_dataloader(loader, dataset_mean):
     """
     TODO: Calculate the standard deviation from all entries in a pytorch data loader
@@ -177,7 +155,7 @@ def get_mean_from_dataloader(loader):
 def center(data, samplewise=False, batch_size=100):
     """
     Center image dataset to have zero mean
-    
+
     Keyword arguments:
         data: [tensor] unnormalized data
         samplewise: [bool] if True, center each sample individually; if False, compute mean over entire batch
@@ -200,7 +178,7 @@ def center(data, samplewise=False, batch_size=100):
 def standardize(data, eps=None, samplewise=False, batch_size=100):
     """
     Standardize each image data to have zero mean and unit standard-deviation (z-score)
-    
+
     This function uses population standard deviation data.sum() / N, where N = data.shape[0].
 
     Keyword arguments:
@@ -329,7 +307,7 @@ def get_weights_l2_norm(w, eps=1e-12):
         norms = torch.norm(w.flatten(start_dim=1), dim=-1, keepdim=True)
     else:
         assert False, (f'input w must have ndim = 2 or 4, not {w.ndim}')
-    if(torch.max(norms) <= eps): #TODO: Warnings
+    if(torch.max(norms) <= eps): #TODO: raise proper warnings
         print(f'Warning: input gradient is less than or equal to {eps}')
     norms = torch.max(norms, eps*torch.ones_like(norms)) # prevent div by 0 # TODO: Change to torch.maximum when it is stable
     norms = atleast_kd(norms, w.ndim)

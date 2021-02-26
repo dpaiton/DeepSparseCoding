@@ -134,16 +134,6 @@ class TestUtils(unittest.TestCase):
                                     self.assertEqual(reshaped_array.shape, expected_out_shape, err_msg)
                                     self.assertEqual(resh_num_examples, None, err_msg)
 
-
-    def test_flatten_feature_map(self):
-        unflat_shape = [8, 4, 4, 3]
-        flat_shape = [8, 4*4*3]
-        shapes = [unflat_shape, flat_shape]
-        for shape in shapes:
-            test_map = torch.zeros(shape)
-            flat_map = dp.flatten_feature_map(test_map).numpy()
-            self.assertEqual(list(flat_map.shape), flat_shape)
-
     def test_standardize(self):
         num_tolerance_decimals = 5
         unflat_shape = [8, 4, 4, 3]

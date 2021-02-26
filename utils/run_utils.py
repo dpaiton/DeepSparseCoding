@@ -22,7 +22,7 @@ def train_single_model(model, loss):
     model.optimizer.step()
     if(hasattr(model.params, 'renormalize_weights') and model.params.renormalize_weights):
         with torch.no_grad(): # tell autograd to not record this operation
-            model.w.div_(dp.get_weights_l2_norm(model.w))
+            model.weight.div_(dp.get_weights_l2_norm(model.weight))
 
 
 def train_epoch(epoch, model, loader):
@@ -97,8 +97,7 @@ def test_epoch(epoch, model, loader, log_to_file=True):
             'test_total':len(loader.dataset),
             'test_accuracy':test_accuracy}
         if log_to_file:
-            js_str = model.js_dumpstring(stat_dict)
-            model.log_info('<stats>'+js_str+'</stats>')
+            model.logger.log_stats(stat_dict)
         else:
             return stat_dict
 

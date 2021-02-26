@@ -13,11 +13,11 @@ class shared_params(object):
     def __init__(self):
         self.model_type = 'ensemble'
         self.model_name = 'lca_mlp_cifar10'
-        self.version = '1'
+        self.version = '0'
         self.dataset = 'cifar10'
         self.standardize_data = True
         self.batch_size = 25
-        self.num_epochs = 500
+        self.num_epochs = 10#00
         self.train_logs_per_epoch = 4
         self.allow_parent_grads = True
 
@@ -25,13 +25,15 @@ class shared_params(object):
 class lca_params(LcaParams):
     def set_params(self):
         super(lca_params, self).set_params()
-        for key, value in shared_params().__dict__.items():
-          setattr(self, key, value)
+        for key, value in shared_params().__dict__.items(): setattr(self, key, value)
         self.model_type = 'lca'
+        self.layer_name = 'lca'
         self.layer_types = ['conv']
         self.weight_decay = 0.0
         self.weight_lr = 0.001
         self.renormalize_weights = True
+        self.layer_channels = 512
+        self.kernel_size = 8
         self.stride = 2
         self.padding = 0
         self.optimizer = types.SimpleNamespace()
@@ -44,8 +46,7 @@ class lca_params(LcaParams):
         self.rectify_a = True
         self.thresh_type = 'hard'
         self.sparse_mult = 0.30
-        self.num_latent = 512
-        self.checkpoint_boot_log = '/mnt/qb/bethge/dpaiton/Projects/conv_lca_cifar10/logfiles/conv_lca_cifar10_v1.log'
+        self.checkpoint_boot_log = '/mnt/qb/bethge/dpaiton/Projects/conv_lca_cifar10/logfiles/lca_cifar10_v0.log'
         self.compute_helper_params()
 
 
@@ -55,6 +56,7 @@ class mlp_params(MlpParams):
         for key, value in shared_params().__dict__.items():
           setattr(self, key, value)
         self.model_type = 'mlp'
+        self.layer_name = 'classifier'
         self.weight_lr = 2e-3
         self.weight_decay = 1e-6
         self.layer_types = ['fc']
@@ -62,7 +64,7 @@ class mlp_params(MlpParams):
         self.activation_functions = ['identity']
         self.dropout_rate = [0.0] # probability of value being set to zero
         self.optimizer = types.SimpleNamespace()
-        self.optimizer.name = 'adam'
+        self.optimizer.name = 'sgd'
         self.optimizer.lr_annealing_milestone_frac = [0.3] # fraction of num_epochs
         self.optimizer.lr_decay_rate = 0.8
         self.compute_helper_params()
@@ -85,7 +87,7 @@ class params(BaseParams):
             lca_params_inst.stride,
             lca_params_inst.padding,
             dilation=1)
-        lca_output_shape = [lca_params_inst.num_latent, lca_output_height, lca_output_width]
+        lca_output_shape = [lca_params_inst.layer_channels, lca_output_height, lca_output_width]
         mlp_params_inst.layer_channels[0] = np.prod(lca_output_shape)
         self.ensemble_params = [lca_params_inst, mlp_params_inst]
         for key, value in shared_params().__dict__.items():

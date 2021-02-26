@@ -29,6 +29,7 @@ class lca_params(LcaParams):
         for key, value in shared_params().__dict__.items():
           setattr(self, key, value)
         self.model_type = 'lca'
+        self.layer_name = 'lca'
         self.weight_decay = 0.0
         self.weight_lr = 0.1
         self.optimizer = types.SimpleNamespace()
@@ -36,13 +37,13 @@ class lca_params(LcaParams):
         self.optimizer.lr_annealing_milestone_frac = [0.7] # fraction of num_epochs
         self.optimizer.lr_decay_rate = 0.5
         self.renormalize_weights = True
+        self.layer_channels = 768
         self.dt = 0.001
         self.tau = 0.03
         self.num_steps = 75
         self.rectify_a = True
         self.thresh_type = 'soft'
         self.sparse_mult = 0.25
-        self.num_latent = 768
         self.checkpoint_boot_log = ''
         self.compute_helper_params()
 
@@ -53,6 +54,7 @@ class mlp_params(MlpParams):
         for key, value in shared_params().__dict__.items():
           setattr(self, key, value)
         self.model_type = 'mlp'
+        self.layer_name = 'classifier'
         self.weight_lr = 1e-4
         self.weight_decay = 0.0
         self.layer_types = ['fc']

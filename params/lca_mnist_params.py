@@ -35,10 +35,10 @@ class params(BaseParams):
             self.weight_lr = 0.001
             self.optimizer.lr_annealing_milestone_frac = [0.8] # fraction of num_epochs
             self.optimizer.lr_decay_rate = 0.8
+            self.layer_channels = 128
             self.kernel_size = 8
             self.stride = 2
             self.padding = 0
-            self.num_latent = 128
         else:
             self.layer_types = ['fc']
             self.model_type = 'lca'
@@ -48,7 +48,7 @@ class params(BaseParams):
             self.weight_lr = 0.1
             self.optimizer.lr_annealing_milestone_frac = [0.7] # fraction of num_epochs
             self.optimizer.lr_decay_rate = 0.5
-            self.num_latent = 768 #self.num_pixels * 4
+            self.layer_channels = 768 #self.num_pixels * 4
         self.compute_helper_params()
 
     def compute_helper_params(self):

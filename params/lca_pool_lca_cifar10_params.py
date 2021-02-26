@@ -1,5 +1,6 @@
 import os
 import types
+
 import numpy as np
 import torch
 
@@ -11,19 +12,19 @@ from DeepSparseCoding.utils.run_utils import compute_conv_output_shape
 class shared_params(object):
     def __init__(self):
         self.model_type = 'ensemble'
-        self.model_name = 'lca_pool_cifar10'
+        self.model_name = 'lca_pool_lca_cifar10'
         self.version = '0'
         self.dataset = 'cifar10'
         self.standardize_data = True
         self.batch_size = 25
-        self.num_epochs = 10
+        self.num_epochs = 250
         self.train_logs_per_epoch = 4
         self.allow_parent_grads = False
 
 
-class lca_params(LcaParams):
+class lca_1_params(LcaParams):
     def set_params(self):
-        super(lca_params, self).set_params()
+        super(lca_1_params, self).set_params()
         for key, value in shared_params().__dict__.items(): setattr(self, key, value)
         self.model_type = 'lca'
         self.layer_name = 'lca_1'
@@ -65,6 +66,7 @@ class pooling_params(BaseParams):
         self.optimizer.name = 'sgd'
         self.optimizer.lr_annealing_milestone_frac = [0.3] # fraction of num_epochs
         self.optimizer.lr_decay_rate = 0.8
+        self.checkpoint_boot_log = '/mnt/qb/bethge/dpaiton/Projects/lca_pool_cifar10/logfiles/lca_pool_cifar10_v0.log'
         self.compute_helper_params()
 
     def compute_helper_params(self):
@@ -73,26 +75,59 @@ class pooling_params(BaseParams):
             for frac in self.optimizer.lr_annealing_milestone_frac]
 
 
+class lca_2_params(LcaParams):
+    def set_params(self):
+        super(lca_2_params, self).set_params()
+        for key, value in shared_params().__dict__.items(): setattr(self, key, value)
+        for key, value in lca_1_params().__dict__.items(): setattr(self, key, value)
+        self.layer_name = 'lca_2'
+        self.layer_channels = 256
+        self.kernel_size = 6
+        self.stride = 1
+        self.padding = 0
+        self.sparse_mult = 0.10
+        self.checkpoint_boot_log = ''
+        self.compute_helper_params()
+
+
 class params(BaseParams):
     def set_params(self):
         super(params, self).set_params()
-        lca_params_inst = lca_params()
+        lca_1_params_inst = lca_1_params()
         pooling_params_inst = pooling_params()
-        if(pooling_params_inst.layer_types[0] == 'fc' and lca_params_inst.layer_types[0] == 'conv'):
-            lca_output_height = compute_conv_output_shape(
-                32,
-                lca_params_inst.kernel_size,
-                lca_params_inst.stride,
-                lca_params_inst.padding,
-                dilation=1)
-            lca_output_width = compute_conv_output_shape(
-                32,
-                lca_params_inst.kernel_size,
-                lca_params_inst.stride,
-                lca_params_inst.padding,
-                dilation=1)
-            lca_output_shape = [lca_params_inst.num_latent, lca_output_height, lca_output_width]
-            pooling_params_inst.layer_channels[0] = np.prod(lca_output_shape)
-        self.ensemble_params = [lca_params_inst, pooling_params_inst]
+        lca_2_params_inst = lca_2_params()
+        lca_1_output_height = compute_conv_output_shape(
+            32,
+            lca_1_params_inst.kernel_size,
+            lca_1_params_inst.stride,
+            lca_1_params_inst.padding,
+            dilation=1)
+        lca_1_output_width = compute_conv_output_shape(
+            32,
+            lca_1_params_inst.kernel_size,
+            lca_1_params_inst.stride,
+            lca_1_params_inst.padding,
+            dilation=1)
+        pooling_output_height = compute_conv_output_shape(
+            lca_1_output_height,
+            pooling_params_inst.pool_ksize,
+            pooling_params_inst.pool_stride,
+            padding=0,
+            dilation=1)
+        pooling_output_width = compute_conv_output_shape(
+            lca_1_output_width,
+            pooling_params_inst.pool_ksize,
+            pooling_params_inst.pool_stride,
+            padding=0,
+            dilation=1)
+        lca_2_params_inst.data_shape = [
+            int(pooling_params_inst.layer_channels[-1]),
+            int(pooling_output_height),
+            int(pooling_output_width)]
+        self.ensemble_params = [
+            lca_1_params_inst,
+            pooling_params_inst,
+            lca_2_params_inst
+        ]
         for key, value in shared_params().__dict__.items():
             setattr(self, key, value)

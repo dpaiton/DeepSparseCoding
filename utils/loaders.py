@@ -44,10 +44,7 @@ def load_model_class(model_type):
     elif(model_type.lower() == 'lca'):
         py_module_name = 'LcaModel'
         file_name = os.path.join(*[dsc_dir, 'models', 'lca_model.py'])
-    #elif(model_type.lower() == 'conv_lca'):
-    #    py_module_name = 'ConvLcaModel'
-    #    file_name = os.path.join(*[dsc_dir, 'models', 'conv_lca_model.py'])
-    elif(model_type.lower() == 'pool'):
+    elif(model_type.lower() == 'pooling'):
         py_module_name = 'PoolingModel'
         file_name = os.path.join(*[dsc_dir, 'models', 'pooling_model.py'])
     elif(model_type.lower() == 'ensemble'):
@@ -56,7 +53,7 @@ def load_model_class(model_type):
     else:
         accepted_names = [''.join(name.split('_')[:-1]) for name in get_module_list(dsc_dir)]
         assert False, (
-            'Acceptible model_types are %s, not %s'%(','.join(accepted_names), model_type))
+            'Acceptible model_types are %s, not %s'%('; '.join(accepted_names), model_type))
     py_module = file_utils.python_module_from_file(py_module_name, file_name)
     py_module_class = getattr(py_module, py_module_name)
     return py_module_class
@@ -74,10 +71,7 @@ def load_module(module_type):
     elif(module_type.lower() == 'lca'):
         py_module_name = 'LcaModule'
         file_name = os.path.join(*[dsc_dir, 'modules', 'lca_module.py'])
-    #elif(module_type.lower() == 'conv_lca'):
-    #    py_module_name = 'ConvLcaModule'
-    #    file_name = os.path.join(*[dsc_dir, 'modules', 'conv_lca_module.py'])
-    elif(module_type.lower() == 'pool'):
+    elif(module_type.lower() == 'pooling'):
         py_module_name = 'PoolingModule'
         file_name = os.path.join(*[dsc_dir, 'modules', 'pooling_module.py'])
     elif(module_type.lower() == 'ensemble'):
@@ -86,7 +80,7 @@ def load_module(module_type):
     else:
         accepted_names = [''.join(name.split('_')[:-1]) for name in get_module_list(dsc_dir)]
         assert False, (
-            'Acceptible model_types are %s, not %s'%(','.join(accepted_names), module_type))
+            'Acceptible model_types are %s, not %s'%('; '.join(accepted_names), module_type))
     py_module = file_utils.python_module_from_file(py_module_name, file_name)
     py_module_class = getattr(py_module, py_module_name)
     return py_module_class()

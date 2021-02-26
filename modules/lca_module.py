@@ -16,18 +16,22 @@ class LcaModule(nn.Module):
             kernel_size: [int] edge size of the square convolving kernel
             stride: [int] vertical and horizontal stride of the convolution
             padding: [int] zero-padding added to both sides of the input
+    TODO: Inference process should be streamlined by defining only a single step and iterating it in forward() as is done here:
+    https://pytorch.org/tutorials/beginner/former_torchies/nnft_tutorial.html
+
+    TODO: Remove dependency on data_shape to make more intuitive in a hierarchy. i.e. use layer_channels as is done in the mlp
     """
     def setup_module(self, params):
         self.params = params
         if self.params.layer_types[0] == 'fc':
-            self.layer_output_shapes = [[self.params.num_latent]]
-            self.w_shape = [self.params.num_pixels, self.params.num_latent]
+            self.layer_output_shapes = [[self.params.layer_channels]]
+            self.w_shape = [self.params.num_pixels, self.params.layer_channels]
         else:
             self.layer_output_shapes = [self.params.data_shape] # [channels, height, width]
             assert (self.params.data_shape[-1] % self.params.stride == 0), (
               f'Stride = {self.params.stride} must divide evenly into input edge size = {self.params.data_shape[-1]}')
             self.w_shape = [
-                self.params.num_latent,
+                self.params.layer_channels,
                 self.params.data_shape[0], # channels = 1
                 self.params.kernel_size,
                 self.params.kernel_size
@@ -44,10 +48,10 @@ class LcaModule(nn.Module):
                 self.params.stride,
                 self.params.padding,
                 dilation=1)
-            self.layer_output_shapes.append([self.params.num_latent, output_height, output_width])
+            self.layer_output_shapes.append([self.params.layer_channels, output_height, output_width])
         w_init = torch.randn(self.w_shape)
         w_init_normed = dp.l2_normalize_weights(w_init, eps=self.params.eps)
-        self.w = nn.Parameter(w_init_normed, requires_grad=True)
+        self.weight = nn.Parameter(w_init_normed, requires_grad=True)
 
     def preprocess_data(self, input_tensor):
         if self.params.layer_types[0] == 'fc':
@@ -56,13 +60,13 @@ class LcaModule(nn.Module):
 
     def compute_excitatory_current(self, input_tensor, a_in):
         if self.params.layer_types[0] == 'fc':
-            excitatory_current = torch.matmul(input_tensor, self.w)
+            excitatory_current = torch.matmul(input_tensor, self.weight)
         else:
             recon = self.get_recon_from_latents(a_in)
             recon_error = input_tensor - recon
             error_injection = F.conv2d(
                 input=recon_error,
-                weight=self.w,
+                weight=self.weight,
                 bias=None,
                 stride=self.params.stride,
                 padding=self.params.padding
@@ -72,8 +76,8 @@ class LcaModule(nn.Module):
 
     def compute_inhibitory_connectivity(self):
         if self.params.layer_types[0] == 'fc':
-            inhibitory_connectivity = torch.matmul(torch.transpose(self.w, dim0=0, dim1=1),
-                self.w) - torch.eye(self.params.num_latent,
+            inhibitory_connectivity = torch.matmul(torch.transpose(self.weight, dim0=0, dim1=1),
+                self.weight) - torch.eye(self.params.layer_channels,
                 requires_grad=True, device=self.params.device)
         else:
             inhibitory_connectivity = 0 # TODO: return Grammian along channel dim for a single kernel location
@@ -115,22 +119,20 @@ class LcaModule(nn.Module):
 
     def get_recon_from_latents(self, a_in):
         if self.params.layer_types[0] == 'fc':
-            recon = torch.matmul(a_in, torch.transpose(self.w, dim0=0, dim1=1))
+            recon = torch.matmul(a_in, torch.transpose(self.weight, dim0=0, dim1=1))
         else:
             recon = F.conv_transpose2d(
                 input=a_in,
-                weight=self.w,
+                weight=self.weight,
                 bias=None,
                 stride=self.params.stride,
                 padding=self.params.padding
             )
         return recon
 
-    def get_encodings(self, input_tensor):
+    def forward(self, input_tensor):
         u_list, a_list = self.infer_coefficients(input_tensor)
         return a_list[-1]
 
-    def forward(self, input_tensor):
-        latents = self.get_encodings(input_tensor)
-        reconstruction = self.get_recon_from_latents(latents)
-        return reconstruction
+    def get_encodings(self, input_tensor):
+        return self.forward(input_tensor)

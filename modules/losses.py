@@ -4,7 +4,7 @@ import torch
 import DeepSparseCoding.utils.data_processing as dp
 
 
-#def l2_flatness(z1, z2, z3, w):
+#def l2_flatness(z1, z2, z3, weight):
 #    """
 #    Minimized when a straight line can be drawn through [z1, z2, z3].
 #    Extended from equations 8 and 12 in 
@@ -34,12 +34,12 @@ def half_weight_norm_squared(weight_list):
     Keyword arguments:
         weight_list: List of torch variables
     Outputs:
-        w_norm_loss: 0.5 * sum of (1 - l2_norm(w))^2 for each w in weight_list
+        w_norm_loss: 0.5 * sum of (1 - l2_norm(weight))^2 for each weight in weight_list
     """
     w_norm_list = []
-    for w in weight_list:
-        reduc_dim = list(range(1, len(w.shape)))
-        w_norm = torch.sum(torch.pow(1 - torch.sqrt(torch.sum(tf.pow(w, 2.), axis=reduc_dim)), 2.))
+    for weight in weight_list:
+        reduc_dim = list(range(1, len(weight.shape)))
+        w_norm = torch.sum(torch.pow(1 - torch.sqrt(torch.sum(tf.pow(weight, 2.), axis=reduc_dim)), 2.))
         w_norm_list.append(w_norm)
     norm_loss = 0.5 * torch.sum(w_norm_list)
     return norm_loss
@@ -51,9 +51,9 @@ def weight_decay(weight_list):
     Keyword arguments:
         weight_list: List of torch variables
     Outputs:
-        decay_loss: 0.5 * sum of w^2 for each w in weight_list
+        decay_loss: 0.5 * sum of weight^2 for each weight in weight_list
     """
-    decay_loss = 0.5 * torch.sum([torch.sum(torch.pow(w, 2.)) for w in weight_list])
+    decay_loss = 0.5 * torch.sum([torch.sum(torch.pow(weight, 2.)) for weight in weight_list])
     return decay_loss
 
 
@@ -88,12 +88,12 @@ def trace_covariance(latents):
     return -1 * trace
 
 
-def weight_orthogonality(weights, stride=1, padding=0):
+def weight_orthogonality(weight, stride=1, padding=0):
     """
-    Returns l2 loss that is minimized when the weights are orthogonal
+    Returns l2 loss that is minimized when the weight are orthogonal
 
     Keyword arguments:
-        weights [torch tensor] layer weights, either fully connected or 2d convolutional
+        weight [torch tensor] layer weight, either fully connected or 2d convolutional
         stride [int] layer stride for convolutional layers
         padding [int] layer padding for convolutional layers
 
@@ -106,20 +106,20 @@ def weight_orthogonality(weights, stride=1, padding=0):
         https://arxiv.org/abs/1911.12207
         https://github.com/samaonline/Orthogonal-Convolutional-Neural-Networks
     """
-    w_shape = weights.shape
-    if weights.ndim == 2: # fully-connected, [inputs, outputs]
-        loss = torch.norm(torch.matmul(weights.transpose(), weights) - torch.eye(w_shape[1]))
-    elif weights.ndim == 4: # convolutional, [output_channels, input_channels, height, width]
+    w_shape = weight.shape
+    if weight.ndim == 2: # fully-connected, [inputs, outputs]
+        loss = torch.norm(torch.matmul(weight.transpose(), weight) - torch.eye(w_shape[1]))
+    elif weight.ndim == 4: # convolutional, [output_channels, input_channels, height, width]
         out_channels, in_channels, in_height, in_width = w_shape
-        output = torch.conv2d(weights, weights, stride=stride, padding=padding)
+        output = torch.conv2d(weight, weight, stride=stride, padding=padding)
         out_height = output.shape[-2]
         out_width = output.shape[-1]
         target = torch.zeros((out_channels, out_channels, out_height, out_width),
-            device=weights.device)
+            device=weight.device)
         center_h = int(np.floor(out_height / 2))
         center_w = int(np.floor(out_width / 2))
-        target[:, :, center_h, center_w] = torch.eye(out_channels, device=weights.device)
+        target[:, :, center_h, center_w] = torch.eye(out_channels, device=weight.device)
         loss = torch.norm(output - target, p='fro')
     else:
-        assert False, (f'weights ndim must be 2 or 4, not {weights.ndim}')
+        assert False, (f'weight ndim must be 2 or 4, not {weight.ndim}')
     return loss

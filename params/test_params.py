@@ -56,7 +56,7 @@ class lca_params(BaseParams):
         self.model_type = 'lca'
         self.weight_decay = 0.0
         self.weight_lr = 0.1
-        self.layer_type = 'fc'
+        self.layer_types = ['fc']
         self.optimizer = types.SimpleNamespace()
         self.optimizer.name = 'sgd'
         self.optimizer.lr_annealing_milestone_frac = [0.7] # fraction of num_epochs
@@ -68,7 +68,7 @@ class lca_params(BaseParams):
         self.rectify_a = True
         self.thresh_type = 'soft'
         self.sparse_mult = 0.25
-        self.num_latent = 128
+        self.layer_channels = 128
         self.optimizer.milestones = [frac * self.num_epochs
             for frac in self.optimizer.lr_annealing_milestone_frac]
         self.step_size = self.dt / self.tau
@@ -77,15 +77,35 @@ class lca_params(BaseParams):
 #class conv_lca_params(lca_params):
 #    def set_params(self):
 #        super(conv_lca_params, self).set_params()
-#        self.layer_type = 'conv'
+#        self.layer_types = ['conv']
 #        self.kernel_size = 8
 #        self.stride = 2
 #        self.padding = 0
 #        self.optimizer.milestones = [frac * self.num_epochs
 #            for frac in self.optimizer.lr_annealing_milestone_frac]
 #        self.step_size = self.dt / self.tau
-#        self.out_channels = self.num_latent
+#        self.out_channels = self.layer_channels
 #        self.in_channels = 1
+
+
+class pooling_params(BaseParams):
+    def set_params(self):
+        super(pooling_params, self).set_params()
+        for key, value in shared_params().__dict__.items():
+          setattr(self, key, value)
+        self.model_type = 'pooling'
+        self.layer_name = 'test_pool_1'
+        self.weight_lr = 1e-3
+        self.layer_types = ['conv']
+        self.layer_channels = [128, 32]
+        self.pool_ksize = 2
+        self.pool_stride = 2 # non-overlapping
+        self.optimizer = types.SimpleNamespace()
+        self.optimizer.name = 'sgd'
+        self.optimizer.lr_annealing_milestone_frac = [0.3] # fraction of num_epochs
+        self.optimizer.lr_decay_rate = 0.8
+        self.optimizer.milestones = [frac * self.num_epochs
+            for frac in self.optimizer.lr_annealing_milestone_frac]
 
 
 class mlp_params(BaseParams):

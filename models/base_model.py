@@ -1,10 +1,13 @@
 import os
+import subprocess
 import pprint
 
 import numpy as np
 import torch
 
+from DeepSparseCoding.utils.file_utils import summary_string
 from DeepSparseCoding.utils.file_utils import Logger
+from DeepSparseCoding.utils.run_utils import compute_conv_output_shape
 import DeepSparseCoding.utils.loaders as loaders
 
 
@@ -12,7 +15,6 @@ class BaseModel(object):
     def setup(self, params, logger=None):
         """
         Setup required model components
-        #TODO: log system info, including git commit hash
         """
         self.load_params(params)
         self.check_params()
@@ -22,6 +24,7 @@ class BaseModel(object):
             self.log_params()
         else:
             self.logger = logger
+        self.logger.log_info(self.get_env_details())
 
     def load_params(self, params):
         """
@@ -94,10 +97,6 @@ class BaseModel(object):
             dump_obj = self.params.__dict__
         self.logger.log_params(dump_obj)
 
-    def log_info(self, string):
-        """Log input string"""
-        self.logger.log_info(string)
-
     def get_train_stats(self, batch_step=None):
         """
         Get default statistics about current training run
@@ -115,6 +114,43 @@ class BaseModel(object):
         }
         return stat_dict
 
+    def get_env_details(self):
+        env = {}
+        for k in ['SYSTEMROOT', 'PATH']:
+            v = os.environ.get(k)
+            if v is not None:
+                env[k] = v
+        commit_cmd = ['git', 'rev-parse', 'HEAD']
+        commit = subprocess.Popen(commit_cmd, stdout=subprocess.PIPE, env=env).communicate()[0]
+        commit = commit.strip().decode('ascii')
+        branch_cmd = ['git', 'rev-parse', '--abbrev-ref', 'HEAD']
+        branch = subprocess.Popen(branch_cmd, stdout=subprocess.PIPE, env=env).communicate()[0]
+        branch = branch.strip().decode('ascii')
+        system_details = os.uname()
+        out_dict = {
+            'current_branch':branch,
+            'current_commit_hash':commit,
+            'sysname':system_details.sysname,
+            'release':system_details.release,
+            'machine':system_details.machine
+        }
+        if torch.cuda.is_available():
+            out_dict['gpu_device'] = torch.cuda.get_device_name(0)
+        return out_dict
+
+    def log_architecture_details(self):
+        """
+        Log model architecture with computed output sizes and number of parameters for each layer
+        """
+        architecture_string = '\n'+summary_string(
+            self,
+            input_size=tuple(self.params.data_shape),
+            batch_size=self.params.batch_size,
+            device=self.params.device,
+            dtype=torch.FloatTensor
+        )[0]
+        self.logger.log_string(architecture_string)
+
     def write_checkpoint(self, batch_step=None):
         """
         Write checkpoints
@@ -122,20 +158,20 @@ class BaseModel(object):
         Keyword arguments:
             batch_step: [int] current batch iteration. The default assumes that training has finished.
         """
-        output_dict = {
-            'model_state_dict': self.state_dict(),
-        }
+        output_dict = {}
         if(self.params.model_type.lower() == 'ensemble'):
             for module in self:
-                module_state_dict_name = module.params.submodule_name+'_optimizer_state_dict'
-                output_dict[module_state_dict_name] = module.optimizer.state_dict(),
+                module_name = module.params.submodule_name
+                output_dict[module_name+'_module_state_dict'] = module.state_dict()
+                output_dict[module_name+'_optimizer_state_dict'] = module.optimizer.state_dict()
         else:
+            output_dict['model_state_dict'] =  self.state_dict()
             module_state_dict_name = 'optimizer_state_dict'
             output_dict[module_state_dict_name] = self.optimizer.state_dict(),
         training_stats = self.get_train_stats(batch_step)
         output_dict.update(training_stats)
         torch.save(output_dict, self.params.cp_latest_filename)
-        self.log_info('Full model saved in file %s'%self.params.cp_latest_filename)
+        self.logger.log_string('Full model saved in file %s'%self.params.cp_latest_filename)
 
     def get_checkpoint_from_log(self, logfile):
         model_params = loaders.load_params_from_log(logfile)
@@ -192,14 +228,11 @@ class BaseModel(object):
           input_data: data object containing the current image batch
           input_labels: data object containing the current label batch
           batch_step: current batch number within the schedule
-        NOTE: For the analysis code to parse update statistics, the self.js_dumpstring() call
-          must receive a dict object. Additionally, the self.js_dumpstring() output must be
-          logged with <stats> </stats> tags.
-          For example: logging.info('<stats>'+self.js_dumpstring(output_dictionary)+'</stats>')
+        NOTE: For the analysis code to parse update statistics,
+        the logger.log_stats() function must be used
         """
         update_dict = self.generate_update_dict(input_data, input_labels, batch_step)
-        js_str = self.js_dumpstring(update_dict)
-        self.log_info('<stats>'+js_str+'</stats>')
+        self.logger.log_stats(update_dict)
 
     def generate_update_dict(self, input_data, input_labels=None, batch_step=0, update_dict=None):
         """

@@ -41,7 +41,20 @@ class LcaModel(BaseModel, LcaModule):
                 input_data.max().item(), input_data.mean().item(), input_data.min().item()]
         stat_dict['recon_max_mean_min'] = [
                 recon.max().item(), recon.mean().item(), recon.min().item()]
-        latent_nnz = torch.sum(latents != 0).item() # TODO: github issue 23907 requests torch.count_nonzero
-        stat_dict['latents_fraction_active'] = latent_nnz / latents.numel()
+        def count_nonzero(array, dim):
+            # TODO: github issue 23907 requests torch.count_nonzero, integrated in torch 1.7
+            return torch.sum(array !=0, dim=dim, dtype=torch.float)
+        latent_dims = tuple([i for i in range(len(latents.shape))])
+        latent_nnz = count_nonzero(latents, dim=latent_dims).item()
+        stat_dict['fraction_active_all_latents'] = latent_nnz / latents.numel()
+        if self.params.layer_types[0] == 'conv':
+            latent_map_dims = latent_dims[2:]
+            latent_map_size = np.prod(list(latents.shape[2:]))
+            latent_channel_nnz = count_nonzero(latents, dim=latent_map_dims)/latent_map_size
+            latent_channel_mean_nnz = torch.mean(latent_channel_nnz).item()
+            stat_dict['fraction_active_latents_per_channel'] = latent_channel_mean_nnz
+            num_channels = latents.shape[1]
+            latent_patch_mean_nnz = torch.mean(count_nonzero(latents, dim=1)/num_channels).item()
+            stat_dict['fraction_active_latents_per_patch'] = latent_patch_mean_nnz
         update_dict.update(stat_dict)
         return update_dict

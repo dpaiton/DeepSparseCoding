@@ -1,10 +1,11 @@
+from collections import OrderedDict
+
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 
 from DeepSparseCoding.modules.activations import activation_picker
 from DeepSparseCoding.utils.run_utils import compute_conv_output_shape
-from DeepSparseCoding.utils.data_processing import flatten_feature_map
 
 
 class MlpModule(nn.Module):
@@ -81,19 +82,33 @@ class MlpModule(nn.Module):
             else:
                 self.pooling.append(nn.Identity()) # do nothing
             self.dropout.append(nn.Dropout(p=self.params.dropout_rate[layer_index]))
+        conv_module_dict = OrderedDict()
+        fc_module_dict = OrderedDict()
+        layer_zip = zip(self.params.layer_types, self.layers, self.act_funcs, self.pooling,
+            self.dropout)
+        for layer_idx, full_layer in enumerate(layer_zip):
+            for component_idx, layer_component in enumerate(full_layer[1:]):
+                component_id = f'{layer_idx:02}-{component_idx:02}'
+                if full_layer[0] == 'fc':
+                    fc_module_dict[full_layer[0] + component_id] = layer_component
+                else:
+                    conv_module_dict[full_layer[0] + component_id] = layer_component
+        self.conv_sequential = lambda x: x # identity by default
+        self.fc_sequential = lambda x: x # identity by default
+        if len(conv_module_dict) > 0:
+            self.conv_sequential = nn.Sequential(conv_module_dict)
+        if len(fc_module_dict) > 0:
+            self.fc_sequential = nn.Sequential(fc_module_dict)
 
     def preprocess_data(self, input_tensor):
         if self.params.layer_types[0] == 'fc':
-            input_tensor = flatten_feature_map(input_tensor)
+            input_tensor = input_tensor.view(input_tensor.size(0), -1) #flat
         return input_tensor
 
     def forward(self, x):
-        layer_zip = zip(self.dropout, self.pooling, self.act_funcs,
-            self.layers, self.params.layer_types)
-        for dropout, pooling, act_func, layer, layer_type in layer_zip:
-            if layer_type == 'fc':
-                x = flatten_feature_map(x)
-            x = dropout(pooling(act_func(layer(x))))
+        x = self.conv_sequential(x)
+        x = x.view(x.size(0), -1) #flat
+        x = self.fc_sequential(x)
         return x
 
     def get_encodings(self, input_tensor):
