@@ -22,9 +22,9 @@ class BaseModel(object):
         if logger is None:
             self.init_logging()
             self.log_params()
+            self.logger.log_info(self.get_env_details())
         else:
             self.logger = logger
-        self.logger.log_info(self.get_env_details())
 
     def load_params(self, params):
         """
@@ -142,13 +142,14 @@ class BaseModel(object):
         """
         Log model architecture with computed output sizes and number of parameters for each layer
         """
-        architecture_string = '\n'+summary_string(
+        architecture_string = '<architecture>\n'+summary_string(
             self,
             input_size=tuple(self.params.data_shape),
             batch_size=self.params.batch_size,
             device=self.params.device,
             dtype=torch.FloatTensor
         )[0]
+        architecture_string  += '\n</architecture>'
         self.logger.log_string(architecture_string)
 
     def write_checkpoint(self, batch_step=None):
