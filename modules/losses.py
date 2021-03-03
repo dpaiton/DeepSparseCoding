@@ -85,7 +85,8 @@ def trace_covariance(latents):
         num_batch, num_channels, latents_h, latents_w = latents.shape
         covariance = covariance / (latents_h * latents_w - 1.0)
     trace = torch.trace(covariance)
-    return -1 * trace
+    target = torch.trace(torch.eye(covariance.size(0), device=trace.device)) # should = trace.size[0]
+    return torch.norm(trace - target, p='fro')
 
 
 def weight_orthogonality(weight, stride=1, padding=0):
@@ -108,7 +109,7 @@ def weight_orthogonality(weight, stride=1, padding=0):
     """
     w_shape = weight.shape
     if weight.ndim == 2: # fully-connected, [inputs, outputs]
-        loss = torch.norm(torch.matmul(weight.transpose(), weight) - torch.eye(w_shape[1]))
+        loss = torch.norm(torch.mm(weight.T, weight) - torch.eye(w_shape[1], device=weight.device))
     elif weight.ndim == 4: # convolutional, [output_channels, input_channels, height, width]
         out_channels, in_channels, in_height, in_width = w_shape
         output = torch.conv2d(weight, weight, stride=stride, padding=padding)
