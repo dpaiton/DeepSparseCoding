@@ -21,8 +21,7 @@ class PoolingModel(BaseModel, PoolingModule):
         def loss_fn(model_output):
             output_loss = losses.trace_covariance(model_output)
             w_stride = self.params.pool_stride
-            w_padding = 0
-            weight_loss = losses.weight_orthogonality(self.weight, stride=w_stride, padding=w_padding)
+            weight_loss = losses.weight_orthogonality(self.weight, stride=w_stride, padding=0)
             return output_loss + weight_loss
         input_tensor, input_label = input_tuple
         layer_output = self.forward(input_tensor)
