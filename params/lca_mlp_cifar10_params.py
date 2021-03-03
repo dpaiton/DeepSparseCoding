@@ -53,8 +53,7 @@ class lca_params(LcaParams):
 class mlp_params(MlpParams):
     def set_params(self):
         super(mlp_params, self).set_params()
-        for key, value in shared_params().__dict__.items():
-          setattr(self, key, value)
+        for key, value in shared_params().__dict__.items(): setattr(self, key, value)
         self.model_type = 'mlp'
         self.layer_name = 'classifier'
         self.weight_lr = 2e-3

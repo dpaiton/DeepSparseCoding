@@ -91,7 +91,7 @@ class params(BaseParams):
                 lca_params_inst.stride,
                 lca_params_inst.padding,
                 dilation=1)
-            lca_output_shape = [lca_params_inst.num_latent, lca_output_height, lca_output_width]
+            lca_output_shape = [lca_params_inst.layer_channels, lca_output_height, lca_output_width]
             pooling_params_inst.layer_channels[0] = np.prod(lca_output_shape)
         self.ensemble_params = [lca_params_inst, pooling_params_inst]
         for key, value in shared_params().__dict__.items():
