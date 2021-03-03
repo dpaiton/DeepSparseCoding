@@ -133,6 +133,27 @@ def get_std_from_dataloader(loader, dataset_mean):
     raise NotImplementedError
 
 
+def get_std_from_dataloader(loader, dataset_mean=None):
+    """
+    Calculate the standard deviation from the mean for all entries in a pytorch data loader
+
+    Keyword arguments:
+        loader: [pytorch DataLoader] containing the full dataset.
+            This function assumes there is always a target label, i.e. loader.next() returns (data, target)
+
+    Outputs:
+        dataset_std: [torch tensor] of the same shape as a single dataset sample
+    """
+    if dataset_mean is None:
+        dataset_mean = get_mean_from_dataloader(loader)
+    dataset_std = torch.zeros(next(iter(loader))[0].shape[1:]) # don't include batch dimension
+    num_batches = 0
+    for data, target in loader:
+        dataset_std += torch.std(data - dataset_mean, dim=0, keepdim=False)
+        num_batches += 1
+    return dataset_std / num_batches
+
+
 def get_mean_from_dataloader(loader):
     """
     Calculate the mean datapoint from all entries in a pytorch data loader
@@ -175,7 +196,7 @@ def center(data, samplewise=False, batch_size=100):
     return data, data_mean
 
 
-def standardize(data, eps=None, samplewise=False, batch_size=100):
+def standardize(data, eps=None, samplewise=False, batch_size=100, sample_mean=None, sample_std=None):
     """
     Standardize each image data to have zero mean and unit standard-deviation (z-score)
 
@@ -187,6 +208,10 @@ def standardize(data, eps=None, samplewise=False, batch_size=100):
             defaults to 1/sqrt(data_dim) where data_dim is the total size of a data vector
         samplewise: [bool] if True, standardize each sample individually; akin to contrast-normalization
             if False, compute mean and std over entire batch
+        sample_mean: [tensor] to be used as the dataset mean instead of calculating it,
+            it should be the same shape as a single data element
+        sample_std: [tensor] to be used as the dataset mean instead of calculating it,
+            it should be the same shape as a single data element
 
     Outputs:
         data: [tensor] normalized data
@@ -196,12 +221,23 @@ def standardize(data, eps=None, samplewise=False, batch_size=100):
     data, orig_shape = reshape_data(data, flatten=True)[:2]
     num_examples = data.shape[0]
     if(samplewise): # standardize each input sample individually
-        data_axis = tuple(range(data.ndim)[1:])
-        data_mean = torch.mean(data, dim=data_axis, keepdim=True)
-        data_true_std = torch.std(data, unbiased=False, dim=data_axis, keepdim=True)
+        if sample_mean is None:
+            data_mean = torch.mean(data, dim=1, keepdim=True) # [num_examples, 1]
+        else:
+            data_mean = sample_mean.mean().repeat(num_examples, 1)
+        if sample_std is None:
+            data_true_std = torch.std(data - data_mean, unbiased=False, dim=1, keepdim=True)
+        else:
+            data_true_std = sample_std.mean().repeat(num_examples, 1)
     else: # standardize the entire population
-        data_mean = torch.mean(data, dim=0, keepdim=True)
-        data_true_std = torch.std(data, dim=0, unbiased=False, keepdim=True)
+        if sample_mean is None:
+            data_mean = torch.mean(data, dim=0, keepdim=True) # [1, sample_dim]
+        else:
+            data_mean = sample_mean.view(1, -1)
+        if sample_std is None:
+            data_true_std = torch.std(data - data_mean, dim=0, unbiased=False, keepdim=True)
+        else:
+            data_true_std = sample_std.view(1, -1)
     data_std = torch.where(data_true_std >= eps, data_true_std, eps*torch.ones_like(data_true_std))
     data = (data - data_mean) /  data_std
     if(data.shape != orig_shape):
@@ -490,7 +526,8 @@ def covariance(tensor):
     """
     if tensor.ndim == 2: # [num_batch, num_channels]
         centered_tensor = tensor - tensor.mean(dim=0, keepdim=True) # subtract mean vector
-        corvariance = torch.dot(centered_tensor.T, centered_tensor) # sum over batch
+        covariance = torch.mm(centered_tensor.T, centered_tensor) # sum over batch
+        covariance = covariance / (centered_tensor.shape[0]-1)
     elif tensor.ndim == 4: # [num_batch, num_channels, elements_h, elements_w]
         num_batch, num_channels, elements_h, elements_w = tensor.shape
         flat_map = tensor.view(num_batch, num_channels, elements_h * elements_w)

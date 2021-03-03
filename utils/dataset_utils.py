@@ -61,7 +61,8 @@ class CustomTensorDataset(torch.utils.data.Dataset):
 
 
 def load_dataset(params):
-    new_params = {}
+    data_stats = {} # dataset statistics
+    extra_outputs = {} # depending on parameters may include dataset_mean, dataset_std, etc
     if(params.dataset.lower() == 'mnist'):
         preprocessing_pipeline = [
             transforms.ToTensor(),
@@ -116,10 +117,23 @@ def load_dataset(params):
             dataset_mean_image = dp.get_mean_from_dataloader(data_loader)
             preprocessing_pipeline.append(
                 transforms.Lambda(lambda x: x - dataset_mean_image))
+            extra_outputs['dataset_mean_image'] = dataset_mean_image
         if params.standardize_data:
+            dataset = torchvision.datasets.CIFAR10(**kwargs)
+            data_loader = torch.utils.data.DataLoader(dataset, batch_size=params.batch_size,
+                shuffle=False, num_workers=0, pin_memory=True)
+            dataset_mean_image = dp.get_mean_from_dataloader(data_loader)
+            extra_outputs['dataset_mean_image'] = dataset_mean_image
+            dataset_std_image = dp.get_std_from_dataloader(data_loader, dataset_mean_image)
+            extra_outputs['dataset_std_image'] = dataset_std_image
             preprocessing_pipeline.append(
                 transforms.Lambda(
-                    lambda x: dp.standardize(x, eps=params.eps, samplewise=True, batch_size=params.batch_size)[0]
+                    lambda x: dp.standardize(x,
+                        eps=params.eps,
+                        samplewise=False,
+                        batch_size=params.batch_size,
+                        sample_mean=dataset_mean_image,
+                        sample_std=dataset_std_image)[0]
                 )
             )
         if params.rescale_data_to_one:
@@ -131,8 +145,7 @@ def load_dataset(params):
         kwargs['train'] = False
         testset = torchvision.datasets.CIFAR10(**kwargs)
         num_train = len(dataset) - params.num_validation
-        trainset, valset = torch.utils.data.random_split(dataset,
-            [num_train, params.num_validation])
+        trainset, valset = torch.utils.data.random_split(dataset, [num_train, params.num_validation])
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=params.batch_size,
             shuffle=params.shuffle_data, num_workers=0, pin_memory=True)
         val_loader = torch.utils.data.DataLoader(valset, batch_size=params.batch_size,
@@ -173,22 +186,20 @@ def load_dataset(params):
             num_workers=0, pin_memory=False)
         val_loader = None
         test_loader = None
-        new_params["num_pixels"] = params.data_edge_size**2
 
     else:
         assert False, (f'Supported datasets are ["mnist", "dsprites", "synthetic"], not {dataset_name}')
-    new_params = {}
-    new_params['epoch_size'] = len(train_loader.dataset)
+    data_stats['epoch_size'] = len(train_loader.dataset)
     if(not hasattr(params, 'num_val_images')):
         if val_loader is None:
-            new_params['num_val_images'] = 0
+            data_stats['num_val_images'] = 0
         else:
-            new_params['num_val_images'] = len(val_loader.dataset)
+            data_stats['num_val_images'] = len(val_loader.dataset)
     if(not hasattr(params, 'num_test_images')):
         if test_loader is None:
-            new_params['num_test_images'] = 0
+            data_stats['num_test_images'] = 0
         else:
-            new_params['num_test_images'] = len(test_loader.dataset)
-    new_params['data_shape'] = list(next(iter(train_loader))[0].shape)[1:]
-    new_params['num_pixels'] = np.prod(new_params['data_shape'])
-    return (train_loader, val_loader, test_loader, new_params)
+            data_stats['num_test_images'] = len(test_loader.dataset)
+    data_stats['data_shape'] = list(next(iter(train_loader))[0].shape)[1:]
+    data_stats['num_pixels'] = np.prod(data_stats['data_shape'])
+    return (train_loader, val_loader, test_loader, data_stats, extra_outputs)
