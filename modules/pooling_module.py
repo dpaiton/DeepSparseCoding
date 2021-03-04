@@ -11,8 +11,7 @@ class PoolingModule(nn.Module):
                 in_features=self.params.layer_channels[0],
                 out_features=self.params.layer_channels[1],
                 bias=False)
-            self.weight = self.layer.weight
-            #self.register_parameter('fc_pool_'+self.params.layer_name+'_w', self.layer.weight)
+            self.weight = self.layer.weight # [outputs, inputs]
 
         elif self.params.layer_types[0] == 'conv':
             self.layer = nn.Conv2d(
@@ -25,7 +24,6 @@ class PoolingModule(nn.Module):
                 bias=False)
             nn.init.orthogonal_(self.layer.weight) # initialize to orthogonal matrix
             self.weight = self.layer.weight
-            #self.register_parameter('conv_pool_'+self.params.layer_name+'_w', self.layer.weight)
 
         else:
             assert False, ('layer_types[0] parameter must be "fc", "conv", not %g'%(layer_types[0]))

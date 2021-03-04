@@ -32,7 +32,7 @@ class lca_params(LcaParams):
         self.weight_decay = 0.0
         self.weight_lr = 0.001
         self.renormalize_weights = True
-        self.layer_channels = 512
+        self.layer_channels = [3, 512]
         self.kernel_size = 8
         self.stride = 2
         self.padding = 0
@@ -86,7 +86,7 @@ class params(BaseParams):
             lca_params_inst.stride,
             lca_params_inst.padding,
             dilation=1)
-        lca_output_shape = [lca_params_inst.layer_channels, lca_output_height, lca_output_width]
+        lca_output_shape = [lca_params_inst.layer_channels[1], lca_output_height, lca_output_width]
         mlp_params_inst.layer_channels[0] = np.prod(lca_output_shape)
         self.ensemble_params = [lca_params_inst, mlp_params_inst]
         for key, value in shared_params().__dict__.items():

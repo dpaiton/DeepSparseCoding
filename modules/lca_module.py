@@ -16,39 +16,34 @@ class LcaModule(nn.Module):
             kernel_size: [int] edge size of the square convolving kernel
             stride: [int] vertical and horizontal stride of the convolution
             padding: [int] zero-padding added to both sides of the input
-    TODO: Inference process should be streamlined by defining only a single step and iterating it in forward() as is done here:
-    https://pytorch.org/tutorials/beginner/former_torchies/nnft_tutorial.html
-
-    TODO: Remove dependency on data_shape to make more intuitive in a hierarchy. i.e. use layer_channels as is done in the mlp
     """
     def setup_module(self, params):
         self.params = params
         if self.params.layer_types[0] == 'fc':
-            self.layer_output_shapes = [[self.params.layer_channels]]
-            self.w_shape = [self.params.num_pixels, self.params.layer_channels]
+            self.w_shape = self.params.layer_channels[::-1] #[outputs, inputs]
+            self.layer_output_shape = [self.params.layer_channels[-1]]
         else:
-            self.layer_output_shapes = [self.params.data_shape] # [channels, height, width]
             assert (self.params.data_shape[-1] % self.params.stride == 0), (
               f'Stride = {self.params.stride} must divide evenly into input edge size = {self.params.data_shape[-1]}')
             self.w_shape = [
-                self.params.layer_channels,
-                self.params.data_shape[0], # channels = 1
+                self.params.layer_channels[1],
+                self.params.layer_channels[0],
                 self.params.kernel_size,
                 self.params.kernel_size
             ]
             output_height = compute_conv_output_shape(
-                self.layer_output_shapes[-1][1],
+                self.params.data_shape[1],
                 self.params.kernel_size,
                 self.params.stride,
                 self.params.padding,
                 dilation=1)
             output_width = compute_conv_output_shape(
-                self.layer_output_shapes[-1][2],
+                self.params.data_shape[2],
                 self.params.kernel_size,
                 self.params.stride,
                 self.params.padding,
                 dilation=1)
-            self.layer_output_shapes.append([self.params.layer_channels, output_height, output_width])
+            self.layer_output_shape = [self.params.layer_channels[1], output_height, output_width]
         w_init = torch.randn(self.w_shape)
         w_init_normed = dp.l2_normalize_weights(w_init, eps=self.params.eps)
         self.weight = nn.Parameter(w_init_normed, requires_grad=True)
@@ -60,7 +55,7 @@ class LcaModule(nn.Module):
 
     def compute_excitatory_current(self, input_tensor, a_in):
         if self.params.layer_types[0] == 'fc':
-            excitatory_current = torch.matmul(input_tensor, self.weight)
+            excitatory_current = torch.mm(input_tensor, self.weight.T)
         else:
             recon = self.get_recon_from_latents(a_in)
             recon_error = input_tensor - recon
@@ -75,12 +70,13 @@ class LcaModule(nn.Module):
         return excitatory_current
 
     def compute_inhibitory_connectivity(self):
+        identity = torch.eye(self.params.layer_channels[1],
+            requires_grad=True, device=self.params.device)
         if self.params.layer_types[0] == 'fc':
-            inhibitory_connectivity = torch.matmul(torch.transpose(self.weight, dim0=0, dim1=1),
-                self.weight) - torch.eye(self.params.layer_channels,
-                requires_grad=True, device=self.params.device)
+            inhibitory_connectivity = torch.mm(self.weight, self.weight.T) - identity
         else:
-            inhibitory_connectivity = 0 # TODO: return Grammian along channel dim for a single kernel location
+            conv_kernels = self.weight.view(1, -1)
+            inhibitory_connectivity = torch.mm(conv_kernels, conv_kernels.T) - identity
         return inhibitory_connectivity
 
     def threshold_units(self, u_in):
@@ -90,7 +86,7 @@ class LcaModule(nn.Module):
 
     def step_inference(self, u_in, a_in, excitatory_current, inhibitory_connectivity, step):
         if self.params.layer_types[0] == 'fc':
-            lca_explain_away = torch.matmul(a_in, inhibitory_connectivity)
+            lca_explain_away = torch.mm(a_in, inhibitory_connectivity)
         else:
             lca_explain_away = 0 # already computed in excitatory_current
         du = excitatory_current - lca_explain_away - u_in
@@ -98,7 +94,7 @@ class LcaModule(nn.Module):
         return u_out, lca_explain_away
 
     def infer_coefficients(self, input_tensor):
-        output_shape = [input_tensor.shape[0]] + self.layer_output_shapes[-1]
+        output_shape = [input_tensor.shape[0]] + self.layer_output_shape
         u_list = [torch.zeros(output_shape, device=self.params.device)]
         a_list = [self.threshold_units(u_list[0])]
         excitatory_current = self.compute_excitatory_current(input_tensor, a_list[-1])
@@ -119,7 +115,7 @@ class LcaModule(nn.Module):
 
     def get_recon_from_latents(self, a_in):
         if self.params.layer_types[0] == 'fc':
-            recon = torch.matmul(a_in, torch.transpose(self.weight, dim0=0, dim1=1))
+            recon = torch.mm(a_in, self.weight)
         else:
             recon = F.conv_transpose2d(
                 input=a_in,

@@ -26,8 +26,7 @@ params = loaders.load_params_file(param_file)
 
 # Load data
 train_loader, val_loader, test_loader, data_stats = dataset_utils.load_dataset(params)[:4]
-for key, value in data_stats.items():
-    setattr(params, key, value)
+for key, value in data_stats.items(): setattr(params, key, value)
 
 # Load model
 model = loaders.load_model(params.model_type)

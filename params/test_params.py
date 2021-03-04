@@ -44,15 +44,13 @@ class shared_params(object):
 class base_params(BaseParams):
     def set_params(self):
         super(base_params, self).set_params()
-        for key, value in shared_params().__dict__.items():
-            setattr(self, key, value)
+        for key, value in shared_params().__dict__.items(): setattr(self, key, value)
 
 
 class lca_params(BaseParams):
     def set_params(self):
         super(lca_params, self).set_params()
-        for key, value in shared_params().__dict__.items():
-          setattr(self, key, value)
+        for key, value in shared_params().__dict__.items(): setattr(self, key, value)
         self.model_type = 'lca'
         self.weight_decay = 0.0
         self.weight_lr = 0.1
@@ -68,7 +66,7 @@ class lca_params(BaseParams):
         self.rectify_a = True
         self.thresh_type = 'soft'
         self.sparse_mult = 0.25
-        self.layer_channels = 128
+        self.layer_channels = [64, 128]
         self.optimizer.milestones = [frac * self.num_epochs
             for frac in self.optimizer.lr_annealing_milestone_frac]
         self.step_size = self.dt / self.tau
@@ -91,8 +89,7 @@ class lca_params(BaseParams):
 class pooling_params(BaseParams):
     def set_params(self):
         super(pooling_params, self).set_params()
-        for key, value in shared_params().__dict__.items():
-          setattr(self, key, value)
+        for key, value in shared_params().__dict__.items(): setattr(self, key, value)
         self.model_type = 'pooling'
         self.layer_name = 'test_pool_1'
         self.weight_lr = 1e-3
@@ -111,8 +108,7 @@ class pooling_params(BaseParams):
 class mlp_params(BaseParams):
     def set_params(self):
         super(mlp_params, self).set_params()
-        for key, value in shared_params().__dict__.items():
-          setattr(self, key, value)
+        for key, value in shared_params().__dict__.items(): setattr(self, key, value)
         self.model_type = 'mlp'
         self.weight_lr = 1e-4
         self.weight_decay = 0.0
@@ -132,6 +128,9 @@ class mlp_params(BaseParams):
 class ensemble_params(BaseParams):
     def set_params(self):
         super(ensemble_params, self).set_params()
-        self.ensemble_params = [lca_params(), mlp_params()]
-        for key, value in shared_params().__dict__.items():
-            setattr(self, key, value)
+        layer1_params = lca_params()
+        layer1_params.layer_name = 'layer1'
+        layer2_params = mlp_params()
+        layer2_params.layer_name = 'layer2'
+        self.ensemble_params = [layer1_params, layer2_params]
+        for key, value in shared_params().__dict__.items(): setattr(self, key, value)

@@ -330,15 +330,15 @@ def get_weights_l2_norm(w, eps=1e-12):
     Return l2 norm of weight matrix
 
     Keyword arguments:
-        w [Tensor] assumed to have shape [inC, outC] or [outC, inC, kernH, kernW]
+        w [Tensor] assumed to have shape [outC, inC] or [outC, inC, kernH, kernW]
             norm is calculated over vectorized version of inC in the first case or inC*kernH*kernW in the second
         eps [float] minimum value to prevent division by zero
 
     Outputs:
         norm [Tensor] norm of each of the outC weight vectors
     """
-    if w.ndim == 2: # fully-connected, [inputs, outputs]
-        norms = torch.norm(w, dim=0, keepdim=True)
+    if w.ndim == 2: # fully-connected, [outputs, inputs]
+        norms = torch.norm(w, dim=1, keepdim=True)
     elif w.ndim == 4: # convolutional, [out_channels, in_channels, kernel_height, kernel_width]
         norms = torch.norm(w.flatten(start_dim=1), dim=-1, keepdim=True)
     else:

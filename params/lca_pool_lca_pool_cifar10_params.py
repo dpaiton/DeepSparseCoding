@@ -32,7 +32,7 @@ class lca_1_params(LcaParams):
         self.weight_decay = 0.0
         self.weight_lr = 0.001
         self.renormalize_weights = True
-        self.layer_channels = 128
+        self.layer_channels = [3, 128]
         self.kernel_size = 8
         self.stride = 2
         self.padding = 0
@@ -81,7 +81,7 @@ class lca_2_params(LcaParams):
         for key, value in shared_params().__dict__.items(): setattr(self, key, value)
         for key, value in lca_1_params().__dict__.items(): setattr(self, key, value)
         self.layer_name = 'lca_2'
-        self.layer_channels = 256
+        self.layer_channels = [32, 256]
         self.kernel_size = 6
         self.stride = 1
         self.padding = 0
@@ -158,7 +158,7 @@ class params(BaseParams):
             lca_2_params_inst.stride,
             lca_2_params_inst.padding,
             dilation=1)
-        lca_2_flat_dim = lca_2_params_inst.layer_channels*lca_2_output_height*lca_2_output_width
+        lca_2_flat_dim = lca_2_params_inst.layer_channels[1]*lca_2_output_height*lca_2_output_width
         pooling_2_params_inst.layer_channels[0] = lca_2_flat_dim
         self.ensemble_params = [
             lca_1_params_inst,

@@ -34,7 +34,7 @@ class TestDatasets(unittest.TestCase):
                 params.dataset = 'mnist'
                 params.shuffle_data = True
                 params.batch_size = 10000
-                train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
+                train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)[:4]
                 for key, value in data_params.items():
                     setattr(params, key, value)
                 assert len(train_loader.dataset) == params.epoch_size
@@ -61,7 +61,7 @@ class TestDatasets(unittest.TestCase):
                             params.dist_type = dist_type
                             params.num_classes = num_classes
                             params.rand_state = rand_state
-                            train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)
+                            train_loader, val_loader, test_loader, data_params = dataset_utils.load_dataset(params)[:4]
                             for key, value in data_params.items():
                                 setattr(params, key, value)
                             assert len(train_loader.dataset) == epoch_size

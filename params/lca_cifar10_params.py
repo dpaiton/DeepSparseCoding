@@ -19,7 +19,7 @@ class params(BaseParams):
         self.num_epochs = 500
         self.train_logs_per_epoch = 6
         self.renormalize_weights = True
-        self.layer_channels = 128
+        self.layer_channels = [3, 128]
         self.kernel_size = 8
         self.stride = 2
         self.padding = 0
@@ -42,6 +42,6 @@ class params(BaseParams):
         self.optimizer.milestones = [frac * self.num_epochs
             for frac in self.optimizer.lr_annealing_milestone_frac]
         self.step_size = self.dt / self.tau
-        self.out_channels = self.layer_channels
         self.num_pixels = 3072
-        self.in_channels = 3
+        self.in_channels = self.layer_channels[0]
+        self.out_channels = self.layer_channels[1]

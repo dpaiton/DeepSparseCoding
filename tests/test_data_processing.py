@@ -236,7 +236,7 @@ class TestUtils(unittest.TestCase):
             np.testing.assert_equal(new_x.ndim, test_nd)
 
     def test_l2_weight_norm(self):
-        w_fc = np.random.standard_normal([24, 38])
+        w_fc = np.random.standard_normal([38, 24])
         w_conv = np.random.standard_normal([38, 24, 8, 8])
         for w in [w_fc, w_conv]:
             w_norm = dp.get_weights_l2_norm(torch.tensor(w), eps=1e-12).numpy()

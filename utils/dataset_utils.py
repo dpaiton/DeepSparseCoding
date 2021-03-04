@@ -119,21 +119,21 @@ def load_dataset(params):
                 transforms.Lambda(lambda x: x - dataset_mean_image))
             extra_outputs['dataset_mean_image'] = dataset_mean_image
         if params.standardize_data:
-            dataset = torchvision.datasets.CIFAR10(**kwargs)
-            data_loader = torch.utils.data.DataLoader(dataset, batch_size=params.batch_size,
-                shuffle=False, num_workers=0, pin_memory=True)
-            dataset_mean_image = dp.get_mean_from_dataloader(data_loader)
-            extra_outputs['dataset_mean_image'] = dataset_mean_image
-            dataset_std_image = dp.get_std_from_dataloader(data_loader, dataset_mean_image)
-            extra_outputs['dataset_std_image'] = dataset_std_image
+            #dataset = torchvision.datasets.CIFAR10(**kwargs)
+            #data_loader = torch.utils.data.DataLoader(dataset, batch_size=params.batch_size,
+            #    shuffle=False, num_workers=0, pin_memory=True)
+            #dataset_mean_image = dp.get_mean_from_dataloader(data_loader)
+            #extra_outputs['dataset_mean_image'] = dataset_mean_image
+            #dataset_std_image = dp.get_std_from_dataloader(data_loader, dataset_mean_image)
+            #extra_outputs['dataset_std_image'] = dataset_std_image
             preprocessing_pipeline.append(
                 transforms.Lambda(
                     lambda x: dp.standardize(x,
                         eps=params.eps,
-                        samplewise=False,
-                        batch_size=params.batch_size,
-                        sample_mean=dataset_mean_image,
-                        sample_std=dataset_std_image)[0]
+                        samplewise=True,#False,
+                        batch_size=params.batch_size)[0]
+                        #sample_mean=dataset_mean_image,
+                        #sample_std=dataset_std_image)[0]
                 )
             )
         if params.rescale_data_to_one:
