@@ -9,6 +9,11 @@ def compute_conv_output_shape(in_length, kernel_length, stride, padding=0, dilat
     return np.floor(out_shape).astype(np.int)
 
 
+def compute_deconv_output_shape(in_length, kernel_length, stride, padding=0, output_padding=0, dilation=1):
+    out_shape = (in_length - 1) * stride - 2 * padding + dilation * (kernel_length - 1) + output_padding + 1
+    return np.floor(out_shape).astype(np.int)
+
+
 def get_module_encodings(module, data, allow_grads=False):
     if allow_grads:
         return module.get_encodings(data)
