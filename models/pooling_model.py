@@ -33,6 +33,12 @@ class PoolingModel(BaseModel, PoolingModule):
             update_dict = super(PoolinModel, self).generate_update_dict(input_data, input_labels, batch_step)
         stat_dict = dict()
         rep = self.forward(input_data)
+        def count_nonzero(array, dim):
+            # TODO: github issue 23907 requests torch.count_nonzero, integrated in torch 1.7
+            return torch.sum(array !=0, dim=dim, dtype=torch.float)
+        rep_dims = tuple([i for i in range(len(rep.shape))])
+        rep_nnz = count_nonzero(rep, dim=rep_dims).item()
+        stat_dict['fraction_active_all_latents'] = rep_nnz / rep.numel()
         total_loss = self.loss_fn(rep)
         stat_dict['weight_lr'] = self.scheduler.get_lr()[0]
         stat_dict['loss'] = total_loss.item()

@@ -169,6 +169,7 @@ class BaseModel(object):
             output_dict['model_state_dict'] =  self.state_dict()
             module_state_dict_name = 'optimizer_state_dict'
             output_dict[module_state_dict_name] = self.optimizer.state_dict(),
+            ## TODO: Save scheduler state dict as well
         training_stats = self.get_train_stats(batch_step)
         output_dict.update(training_stats)
         torch.save(output_dict, self.params.cp_latest_filename)
@@ -215,8 +216,8 @@ class BaseModel(object):
 
     def setup_optimizer(self):
         self.optimizer = self.get_optimizer(
-                optimizer_params=self.params,
-                trainable_variables=self.parameters())
+            optimizer_params=self.params,
+            trainable_variables=self.parameters())
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(
             self.optimizer,
             milestones=self.params.optimizer.milestones,
