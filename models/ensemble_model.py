@@ -42,7 +42,14 @@ class EnsembleModel(BaseModel, EnsembleModule):
                 if module_state_dict_name in checkpoint.keys(): # It was already in an ensemble
                     submodule.load_state_dict(checkpoint[module_state_dict_name])
                 else: # it was trained on its own
-                    submodule.load_state_dict(checkpoint['model_state_dict'])
+                    if 'model_state_dict' in checkpoint.keys():
+                        submodule.load_state_dict(checkpoint['model_state_dict'])
+                    else:
+                        assert False, (
+                            f'subparams {subparams} has checkpoint_boot_log set to '
+                            +f'{subparams.checkpoint_boot_log}, but that log does not have the '
+                            +f'appropriate key. The key "{module_state_dict_name}" must be in '
+                            +f'checkpoint.keys() = {checkpoint.keys}')
 
     def setup_optimizer(self):
         for module in self:
@@ -56,6 +63,11 @@ class EnsembleModel(BaseModel, EnsembleModule):
                     module.optimizer.load_state_dict(checkpoint[module_state_dict_name])
                 else: # it was trained on its own
                     module.optimizer.load_state_dict(checkpoint['optimizer_state_dict'][0]) #TODO: For some reason this is a tuple of size 1 containing the dictionary. It should just be the dictionary
+                for group in module.optimizer.param_groups: # overwrite learning rates
+                    group['lr'] = module.params.weight_lr
+                    group['initial_lr'] = module.params.weight_lr
+            ## TODO: load scheduler state dict with checkpoint, set last_epoch correctly
+            ## https://pytorch.org/docs/stable/_modules/torch/optim/lr_scheduler.html
             module.scheduler = torch.optim.lr_scheduler.MultiStepLR(
                 module.optimizer,
                 milestones=module.params.optimizer.milestones,
@@ -86,6 +98,10 @@ class EnsembleModel(BaseModel, EnsembleModule):
                 else:
                     module.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
                     _ = checkpoint.pop('optimizer_state_dict', None)
+                for group in module.optimizer.param_groups: # overwrite learning rates
+                    group['lr'] = module.params.weight_lr
+                    group['initial_lr'] = module.params.weight_lr
+                ## TODO: Load scheduler state dict as well
         _ = checkpoint.pop('model_state_dict', None)
         training_status = pprint.pformat(checkpoint, compact=True)#, sort_dicts=True #TODO: Python 3.8 adds the sort_dicts parameter
         out_str = f'Loaded checkpoint from {cp_file} with the following stats:\n{training_status}'
