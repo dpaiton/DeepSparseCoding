@@ -56,7 +56,7 @@ class Logger(object):
         out_params = deepcopy(params)
         if('ensemble_params' in out_params.keys()):
             for sub_idx, sub_params in enumerate(out_params['ensemble_params']):
-                sub_params.set_params()
+                #sub_params.set_params()
                 for key, value in sub_params.__dict__.items():
                     if(key != 'rand_state'):
                         new_dict_key = f'{sub_idx}_{key}'
@@ -178,6 +178,18 @@ class Logger(object):
                 else:
                     stats[key] = [js_match[key]]
         return stats
+
+    def read_architecture(self, text):
+        """
+        Generate dictionary of lists that contain stats from log text
+        Outpus:
+            stats: [dict] containing run statistics
+        Inputs:
+            text: [str] containing text to parse, can be obtained by calling load_file()
+        """
+        tokens = ['<architecture>', '</architecture>']
+        js_match = self.read_js(tokens, text)
+        return js_match
 
     def __del__(self):
         if(self.log_to_file and hasattr(self, 'file_obj')):
