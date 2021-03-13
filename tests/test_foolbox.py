@@ -1,14 +1,15 @@
 import os
 import sys
 import unittest
+from os.path import dirname as up
+
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 #import numpy as np
 import eagerpy as ep
 from foolbox import PyTorchModel, accuracy, samples
 import foolbox.attacks as fa
-
-ROOT_DIR = os.path.dirname(os.getcwd())
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.loaders as loaders
 #import DeepSparseCoding.utils.dataset_utils as datasets
@@ -28,7 +29,7 @@ import DeepSparseCoding.utils.loaders as loaders
 #                'steps':3}} # max perturbation it can reach is 0.5
 #        attack = fa.LinfPGD(**attack_params['linfPGD'])
 #        epsilons = [0.3] # allowed perturbation size
-#        params['ensemble'] = loaders.load_params(self.test_params_file, key='ensemble_params')
+#        params['ensemble'] = loaders.load_params_file(self.test_params_file, key='ensemble_params')
 #        params['ensemble'].train_logs_per_epoch = None
 #        params['ensemble'].shuffle_data = False
 #        train_loader, val_loader, test_loader, data_params = datasets.load_dataset(params['ensemble'])

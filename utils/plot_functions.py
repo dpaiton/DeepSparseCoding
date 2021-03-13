@@ -94,3 +94,29 @@ def plot_stats(data, x_key, x_label=None, y_keys=None, y_labels=None, start_inde
         return None
     plot.show()
     return fig
+
+def pad_images(images, pad_values=1):
+    """
+    Convert an array of images into a single tiled image with padded border
+
+    Keyword arguments:
+        images: [np.ndarray] of shape [num_samples, im_height, im_width, im_chan]
+        pad_values: [int] specifying what value will be used for padding
+
+    Outputs:
+        padded_images: [np.ndarray] padded version of input
+    """
+    n = int(np.ceil(np.sqrt(images.shape[0])))
+    padding = (((0, n ** 2 - images.shape[0]),
+        (1, 1), (1, 1)) # add some space between filters
+        + ((0, 0),) * (images.ndim - 3)) # don't pad last dimension (if there is one)
+    padded_images = np.pad(images, padding, mode="constant",
+        constant_values=pad_values)
+    # tile the filters into an image
+    padded_images = padded_images.reshape((
+        (n, n) + padded_images.shape[1:])).transpose((
+        (0, 2, 1, 3) + tuple(range(4, padded_images.ndim + 1))))
+    padded_images = padded_images.reshape((n * padded_images.shape[1],
+        n * padded_images.shape[3]) + padded_images.shape[4:])
+    return padded_images
+

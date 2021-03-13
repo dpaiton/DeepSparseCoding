@@ -1,17 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
-def activation_picker(activation_function):
-    if activation_function == 'identity':
-      return lambda x: x
-    if activation_function == 'relu':
-      return F.relu
-    if activation_function == 'lrelu' or activation_function == 'leaky_relu':
-      return F.leaky_relu
-    if activation_function == 'lca_threshold':
-      return lca_threshold
-    assert False, (f'Activation function {activation_function} is not supported.')
 
 def lca_threshold(u_in, thresh_type, rectify, sparse_threshold):
     u_zeros = torch.zeros_like(u_in)
@@ -40,3 +28,12 @@ def lca_threshold(u_in, thresh_type, rectify, sparse_threshold):
     else:
         assert False, (f'Parameter thresh_type must be "soft" or "hard", not {thresh_type}')
     return a_out
+
+def activation_picker(activation_function):
+    if activation_function == 'identity':
+      return nn.Identity()
+    if activation_function == 'relu':
+      return nn.ReLU()
+    if activation_function == 'lrelu' or activation_function == 'leaky_relu':
+      return nn.LeakyReLU()
+    assert False, (f'Activation function {activation_function} is not supported.')

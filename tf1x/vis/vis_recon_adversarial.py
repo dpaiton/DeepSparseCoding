@@ -3,6 +3,10 @@ matplotlib.use('Agg')
 import os
 import sys
 import pdb
+from os.path import dirname as up
+
+ROOT_DIR = up(up(up(up(os.path.realpath(__file__)))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import numpy as np
 import matplotlib
@@ -10,9 +14,6 @@ import matplotlib.pyplot as plt
 from matplotlib import ticker
 import matplotlib.gridspec as gridspec
 from skimage.measure import compare_psnr
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 from DeepSparseCoding.tf1x.data.dataset import Dataset
 import DeepSparseCoding.tf1x.data.data_selector as ds

@@ -1,7 +1,8 @@
 import os
 import sys
+from os.path import dirname as up
 
-ROOT_DIR = os.path.dirname(os.getcwd())
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
 if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.loaders as loaders
@@ -12,4 +13,4 @@ def test_param_loading():
     for params_name in params_list:
         if 'test_' not in params_name:
             params_file = os.path.join(*[dsc_dir, 'params', params_name+'.py'])
-            params = loaders.load_params(params_file, key='params')
+            params = loaders.load_params_file(params_file, key='params')

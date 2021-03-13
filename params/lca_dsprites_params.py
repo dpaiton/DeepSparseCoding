@@ -12,6 +12,7 @@ class params(BaseParams):
         super(params, self).set_params()
         self.model_type = 'lca'
         self.model_name = 'lca_dsprites'
+        self.layer_types = ['fc']
         self.version = '0'
         self.dataset = 'dsprites'
         self.standardize_data = False
@@ -26,13 +27,13 @@ class params(BaseParams):
         self.optimizer.lr_annealing_milestone_frac = [0.7] # fraction of num_epochs
         self.optimizer.lr_decay_rate = 0.5
         self.renormalize_weights = True
+        self.layer_channels = [1, int(self.num_pixels*1.5)]
         self.dt = 0.001
         self.tau = 0.03
         self.num_steps = 75
         self.rectify_a = False
         self.thresh_type = 'soft'
         self.sparse_mult = 0.25
-        self.num_latent = int(self.num_pixels*1.5)
         self.compute_helper_params()
 
     def compute_helper_params(self):

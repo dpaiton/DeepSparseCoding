@@ -1,14 +1,13 @@
 import os
 import sys
 import unittest
+from os.path import dirname as up
 
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import torch
 import numpy as np
-
-
-ROOT_DIR = os.path.dirname(os.getcwd())
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.utils.data_processing as dp
 
@@ -21,9 +20,9 @@ class TestUtils(unittest.TestCase):
         function call: reshape_data(data, flatten=None, out_shape=None):
         24 possible conditions:
           data: [np.ndarray] data of shape:
-              n is num_examples, i is num_rows, j is num_cols, k is num_channels, l is num_examples = i*j*k
-              (l) - single data point of shape l, assumes 1 color channel
-              (n, l) - n data points, each of shape l (flattened)
+              n is num_examples, i is num_channels, j is num_rows, k is num_cols
+              (i) - single data point of shape i
+              (n, i) - n data points, each of shape i (flattened)
               (i, j, k) - single datapoint of of shape (i, j, k)
               (n, i, j, k) - n data points, each of shape (i,j,k)
           flatten: True, False, None
@@ -44,8 +43,8 @@ class TestUtils(unittest.TestCase):
                     input_array_list = [
                         np.zeros((num_elements)), # assumed num_examples == 1
                         np.zeros((num_examples, num_elements)),
-                        np.zeros((num_rows, num_cols, num_channels)), # assumed num_examples == 1
-                        np.zeros((num_examples, num_rows, num_cols, num_channels))]
+                        np.zeros((num_channels, num_rows, num_cols)), # assumed num_examples == 1
+                        np.zeros((num_examples, num_channels, num_rows, num_cols))]
                     for input_array in input_array_list:
                         input_shape = input_array.shape
                         input_ndim = input_array.ndim
@@ -54,7 +53,7 @@ class TestUtils(unittest.TestCase):
                             out_shape_list = [
                                 None,
                                 (num_elements,),
-                                (num_rows, num_cols, num_channels)]
+                                (num_channels, num_rows, num_cols)]
                             if(num_channels == 1):
                                 out_shape_list.append((num_rows, num_cols))
                         else:
@@ -62,7 +61,7 @@ class TestUtils(unittest.TestCase):
                             out_shape_list = [
                                 None,
                                 (num_examples, num_elements),
-                                (num_examples, num_rows, num_cols, num_channels)]
+                                (num_examples, num_channels, num_rows, num_cols)]
                             if(num_channels == 1):
                                 out_shape_list.append((num_examples, num_rows, num_cols))
                         for out_shape in out_shape_list:
@@ -83,7 +82,7 @@ class TestUtils(unittest.TestCase):
                                 reshaped_array = reshape_outputs[0].numpy()
                                 err_msg += f'\nreshaped_array.shape={reshaped_array.shape}'
                                 self.assertEqual(reshape_outputs[1], input_shape, err_msg) # orig_shape
-                                (resh_num_examples, resh_num_rows, resh_num_cols, resh_num_channels) = reshape_outputs[2:]
+                                (resh_num_examples, resh_num_channels, resh_num_rows, resh_num_cols) = reshape_outputs[2:]
                                 err_msg += (f'\nfunction_shape_outputs={reshape_outputs[2:]}')
                                 if(out_shape is None):
                                     if(flatten is None):
@@ -105,26 +104,26 @@ class TestUtils(unittest.TestCase):
                                             expected_out_shape,
                                             err_msg)
                                         self.assertEqual(
-                                            resh_num_rows*resh_num_cols*resh_num_channels,
+                                            resh_num_channels * resh_num_rows * resh_num_cols,
                                             expected_out_shape[1],
                                             err_msg)
                                     elif(flatten == False):
-                                        expected_out_shape = (num_examples, num_rows, num_cols, num_channels)
+                                        expected_out_shape = (num_examples, num_channels, num_rows, num_cols)
                                         err_msg += f'\nexpected_out_shape={expected_out_shape}'
                                         self.assertEqual(
                                             reshaped_array.shape,
                                             expected_out_shape,
                                             err_msg)
                                         self.assertEqual(
-                                            resh_num_rows,
+                                            resh_num_channels,
                                             expected_out_shape[1],
                                             err_msg)
                                         self.assertEqual(
-                                            resh_num_cols,
+                                            resh_num_rows,
                                             expected_out_shape[2],
                                             err_msg)
                                         self.assertEqual(
-                                            resh_num_channels,
+                                            resh_num_cols,
                                             expected_out_shape[3],
                                             err_msg)
                                     else:
@@ -135,22 +134,12 @@ class TestUtils(unittest.TestCase):
                                     self.assertEqual(reshaped_array.shape, expected_out_shape, err_msg)
                                     self.assertEqual(resh_num_examples, None, err_msg)
 
-
-    def test_flatten_feature_map(self):
-        unflat_shape = [8, 4, 4, 3]
-        flat_shape = [8, 4*4*3]
-        shapes = [unflat_shape, flat_shape]
-        for shape in shapes:
-            test_map = torch.zeros(shape)
-            flat_map = dp.flatten_feature_map(test_map).numpy()
-            self.assertEqual(list(flat_map.shape), flat_shape)
-
     def test_standardize(self):
         num_tolerance_decimals = 5
         unflat_shape = [8, 4, 4, 3]
         flat_shape = [8, 4*4*3]
         shape_options = [unflat_shape, flat_shape]
-        eps_options = [1e-6, None]
+        eps_options = [1e-8, None]
         samplewise_options = [True, False]
         for shape in shape_options:
             for eps_val in eps_options:
@@ -237,3 +226,40 @@ class TestUtils(unittest.TestCase):
         np.testing.assert_equal(func_dense, dense_labels)
         func_one_hot = dp.dense_to_one_hot(torch.tensor(dense_labels), num_classes).numpy()
         np.testing.assert_equal(func_one_hot, one_hot_labels)
+
+    def test_atleastkd(self):
+        x = np.random.standard_normal([2, 3, 4])
+        ks = [0, 3, 8, 10]
+        for k in ks:
+            new_x = dp.atleast_kd(torch.tensor(x), k).numpy()
+            test_nd = np.maximum(k, x.ndim)
+            np.testing.assert_equal(new_x.ndim, test_nd)
+
+    def test_l2_weight_norm(self):
+        w_fc = np.random.standard_normal([38, 24])
+        w_conv = np.random.standard_normal([38, 24, 8, 8])
+        for w in [w_fc, w_conv]:
+            w_norm = dp.get_weights_l2_norm(torch.tensor(w), eps=1e-12).numpy()
+            normed_w = dp.l2_normalize_weights(torch.tensor(w), eps=1e-12).numpy()
+            normed_w_norm = dp.get_weights_l2_norm(torch.tensor(normed_w), eps=1e-12).numpy()
+            np.testing.assert_allclose(normed_w_norm, 1.0, rtol=1e-10)
+            np.testing.assert_allclose(w / w_norm, normed_w, rtol=1e-10)
+
+    def test_patches(self):
+      err = 1e-6
+      rand_mean = 0; rand_var = 1
+      num_im = 10; im_edge = 512; im_chan = 1; patch_edge = 16
+      num_patches = np.int(num_im * (im_edge / patch_edge)**2)
+      rand_seed = 1234
+      rand_state = np.random.RandomState(rand_seed)
+      data = np.stack([rand_state.normal(rand_mean, rand_var, size=[im_chan, im_edge, im_edge])
+          for _ in range(num_im)])
+      data_shape = list(data.shape)
+      patch_shape = [im_chan, patch_edge, patch_edge]
+      datapoint = torch.tensor(data[0, ...])
+      datapoint_patches = dp.single_image_to_patches(datapoint, patch_shape)
+      datapoint_recon = dp.patches_to_single_image(datapoint_patches, data_shape[1:])
+      np.testing.assert_allclose(datapoint.numpy(), datapoint_recon.numpy(), rtol=err)
+      patches = dp.images_to_patches(torch.tensor(data), patch_shape)
+      data_recon = dp.patches_to_images(patches, data_shape[1:])
+      np.testing.assert_allclose(data, data_recon.numpy(), rtol=err)

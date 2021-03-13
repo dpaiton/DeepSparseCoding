@@ -3,6 +3,7 @@ import time
 import types
 import os
 from copy import deepcopy
+from collections import OrderedDict
 import importlib
 
 import numpy as np
@@ -27,6 +28,16 @@ class Logger(object):
         """Dump json string with special CustomEncoder"""
         return js.dumps(obj, sort_keys=True, indent=2, cls=CustomEncoder)
 
+    def log_string(self, string):
+        """Log input string"""
+        now = time.localtime(time.time())
+        time_str = time.strftime('%m/%d/%y %H:%M:%S', now)
+        out_str = '\n' + time_str + ' -- ' + str(string)
+        if(self.log_to_file):
+            self.file_obj.write(out_str)
+        else:
+            print(out_str)
+
     def log_trainable_variables(self, name_list):
         """
         Use logging to write names of trainable variables in model
@@ -34,7 +45,7 @@ class Logger(object):
             name_list: list containing variable names
         """
         js_str = self.js_dumpstring(name_list)
-        self.log_info('<train_vars>'+js_str+'</train_vars>')
+        self.log_string('<train_vars>'+js_str+'</train_vars>')
 
     def log_params(self, params):
         """
@@ -45,7 +56,7 @@ class Logger(object):
         out_params = deepcopy(params)
         if('ensemble_params' in out_params.keys()):
             for sub_idx, sub_params in enumerate(out_params['ensemble_params']):
-                sub_params.set_params()
+                #sub_params.set_params()
                 for key, value in sub_params.__dict__.items():
                     if(key != 'rand_state'):
                         new_dict_key = f'{sub_idx}_{key}'
@@ -54,17 +65,17 @@ class Logger(object):
         if('rand_state' in out_params.keys()):
             del out_params['rand_state']
         js_str = self.js_dumpstring(out_params)
-        self.log_info('<params>'+js_str+'</params>')
+        self.log_string('<params>'+js_str+'</params>')
 
-    def log_info(self, string):
-        """Log input string"""
-        now = time.localtime(time.time())
-        time_str = time.strftime('%m/%d/%y %H:%M:%S', now)
-        out_str = '\n' + time_str + ' -- ' + str(string)
-        if(self.log_to_file):
-            self.file_obj.write(out_str)
-        else:
-            print(out_str)
+    def log_stats(self, stat_dict):
+        """Log dictionary of training / testing statistics"""
+        js_str = self.js_dumpstring(stat_dict)
+        self.log_string('<stats>'+js_str+'</stats>')
+
+    def log_info(self, info_dict):
+        """Log input dictionary in <info> tags"""
+        js_str = self.js_dumpstring(info_dict)
+        self.log_string('<info>'+js_str+'</info>')
 
     def load_file(self, filename=None):
         """
@@ -168,6 +179,18 @@ class Logger(object):
                     stats[key] = [js_match[key]]
         return stats
 
+    def read_architecture(self, text):
+        """
+        Generate dictionary of lists that contain stats from log text
+        Outpus:
+            stats: [dict] containing run statistics
+        Inputs:
+            text: [str] containing text to parse, can be obtained by calling load_file()
+        """
+        tokens = ['<architecture>', '</architecture>']
+        js_match = self.read_js(tokens, text)
+        return js_match
+
     def __del__(self):
         if(self.log_to_file and hasattr(self, 'file_obj')):
             self.file_obj.close()
@@ -199,3 +222,92 @@ def python_module_from_file(py_module_name, file_name):
     py_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(py_module)
     return py_module
+
+def summary_string(model, input_size, batch_size=2, device=torch.device('cuda:0'), dtype=torch.FloatTensor):
+    """
+    Returns a string that summarizees the model architecture, including the number of parameters
+    and layer output sizes
+
+    Code is modified from:
+    https://github.com/sksq96/pytorch-summary
+
+    Keyword arguments:
+        model [torch module, module subclass, or EnsembleModel] model to summarize
+        input_size  [tuple or list of tuples] must not include the batch dimension; if it is a list
+            of tuples then the architecture will be computed for each option
+        batch_size [positive int] how many images to feed into the model.
+            The default of 2 will ensure that batch norm works.
+        devie [torch.device] which device to run the test on
+        dtype [torch.dtype] for the artificially generated inputs
+    """
+    def register_hook(module):
+        def hook(module, input, output):
+            class_name = str(module.__class__).split('.')[-1].split("'")[0]
+            module_idx = len(summary)
+            m_key = '%s-%i' % (class_name, module_idx + 1)
+            summary[m_key] = OrderedDict()
+            summary[m_key]['input_shape'] = list(input[0].size())
+            summary[m_key]['input_shape'][0] = batch_size
+            if isinstance(output, (list, tuple)):
+                summary[m_key]['output_shape'] = [
+                    [-1] + list(o.size())[1:] for o in output
+                ]
+            else:
+                summary[m_key]['output_shape'] = list(output.size())
+                summary[m_key]['output_shape'][0] = batch_size
+            params = 0
+            if hasattr(module, 'weight') and hasattr(module.weight, 'size'):
+                params += torch.prod(torch.LongTensor(list(module.weight.size())))
+                summary[m_key]['trainable'] = module.weight.requires_grad
+            if hasattr(module, 'bias') and hasattr(module.bias, 'size'):
+                params += torch.prod(torch.LongTensor(list(module.bias.size())))
+            summary[m_key]['nb_params'] = params
+            summary[m_key]['gpu_mem'] = round(torch.cuda.memory_allocated(0)/1024**3, 1)
+        if len(list(module.children())) == 0: # only apply hooks at child modules to avoid applying them twice
+            hooks.append(module.register_forward_hook(hook))
+    x = torch.rand(batch_size, *input_size).type(dtype).to(device=device)
+    summary = OrderedDict() # used within hook function to store properties
+    hooks = [] # used within hook function to store resgistered hooks
+    model.apply(register_hook) # recursively apply register_hook function to model and all children
+    model(x) # make a forward pass
+    for h in hooks:
+        h.remove() # remove the hooks so they are not used at run time
+    summary_str = '----------------------------------------------------------------\n'
+    line_new = '{:>20}  {:>25} {:>15}'.format('Layer (type)', 'Output Shape', 'Param #')
+    summary_str += line_new + '\n'
+    summary_str += '================================================================\n'
+    total_params = 0
+    total_output = 0
+    trainable_params = 0
+    for layer in summary:
+        line_new = '{:>20}  {:>25} {:>15}'.format(
+            layer,
+            str(summary[layer]['output_shape']),
+            '{0:,}'.format(summary[layer]['nb_params']),
+        ) # input_shape, output_shape, trainable, nb_params
+        total_params += summary[layer]['nb_params']
+        total_output += np.prod(summary[layer]['output_shape'])
+        if 'trainable' in summary[layer]:
+            if summary[layer]['trainable'] == True:
+                trainable_params += summary[layer]['nb_params']
+        summary_str += line_new + '\n'
+    # assume 4 bytes/number (float on cuda).
+    total_input_size = abs(np.prod(input_size)) * batch_size * 4. / (1024 ** 2.)
+    total_output_size = abs(2. * total_output * 4. / (1024 ** 2.))  # x2 for gradients
+    total_params_size = abs(total_params * 4. / (1024 ** 2.))
+    total_size = total_params_size + total_output_size + total_input_size
+    summary_str += '================================================================\n'
+    summary_str += f'Total params: {total_params}\n'
+    summary_str += f'Trainable params: {trainable_params}\n'
+    param_diff = total_params - trainable_params
+    summary_str += f'Non-trainable params: {param_diff}\n'
+    summary_str += '----------------------------------------------------------------\n'
+    summary_str += f'Input size (MB): {total_input_size:0.2f}\n'
+    summary_str += f'Forward/backward pass size (MB): {total_output_size:0.2f}\n'
+    summary_str += f'Params size (MB): {total_params_size:0.2f}\n'
+    summary_str += f'Estimated total size (MB): {total_size:0.2f}\n'
+    ## TODO: Update pytorch for this to work
+    #device_memory = torch.cuda.memory_summary(device, abbreviated=True)
+    #summary_str += f'Device memory allocated with batch of inputs (GB): {device_memory}\n'
+    summary_str += '----------------------------------------------------------------\n'
+    return summary_str, (total_params, trainable_params)

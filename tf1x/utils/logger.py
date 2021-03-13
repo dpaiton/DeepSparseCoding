@@ -90,7 +90,13 @@ class Logger(object):
     assert len(tokens) == 2, ("Input variable tokens must be a list of length 2")
     matches = re.findall(re.escape(tokens[0])+"([\s\S]*?)"+re.escape(tokens[1]), text)
     if len(matches) > 1:
-      js_matches = [js.loads(match) for match in matches]
+      js_matches = []
+      for match_idx, match in enumerate(matches):
+        try:
+          js_matches.append(js.loads(match))
+        except:
+          print(f'ERROR: JSON load failed on match index {match_idx}')
+          import IPython; IPython.embed(); raise SystemExit
     else:
       js_matches = [js.loads(matches[0])]
     return js_matches

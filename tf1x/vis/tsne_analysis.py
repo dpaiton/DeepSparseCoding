@@ -1,14 +1,15 @@
 import os
 import sys
+from os.path import dirname as up
+
+ROOT_DIR = up(up(up(up(os.path.realpath(__file__)))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import numpy as np
 import pickle
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
 from scipy.misc import imsave
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import DeepSparseCoding.tf1x.data.data_selector as ds
 import DeepSparseCoding.tf1x.analysis.analysis_picker as ap

@@ -1,12 +1,13 @@
 import os
 import sys
 import argparse
+from os.path import dirname as up
+
+ROOT_DIR = up(up(up(os.path.realpath(__file__))))
+if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 import numpy as np
 import tensorflow as tf
-
-ROOT_DIR = os.path.dirname(os.path.dirname(os.getcwd()))
-if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 from DeepSparseCoding.tf1x.utils.logger import Logger
 import DeepSparseCoding.tf1x.utils.data_processing as dp
