@@ -248,7 +248,6 @@ class params(BaseParams):
         p1_overcompleteness = np.prod(pooling_1_shape) / np.prod(lca_1_shape)
         l2_overcompleteness = np.prod(lca_2_shape) / np.prod(pooling_1_shape)
         p2_overcompleteness = np.prod(pooling_2_shape) / np.prod(lca_2_shape)
-        import IPython; IPython.embed(); raise SystemExit
         self.ensemble_params = [
             lca_1_params_inst,
             pooling_1_params_inst,

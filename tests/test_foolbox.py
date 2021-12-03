@@ -7,11 +7,11 @@ ROOT_DIR = up(up(up(os.path.realpath(__file__))))
 if ROOT_DIR not in sys.path: sys.path.append(ROOT_DIR)
 
 #import numpy as np
-import eagerpy as ep
-from foolbox import PyTorchModel, accuracy, samples
-import foolbox.attacks as fa
+#import eagerpy as ep
+#from foolbox import PyTorchModel, accuracy, samples
+#import foolbox.attacks as fa
 
-import DeepSparseCoding.utils.loaders as loaders
+#import DeepSparseCoding.utils.loaders as loaders
 #import DeepSparseCoding.utils.dataset_utils as datasets
 #import DeepSparseCoding.utils.run_utils as run_utils
 

@@ -125,4 +125,3 @@ class TestModels(unittest.TestCase):
             +"ensemble weights are not different from init after one epoch of training")
         assert np.all(lca_w == ensemble_w), (err_msg+'\n'
             +"lca & ensemble weights are not equal after one epoch of training")
-

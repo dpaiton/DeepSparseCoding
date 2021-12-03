@@ -6,12 +6,12 @@ import DeepSparseCoding.utils.data_processing as dp
 
 def compute_conv_output_shape(in_length, kernel_length, stride, padding=0, dilation=1):
     out_shape = ((in_length + 2 * padding - dilation * (kernel_length - 1) - 1) / stride) + 1
-    return np.floor(out_shape).astype(np.int)
+    return np.floor(out_shape).astype(int)
 
 
 def compute_deconv_output_shape(in_length, kernel_length, stride, padding=0, output_padding=0, dilation=1):
     out_shape = (in_length - 1) * stride - 2 * padding + dilation * (kernel_length - 1) + output_padding + 1
-    return np.floor(out_shape).astype(np.int)
+    return np.floor(out_shape).astype(int)
 
 
 def get_module_encodings(module, data, allow_grads=False):

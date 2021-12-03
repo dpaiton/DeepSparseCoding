@@ -33,7 +33,7 @@ class LcaModel(BaseModel, LcaModule):
         recon = self.get_recon_from_latents(latents)
         recon_loss = losses.half_squared_l2(input_data, recon).item()
         sparse_loss = self.params.sparse_mult * losses.l1_norm(latents).item()
-        stat_dict['weight_lr'] = self.scheduler.get_lr()[0]
+        stat_dict['weight_lr'] = self.scheduler.get_last_lr()[0]
         stat_dict['loss_recon'] = recon_loss
         stat_dict['loss_sparse'] = sparse_loss
         stat_dict['loss_total'] = recon_loss + sparse_loss

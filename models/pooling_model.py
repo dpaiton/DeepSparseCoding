@@ -40,7 +40,7 @@ class PoolingModel(BaseModel, PoolingModule):
         rep_nnz = count_nonzero(rep, dim=rep_dims).item()
         stat_dict['fraction_active_all_latents'] = rep_nnz / rep.numel()
         total_loss = self.loss_fn(rep)
-        stat_dict['weight_lr'] = self.scheduler.get_lr()[0]
+        stat_dict['weight_lr'] = self.scheduler.get_last_lr()[0]
         stat_dict['loss'] = total_loss.item()
         update_dict.update(stat_dict)
         return update_dict

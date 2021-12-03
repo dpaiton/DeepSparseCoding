@@ -29,7 +29,7 @@ class MlpModel(BaseModel, MlpModule):
         total_loss = self.loss_fn(pred, input_labels)
         pred = pred.max(1, keepdim=True)[1]
         correct = pred.eq(input_labels.view_as(pred)).sum().item()
-        stat_dict['weight_lr'] = self.scheduler.get_lr()[0] # one LR for all parameters
+        stat_dict['weight_lr'] = self.scheduler.get_last_lr()[0] # one LR for all parameters
         stat_dict['loss'] = total_loss.item()
         stat_dict['train_accuracy'] = 100. * correct / self.params.batch_size
         update_dict.update(stat_dict)

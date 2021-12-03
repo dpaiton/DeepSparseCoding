@@ -249,7 +249,7 @@ class TestUtils(unittest.TestCase):
       err = 1e-6
       rand_mean = 0; rand_var = 1
       num_im = 10; im_edge = 512; im_chan = 1; patch_edge = 16
-      num_patches = np.int(num_im * (im_edge / patch_edge)**2)
+      num_patches = int(num_im * (im_edge / patch_edge)**2)
       rand_seed = 1234
       rand_state = np.random.RandomState(rand_seed)
       data = np.stack([rand_state.normal(rand_mean, rand_var, size=[im_chan, im_edge, im_edge])
