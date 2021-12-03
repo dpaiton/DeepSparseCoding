@@ -1,0 +1,5 @@
+tensorflow-gpu==1.15.2
+tensorflow-estimator==1.15.1
+tensorboard==1.15
+tensorflow-probability==0.8.0
+tensorflow-compression
