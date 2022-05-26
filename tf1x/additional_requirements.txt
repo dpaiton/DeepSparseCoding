@@ -1,4 +1,4 @@
-tensorflow-gpu==1.15.5
+tensorflow-gpu==2.7.2
 tensorflow-estimator==1.15.1
 tensorboard==1.15
 tensorflow-probability==0.8.0
